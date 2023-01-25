@@ -15,3 +15,6 @@
 # vendor/
 apigateway
 config.json
+
+# Enviroment variables
+.env

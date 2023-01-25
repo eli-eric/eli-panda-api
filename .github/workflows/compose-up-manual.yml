@@ -1,0 +1,21 @@
+name: Compose up REST API
+
+on:
+  workflow_dispatch:
+
+jobs:
+  use-secret:
+    runs-on: self-hosted
+    steps:
+      - name: Show secret stats
+        run: |
+          echo "${{ secrets.NEXTAUTH_SECRET }}" | wc
+  compose-up:
+    runs-on: self-hosted
+    needs: use-secret
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          docker-compose up -d --build
+        env:
+          NEXTAUTH_SECRET: "${{ secrets.NEXTAUTH_SECRET }}"

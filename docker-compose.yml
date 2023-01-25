@@ -7,14 +7,14 @@ networks:
 
 services:
 
-  panda-backend-api-gateway:
-    container_name: panda-backend-api-gateway
+  panda-api:
+    container_name: panda-api
     restart: unless-stopped
     build:
       context: ./
       dockerfile: Dockerfile
       labels:
-        - panda-backend-api-gateway
+        - panda-api
     networks:
       - panda-net
     ports:

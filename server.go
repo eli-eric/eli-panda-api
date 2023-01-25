@@ -15,13 +15,14 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
 func main() {
 
 	// configuration settings
-	// application expects appsettings.yaml file in the root of the app
-	settings, err := config.ReadConfig("config.json")
+	// application enviroment varibles described in example.env file
+	settings, err := config.LoadConfiguraion()
 	ioutils.PanicOnError(err)
 
 	//new http Echo instance
@@ -65,8 +66,33 @@ func main() {
 
 	// Middlewares END **********************************************************************************
 
+	// NEO4J ********************************************************************************************
+	// Lets create neo4j database driver which we want to share across the "services"
+	// Create new Driver instance
+	neo4jDriver, err := neo4j.NewDriver(
+		settings.Neo4jUri,
+		neo4j.BasicAuth(settings.Neo4jUsername, settings.Neo4jPassword, ""),
+	)
+
+	// Check error in driver instantiation
+	if err != nil {
+		ioutils.PanicOnError(err)
+	}
+
+	// Verify Connectivity
+	err = neo4jDriver.VerifyConnectivity()
+
+	// If connectivity fails, handle the error
+	if err != nil {
+		ioutils.PanicOnError(err)
+	}
+
+	log.Println("Neo4j security database connection established successfully.")
+
+	// NEO4J END ****************************************************************************************
+
 	//security services used in handlers and maped in routes...
-	securitySvc := securityService.NewSecurityService(settings)
+	securitySvc := securityService.NewSecurityService(settings, &neo4jDriver)
 	securityHandlers := securityService.NewSecurityHandlers(securitySvc)
 	securityService.MapSecurityRoutes(e, securityHandlers, jwtMiddleware)
 	log.Println("Security service initialized successfully.")

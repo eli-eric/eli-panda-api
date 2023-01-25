@@ -1,6 +1,10 @@
-// Create two main facilities
-MERGE (eli:Facility{ uid: '0338d3de-962a-4d06-a636-c1e744a00b38', name: 'ELI - Bemalines', code: 'elibm' })
-MERGE (alps:Facility{ uid: '1bf54c11-b8bb-48b5-882d-ba433717a968', name: 'ELI - ALPS', code: 'elialps' })
+// Create facilities
+MERGE (eli:Facility{ uid: '0338d3de-962a-4d06-a636-c1e744a00b38', name: 'ELI - Bemalines', code: 'B', codeNumber: '1' })
+MERGE (alps:Facility{ uid: '1bf54c11-b8bb-48b5-882d-ba433717a968', name: 'ELI - ALPS', code: 'A' , codeNumber: '4' })
+MERGE (np:Facility{ uid: '65b22f46-444c-43a1-89d1-f959073c9420', name: 'ELI - NP', code: 'N' , codeNumber: '7' })
+MERGE (clf:Facility{ uid: 'e2f34540-a9f4-49c0-a385-3c1d70649b6b', name: 'STFC - Central Laser Facility', code: 'S' , codeNumber: '10' })
+
+// Create roles
 
 // Create admin user
 MERGE (admin:User{
