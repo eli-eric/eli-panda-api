@@ -16,6 +16,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/neo4j"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func main() {
@@ -67,10 +71,21 @@ func main() {
 	// Middlewares END **********************************************************************************
 
 	// NEO4J ********************************************************************************************
+
+	m, err := migrate.New(
+		"file://db/neo4j/migrations",
+		"neo4j://"+settings.Neo4jUsername+":"+settings.Neo4jPassword+"@"+settings.Neo4jUri+"?x-multi-statement=true")
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := m.Up(); err != nil {
+		log.Fatal(err)
+	}
+
 	// Lets create neo4j database driver which we want to share across the "services"
 	// Create new Driver instance
 	neo4jDriver, err := neo4j.NewDriver(
-		settings.Neo4jUri,
+		"bolt://"+settings.Neo4jUri,
 		neo4j.BasicAuth(settings.Neo4jUsername, settings.Neo4jPassword, ""),
 	)
 

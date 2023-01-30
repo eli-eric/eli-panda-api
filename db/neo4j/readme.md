@@ -12,6 +12,12 @@ Migrations are created following this [tutorial](https://github.com/golang-migra
 
 When this API is started, migrations are automatically applied.
 
+To create new migration files, you can use create-new-migration.sh script in this directory like this:
+
+`./create-new-migration.sh create_some_indexes`
+
+The argument is a name of the new migration.
+
 ### Run Neo4j instance locally
 
 Please follow the instructions in the main [README](https://github.com/eli-eric/eli-panda-api/blob/main/README.md) file.
