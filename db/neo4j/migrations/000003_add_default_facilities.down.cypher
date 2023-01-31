@@ -1,0 +1,2 @@
+MATCH (f:Facility)
+DETACH DELETE f

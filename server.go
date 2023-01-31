@@ -71,14 +71,16 @@ func main() {
 	// Middlewares END **********************************************************************************
 
 	// NEO4J ********************************************************************************************
-
+	// migrations - init migration lib with neo4j settings
 	m, err := migrate.New(
 		"file://db/neo4j/migrations",
 		"neo4j://"+settings.Neo4jUsername+":"+settings.Neo4jPassword+"@"+settings.Neo4jUri+"?x-multi-statement=true")
+	// if there is a db error log and shut down
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := m.Up(); err != nil {
+	// if there is an error in migrations log and shut down, if its successful or there are no changes we can continue
+	if err := m.Up(); err != nil && err.Error() != "no change" {
 		log.Fatal(err)
 	}
 

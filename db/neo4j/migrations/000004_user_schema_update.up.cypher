@@ -1,0 +1,8 @@
+CREATE CONSTRAINT user_uid_unique IF NOT EXISTS
+FOR (u:User) REQUIRE f.uid IS UNIQUE;
+
+CREATE CONSTRAINT user_username_unique IF NOT EXISTS
+FOR (u:User) REQUIRE f.username IS UNIQUE;
+
+CREATE CONSTRAINT user_email_unique IF NOT EXISTS
+FOR (u:User) REQUIRE f.email IS UNIQUE;

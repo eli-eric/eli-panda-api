@@ -1,0 +1,2 @@
+MATCH (u:User)
+DETACH DELETE u
