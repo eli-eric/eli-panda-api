@@ -21,4 +21,4 @@ The argument is a name of the new migration.
 ### Run Neo4j instance locally
 
 Please follow the instructions in the main [README](https://github.com/eli-eric/eli-panda-api/blob/main/README.md) file.
-We have this [docker-compose file](https://github.com/eli-eric/eli-panda-api/blob/main/docker-compose.yml) with all services needed to run this API in development mode successfully.
+We have this [development docker-compose file](https://github.com/eli-eric/eli-panda-api/blob/main/docker-compose-dev.yml) with all services needed to run this API in development mode successfully.
