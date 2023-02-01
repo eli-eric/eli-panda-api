@@ -1,0 +1,5 @@
+DROP CONSTRAINT CatalogueCategoryPropertyType_uid_unique IF EXISTS;
+
+DROP CONSTRAINT CatalogueCategoryPropertyType_name_unique IF EXISTS;
+
+DROP CONSTRAINT CatalogueCategoryPropertyType_code_unique IF EXISTS;

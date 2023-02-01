@@ -1,0 +1,8 @@
+CREATE CONSTRAINT role_uid_unique IF NOT EXISTS
+FOR (r:Role) REQUIRE r.uid IS UNIQUE;
+
+CREATE CONSTRAINT role_name_unique IF NOT EXISTS
+FOR (r:Role) REQUIRE r.name IS UNIQUE;
+
+CREATE CONSTRAINT role_code_unique IF NOT EXISTS
+FOR (r:Role) REQUIRE r.code IS UNIQUE;

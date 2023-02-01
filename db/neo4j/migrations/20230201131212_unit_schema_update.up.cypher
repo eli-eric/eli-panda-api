@@ -1,0 +1,5 @@
+CREATE CONSTRAINT unit_uid_unique IF NOT EXISTS FOR (r:Unit) REQUIRE r.uid IS UNIQUE;
+
+CREATE CONSTRAINT unit_code_unique IF NOT EXISTS FOR (r:Unit) REQUIRE r.code IS UNIQUE;
+
+CREATE CONSTRAINT unit_name_unique IF NOT EXISTS FOR (r:Unit) REQUIRE r.name IS UNIQUE;

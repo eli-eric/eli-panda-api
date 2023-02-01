@@ -1,0 +1,2 @@
+MATCH (r:Role)
+DETACH DELETE r

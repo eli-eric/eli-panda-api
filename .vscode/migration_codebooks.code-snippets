@@ -1,0 +1,30 @@
+{
+	"Migration codebook down": {
+		"scope": "cypher",
+		"prefix": "mcd",
+		"body": [
+			"DROP CONSTRAINT $1_uid_unique IF EXISTS;",
+			"DROP CONSTRAINT $1_name_unique IF EXISTS;",
+			"DROP CONSTRAINT $1_code_unique IF EXISTS;"
+		],
+		"description": "Drop constraints for base codebook"
+	},
+	"Migration codebook up": {
+		"scope": "cypher",
+		"prefix": "mcu",
+		"body": [
+			"CREATE CONSTRAINT $1_uid_unique IF NOT EXISTS FOR (r:$1) REQUIRE r.uid IS UNIQUE;",
+			"CREATE CONSTRAINT $1_code_unique IF NOT EXISTS FOR (r:$1) REQUIRE r.code IS UNIQUE;",
+			"CREATE CONSTRAINT $1_name_unique IF NOT EXISTS FOR (r:$1) REQUIRE r.name IS UNIQUE;"
+		],
+		"description": "Create constraints for base codebook"
+	},
+	"Migration codebook data down": {
+		"scope": "cypher",
+		"prefix": "mcdd",
+		"body": [
+			"MATCH (r:$1) DETACH DELETE (r)"
+		],
+		"description": "Delete codebook (for given node)"
+	}
+}

@@ -79,10 +79,12 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("Applay migrations...")
 	// if there is an error in migrations log and shut down, if its successful or there are no changes we can continue
 	if err := m.Up(); err != nil && err.Error() != "no change" {
 		log.Fatal(err)
 	}
+	log.Println("Migrations OK")
 
 	// Lets create neo4j database driver which we want to share across the "services"
 	// Create new Driver instance
