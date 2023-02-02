@@ -1,0 +1,2 @@
+MATCH (r:Zone)
+DETACH DELETE (r)

@@ -1,0 +1,1 @@
+CREATE CONSTRAINT Zone_uid_unique IF NOT EXISTS FOR (r:Zone) REQUIRE r.uid IS UNIQUE;
