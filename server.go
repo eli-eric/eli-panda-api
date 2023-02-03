@@ -74,7 +74,7 @@ func main() {
 	// migrations - init migration lib with neo4j settings
 	m, err := migrate.New(
 		"file://db/neo4j/migrations",
-		"neo4j://"+settings.Neo4jUsername+":"+settings.Neo4jPassword+"@"+settings.Neo4jUri+"?x-multi-statement=true")
+		"neo4j://"+settings.Neo4jUsername+":"+settings.Neo4jPassword+"@"+settings.Neo4jHost+":"+settings.Neo4jPort+"?x-multi-statement=true")
 	// if there is a db error log and shut down
 	if err != nil {
 		log.Fatal(err)
@@ -89,7 +89,7 @@ func main() {
 	// Lets create neo4j database driver which we want to share across the "services"
 	// Create new Driver instance
 	neo4jDriver, err := neo4j.NewDriver(
-		"bolt://"+settings.Neo4jUri,
+		"bolt://"+settings.Neo4jHost+":"+settings.Neo4jPort,
 		neo4j.BasicAuth(settings.Neo4jUsername, settings.Neo4jPassword, ""),
 	)
 

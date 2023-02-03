@@ -18,7 +18,8 @@ func LoadConfiguraion() (*Config, error) {
 	config.JwtSecret = os.Getenv("API_JWT_SECRET")
 	config.Port = os.Getenv("API_PORT")
 	config.SaltRounds = parseIntWithDefaultValue(os.Getenv("BCRYPT_SALT_ROUNDS"), 12)
-	config.Neo4jUri = os.Getenv("NEO4J_URI")
+	config.Neo4jHost = os.Getenv("NEO4J_HOST")
+	config.Neo4jPort = os.Getenv("NEO4J_PORT")
 	config.Neo4jUsername = os.Getenv("NEO4J_USER")
 	config.Neo4jPassword = os.Getenv("NEO4J_PASSWORD")
 
@@ -36,7 +37,8 @@ func parseIntWithDefaultValue(inputString string, defaultValue int32) int {
 }
 
 type Config struct {
-	Neo4jUri      string
+	Neo4jHost     string
+	Neo4jPort     string
 	Neo4jUsername string
 	Neo4jPassword string
 

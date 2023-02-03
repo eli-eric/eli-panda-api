@@ -1,21 +1,64 @@
 version: '3.9'
 
 networks:
-  panda-net:
-    name: panda-net
+  panda-dev-net:
+    name: panda-dev-net
     driver: bridge
 
 services:
-
-  panda-api:
-    container_name: panda-api
+  panda-dev-api:
+    container_name: panda-dev-api
     restart: unless-stopped
+    healthcheck:
+      test: wget http://localhost:50000/ || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    depends_on:
+      panda-dev-neo4j:
+        condition: service_healthy
+    environment:
+      - API_JWT_SECRET=createstrongsecretplease
+      - API_PORT=50000
+      - BCRYPT_SALT_ROUNDS=12
+      - NEO4J_HOST=panda-dev-neo4j
+      - NEO4J_PORT=7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=elipanda2022
     build:
       context: ./
       dockerfile: Dockerfile
       labels:
-        - panda-api
+        - panda-dev-api
     networks:
-      - panda-net
+      - panda-dev-net
     ports:
-      - '127.0.0.1:50000:50000'
+      - '50000:50000'
+  panda-dev-neo4j:
+    container_name: panda-dev-neo4j
+    image: neo4j:4.4.15@sha256:acf0ba298d912f3dc1649e482866368a816a3a38b21b59c68834c6da39493497
+    # user: "1020:1020"
+    restart: unless-stopped
+    healthcheck:
+      test: wget http://localhost:7474 || exit 1
+      interval: 1s
+      timeout: 10s
+      retries: 20
+      start_period: 3s
+    environment:
+      - NEO4J_AUTH=neo4j/elipanda2022
+      - NEO4JLABS_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+    volumes:
+      - "$HOME/panda-dev/neo4j/data:/data:rw"
+      - "$HOME/panda-dev/neo4j/logs:/logs:rw"
+      - "$HOME/panda-dev/neo4j/plugins:/plugins:rw"
+      - "$HOME/panda-dev/neo4j/conf:/conf:rw"
+      - "$HOME/panda-dev/neo4j/import:/import:rw"
+    networks:
+      - panda-dev-net
+    ports:
+      - "7470:7474"
+      - "7680:7687"
