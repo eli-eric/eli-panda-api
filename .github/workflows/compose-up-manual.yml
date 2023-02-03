@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Show secret stats
         run: |
-          echo "${{ secrets.NEXTAUTH_SECRET }}" | wc
+          echo "${{ secrets.API_JWT_SECRET }}" | echo "${{ secrets.NEO4J_PASSWORD }}" | wc
   compose-up:
     runs-on: self-hosted
     needs: use-secret
@@ -18,4 +18,5 @@ jobs:
       - run: |
           docker-compose up -d --build
         env:
-          NEXTAUTH_SECRET: "${{ secrets.NEXTAUTH_SECRET }}"
+          API_JWT_SECRET: "${{ secrets.API_JWT_SECRET }}"
+          NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"

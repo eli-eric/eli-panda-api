@@ -10,6 +10,14 @@ services:
   panda-api:
     container_name: panda-api
     restart: unless-stopped
+    environment:
+      - API_JWT_SECRET=${API_JWT_SECRET}
+      - API_PORT=50000
+      - BCRYPT_SALT_ROUNDS=12
+      - NEO4J_HOST=panda-neo4j
+      - NEO4J_PORT=7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
     build:
       context: ./
       dockerfile: Dockerfile
