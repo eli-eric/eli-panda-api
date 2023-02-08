@@ -52,11 +52,11 @@ services:
       - NEO4J_dbms_security_procedures_allowlist=apoc.*
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
     volumes:
-      - "$HOME/panda-dev/neo4j/data:/data:rw"
-      - "$HOME/panda-dev/neo4j/logs:/logs:rw"
-      - "$HOME/panda-dev/neo4j/plugins:/plugins:rw"
-      - "$HOME/panda-dev/neo4j/conf:/conf:rw"
-      - "$HOME/panda-dev/neo4j/import:/import:rw"
+      - "$HOME/panda-dev/neo4j/data:/data"
+      - "$HOME/panda-dev/neo4j/logs:/logs"
+      - "$HOME/panda-dev/neo4j/plugins:/plugins"
+      - "$HOME/panda-dev/neo4j/conf:/conf"
+      - "$HOME/panda-dev/neo4j/import:/var/lib/neo4j/import"
     networks:
       - panda-dev-net
     ports:
