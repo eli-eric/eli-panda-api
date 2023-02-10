@@ -15,7 +15,7 @@ type SecurityHandlers struct {
 type ISecurityHandlers interface {
 	AuthenticateByUsernameAndPassword() echo.HandlerFunc
 	GetUserByJWT() echo.HandlerFunc
-	RefreshToken() echo.HandlerFunc
+	// RefreshToken() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -76,27 +76,6 @@ func (h *SecurityHandlers) GetUserByJWT() echo.HandlerFunc {
 		//claims := user.Claims.(*models.JwtCustomClaims)
 
 		authUser := models.UserAuthInfo{}
-
-
-		// if claims.Subject == "admin" {
-		// 	authUser.Username = claims.Subject
-		// 	authUser.Uid = "71864520-9e86-427c-901c-0c220f95177"
-		// 	authUser.Facility = "ELI-Beamlines"
-
-		// 	authUser.Roles = []string{"catalogue-view", "systems-view"}
-		// } else if authUser.Username == "control.systems" {
-		// 	authUser.Username = claims.Subject
-		// 	authUser.Uid = "25038ff7-0e9c-4afe-9198-210c1e94b2ef"
-		// 	authUser.Facility = "ELI-Beamlines"
-
-		// 	authUser.Roles = []string{"pvs-view"}
-		// }
-
-		// authUser.Username = claims.Subject
-		// authUser.Uid = "71864520-9e86-427c-901c-0c220f95177"
-		// authUser.Facility = "ELI-Beamlines"
-		// authUser.AccessToken = user.Raw
-		// authUser.Roles = []string{"catalogue-view", "systems-view"}
 
 		return c.JSON(http.StatusOK, authUser)
 	}
