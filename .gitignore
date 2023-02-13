@@ -18,3 +18,7 @@ config.json
 
 # Enviroment variables
 .env
+
+panda-dev/neo4j/data
+panda-dev/neo4j/logs
+panda-dev/neo4j/plugins
