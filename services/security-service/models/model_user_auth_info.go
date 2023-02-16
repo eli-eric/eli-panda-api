@@ -1,6 +1,8 @@
 package models
 
 type UserAuthInfo struct {
+	UserUid string `json:"userUid,omitempty"`
+
 	Username string `json:"username,omitempty"`
 
 	Email string `json:"email,omitempty"`
@@ -10,6 +12,8 @@ type UserAuthInfo struct {
 	FirstName string `json:"firstName,omitempty"`
 
 	Facility string `json:"facility,omitempty"`
+
+	FacilityCode string `json:"facilityCode,omitempty"`
 
 	AccessToken string `json:"accessToken,omitempty"`
 

@@ -2,7 +2,6 @@ package securityService
 
 import (
 	"errors"
-	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/security-service/models"
@@ -20,7 +19,6 @@ type SecurityService struct {
 
 type ISecurityService interface {
 	AuthenticateByUsernameAndPassword(username string, password string) (authUser models.UserAuthInfo, err error)
-	RefreshToken(claims *models.JwtCustomClaims) (string, error)
 }
 
 // Create new security service instance
@@ -37,11 +35,15 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 
 	//the user has to be enabled and has at least one role
 	authUser, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.UserAuthInfo](session, `match(u:User{username: $userName})-[:HAS_ROLE]->(r:Role) 
+	optional match(u)-[:BELONGS_TO_FACILITY]->(f)
 	return {
+		userUid: u.uid,
 		passwordHash: u.passwordHash, 
 		lastName: u.lastName ,
 		firstName: u.firstName,
 		email: u.email, 
+		facility: f.name,
+		facilityCode: f.code,
 		roles: collect(r.code)} as userInfo`, map[string]interface{}{"userName": username}, "userInfo")
 
 	//if there is a user in DB lets check the password
@@ -54,10 +56,12 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 		if verifErr == nil {
 			// Set custom claims
 			claims := &models.JwtCustomClaims{
-				Roles: authUser.Roles,
+				Roles:        authUser.Roles,
+				FacilityName: authUser.Facility,
+				FacilityCode: authUser.FacilityCode,
 				StandardClaims: jwt.StandardClaims{
 					ExpiresAt: time.Now().Add(time.Hour * 876000).Unix(),
-					Subject:   username,
+					Subject:   authUser.UserUid,
 				},
 			}
 
@@ -70,38 +74,9 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 				authUser.AccessToken = token
 			}
 
-			//finally get users Facility
-			facility, facilityErr := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Facility](session, `match(u:User{username: $userName})-[:BELONGS_TO]->(f:Facility) 
-			return {
-				code: f.code, 
-				name: f.name} as facility`, map[string]interface{}{"userName": username}, "facility")
-
-			if facilityErr == nil {
-				authUser.Facility = facility.Name
-				log.Println("User authenticated:", username, ",", authUser.Email, ",", authUser.Facility)
-			} else {
-				log.Println("User with no facility authenticated:", username, ",", authUser.Email)
-			}
-
 			return authUser, err
 		}
 	}
 
 	return authUser, errors.New("Unauthorized")
-}
-
-func (svc *SecurityService) RefreshToken(claims *models.JwtCustomClaims) (string, error) {
-
-	claims.StandardClaims.ExpiresAt = time.Now().Add(time.Hour * 876000).Unix()
-
-	// Create token with claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Generate encoded token and send it as response.
-	t, err := token.SignedString([]byte(svc.jwtSecret))
-	if err != nil {
-		return "", err
-	}
-
-	return t, nil
 }
