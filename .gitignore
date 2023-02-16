@@ -19,6 +19,7 @@ config.json
 # Enviroment variables
 .env
 
-panda-dev/neo4j/data
-panda-dev/neo4j/logs
-panda-dev/neo4j/plugins
+db/neo4j/dev-instance/data
+db/neo4j/dev-instance/logs
+db/neo4j/dev-instance/plugins
+db/neo4j/dev-instance/conf
