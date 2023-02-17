@@ -60,7 +60,7 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, cypher str
 	return result, err
 }
 
-func Neo4jReadArrayOfNodes(session neo4j.Session, cypher string, params map[string]interface{}, returnAlias string) (interface{}, error) {
+func GetNeo4jArrayOfNodes(session neo4j.Session, cypher string, params map[string]interface{}, returnAlias string) (interface{}, error) {
 	// Execute a query in a new Read Transaction
 	results, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"panda/apigateway/config"
 	"panda/apigateway/ioutils"
+	catalogueService "panda/apigateway/services/catalogue-service"
 	securityService "panda/apigateway/services/security-service"
 	"panda/apigateway/services/security-service/models"
 	"time"
@@ -115,6 +116,12 @@ func main() {
 	securityHandlers := securityService.NewSecurityHandlers(securitySvc)
 	securityService.MapSecurityRoutes(e, securityHandlers, jwtMiddleware)
 	log.Println("Security service initialized successfully.")
+
+	//security services used in handlers and maped in routes...
+	catalogueSvc := catalogueService.NewCatalogueService(settings, &neo4jDriver)
+	catalogueHandlers := catalogueService.NewCatalogueHandlers(catalogueSvc)
+	catalogueService.MapCatalogueRoutes(e, catalogueHandlers, jwtMiddleware)
+	log.Println("Catalogue service initialized successfully.")
 
 	// Start server
 	go func() {
