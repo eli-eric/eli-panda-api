@@ -56,30 +56,51 @@ func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath strin
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
-	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItem](session, `MATCH(itm:CatalogueItem)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItem](session, `
+	MATCH(category:CatalogueCategory)
+		with category
+		optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category) 
+		with category, apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code as categoryPath
+		where $categoryPath = '' or (categoryPath = $categoryPath or categoryPath = '/' + $categoryPath)
+		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
+		with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
+		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
+        where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
 	OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
 	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm, propType.code as propTypeCode, manu.name as manufacturerName, prop.name as propName, group.name as groupName, propVal.value as value, unit.name as unit
+	WITH itm,cat,categoryPath, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
 	ORDER BY itm.name
-	WHERE toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(toString(propVal.value)) CONTAINS $searchText
+	WHERE $searchText = '' or 
+	(toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(value) CONTAINS $searchText)
 	RETURN {
 		uid: itm.uid,
 		name: itm.name,
 		description: itm.description,
-		manufacturer: manufacturerName,
+		categoryName: cat.name,
+		categoryPath: max(categoryPath),
+		manufacturer: manu.name,
 		manufacturerUrl: itm.manufacturerUrl,
 		manufacturerNumber: itm.catalogueNumber,
 		details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
 	} as items
 	SKIP $skip
-	LIMIT $limit`, map[string]interface{}{"searchText": search, "skip": pageSize * (page - 1), "limit": pageSize}, "items")
+	LIMIT $limit`, map[string]interface{}{
+		"searchText":   search,
+		"skip":         pageSize * (page - 1),
+		"limit":        pageSize,
+		"categoryPath": categoryPath}, "items")
 
 	if err == nil {
+
+		if items == nil {
+			items = []models.CatalogueItem{}
+		}
+
 		result.Data = items
-		result.TotalCount = 10
+		result.TotalCount = 33
 
 		return result, err
 	}
@@ -128,3 +149,18 @@ func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath strin
 // } as items
 // SKIP 5 * 0
 // LIMIT 5`
+
+// `
+// 		match(category:CatalogueCategory)
+// 		with category
+// 		optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category)
+// 		with category, apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code as categoryPath
+// 		where categoryPath = 'vacuum-technology/vacuum-pumps/dry-vacuum-pumps' or categoryPath = '/vacuum-technology/vacuum-pumps/dry-vacuum-pumps'
+// 		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)
+// 		with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
+// 		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)
+//         where cat.uid in subCategoryUids or cat.uid = itmCategoryUid
+
+// 		return itm.name, cat.name, cat.code
+
+// `

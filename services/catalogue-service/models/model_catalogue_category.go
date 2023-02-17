@@ -23,6 +23,8 @@ type CatalogueItem struct {
 
 	Manufacturer string `json:"manufacturer,omitempty"`
 
+	ManufacturerNumber string `json:"manufacturerNumber,omitempty"`
+
 	ManufacturerUrl string `json:"manufacturerUrl,omitempty"`
 
 	Details []CatalogueItemDetail `json:"details,omitempty"`
