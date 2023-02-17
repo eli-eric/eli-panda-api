@@ -61,3 +61,24 @@ func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath strin
 
 	return categories, errors.New("Unauthorized")
 }
+
+// // get items with search and pagination
+// `MATCH(itm:CatalogueItem)
+// OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
+// OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
+// OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
+// OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
+// OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
+// WITH itm, propType.code as propTypeCode, manu.name as manufacturerName, prop.name as propName, group.name as groupName, propVal.value as value, unit.name as unit
+// ORDER BY itm.name
+// RETURN {
+//     uid: itm.uid,
+//     name: itm.name,
+//     description: itm.description,
+//     manufacturer: manufacturerName,
+//     manufacturerUrl: itm.manufacturerUrl,
+//     manufacturerNumber: itm.catalogueNumber,
+//     details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
+// } as items
+// SKIP 5 * 6
+// LIMIT 5`

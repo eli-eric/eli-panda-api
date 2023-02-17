@@ -1,7 +1,7 @@
 get:
   summary: Get catalogue categories by parent path
   description: Get catalogue categories by parent path
-  operationId: GetCatalogueCategoriesByParentPath
+  operationId: GetCataloguecategoriesByParentPath
   security:
     - jwtAuth: []
   tags:

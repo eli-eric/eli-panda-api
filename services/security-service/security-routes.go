@@ -17,7 +17,7 @@ func MapSecurityRoutes(e *echo.Echo, h ISecurityHandlers, jwtMiddleware echo.Mid
 		claims := user.Claims.(*models.JwtCustomClaims)
 
 		userInfo := models.UserAuthInfo{
-			UserUid:      claims.Subject,
+			Uid:          claims.Subject,
 			Username:     "",
 			Email:        "",
 			LastName:     "",

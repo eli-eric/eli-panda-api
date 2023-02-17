@@ -1,7 +1,7 @@
 package models
 
 type UserAuthInfo struct {
-	UserUid string `json:"userUid,omitempty"`
+	Uid string `json:"uid,omitempty"`
 
 	Username string `json:"username,omitempty"`
 

@@ -5,16 +5,25 @@ properties:
     example: 71864520-9e86-427c-901c-0c220f951775
   username:
     type: string
-    example: albert.einstein@eli-laser.eu
-  fullName:
+    example: albert.einstein
+  email:
     type: string
-    example: Albert Einstein
+    example: albert.einstein@eli-laser.eu
+  firstName:
+    type: string
+    example: Albert
+  lastName:
+    type: string
+    example: Einstein
   facility:
     type: string
-    example: ELI ERIC
+    example: ELI - Beamlines
+  facilityCode:
+    type: string
+    example: B
   accessToken:
     type: string
-    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOiIxMjM0NTY3ODk5In0.4UuocEvJTR3c1t2kB4f5lbRKfs5yKe7dW1Qtm_LITII
+    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6WyJiYXNpY3MiXSwiZmFjaWxpdHlOYW1lIjoiRUxJIC0gQmVhbWxpbmVzIiwiZmFjaWxpdHlDb2RlIjoiQiIsImV4cCI6NDgzMDIyOTc2NCwic3ViIjoiMzBiYjdhYmMtODY1NS00MmM4LThmNTAtMGEzYWJlMjkyODY5In0.kIbGnEdHTet84Azi_iTpoWcVK32t7XCOQECPgu5XDng
   roles:
     type: array
     items:

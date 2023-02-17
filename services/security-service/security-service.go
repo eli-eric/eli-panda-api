@@ -37,7 +37,7 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 	authUser, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.UserAuthInfo](session, `match(u:User{username: $userName})-[:HAS_ROLE]->(r:Role) 
 	optional match(u)-[:BELONGS_TO_FACILITY]->(f)
 	return {
-		userUid: u.uid,
+		uid: u.uid,
 		passwordHash: u.passwordHash, 
 		lastName: u.lastName ,
 		firstName: u.firstName,
@@ -61,7 +61,7 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 				FacilityCode: authUser.FacilityCode,
 				StandardClaims: jwt.StandardClaims{
 					ExpiresAt: time.Now().Add(time.Hour * 876000).Unix(),
-					Subject:   authUser.UserUid,
+					Subject:   authUser.Uid,
 				},
 			}
 

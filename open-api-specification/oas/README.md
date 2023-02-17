@@ -12,4 +12,4 @@ Install swagger cli
 
 Bundle final OAS
 
-`swagger-cli bundle panda-gateway.yaml --outfile ../panda-gateway.yaml --type yaml`
+`swagger-cli bundle panda-api.yaml --outfile ../panda-api.yaml --type yaml`

@@ -26,10 +26,6 @@ components:
       $ref: "general-components/security-schemas/jwtAuth.yaml"
 paths:
   /authenticate:
-    $ref: "security/paths/authenticate.yaml"
-  /refresh-token:
-    $ref: "security/paths/refresh-token.yaml"
-  /authenticated-user:
-    $ref: "security/paths/authenticated-user.yaml"
-  /catalogue/categories:
+    $ref: "security/paths/authenticate.yaml"  
+  /catalogue/categories/{parentPath}:
     $ref: "catalogue/paths/categories.yaml"
