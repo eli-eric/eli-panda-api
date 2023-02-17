@@ -11,6 +11,7 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 
 	//fake image get - get only eli logo img for now
 	e.GET("/v1/catalogue/category/:uid/image", h.GetCatalogueCategoryImage())
+	e.GET("/v1/catalogue/item/:uid/image", h.GetCatalogueItemImage())
 
 	e.GET("/v1/catalogue/items", h.GetCatalogueItems(), jwtMiddleware)
 }

@@ -16,7 +16,7 @@ type CatalogueService struct {
 
 type ICatalogueService interface {
 	GetCataloguecategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
-	GetCatalogueItems(search string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error)
+	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error)
 }
 
 // Create new security service instance
@@ -28,7 +28,6 @@ func NewCatalogueService(settings *config.Config, driver *neo4j.Driver) ICatalog
 func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error) {
 
 	// Open a new Session
-
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
@@ -42,13 +41,17 @@ func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath strin
 	`, map[string]interface{}{"parentPath": parentPath}, "categories")
 
 	if err == nil {
+
+		if categories == nil {
+			categories = []models.CatalogueCategory{}
+		}
 		return categories, err
 	}
 
 	return categories, errors.New("Unauthorized")
 }
 
-func (svc *CatalogueService) GetCatalogueItems(search string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error) {
+func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
