@@ -2,7 +2,6 @@ package catalogueService
 
 import (
 	"errors"
-	"fmt"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -17,6 +16,7 @@ type CatalogueService struct {
 
 type ICatalogueService interface {
 	GetCataloguecategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
+	GetCatalogueItems(search string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error)
 }
 
 // Create new security service instance
@@ -31,8 +31,8 @@ func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath strin
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	//the user has to be enabled and has at least one role
-	categoryNodes, err := helpers.GetNeo4jArrayOfNodes(session, `
+	//get all categories by parent path
+	categories, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueCategory](session, `
 		match(category:CatalogueCategory)
 		with category
 		optional match(parent)-[:HAS_SUBCATEGORY*1..50]->(category) 
@@ -42,24 +42,46 @@ func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath strin
 	`, map[string]interface{}{"parentPath": parentPath}, "categories")
 
 	if err == nil {
-
-		fmt.Println(categoryNodes)
-
-		arr := categoryNodes.([]map[string]interface{})
-
-		for i := 0; i < len(arr); i++ {
-			catItem, err := helpers.MapStruct[models.CatalogueCategory](arr[i])
-			if err == nil {
-				categories = append(categories, catItem)
-			}
-		}
-
 		return categories, err
 	}
 
-	fmt.Println(err)
-
 	return categories, errors.New("Unauthorized")
+}
+
+func (svc *CatalogueService) GetCatalogueItems(search string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//get all categories by parent path
+	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItem](session, `MATCH(itm:CatalogueItem)
+	OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
+	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
+	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
+	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
+	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
+	WITH itm, propType.code as propTypeCode, manu.name as manufacturerName, prop.name as propName, group.name as groupName, propVal.value as value, unit.name as unit
+	ORDER BY itm.name
+	WHERE toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(toString(propVal.value)) CONTAINS $searchText
+	RETURN {
+		uid: itm.uid,
+		name: itm.name,
+		description: itm.description,
+		manufacturer: manufacturerName,
+		manufacturerUrl: itm.manufacturerUrl,
+		manufacturerNumber: itm.catalogueNumber,
+		details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
+	} as items
+	SKIP $skip
+	LIMIT $limit`, map[string]interface{}{"searchText": search, "skip": pageSize * (page - 1), "limit": pageSize}, "items")
+
+	if err == nil {
+		result.Data = items
+		result.TotalCount = 10
+
+		return result, err
+	}
+
+	return result, err
 }
 
 // // get items with search and pagination
@@ -81,4 +103,25 @@ func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath strin
 //     details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
 // } as items
 // SKIP 5 * 6
+// LIMIT 5`
+
+// `MATCH(itm:CatalogueItem)
+// OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
+// OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
+// OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
+// OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
+// OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
+// WITH itm, propType.code as propTypeCode, manu.name as manufacturerName, prop.name as propName, group.name as groupName, propVal.value as value, unit.name as unit
+// ORDER BY itm.name
+// WHERE toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(toString(propVal.value)) CONTAINS 'DN 25'
+// RETURN {
+//     uid: itm.uid,
+//     name: itm.name,
+//     description: itm.description,
+//     manufacturer: manufacturerName,
+//     manufacturerUrl: itm.manufacturerUrl,
+//     manufacturerNumber: itm.catalogueNumber,
+//     details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
+// } as items
+// SKIP 5 * 0
 // LIMIT 5`

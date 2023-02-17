@@ -60,7 +60,7 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, cypher str
 	return result, err
 }
 
-func GetNeo4jArrayOfNodes(session neo4j.Session, cypher string, params map[string]interface{}, returnAlias string) (interface{}, error) {
+func GetNeo4jArrayOfNodes[T any](session neo4j.Session, cypher string, params map[string]interface{}, returnAlias string) (resultArray []T, err error) {
 	// Execute a query in a new Read Transaction
 	results, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 
@@ -74,13 +74,18 @@ func GetNeo4jArrayOfNodes(session neo4j.Session, cypher string, params map[strin
 		if err != nil {
 			return nil, err
 		}
-		var results []map[string]interface{}
+		var txResults []T
 		for _, record := range records {
-			movie, _ := record.Get(returnAlias)
-			results = append(results, movie.(map[string]interface{}))
+			itm, _ := record.Get(returnAlias)
+			mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
+			txResults = append(txResults, mappedItem)
 		}
-		return results, nil
+		return txResults, nil
 	})
 
-	return results, err
+	if err == nil {
+		resultArray = results.([]T)
+	}
+
+	return resultArray, err
 }
