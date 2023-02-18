@@ -5,7 +5,7 @@ properties:
     example: 0b3844d-6cde-4980-bed5-388618cad292
   name:
     type: string
-    examples: Dry Vacuum Pumps
+    example: Dry Vacuum Pumps
   code:
     type: string
     example: dry-vacuum-pumps

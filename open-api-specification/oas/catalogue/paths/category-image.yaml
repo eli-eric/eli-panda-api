@@ -1,0 +1,28 @@
+get:
+  summary: Get catalogue category image
+  description: Get catalogue category image
+  operationId: GetCatalogueCategoryImage
+  security:
+    - jwtAuth: []
+  tags:
+    - Catalogue
+  parameters:
+    - name: uid
+      in: path
+      description: Category uid
+      required: true
+      schema:
+        type: string
+        example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+  responses:
+    "500":
+      description: General server error
+    "401":
+      description: Unauthorized
+    "200":
+      description: Returns catalogue category image
+      content:
+        image/*:
+          schema:
+            type: string
+            format: binary

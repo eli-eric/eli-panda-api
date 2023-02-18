@@ -1,7 +1,7 @@
 openapi: 3.0.2
 info:
-  title: PANDA - API Gateway
-  description: This is an API Gateway to the PANDA database. This is the only place to access data from the PANDA database.
+  title: PANDA - REST API
+  description: This is an REST API to the PANDA database. This is the only place to access data from the PANDA database.
   version: "1.0"
   contact:
     name: Jiří Švácha
@@ -26,6 +26,12 @@ components:
       $ref: "general-components/security-schemas/jwtAuth.yaml"
 paths:
   /authenticate:
-    $ref: "security/paths/authenticate.yaml"  
+    $ref: "security/paths/authenticate.yaml"
   /catalogue/categories/{parentPath}:
     $ref: "catalogue/paths/categories.yaml"
+  /catalogue/category/{uid}/image:
+    $ref: "catalogue/paths/category-image.yaml"
+  /catalogue/item/{uid}:
+    $ref: "catalogue/paths/item.yaml"
+  /catalogue/item/{uid}/image:
+    $ref: "catalogue/paths/item-image.yaml"

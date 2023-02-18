@@ -43,7 +43,7 @@ paths:
               properties:
                 username:
                   type: string
-                  example: albert.einstein@eli-laser.eu
+                  example: albert.einstein
                 password:
                   type: string
                   example: E=mc2
@@ -72,13 +72,13 @@ paths:
                     example: Einstein
                   facility:
                     type: string
-                    example: ELI ERIC
+                    example: ELI - Beamlines
                   facilityCode:
                     type: string
-                    example: E
+                    example: B
                   accessToken:
                     type: string
-                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOiIxMjM0NTY3ODk5In0.4UuocEvJTR3c1t2kB4f5lbRKfs5yKe7dW1Qtm_LITII
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6WyJiYXNpY3MiXSwiZmFjaWxpdHlOYW1lIjoiRUxJIC0gQmVhbWxpbmVzIiwiZmFjaWxpdHlDb2RlIjoiQiIsImV4cCI6NDgzMDIyOTc2NCwic3ViIjoiMzBiYjdhYmMtODY1NS00MmM4LThmNTAtMGEzYWJlMjkyODY5In0.kIbGnEdHTet84Azi_iTpoWcVK32t7XCOQECPgu5XDng
                   roles:
                     type: array
                     items:
@@ -119,7 +119,7 @@ paths:
                   properties:
                     uid:
                       type: string
-                      example: 50b3844d-6cde-4980-bed5-388618cad292
+                      example: 0b3844d-6cde-4980-bed5-388618cad292
                     name:
                       type: string
                       example: Dry Vacuum Pumps
@@ -129,6 +129,92 @@ paths:
                     parentPath:
                       type: string
                       example: vacuum-technology/vacuum-pumps
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/category/{uid}/image':
+    get:
+      summary: Get catalogue category image
+      description: Get catalogue category image
+      operationId: GetCatalogueCategoryImage
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Category uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue category image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/item/{uid}':
+    get:
+      summary: Get catalogue item by uid
+      description: Get catalogue item by uid with all details
+      operationId: GetCatalogueItemWithDetailsByUid
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Catalogue item uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue item with all details
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/item/{uid}/image':
+    get:
+      summary: Get catalogue item image by uid
+      description: Get catalogue item image by uid
+      operationId: GetCatalogueItemImage
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Catalogue item uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue item image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
         '401':
           description: Unauthorized
         '500':
