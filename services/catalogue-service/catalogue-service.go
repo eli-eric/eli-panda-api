@@ -1,7 +1,6 @@
 package catalogueService
 
 import (
-	"errors"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -15,8 +14,8 @@ type CatalogueService struct {
 }
 
 type ICatalogueService interface {
-	GetCataloguecategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
-	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error)
+	GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
+	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItem], err error)
 }
 
 // Create new security service instance
@@ -25,142 +24,29 @@ func NewCatalogueService(settings *config.Config, driver *neo4j.Driver) ICatalog
 	return &CatalogueService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }
 
-func (svc *CatalogueService) GetCataloguecategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error) {
+func (svc *CatalogueService) GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error) {
 
 	// Open a new Session
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
-	categories, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueCategory](session, `
-		match(category:CatalogueCategory)
-		with category
-		optional match(parent)-[:HAS_SUBCATEGORY*1..50]->(category) 
-		with category, apoc.text.join(reverse(collect(parent.code)),"/") as parentPath
-		where parentPath = $parentPath
-		return {uid:category.uid,code:category.code, name:category.name,parentPath: parentPath} as categories
-	`, map[string]interface{}{"parentPath": parentPath}, "categories")
+	query := CatalogueCategoriesByParentPathQuery(parentPath)
+	categories, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueCategory](session, query)
 
-	if err == nil {
+	helpers.ProcessArrayResult(&categories, err)
 
-		if categories == nil {
-			categories = []models.CatalogueCategory{}
-		}
-		return categories, err
-	}
-
-	return categories, errors.New("Unauthorized")
+	return categories, err
 }
 
-func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result models.CatalogueItemPaginationResult, err error) {
+func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItem], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
-	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItem](session, `
-	MATCH(category:CatalogueCategory)
-		with category
-		optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category) 
-		with category, apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code as categoryPath
-		where $categoryPath = '' or (categoryPath = $categoryPath or categoryPath = '/' + $categoryPath)
-		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-		with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-        where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
-	OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
-	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
-	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat,categoryPath, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
-	ORDER BY itm.name
-	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(value) CONTAINS $searchText)
-	RETURN {
-		uid: itm.uid,
-		name: itm.name,
-		description: itm.description,
-		categoryName: cat.name,
-		categoryPath: max(categoryPath),
-		manufacturer: manu.name,
-		manufacturerUrl: itm.manufacturerUrl,
-		manufacturerNumber: itm.catalogueNumber,
-		details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
-	} as items
-	SKIP $skip
-	LIMIT $limit`, map[string]interface{}{
-		"searchText":   search,
-		"skip":         pageSize * (page - 1),
-		"limit":        pageSize,
-		"categoryPath": categoryPath}, "items")
+	query := CatalogueItemsPaginationFiltersQuery(search, categoryPath, pageSize*(page-1), pageSize)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItem](session, query)
 
-	if err == nil {
-
-		if items == nil {
-			items = []models.CatalogueItem{}
-		}
-
-		result.Data = items
-		result.TotalCount = 33
-
-		return result, err
-	}
+	result = helpers.GetPaginationResult(items, err)
 
 	return result, err
 }
-
-// // get items with search and pagination
-// `MATCH(itm:CatalogueItem)
-// OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
-// OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
-// OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-// OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-// OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-// WITH itm, propType.code as propTypeCode, manu.name as manufacturerName, prop.name as propName, group.name as groupName, propVal.value as value, unit.name as unit
-// ORDER BY itm.name
-// RETURN {
-//     uid: itm.uid,
-//     name: itm.name,
-//     description: itm.description,
-//     manufacturer: manufacturerName,
-//     manufacturerUrl: itm.manufacturerUrl,
-//     manufacturerNumber: itm.catalogueNumber,
-//     details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
-// } as items
-// SKIP 5 * 6
-// LIMIT 5`
-
-// `MATCH(itm:CatalogueItem)
-// OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
-// OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
-// OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-// OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-// OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-// WITH itm, propType.code as propTypeCode, manu.name as manufacturerName, prop.name as propName, group.name as groupName, propVal.value as value, unit.name as unit
-// ORDER BY itm.name
-// WHERE toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(toString(propVal.value)) CONTAINS 'DN 25'
-// RETURN {
-//     uid: itm.uid,
-//     name: itm.name,
-//     description: itm.description,
-//     manufacturer: manufacturerName,
-//     manufacturerUrl: itm.manufacturerUrl,
-//     manufacturerNumber: itm.catalogueNumber,
-//     details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
-// } as items
-// SKIP 5 * 0
-// LIMIT 5`
-
-// `
-// 		match(category:CatalogueCategory)
-// 		with category
-// 		optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category)
-// 		with category, apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code as categoryPath
-// 		where categoryPath = 'vacuum-technology/vacuum-pumps/dry-vacuum-pumps' or categoryPath = '/vacuum-technology/vacuum-pumps/dry-vacuum-pumps'
-// 		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)
-// 		with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-// 		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)
-//         where cat.uid in subCategoryUids or cat.uid = itmCategoryUid
-
-// 		return itm.name, cat.name, cat.code
-
-// `

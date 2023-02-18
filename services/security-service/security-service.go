@@ -34,17 +34,7 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//the user has to be enabled and has at least one role
-	authUser, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.UserAuthInfo](session, `match(u:User{username: $userName})-[:HAS_ROLE]->(r:Role) 
-	optional match(u)-[:BELONGS_TO_FACILITY]->(f)
-	return {
-		uid: u.uid,
-		passwordHash: u.passwordHash, 
-		lastName: u.lastName ,
-		firstName: u.firstName,
-		email: u.email, 
-		facility: f.name,
-		facilityCode: f.code,
-		roles: collect(r.code)} as userInfo`, map[string]interface{}{"userName": username}, "userInfo")
+	authUser, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.UserAuthInfo](session, UserWithRolesAndFailityQuery(username))
 
 	//if there is a user in DB lets check the password
 	if err == nil {

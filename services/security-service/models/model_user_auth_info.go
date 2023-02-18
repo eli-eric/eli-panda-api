@@ -15,6 +15,8 @@ type UserAuthInfo struct {
 
 	FacilityCode string `json:"facilityCode,omitempty"`
 
+	IsEnabled string `json:"isEnabled,omitempty"`
+
 	AccessToken string `json:"accessToken,omitempty"`
 
 	Roles []string `json:"roles,omitempty"`

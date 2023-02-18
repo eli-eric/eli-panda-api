@@ -3,6 +3,7 @@ package catalogueService
 import (
 	"fmt"
 	"net/http"
+	"panda/apigateway/helpers"
 
 	"github.com/labstack/echo/v4"
 )
@@ -30,7 +31,7 @@ func (h *CatalogueHandlers) GetCataloguecategoriesByParentPath() echo.HandlerFun
 		//get query path param
 		parentPath := c.Param("*")
 		// get all categories of the given parentPath
-		categories, err := h.catalogueService.GetCataloguecategoriesByParentPath(parentPath)
+		categories, err := h.catalogueService.GetCatalogueCategoriesByParentPath(parentPath)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, categories)
@@ -78,7 +79,7 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 		searchParam := c.QueryParams().Get("search")
 		categoryPathParam := c.QueryParams().Get("categoryPath")
 
-		pagination := new(Pagination)
+		pagination := new(helpers.Pagination)
 		if err := c.Bind(pagination); err == nil {
 
 			// get catalogue items
@@ -91,9 +92,4 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 
 		return echo.ErrInternalServerError
 	}
-}
-
-type Pagination struct {
-	PageSize int `query:"pageSize"`
-	Page     int `query:"page"`
 }

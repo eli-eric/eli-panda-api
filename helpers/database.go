@@ -36,9 +36,9 @@ func GetNeo4jSingleRecord(session neo4j.Session, cypher string, params map[strin
 	return result, err
 }
 
-func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, cypher string, params map[string]interface{}, returnAlias string) (result T, err error) {
+func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
 	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		result, err := tx.Run(cypher, params)
+		result, err := tx.Run(query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
@@ -48,7 +48,7 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, cypher str
 			return nil, fmt.Errorf("record not found")
 		}
 
-		rec, _ := record.Get(returnAlias)
+		rec, _ := record.Get(query.ReturnAlias)
 		return rec, nil
 
 	})
@@ -60,11 +60,11 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, cypher str
 	return result, err
 }
 
-func GetNeo4jArrayOfNodes[T any](session neo4j.Session, cypher string, params map[string]interface{}, returnAlias string) (resultArray []T, err error) {
+func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (resultArray []T, err error) {
 	// Execute a query in a new Read Transaction
 	results, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 
-		result, err := tx.Run(cypher, params)
+		result, err := tx.Run(query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +76,7 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, cypher string, params ma
 		}
 		var txResults []T
 		for _, record := range records {
-			itm, _ := record.Get(returnAlias)
+			itm, _ := record.Get(query.ReturnAlias)
 			mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
 			txResults = append(txResults, mappedItem)
 		}
@@ -88,4 +88,50 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, cypher string, params ma
 	}
 
 	return resultArray, err
+}
+
+func GetPaginationResult[T any](data []T, err error) (result PaginationResult[T]) {
+
+	//check for incoming errors
+	if err == nil {
+
+		//if there are no data we want to return empty array instead of null
+		if data == nil {
+			data = []T{}
+		}
+
+		result.Data = data
+		result.TotalCount = 100
+
+		return result
+	}
+
+	return result
+}
+
+func ProcessArrayResult[T any](data *[]T, err error) {
+
+	//check for incoming errors
+	if err == nil {
+		//if there are no data we want to return empty array instead of null
+		if data == nil {
+			*data = []T{}
+		}
+	}
+}
+
+type PaginationResult[T any] struct {
+	TotalCount int `json:"totalCount"`
+	Data       []T `json:"data"`
+}
+
+type DatabaseQuery struct {
+	Query       string
+	Parameters  map[string]interface{}
+	ReturnAlias string
+}
+
+type Pagination struct {
+	PageSize int `query:"pageSize"`
+	Page     int `query:"page"`
 }

@@ -41,8 +41,3 @@ type CatalogueItemDetail struct {
 
 	Value string `json:"value,omitempty"`
 }
-
-type CatalogueItemPaginationResult struct {
-	TotalCount int             `json:"totalCount"`
-	Data       []CatalogueItem `json:"data"`
-}
