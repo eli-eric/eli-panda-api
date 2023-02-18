@@ -2,6 +2,7 @@ package securityService
 
 import (
 	"errors"
+	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/security-service/models"
@@ -66,6 +67,8 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 
 			return authUser, err
 		}
+	} else {
+		log.Println(err)
 	}
 
 	return authUser, errors.New("Unauthorized")

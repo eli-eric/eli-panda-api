@@ -19,6 +19,7 @@ func UserWithRolesAndFailityQuery(username string) (result helpers.DatabaseQuery
 
 	result.ReturnAlias = "userInfo"
 
+	result.Parameters = make(map[string]interface{})
 	result.Parameters["userName"] = username
 
 	return result

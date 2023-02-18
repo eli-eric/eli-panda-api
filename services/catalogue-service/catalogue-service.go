@@ -16,6 +16,7 @@ type CatalogueService struct {
 type ICatalogueService interface {
 	GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
 	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItem], err error)
+	GetCatalogueItemWithDetailsByUid(uid string) (catalogueItem models.CatalogueItem, err error)
 }
 
 // Create new security service instance
@@ -43,10 +44,20 @@ func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath strin
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
-	query := CatalogueItemsPaginationFiltersQuery(search, categoryPath, pageSize*(page-1), pageSize)
+	query := CatalogueItemsFiltersPaginationQuery(search, categoryPath, pageSize*(page-1), pageSize)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItem](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryPath))
 
-	result = helpers.GetPaginationResult(items, err)
+	result = helpers.GetPaginationResult(items, totalCount, err)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (result models.CatalogueItem, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueItemWithDetailsByUidQuery(uid)
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.CatalogueItem](session, query)
 
 	return result, err
 }

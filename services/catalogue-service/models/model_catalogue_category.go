@@ -1,15 +1,5 @@
 package models
 
-type CatalogueCategory struct {
-	Uid string `json:"uid,omitempty"`
-
-	Name string `json:"name,omitempty"`
-
-	Code string `json:"code,omitempty"`
-
-	ParentPath string `json:"parentPath,omitempty"`
-}
-
 type CatalogueItem struct {
 	Uid string `json:"uid,omitempty"`
 
@@ -33,7 +23,7 @@ type CatalogueItem struct {
 type CatalogueItemDetail struct {
 	PropertyName string `json:"propertyName,omitempty"`
 
-	PropertyUnit string `json:"propertyUnit,omitempty"`
+	PropertyUnit string `json:"propertyUnit"`
 
 	PropertyType string `json:"propertyType,omitempty"`
 

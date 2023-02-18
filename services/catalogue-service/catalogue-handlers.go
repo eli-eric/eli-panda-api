@@ -2,6 +2,7 @@ package catalogueService
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"panda/apigateway/helpers"
 
@@ -17,6 +18,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueCategoryImage() echo.HandlerFunc
 	GetCatalogueItems() echo.HandlerFunc
 	GetCatalogueItemImage() echo.HandlerFunc
+	GetCatalogueItemWithDetailsByUid() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -87,7 +89,27 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 
 			if err == nil {
 				return c.JSON(http.StatusOK, items)
+			} else {
+				log.Println(err)
 			}
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueItemWithDetailsByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		// get catalogue item
+		item, err := h.catalogueService.GetCatalogueItemWithDetailsByUid(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, item)
 		}
 
 		return echo.ErrInternalServerError

@@ -13,5 +13,9 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.GET("/v1/catalogue/category/:uid/image", h.GetCatalogueCategoryImage())
 	e.GET("/v1/catalogue/item/:uid/image", h.GetCatalogueItemImage())
 
+	// get all catalogue items with details
 	e.GET("/v1/catalogue/items", h.GetCatalogueItems(), jwtMiddleware)
+
+	//get on catalogue item with details by uid
+	e.GET("/v1/catalogue/item/:uid", h.GetCatalogueItemWithDetailsByUid(), jwtMiddleware)
 }
