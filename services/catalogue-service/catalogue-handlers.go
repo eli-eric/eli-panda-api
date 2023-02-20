@@ -19,6 +19,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueItems() echo.HandlerFunc
 	GetCatalogueItemImage() echo.HandlerFunc
 	GetCatalogueItemWithDetailsByUid() echo.HandlerFunc
+	GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -110,6 +111,28 @@ func (h *CatalogueHandlers) GetCatalogueItemWithDetailsByUid() echo.HandlerFunc 
 
 		if err == nil {
 			return c.JSON(http.StatusOK, item)
+		} else {
+			log.Println(err)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		// get catalogue item
+		item, err := h.catalogueService.GetCatalogueCategoryWithDetailsByUid(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, item)
+		} else {
+			log.Println(err)
 		}
 
 		return echo.ErrInternalServerError

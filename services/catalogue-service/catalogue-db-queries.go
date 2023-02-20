@@ -123,3 +123,24 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 
 	return result
 }
+
+func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(category:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group,property
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH category, group, collect({uid: property.uid, name: property.name,default: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
+	WITH category, { group: group, properties: properties } as groups
+	WITH category, collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) as groups
+	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
+	return category`
+
+	result.ReturnAlias = "category"
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}

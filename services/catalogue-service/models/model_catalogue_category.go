@@ -1,33 +1,35 @@
 package models
 
-type CatalogueItem struct {
-	Uid string `json:"uid,omitempty"`
+type CatalogueCategory struct {
+	UID string `json:"uid,omitempty"`
 
 	Name string `json:"name,omitempty"`
 
-	Description string `json:"description,omitempty"`
+	Code string `json:"code,omitempty"`
 
-	CategoryPath string `json:"categoryPath,omitempty"`
+	ParentPath string `json:"parentPath,omitempty"`
 
-	CategoryName string `json:"categoryName,omitempty"`
-
-	Manufacturer string `json:"manufacturer,omitempty"`
-
-	ManufacturerNumber string `json:"manufacturerNumber,omitempty"`
-
-	ManufacturerUrl string `json:"manufacturerUrl,omitempty"`
-
-	Details []CatalogueItemDetail `json:"details,omitempty"`
+	Groups []CatalogueCategoryPropertyGroup `json:"groups"`
 }
 
-type CatalogueItemDetail struct {
-	PropertyName string `json:"propertyName,omitempty"`
+type CatalogueCategoryPropertyGroup struct {
+	UID string `json:"uid,omitempty"`
 
-	PropertyUnit string `json:"propertyUnit"`
+	Name string `json:"name,omitempty"`
 
-	PropertyType string `json:"propertyType,omitempty"`
+	Properties []CatalogueCategoryProperty `json:"properties"`
+}
 
-	PropertyGroup string `json:"propertyGroup,omitempty"`
+type CatalogueCategoryProperty struct {
+	UID string `json:"uid,omitempty"`
 
-	Value string `json:"value,omitempty"`
+	Name string `json:"name,omitempty"`
+
+	ListOfValues []string `json:"listOfValues,omitempty"`
+
+	DefaultValue string `json:"defaultValue,omitempty"`
+
+	TypeUID string `json:"typeUID,omitempty"`
+
+	UnitUID string `json:"unitUID,omitempty"`
 }
