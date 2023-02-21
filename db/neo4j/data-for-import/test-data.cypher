@@ -12,6 +12,31 @@ MERGE(u)-[:HAS_ROLE]->(r)
 MERGE(u)-[:BELONGS_TO_FACILITY]->(f); 
 
 
+MATCH (basics:Role{ uid:'6b535e07-2a1c-4498-a1b3-8d63f9275519' })
+MATCH (catalogueView:Role{ uid:'85f4310f-044e-45ef-a146-f531e2d89efe' })
+MATCH (catalogueEdit:Role{ uid:'b73df5c2-cb61-45af-96b4-5ca93c32e852' })
+MATCH (catCategoryEdit:Role{ uid:'b6585153-67ae-4c2e-8d3e-f9d7be519216' })
+MATCH (systemsView:Role{ uid:'4a2c7e3a-62f3-4836-93d2-3af202acfcee' })
+MATCH (systemsEdit:Role{ uid:'186dee7b-3afa-46ad-84dd-6b62443fec49' })
+
+MATCH(f:Facility{code: 'B'})
+MERGE (u:User{uid: 'f3b43ae4-8da1-4048-b8db-a9d9e9e1a300'})
+SET u.username = 'test1',
+    u.firstName = 'Test',
+    u.lastName = 'One',
+    u.email = 'test.one@eli-laser.eu',
+    u.passwordHash = '$2a$12$.8V6qohgqzJnJsHvhX1m/uJ0kpMSXh7E/w6z5.nQbIqgOpNZenkMa',
+    u.isEnabled = true
+MERGE(u)-[:BELONGS_TO_FACILITY]->(f)
+
+MERGE (u)-[:HAS_ROLE]->(basics)
+MERGE (u)-[:HAS_ROLE]->(catalogueView)
+MERGE (u)-[:HAS_ROLE]->(catalogueEdit)
+MERGE (u)-[:HAS_ROLE]->(catCategoryEdit)
+MERGE (u)-[:HAS_ROLE]->(systemsView)
+MERGE (u)-[:HAS_ROLE]->(systemsEdit); 
+
+
 // Catalogue Categories
 MERGE (c:CatalogueCategory{ uid: 'ec30a517-4bdd-40ac-9dc1-c9ca40afef1b', name: 'Vacuum Technology', code :'vacuum-technology' });MERGE(pc:CatalogueCategory{uid:'ec30a517-4bdd-40ac-9dc1-c9ca40afef1b', name: 'Vacuum Technology', code :'vacuum-technology'}) MERGE (c:CatalogueCategory{ uid: '1adeae21-ab0f-40f3-868d-36f7d40210ca', name: 'Vacuum pumps', code :'vacuum-pumps' }) MERGE(pc)-[:HAS_SUBCATEGORY]->(c);MERGE(pc:CatalogueCategory{uid:'1adeae21-ab0f-40f3-868d-36f7d40210ca', name: 'Vacuum pumps', code :'vacuum-pumps'}) MERGE (c:CatalogueCategory{ uid: '5dba6755-93dc-4b9d-84d2-213e3c2e0f83', name: 'Turbomolecular pumps', code :'turbomolecular-pumps' }) MERGE(pc)-[:HAS_SUBCATEGORY]->(c);MERGE(pc:CatalogueCategory{uid:'1adeae21-ab0f-40f3-868d-36f7d40210ca', name: 'Vacuum pumps', code :'vacuum-pumps'}) MERGE (c:CatalogueCategory{ uid: '098186db-3169-4c64-b823-44b5f59bbd6b', name: 'Dry vacuum pumps', code :'dry-vacuum-pumps' }) MERGE(pc)-[:HAS_SUBCATEGORY]->(c);MERGE(pc:CatalogueCategory{uid:'1adeae21-ab0f-40f3-868d-36f7d40210ca', name: 'Vacuum pumps', code :'vacuum-pumps'}) MERGE (c:CatalogueCategory{ uid: '5888ff86-9a12-4a82-9fa7-9efbf858657b', name: 'Cryopumps', code :'cryopumps' }) MERGE(pc)-[:HAS_SUBCATEGORY]->(c);
 
