@@ -177,7 +177,7 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory) (result he
 
 			} else {
 				// existing group
-				result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s'}) SET group.name=$group_name_%d MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, group.UID, idg, idg)
+				result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s'}) SET group%d.name=$group_name_%d MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, group.UID, idg, idg, idg)
 			}
 		}
 	}
