@@ -1,6 +1,13 @@
 package catalogueService
 
-import "panda/apigateway/helpers"
+import (
+	"fmt"
+	"panda/apigateway/helpers"
+	"panda/apigateway/services/catalogue-service/models"
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // Get catalogue items with pagination and filters
 func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, skip int, limit int) (result helpers.DatabaseQuery) {
@@ -141,6 +148,43 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
+
+	return result
+}
+
+func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MERGE(category:CatalogueCategory{uid:$uid})
+	SET category.name = $name, category.code = $code
+	`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = category.UID
+	result.Parameters["name"] = category.Name
+	result.Parameters["code"] = category.Code
+
+	//add groups queries - merge
+	if category.Groups != nil {
+		for idg, group := range category.Groups {
+			idGroupString := strconv.Itoa(idg)
+			result.Parameters["group_name_"+idGroupString] = group.Name
+
+			if group.UID == "" {
+				//new group
+				newGroupUid := uuid.NewString()
+				result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s',name: $group_name_%d}) MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, newGroupUid, idg, idg)
+
+			} else {
+				// existing group
+				result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s'}) SET group.name=$group_name_%d MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, group.UID, idg, idg)
+			}
+		}
+	}
+
+	result.Query += "return category.uid as uid"
+
+	result.ReturnAlias = "uid"
 
 	return result
 }

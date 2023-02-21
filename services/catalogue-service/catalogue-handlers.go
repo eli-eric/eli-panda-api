@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"panda/apigateway/helpers"
+	"panda/apigateway/services/catalogue-service/models"
 
 	"github.com/labstack/echo/v4"
 )
@@ -20,6 +21,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueItemImage() echo.HandlerFunc
 	GetCatalogueItemWithDetailsByUid() echo.HandlerFunc
 	GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc
+	UpdateCatalogueCategory() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -131,6 +133,30 @@ func (h *CatalogueHandlers) GetCatalogueCategoryWithDetailsByUid() echo.HandlerF
 
 		if err == nil {
 			return c.JSON(http.StatusOK, item)
+		} else {
+			log.Println(err)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		catalogueCatgeory := new(models.CatalogueCategory)
+
+		if err := c.Bind(catalogueCatgeory); err == nil {
+			// update catalogue item
+			err := h.catalogueService.UpdateCatalogueCategory(catalogueCatgeory)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, catalogueCatgeory)
+			} else {
+				log.Println(err)
+			}
 		} else {
 			log.Println(err)
 		}

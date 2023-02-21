@@ -31,6 +31,8 @@ paths:
     $ref: "catalogue/paths/categories.yaml"
   /catalogue/category/{uid}/image:
     $ref: "catalogue/paths/category-image.yaml"
+  /catalogue/category/{uid}:
+    $ref: "catalogue/paths/category.yaml"
   /catalogue/item/{uid}:
     $ref: "catalogue/paths/item.yaml"
   /catalogue/item/{uid}/image:

@@ -9,6 +9,7 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.GET("/v1/catalogue/categories/*", h.GetCataloguecategoriesByParentPath(), jwtMiddleware)
 	e.GET("/v1/catalogue/categories", h.GetCataloguecategoriesByParentPath(), jwtMiddleware)
 	e.GET("/v1/catalogue/category/:uid", h.GetCatalogueCategoryWithDetailsByUid(), jwtMiddleware)
+	e.PUT("/v1/catalogue/category/:uid", h.UpdateCatalogueCategory(), jwtMiddleware)
 
 	//fake image get - get only eli logo img for now
 	e.GET("/v1/catalogue/category/:uid/image", h.GetCatalogueCategoryImage())

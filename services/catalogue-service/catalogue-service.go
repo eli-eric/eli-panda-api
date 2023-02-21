@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -18,6 +19,7 @@ type ICatalogueService interface {
 	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItem], err error)
 	GetCatalogueItemWithDetailsByUid(uid string) (catalogueItem models.CatalogueItem, err error)
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
+	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 }
 
 // Create new security service instance
@@ -70,4 +72,19 @@ func (svc *CatalogueService) GetCatalogueCategoryWithDetailsByUid(uid string) (r
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.CatalogueCategory](session, query)
 
 	return result, err
+}
+
+func (svc *CatalogueService) UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//update category query
+	query := UpdateCatalogueCategoryQuery(catalogueCategory)
+	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+
+	return err
 }
