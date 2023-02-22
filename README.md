@@ -18,7 +18,7 @@ Copy test data to the import folder:
 
 Run database and API in docker:
 
-`docker-compose -f docker-compose-dev.yml up -d`
+`docker-compose -f docker-compose-dev.yml up -d --build`
 
 It will run all necessary services including neo4j and REST API itself.
 

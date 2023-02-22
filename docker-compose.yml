@@ -6,7 +6,6 @@ networks:
     driver: bridge
 
 services:
-
   panda-api:
     container_name: panda-api
     restart: unless-stopped
@@ -27,3 +26,4 @@ services:
       - panda-net
     ports:
       - '127.0.0.1:50000:50000'
+    platform: linux/amd64
