@@ -1,0 +1,249 @@
+openapi: 3.0.2
+info:
+  title: PANDA - REST API
+  description: This is an REST API to the PANDA database. This is the only place to access data from the PANDA database.
+  version: '1.0'
+  contact:
+    name: Jiří Švácha
+    email: jiri.svacha@eli-beams.eu
+  x-logo:
+    url: eli-logo-small.png
+servers:
+  - url: 'http://localhost:50000/v1'
+    description: Local DEV server.
+  - url: 'http://localhost:5000/api/mock-server'
+    description: Mock server. Part of the Next.js UI ui-main-app.
+  - url: 'http://api.panda.eli-beams.eu/v1'
+    description: Production server.
+tags:
+  - name: Catalogue
+    description: Everything about catalogue
+  - name: Security
+    description: Everything about authentication and authorization
+components:
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: You can get the JWT if you successfully authenticate via /authenticate POST endpoint
+paths:
+  /authenticate:
+    post:
+      summary: Authentication of the user
+      description: Authenticate user by username and password and return user info and JWT (json web token)
+      operationId: AuthenticateByUsernameAndPassword
+      tags:
+        - Security
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: albert.einstein
+                password:
+                  type: string
+                  example: E=mc2
+      responses:
+        '200':
+          description: Successfully authenticated. Returns user info with JWT.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uid:
+                    type: string
+                    example: 71864520-9e86-427c-901c-0c220f951775
+                  username:
+                    type: string
+                    example: albert.einstein
+                  email:
+                    type: string
+                    example: albert.einstein@eli-laser.eu
+                  firstName:
+                    type: string
+                    example: Albert
+                  lastName:
+                    type: string
+                    example: Einstein
+                  facility:
+                    type: string
+                    example: ELI - Beamlines
+                  facilityCode:
+                    type: string
+                    example: B
+                  accessToken:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6WyJiYXNpY3MiXSwiZmFjaWxpdHlOYW1lIjoiRUxJIC0gQmVhbWxpbmVzIiwiZmFjaWxpdHlDb2RlIjoiQiIsImV4cCI6NDgzMDIyOTc2NCwic3ViIjoiMzBiYjdhYmMtODY1NS00MmM4LThmNTAtMGEzYWJlMjkyODY5In0.kIbGnEdHTet84Azi_iTpoWcVK32t7XCOQECPgu5XDng
+                  roles:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                      - catalogue-view
+                      - spare-parts-view
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/categories/{parentPath}':
+    get:
+      summary: Get catalogue categories by parent path
+      description: Get catalogue categories by parent path
+      operationId: GetCataloguecategoriesByParentPath
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: parentPath
+          in: path
+          description: Parent category path
+          required: true
+          schema:
+            type: string
+            example: vacuum-technology/vacuum-pumps
+      responses:
+        '200':
+          description: Returns array of catalogue categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    uid:
+                      type: string
+                      example: 0b3844d-6cde-4980-bed5-388618cad292
+                    name:
+                      type: string
+                      example: Dry Vacuum Pumps
+                    code:
+                      type: string
+                      example: dry-vacuum-pumps
+                    parentPath:
+                      type: string
+                      example: vacuum-technology/vacuum-pumps
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/category/{uid}/image':
+    get:
+      summary: Get catalogue category image
+      description: Get catalogue category image
+      operationId: GetCatalogueCategoryImage
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Category uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue category image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/category/{uid}':
+    get:
+      summary: Get catalogue category by UID
+      description: Get catalogue category with all details by UID
+      operationId: GetCatalogueCategoryWithDetailsByUid
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Category uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue category
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/item/{uid}':
+    get:
+      summary: Get catalogue item by uid
+      description: Get catalogue item by uid with all details
+      operationId: GetCatalogueItemWithDetailsByUid
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Catalogue item uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue item with all details
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
+  '/catalogue/item/{uid}/image':
+    get:
+      summary: Get catalogue item image by uid
+      description: Get catalogue item image by uid
+      operationId: GetCatalogueItemImage
+      security:
+        - jwtAuth: []
+      tags:
+        - Catalogue
+      parameters:
+        - name: uid
+          in: path
+          description: Catalogue item uid
+          required: true
+          schema:
+            type: string
+            example: 18fc7b6e-3353-4711-9a15-0dc83cb3547c
+      responses:
+        '200':
+          description: Returns catalogue item image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '500':
+          description: General server error
