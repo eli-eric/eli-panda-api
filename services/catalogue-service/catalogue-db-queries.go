@@ -5,6 +5,7 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -152,7 +153,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	return result
 }
 
-func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory) (result helpers.DatabaseQuery) {
+func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (result helpers.DatabaseQuery) {
 
 	result.Query = `
 	MERGE(category:CatalogueCategory{uid:$uid})
@@ -164,27 +165,63 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory) (result he
 	result.Parameters["name"] = category.Name
 	result.Parameters["code"] = category.Code
 
-	//add groups queries - merge
+	// check if some group exits - then try to merge all the groups
 	if category.Groups != nil {
+		//merge all groups
 		for idg, group := range category.Groups {
 			idGroupString := strconv.Itoa(idg)
 			result.Parameters["group_name_"+idGroupString] = group.Name
 
-			if group.UID == "" {
-				//new group
-				newGroupUid := uuid.NewString()
-				result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s',name: $group_name_%d}) MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, newGroupUid, idg, idg)
+			groupUid := group.UID
+			if groupUid == "" {
+				groupUid = uuid.NewString()
+			}
 
-			} else {
-				// existing group
-				result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s'}) SET group%d.name=$group_name_%d MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, group.UID, idg, idg, idg)
+			result.Query += fmt.Sprintf("MERGE(group%d:CatalogueCategoryPropertyGroup{uid: '%s'}) SET group%d.name=$group_name_%d  MERGE(category)-[:HAS_GROUP]->(group%d) ", idg, groupUid, idg, idg, idg)
+			// merge all properties
+			if group.Properties != nil {
+				for idp, property := range group.Properties {
+					propertyUID := property.UID
+					if propertyUID == "" {
+						propertyUID = uuid.NewString()
+					}
+					idPropString := idGroupString + "_" + strconv.Itoa(idp)
+					result.Parameters["prop_name_"+idPropString] = property.Name
+					result.Parameters["prop_defaultValue_"+idPropString] = property.DefaultValue
+					result.Parameters["prop_listOfValues_"+idPropString] = strings.Join(property.ListOfValues, ";")
+
+					result.Query += fmt.Sprintf("MERGE(prop_%s:CatalogueCategoryProperty{uid: '%s'}) SET prop_%s.name=$prop_name_%s, prop_%s.defaultValue=$prop_defaultValue_%s, prop_%s.listOfValues=$prop_listOfValues_%s MERGE(group%d)-[:CONTAINS_PROPERTY]->(prop_%s) ", idPropString, propertyUID, idPropString, idPropString, idPropString, idPropString, idPropString, idPropString, idg, idPropString)
+					if property.TypeUID != "" {
+						result.Query += fmt.Sprintf("MERGE(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.TypeUID, idPropString, idPropString)
+					}
+					if property.UnitUID != "" {
+						result.Query += fmt.Sprintf("MERGE(unit%s:Unit{uid:'%s'}) MERGE(prop_%s)-[:HAS_UNIT]->(unit%s) ", idPropString, property.UnitUID, idPropString, idPropString)
+					}
+				}
+
 			}
 		}
 	}
+
+	// //process deleted items
+	// deletedGroupsUids, deletedPropsUids := getCatalogueCategoryDeletedItems(category, categoryOld)
+
+	// for _, deletedGroupUID := range deletedGroupsUids {
+	// 	result.Query += ""
+	// }
+
+	// for _, deletedPropUID := range deletedPropsUids {
+	// 	result.Query += ""
+	// }
 
 	result.Query += "return category.uid as uid"
 
 	result.ReturnAlias = "uid"
 
 	return result
+}
+
+func getCatalogueCategoryDeletedItems(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (deletedGroupsUids []string, deletedPropsUids []string) {
+
+	return deletedGroupsUids, deletedPropsUids
 }
