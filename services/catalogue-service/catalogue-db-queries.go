@@ -118,6 +118,19 @@ func CatalogueCategoryImageByUidQuery(uid string) (result helpers.DatabaseQuery)
 	return result
 }
 
+func DeleteCatalogueCategoryByUidQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(p:CatalogueCategory) WHERE p.uid = $uid WITH p
+	OPTIONAL MATCH (p)-[:HAS_SUBCATEGORY*1..50]->(child)
+	WITH p, child, p.uid as uid
+	detach delete p, child`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
 func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `match(itm:CatalogueItem{uid: $uid})-[:BELONGS_TO_CATEGORY]->(cat)			
@@ -154,8 +167,8 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	WITH category, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
-	WITH category, { group: group, properties: properties } as groups
-	WITH category, collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) as groups
+	WITH category, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
+	WITH category, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
 	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
 	return category`
 
@@ -170,19 +183,43 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 
+	result.Parameters["name"] = category.Name
+	result.Parameters["code"] = category.Code
+
 	result.Query = `
 	MERGE(category:CatalogueCategory{uid:$uid})
 	SET category.name = $name, category.code = $code
 	`
-
 	if category.Image != "" {
-		result.Parameters["image"] = category.Image
 		result.Query += ", category.image = $image "
+		if category.Image == "deleted" {
+			result.Parameters["image"] = nil
+		} else {
+			result.Parameters["image"] = category.Image
+		}
+
 	}
 
-	result.Parameters["uid"] = category.UID
-	result.Parameters["name"] = category.Name
-	result.Parameters["code"] = category.Code
+	// its a new item lets generate new uuid and set parent category
+	if category.UID == "" {
+		result.Parameters["uid"] = uuid.NewString()
+		if category.ParentPath != "" {
+
+			result.Parameters["parentPath"] = category.ParentPath
+			result.Query += `WITH category match(parentCategory:CatalogueCategory)	
+			optional match(parent)-[:HAS_SUBCATEGORY*1..50]->(parentCategory) 
+			with category, parentCategory, apoc.text.join(reverse(collect(parent.code)),"/") as parentPath
+			with category, parentCategory, case when parentPath = "" then parentCategory.code else parentPath + "/" + parentCategory.code end as path
+			where path = $parentPath
+			with parentCategory, category
+			MERGE(parentCategory)-[:HAS_SUBCATEGORY]->(category)
+			WITH category
+			`
+
+		}
+	} else {
+		result.Parameters["uid"] = category.UID
+	}
 
 	// check if some group exits - then try to merge all the groups
 	if category.Groups != nil {
@@ -222,26 +259,28 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 		}
 	}
 
-	result.Query += "WITH category "
-	//process deleted items
-	deletedGroupsUids, deletedPropsUids := getCatalogueCategoryDeletedItems(category, categoryOld)
+	//only if updating existing item
+	if categoryOld != nil {
+		result.Query += "WITH category "
+		//process deleted items
+		deletedGroupsUids, deletedPropsUids := getCatalogueCategoryDeletedItems(category, categoryOld)
 
-	if len(deletedGroupsUids) > 0 {
-		result.Parameters["groupsToDelte"] = deletedGroupsUids
-		result.Query += "MATCH(groupsToDelete:CatalogueCategoryPropertyGroup) WHERE groupsToDelete.uid IN $groupsToDelte "
+		if len(deletedGroupsUids) > 0 {
+			result.Parameters["groupsToDelte"] = deletedGroupsUids
+			result.Query += "MATCH(groupsToDelete:CatalogueCategoryPropertyGroup) WHERE groupsToDelete.uid IN $groupsToDelte "
+		}
+		if len(deletedPropsUids) > 0 {
+			result.Parameters["propsToDelte"] = deletedPropsUids
+			result.Query += "MATCH(propsToDelete:CatalogueCategoryProperty) WHERE propsToDelete.uid IN $propsToDelte "
+		}
+		if len(deletedGroupsUids) > 0 {
+			result.Query += "DETACH DELETE groupsToDelete "
+		}
+		if len(deletedPropsUids) > 0 {
+			result.Query += "DETACH DELETE propsToDelete "
+		}
 	}
-	if len(deletedPropsUids) > 0 {
-		result.Parameters["propsToDelte"] = deletedPropsUids
-		result.Query += "MATCH(propsToDelete:CatalogueCategoryProperty) WHERE propsToDelete.uid IN $propsToDelte "
-	}
-	if len(deletedGroupsUids) > 0 {
-		result.Query += "DETACH DELETE groupsToDelete "
-	}
-	if len(deletedPropsUids) > 0 {
-		result.Query += "DETACH DELETE propsToDelete "
-	}
-
-	result.Query += "return category.uid as uid"
+	result.Query += "return category.uid as uid limit 1"
 
 	result.ReturnAlias = "uid"
 

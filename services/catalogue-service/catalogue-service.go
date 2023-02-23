@@ -1,7 +1,6 @@
 package catalogueService
 
 import (
-	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -21,6 +20,8 @@ type ICatalogueService interface {
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
 	GetCatalogueCategoryImageByUid(uid string) (imageBase64 string, err error)
 	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
+	CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
+	DeleteCatalogueCategory(uid string) (err error)
 }
 
 // Create new security service instance
@@ -85,10 +86,16 @@ func (svc *CatalogueService) UpdateCatalogueCategory(catalogueCategory *models.C
 		query := UpdateCatalogueCategoryQuery(catalogueCategory, &originalItem)
 		_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 	}
-	if err != nil {
-		log.Println(err)
-		return err
-	}
+
+	return err
+}
+
+func (svc *CatalogueService) CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//use this hybrid update/create method
+	query := UpdateCatalogueCategoryQuery(catalogueCategory, nil)
+	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 
 	return err
 }
@@ -101,4 +108,14 @@ func (svc *CatalogueService) GetCatalogueCategoryImageByUid(uid string) (result 
 	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
 
 	return result, err
+}
+
+func (svc *CatalogueService) DeleteCatalogueCategory(uid string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteCatalogueCategoryByUidQuery(uid)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
+	return err
 }

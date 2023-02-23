@@ -1,13 +1,11 @@
 package catalogueService
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -23,6 +21,8 @@ type ICatalogueHandlers interface {
 	GetCatalogueItemWithDetailsByUid() echo.HandlerFunc
 	GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc
 	UpdateCatalogueCategory() echo.HandlerFunc
+	CreateCatalogueCategory() echo.HandlerFunc
+	DeleteCatalogueCategory() echo.HandlerFunc
 	GetCatalogueCategoryImageByUid() echo.HandlerFunc
 }
 
@@ -128,6 +128,26 @@ func (h *CatalogueHandlers) GetCatalogueCategoryWithDetailsByUid() echo.HandlerF
 	}
 }
 
+func (h *CatalogueHandlers) DeleteCatalogueCategory() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		// get catalogue item
+		err := h.catalogueService.DeleteCatalogueCategory(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, "ok")
+		} else {
+			log.Println(err)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
 func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -136,8 +156,32 @@ func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
 		catalogueCatgeory := new(models.CatalogueCategory)
 
 		if err := c.Bind(catalogueCatgeory); err == nil {
-			// update catalogue item
+			// update catalogue category
 			err := h.catalogueService.UpdateCatalogueCategory(catalogueCatgeory)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, catalogueCatgeory)
+			} else {
+				log.Println(err)
+			}
+		} else {
+			log.Println(err)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) CreateCatalogueCategory() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		catalogueCatgeory := new(models.CatalogueCategory)
+
+		if err := c.Bind(catalogueCatgeory); err == nil {
+			// create catalogue category
+			err := h.catalogueService.CreateCatalogueCategory(catalogueCatgeory)
 
 			if err == nil {
 				return c.JSON(http.StatusOK, catalogueCatgeory)
@@ -162,19 +206,21 @@ func (h *CatalogueHandlers) GetCatalogueCategoryImageByUid() echo.HandlerFunc {
 
 		if err == nil {
 
-			// we have to be sure that we have base64 image string
-			if strings.Index(imageString, "data:image") == 0 {
-				baseSplit := strings.Split(imageString, ",")
-				mimeType := strings.Split(strings.Split(baseSplit[0], ":")[1], ";")[0]
-				data, err := base64.StdEncoding.DecodeString(baseSplit[1])
+			// // we have to be sure that we have base64 image string
+			// if strings.Index(imageString, "data:image") == 0 {
+			// 	baseSplit := strings.Split(imageString, ",")
+			// 	mimeType := strings.Split(strings.Split(baseSplit[0], ":")[1], ";")[0]
+			// 	data, err := base64.StdEncoding.DecodeString(baseSplit[1])
 
-				if err != nil {
-					return c.Blob(500, "image/*", nil)
-				}
-				return c.Blob(200, mimeType, data)
-			} else {
-				return c.Blob(200, "image/*", nil)
-			}
+			// 	if err != nil {
+			// 		return c.Blob(500, "image/*", nil)
+			// 	}
+			// 	return c.Blob(200, mimeType, data)
+			// } else {
+			// 	return c.Blob(200, "image/*", nil)
+			// }
+
+			return c.String(200, imageString)
 
 		} else {
 			log.Println(err)

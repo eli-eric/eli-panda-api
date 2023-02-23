@@ -25,7 +25,7 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query Data
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf("record not found")
+			return nil, fmt.Errorf(err.Error())
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -49,7 +49,7 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf("record not found")
+			return nil, fmt.Errorf(err.Error())
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -58,7 +58,9 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 	})
 
 	if err == nil {
-		result = resultValue.(T)
+		if resultValue != nil {
+			result = resultValue.(T)
+		}
 	}
 
 	return result, err
@@ -73,7 +75,7 @@ func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query Database
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf("record not found")
+			return nil, fmt.Errorf(err.Error())
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -86,6 +88,16 @@ func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query Database
 	}
 
 	return result, err
+}
+
+func WriteNeo4jAndReturnNothing(session neo4j.Session, query DatabaseQuery) (err error) {
+	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		_, err := tx.Run(query.Query, query.Parameters)
+
+		return nil, err
+	})
+
+	return err
 }
 
 func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (resultArray []T, err error) {
