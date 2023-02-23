@@ -104,6 +104,20 @@ func CatalogueCategoriesByParentPathQuery(parentPath string) (result helpers.Dat
 	return result
 }
 
+func CatalogueCategoryImageByUidQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `match(category:CatalogueCategory{uid: $uid})
+	
+	return category.image as image`
+
+	result.ReturnAlias = "image"
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
 func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `match(itm:CatalogueItem{uid: $uid})-[:BELONGS_TO_CATEGORY]->(cat)			
@@ -139,7 +153,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	WITH category, group,property
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH category, group, collect({uid: property.uid, name: property.name,default: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
+	WITH category, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
 	WITH category, { group: group, properties: properties } as groups
 	WITH category, collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) as groups
 	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
@@ -154,13 +168,18 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 }
 
 func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
 
 	result.Query = `
 	MERGE(category:CatalogueCategory{uid:$uid})
 	SET category.name = $name, category.code = $code
 	`
 
-	result.Parameters = make(map[string]interface{})
+	if category.Image != "" {
+		result.Parameters["image"] = category.Image
+		result.Query += ", category.image = $image "
+	}
+
 	result.Parameters["uid"] = category.UID
 	result.Parameters["name"] = category.Name
 	result.Parameters["code"] = category.Code
@@ -203,16 +222,24 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 		}
 	}
 
-	// //process deleted items
-	// deletedGroupsUids, deletedPropsUids := getCatalogueCategoryDeletedItems(category, categoryOld)
+	result.Query += "WITH category "
+	//process deleted items
+	deletedGroupsUids, deletedPropsUids := getCatalogueCategoryDeletedItems(category, categoryOld)
 
-	// for _, deletedGroupUID := range deletedGroupsUids {
-	// 	result.Query += ""
-	// }
-
-	// for _, deletedPropUID := range deletedPropsUids {
-	// 	result.Query += ""
-	// }
+	if len(deletedGroupsUids) > 0 {
+		result.Parameters["groupsToDelte"] = deletedGroupsUids
+		result.Query += "MATCH(groupsToDelete:CatalogueCategoryPropertyGroup) WHERE groupsToDelete.uid IN $groupsToDelte "
+	}
+	if len(deletedPropsUids) > 0 {
+		result.Parameters["propsToDelte"] = deletedPropsUids
+		result.Query += "MATCH(propsToDelete:CatalogueCategoryProperty) WHERE propsToDelete.uid IN $propsToDelte "
+	}
+	if len(deletedGroupsUids) > 0 {
+		result.Query += "DETACH DELETE groupsToDelete "
+	}
+	if len(deletedPropsUids) > 0 {
+		result.Query += "DETACH DELETE propsToDelete "
+	}
 
 	result.Query += "return category.uid as uid"
 
@@ -223,5 +250,46 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 
 func getCatalogueCategoryDeletedItems(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (deletedGroupsUids []string, deletedPropsUids []string) {
 
+	for _, oldGroup := range categoryOld.Groups {
+		existsGroup := existsGroupByUid(category, oldGroup.UID)
+		if existsGroup == nil {
+			deletedGroupsUids = append(deletedGroupsUids, oldGroup.UID)
+			for _, oldProperty := range oldGroup.Properties {
+				deletedPropsUids = append(deletedPropsUids, oldProperty.UID)
+			}
+		} else {
+			for _, oldProperty := range oldGroup.Properties {
+				existsProperty := existsPropertyByUid(existsGroup, oldProperty.UID)
+				if !existsProperty {
+					deletedPropsUids = append(deletedPropsUids, oldProperty.UID)
+				}
+			}
+		}
+	}
+
 	return deletedGroupsUids, deletedPropsUids
+}
+
+func existsGroupByUid(category *models.CatalogueCategory, uid string) (result *models.CatalogueCategoryPropertyGroup) {
+
+	for _, group := range category.Groups {
+		if group.UID == uid {
+			result = &group
+			break
+		}
+	}
+
+	return result
+}
+
+func existsPropertyByUid(category *models.CatalogueCategoryPropertyGroup, uid string) (result bool) {
+
+	for _, property := range category.Properties {
+		if property.UID == uid {
+			result = true
+			break
+		}
+	}
+
+	return result
 }

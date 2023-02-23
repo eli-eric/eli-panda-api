@@ -1,11 +1,13 @@
 package catalogueService
 
 import (
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -16,12 +18,12 @@ type CatalogueHandlers struct {
 
 type ICatalogueHandlers interface {
 	GetCataloguecategoriesByParentPath() echo.HandlerFunc
-	GetCatalogueCategoryImage() echo.HandlerFunc
 	GetCatalogueItems() echo.HandlerFunc
 	GetCatalogueItemImage() echo.HandlerFunc
 	GetCatalogueItemWithDetailsByUid() echo.HandlerFunc
 	GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc
 	UpdateCatalogueCategory() echo.HandlerFunc
+	GetCatalogueCategoryImageByUid() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -43,21 +45,6 @@ func (h *CatalogueHandlers) GetCataloguecategoriesByParentPath() echo.HandlerFun
 		}
 
 		return echo.ErrInternalServerError
-	}
-}
-
-func (h *CatalogueHandlers) GetCatalogueCategoryImage() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		//get query path param
-		categoryUid := c.Param("uid")
-
-		fmt.Println(categoryUid)
-
-		imgData := "assets/no-image.png"
-
-		return c.File(imgData)
 	}
 }
 
@@ -157,6 +144,38 @@ func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
 			} else {
 				log.Println(err)
 			}
+		} else {
+			log.Println(err)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueCategoryImageByUid() echo.HandlerFunc {
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		imageString, err := h.catalogueService.GetCatalogueCategoryImageByUid(uid)
+
+		if err == nil {
+
+			// we have to be sure that we have base64 image string
+			if strings.Index(imageString, "data:image") == 0 {
+				baseSplit := strings.Split(imageString, ",")
+				mimeType := strings.Split(strings.Split(baseSplit[0], ":")[1], ";")[0]
+				data, err := base64.StdEncoding.DecodeString(baseSplit[1])
+
+				if err != nil {
+					return c.Blob(500, "image/*", nil)
+				}
+				return c.Blob(200, mimeType, data)
+			} else {
+				return c.Blob(200, "image/*", nil)
+			}
+
 		} else {
 			log.Println(err)
 		}
