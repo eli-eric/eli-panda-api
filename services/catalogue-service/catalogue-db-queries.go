@@ -205,6 +205,10 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 		result.Parameters["uid"] = uuid.NewString()
 		if category.ParentPath != "" {
 
+			if strings.Index(category.ParentPath, "/") == 0 {
+				category.ParentPath = strings.Replace(category.ParentPath, "/", "", 1)
+			}
+
 			result.Parameters["parentPath"] = category.ParentPath
 			result.Query += `WITH category match(parentCategory:CatalogueCategory)	
 			optional match(parent)-[:HAS_SUBCATEGORY*1..50]->(parentCategory) 
@@ -215,7 +219,6 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 			MERGE(parentCategory)-[:HAS_SUBCATEGORY]->(category)
 			WITH category
 			`
-
 		}
 	} else {
 		result.Parameters["uid"] = category.UID
