@@ -7,6 +7,8 @@ type CatalogueCategory struct {
 
 	Code string `json:"code,omitempty"`
 
+	Image string `json:"image,omitempty"`
+
 	ParentPath string `json:"parentPath,omitempty"`
 
 	Groups []CatalogueCategoryPropertyGroup `json:"groups"`

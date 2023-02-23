@@ -19,6 +19,7 @@ type ICatalogueService interface {
 	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItem], err error)
 	GetCatalogueItemWithDetailsByUid(uid string) (catalogueItem models.CatalogueItem, err error)
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
+	GetCatalogueCategoryImageByUid(uid string) (imageBase64 string, err error)
 	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 }
 
@@ -77,14 +78,27 @@ func (svc *CatalogueService) GetCatalogueCategoryWithDetailsByUid(uid string) (r
 func (svc *CatalogueService) UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	//update category query
-	query := UpdateCatalogueCategoryQuery(catalogueCategory)
-	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
-
+	//get the original record from db to compare because of the delete
+	originalItem, err := svc.GetCatalogueCategoryWithDetailsByUid(catalogueCategory.UID)
+	if err == nil {
+		//update category query
+		query := UpdateCatalogueCategoryQuery(catalogueCategory, &originalItem)
+		_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	}
 	if err != nil {
 		log.Println(err)
 		return err
 	}
 
 	return err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoryImageByUid(uid string) (result string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueCategoryImageByUidQuery(uid)
+	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
+
+	return result, err
 }
