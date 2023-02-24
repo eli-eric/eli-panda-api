@@ -14,6 +14,7 @@ import (
 	"panda/apigateway/services/security-service/models"
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -30,9 +31,10 @@ func main() {
 	settings, err := config.LoadConfiguraion()
 	ioutils.PanicOnError(err)
 
+	log.Println("PANDA REST API Starting...")
 	//new http Echo instance
 	e := echo.New()
-
+	e.HideBanner = true
 	// Middlewares ************************************************************************************
 
 	//Swagger documentation served from open-api-specification
@@ -51,11 +53,35 @@ func main() {
 	}))
 
 	//logging and autorecover from panics middleware
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:      true,
+		LogMethod:   true,
+		LogStatus:   true,
+		LogRemoteIP: true,
+		LogError:    true,
+		LogLatency:  true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			userID := ""
+			userContext := c.Get("user")
+			if userContext != nil {
+				u := userContext.(*jwt.Token)
+				claims := u.Claims.(*models.JwtCustomClaims)
+				userID = claims.Subject
+			}
+			if v.Error != nil {
+				fmt.Printf("%v: %v, status: %v, user-id: %v, error: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Error, v.Latency.Milliseconds())
+			} else {
+				fmt.Printf("%v: %v, status: %v, user-id: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Latency.Milliseconds())
+			}
+
+			return nil
+		},
+	}))
+
 	e.Use(middleware.Recover())
 
 	//JWT middleware - Configure middleware with the custom claims type
-	config := middleware.JWTConfig{
+	jwtMiddlewareConfig := middleware.JWTConfig{
 		Claims:     &models.JwtCustomClaims{},
 		SigningKey: []byte(settings.JwtSecret),
 		ErrorHandler: func(err error) error {
@@ -67,7 +93,7 @@ func main() {
 			}
 		},
 	}
-	jwtMiddleware := middleware.JWTWithConfig(config)
+	jwtMiddleware := middleware.JWTWithConfig(jwtMiddlewareConfig)
 
 	// Middlewares END **********************************************************************************
 
@@ -126,7 +152,7 @@ func main() {
 	// Start server
 	go func() {
 		if err := e.Start(":" + settings.Port); err != nil && err != http.ErrServerClosed {
-			e.Logger.Fatal("Shutting down the server: ELI - PANDA - API Gateway")
+			e.Logger.Fatal("Shutting down the server: ELI - PANDA - API Gateway: ", err)
 		}
 	}()
 
