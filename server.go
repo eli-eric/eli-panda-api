@@ -10,6 +10,7 @@ import (
 	"panda/apigateway/config"
 	"panda/apigateway/ioutils"
 	catalogueService "panda/apigateway/services/catalogue-service"
+	codebookService "panda/apigateway/services/codebook-service"
 	securityService "panda/apigateway/services/security-service"
 	"panda/apigateway/services/security-service/models"
 	"time"
@@ -148,6 +149,12 @@ func main() {
 	catalogueHandlers := catalogueService.NewCatalogueHandlers(catalogueSvc)
 	catalogueService.MapCatalogueRoutes(e, catalogueHandlers, jwtMiddleware)
 	log.Println("Catalogue service initialized successfully.")
+
+	//security services used in handlers and maped in routes...
+	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc)
+	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
+	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
+	log.Println("Codebook service initialized successfully.")
 
 	// Start server
 	go func() {

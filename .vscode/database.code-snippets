@@ -1,0 +1,19 @@
+{
+	"Create database query function": {
+		"scope": "go",
+		"prefix": "dbq",
+		"body": [
+			"func $1() (result helpers.DatabaseQuery) {",
+				"result.Query = `",
+				  "return r as $2`",
+			
+				"result.ReturnAlias = \"$2\"",
+				"result.Parameters = make(map[string]interface{})",
+				"//result.Parameters[\"uid\"] = uid",
+			
+				"return result",
+			"}"
+		],
+		"description": "Create database query function - return helpers.DatabaseQuery object"
+	}	
+}
