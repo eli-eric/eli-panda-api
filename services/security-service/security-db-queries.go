@@ -1,6 +1,9 @@
 package securityService
 
-import "panda/apigateway/helpers"
+import (
+	"panda/apigateway/helpers"
+	"strings"
+)
 
 func UserWithRolesAndFailityQuery(username string) (result helpers.DatabaseQuery) {
 
@@ -22,5 +25,26 @@ func UserWithRolesAndFailityQuery(username string) (result helpers.DatabaseQuery
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["userName"] = username
 
+	return result
+}
+
+func GetUsersCodebookQuery() (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(r:User) RETURN {uid: r.uid,name: r.lastName + " " + r.firstName} as result ORDER BY result.name`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	return result
+}
+
+func GetUsersAutocompleteCodebookQuery(searchText string, limit int) (result helpers.DatabaseQuery) {
+	searchText = strings.ToLower(searchText)
+	result.Query = `
+	MATCH(r:User) 
+	where toLower(r.lastName) contains $searchText or toLower(r.firstName) contains $searchText 
+	RETURN {uid: r.uid,name: r.lastName + " " + r.firstName} as result 
+	ORDER BY result.name limit $limit`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["searchText"] = searchText
+	result.Parameters["limit"] = limit
 	return result
 }

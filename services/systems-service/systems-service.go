@@ -15,6 +15,13 @@ type SystemsService struct {
 
 type ISystemsService interface {
 	GetSystemTypesCodebook() (result []codebookModels.Codebook, err error)
+	GetSystemImportancesCodebook() (result []codebookModels.Codebook, err error)
+	GetSystemCriticalitiesCodebook() (result []codebookModels.Codebook, err error)
+	GetItemUsagesCodebook() (result []codebookModels.Codebook, err error)
+	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
+	GetLocationAutocompleteCodebook(searchText string, limit int) (result []codebookModels.Codebook, err error)
+	GetZonesCodebook() (result []codebookModels.Codebook, err error)
+	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -23,12 +30,79 @@ func NewSystemsService(settings *config.Config, driver *neo4j.Driver) ISystemsSe
 	return &SystemsService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }
 
-
 func (svc *SystemsService) GetSystemTypesCodebook() (result []codebookModels.Codebook, err error) {
-
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := GetSystemTypesCodebookQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemImportancesCodebook() (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemImportancesCodebookQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemCriticalitiesCodebook() (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemCriticalityCodebookQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetItemUsagesCodebook() (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetItemUsagesCodebookQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetItemConditionsCodebook() (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetItemConditionsCodebookQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, limit int) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	if searchText != "" {
+		query := GetLocationsBySearchTextQuery(searchText, limit)
+		result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	} else {
+		result = make([]codebookModels.Codebook, 0)
+	}
+
+	return result, err
+}
+
+func (svc *SystemsService) GetZonesCodebook() (result []codebookModels.Codebook, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetZonesCodebookQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSubZonesByParentUidCodebookQuery(parentUID)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err

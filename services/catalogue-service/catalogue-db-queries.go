@@ -336,21 +336,6 @@ func existsPropertyByUid(category *models.CatalogueCategoryPropertyGroup, uid st
 	return result
 }
 
-func GetZonesCodebookQuery() (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(r:Zone) WHERE NOT ()-[:HAS_SUBZONE]->(r) RETURN {uid: r.uid,name:r.name} as zones ORDER BY zones.name`
-	result.ReturnAlias = "zones"
-	result.Parameters = make(map[string]interface{})
-	return result
-}
-
-func GetSubZonesByParentUidCodebookQuery(parentUID string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(parent:Zone{uid:$parentUID})-[:HAS_SUBZONE]->(r) RETURN {uid: r.uid,name:r.name} as zones ORDER BY zones.name`
-	result.ReturnAlias = "zones"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["parentUID"] = parentUID
-	return result
-}
-
 func GetUnitsCodebookQuery() (result helpers.DatabaseQuery) {
 	result.Query = `MATCH(r:Unit) RETURN {uid: r.uid,name:r.name} as units ORDER BY units.name`
 	result.ReturnAlias = "units"

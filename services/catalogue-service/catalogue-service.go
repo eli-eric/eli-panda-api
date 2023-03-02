@@ -23,8 +23,6 @@ type ICatalogueService interface {
 	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	DeleteCatalogueCategory(uid string) (err error)
-	GetZonesCodebook() (result []codebookModels.Codebook, err error)
-	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
 	GetUnitsCodebook() (result []codebookModels.Codebook, err error)
 	GetPropertyTypesCodebook() (result []codebookModels.Codebook, err error)
 }
@@ -123,26 +121,6 @@ func (svc *CatalogueService) DeleteCatalogueCategory(uid string) (err error) {
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
-}
-
-func (svc *CatalogueService) GetZonesCodebook() (result []codebookModels.Codebook, err error) {
-
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	query := GetZonesCodebookQuery()
-	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
-
-	return result, err
-}
-
-func (svc *CatalogueService) GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error) {
-
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	query := GetSubZonesByParentUidCodebookQuery(parentUID)
-	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
-
-	return result, err
 }
 
 func (svc *CatalogueService) GetUnitsCodebook() (result []codebookModels.Codebook, err error) {
