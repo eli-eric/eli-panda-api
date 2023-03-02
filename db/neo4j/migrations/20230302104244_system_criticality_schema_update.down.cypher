@@ -1,0 +1,3 @@
+DROP CONSTRAINT SystemCriticality_uid_unique IF EXISTS;
+DROP CONSTRAINT SystemCriticality_name_unique IF EXISTS;
+DROP CONSTRAINT SystemCriticality_code_unique IF EXISTS;

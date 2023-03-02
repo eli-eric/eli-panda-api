@@ -5,11 +5,13 @@ import (
 	catalogueService "panda/apigateway/services/catalogue-service"
 	"panda/apigateway/services/codebook-service/models"
 	securityService "panda/apigateway/services/security-service"
+	systemsService "panda/apigateway/services/systems-service"
 )
 
 type CodebookService struct {
 	catalogueService catalogueService.ICatalogueService
 	securityService  securityService.ISecurityService
+	systemsService systemsService.ISystemsService
 }
 
 type ICodebookService interface {
@@ -17,9 +19,12 @@ type ICodebookService interface {
 }
 
 // Create new security service instance
-func NewCodebookService(settings *config.Config, catalogueService catalogueService.ICatalogueService, securityService securityService.ISecurityService) ICodebookService {
+func NewCodebookService(settings *config.Config, 
+	catalogueService catalogueService.ICatalogueService, 
+	securityService securityService.ISecurityService,
+	systemsService systemsService.ISystemsService) ICodebookService {
 
-	return &CodebookService{catalogueService: catalogueService, securityService: securityService}
+	return &CodebookService{catalogueService: catalogueService, securityService: securityService, systemsService: systemsService}
 }
 
 func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string) (codebookList []models.Codebook, err error) {
@@ -35,6 +40,8 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string) (
 		codebookList, err = svc.catalogueService.GetUnitsCodebook()
 	case "CATALOGUE_PROPERTY_TYPE":
 		codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
+	case "SYSTEM_TYPE":
+		codebookList, err = svc.systemsService.GetSystemTypesCodebook()		
 	}
 
 	return codebookList, err

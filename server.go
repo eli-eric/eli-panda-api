@@ -13,6 +13,7 @@ import (
 	codebookService "panda/apigateway/services/codebook-service"
 	securityService "panda/apigateway/services/security-service"
 	"panda/apigateway/services/security-service/models"
+	systemsService "panda/apigateway/services/systems-service"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -150,8 +151,11 @@ func main() {
 	catalogueService.MapCatalogueRoutes(e, catalogueHandlers, jwtMiddleware)
 	log.Println("Catalogue service initialized successfully.")
 
+	systemsSvc := systemsService.NewSystemsService(settings, &neo4jDriver)
+	log.Println("Catalogue service initialized successfully.")
+
 	//security services used in handlers and maped in routes...
-	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc)
+	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc, systemsSvc)
 	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
 	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
 	log.Println("Codebook service initialized successfully.")
