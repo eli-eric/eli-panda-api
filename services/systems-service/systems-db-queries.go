@@ -44,7 +44,7 @@ func GetItemConditionsCodebookQuery() (result helpers.DatabaseQuery) {
 func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode string) (result helpers.DatabaseQuery) {
 	searchText = strings.ToLower(searchText)
 	result.Query = `
-	MATCH (n:Location) where n.code is not null and not (n)-[:HAS_SUBLOCATION]->()
+	MATCH (n:Location)-[:BELONGS_TO_FACILITY]->(f) where f.code = $facilityCode and n.code is not null and not (n)-[:HAS_SUBLOCATION]->()
 	with n 
 	where (toLower(n.code) contains $searchText or toLower(n.name) contains $searchText) 
 	optional match (parent)-[:HAS_SUBLOCATION*1..50]->(n) 
@@ -56,6 +56,7 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchText"] = searchText
 	result.Parameters["limit"] = limit
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
 
