@@ -3,6 +3,7 @@ package systemsService
 import (
 	"log"
 	"net/http"
+	"panda/apigateway/helpers"
 
 	"github.com/labstack/echo/v4"
 )
@@ -24,15 +25,18 @@ func NewsystemsHandlers(systemsSvc ISystemsService) ISystemsHandlers {
 func (h *SystemsHandlers) GetSubSystemsByParentUID() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
+		if userInfo := helpers.IsUserInRole(c, helpers.ROLE_SYSTEMS_VIEW); userInfo != nil {
+			parentUID := c.Param("parentUID")
+			subSystems, err := h.systemsService.GetSubSystemsByParentUID(parentUID, userInfo)
 
-		parentUID := c.Param("parentUID")
-		subSystems, err := h.systemsService.GetSubSystemsByParentUID(parentUID)
+			if err == nil {
+				return c.JSON(http.StatusOK, subSystems)
+			}
 
-		if err == nil {
-			return c.JSON(http.StatusOK, subSystems)
+			return echo.ErrInternalServerError
+		} else {
+			return echo.ErrUnauthorized
 		}
-
-		return echo.ErrInternalServerError
 	}
 }
 

@@ -74,25 +74,26 @@ func GetSubZonesByParentUidCodebookQuery(parentUID string) (result helpers.Datab
 	return result
 }
 
-func GetSubSystemsQuery(parentUID string) (result helpers.DatabaseQuery) {
+func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.DatabaseQuery) {
 
 	//we have to diff queries depend if it is or not a root parent
 	if parentUID != "" {
 		result.Query = `
-		MATCH(r:System)			
+		MATCH(r:System)-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode WITH r			
 		MATCH (parent)-[:HAS_SUBSYSTEM]->(r)
 		where parent.uid = $parentUID
 		return {uid: r.uid, name: r.name} as result;`
 	} else {
 		result.Query = `
-		MATCH(r:System)			
-		where not ()-[:HAS_SUBSYSTEM]->(r)
+		MATCH(r:System)-[:BELONGS_TO_FACILITY]->(f)			
+		where not ()-[:HAS_SUBSYSTEM]->(r) and f.code = $facilityCode
 		return {uid: r.uid, name: r.name} as result;`
 	}
 
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["parentUID"] = parentUID
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
 
