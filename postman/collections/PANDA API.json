@@ -1123,7 +1123,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/LOCATION",
+							"raw": "{{baseUrl}}/codebook/autocomplete/LOCATION?limit=5&searchText=el",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1135,13 +1135,16 @@
 							"query": [
 								{
 									"key": "limit",
-									"value": "1",
-									"disabled": true
+									"value": "5"
 								},
 								{
 									"key": "searchText",
 									"value": "l.02",
 									"disabled": true
+								},
+								{
+									"key": "searchText",
+									"value": "el"
 								}
 							]
 						}
@@ -1150,6 +1153,105 @@
 				}
 			],
 			"id": "6fc176d2-1027-4be1-96d0-3b8c89ebf9d7"
+		},
+		{
+			"name": "Systems",
+			"item": [
+				{
+					"name": "Sub-systems by parent UID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "76ed1314-784a-404f-8777-587e96ed71b7",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/subsystems",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"subsystems"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "System image",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e2972282-468e-4e56-9cd3-2389c418bc57",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/1/image",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"1",
+								"image"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "2177a51e-329d-4129-840e-fb949f9ae468"
 		},
 		{
 			"name": "Test anything",
