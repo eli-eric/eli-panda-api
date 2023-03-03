@@ -1249,6 +1249,52 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "System detail",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "3b62916e-69f8-4cb5-a958-6373adc106d0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/1-1-1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"1-1-1"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "2177a51e-329d-4129-840e-fb949f9ae468"
