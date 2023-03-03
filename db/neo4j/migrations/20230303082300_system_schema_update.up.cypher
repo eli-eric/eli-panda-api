@@ -1,0 +1,1 @@
+CREATE CONSTRAINT System_uid_unique IF NOT EXISTS FOR (r:System) REQUIRE r.uid IS UNIQUE;
