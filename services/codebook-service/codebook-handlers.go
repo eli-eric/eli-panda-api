@@ -2,6 +2,7 @@ package codebookService
 
 import (
 	"net/http"
+	"panda/apigateway/helpers"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -24,18 +25,21 @@ func NewCodebookHandlers(codebookService ICodebookService) ICodebookHandlers {
 func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
+		if userInfo := helpers.IsUserInRole(c, helpers.ROLE_BASICS_VIEW); userInfo != nil {
+			//get query path param
+			codebookCode := c.Param("codebookCode")
+			parentUID := c.QueryParams().Get("parentUID")
+			// get all categories of the given parentPath
+			codebookList, err := h.codebookService.GetCodebook(codebookCode, parentUID, userInfo)
 
-		//get query path param
-		codebookCode := c.Param("codebookCode")
-		parentUID := c.QueryParams().Get("parentUID")
-		// get all categories of the given parentPath
-		codebookList, err := h.codebookService.GetCodebook(codebookCode, parentUID)
+			if err == nil {
+				return c.JSON(http.StatusOK, codebookList)
+			}
 
-		if err == nil {
-			return c.JSON(http.StatusOK, codebookList)
+			return echo.ErrInternalServerError
+		} else {
+			return echo.ErrUnauthorized
 		}
-
-		return echo.ErrInternalServerError
 	}
 }
 
@@ -45,27 +49,30 @@ const autocompleteDefaultLimit int = 10
 func (h *CodebookHandlers) GetAutocompleteCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
+		if userInfo := helpers.IsUserInRole(c, helpers.ROLE_BASICS_VIEW); userInfo != nil {
+			//get query path param
+			codebookCode := c.Param("codebookCode")
+			searchText := c.QueryParams().Get("searchText")
+			limitParam := c.QueryParams().Get("limit")
 
-		//get query path param
-		codebookCode := c.Param("codebookCode")
-		searchText := c.QueryParams().Get("searchText")
-		limitParam := c.QueryParams().Get("limit")
+			limit := autocompleteDefaultLimit
+			limit, err := strconv.Atoi(limitParam)
 
-		limit := autocompleteDefaultLimit
-		limit, err := strconv.Atoi(limitParam)
+			if err != nil {
+				limit = autocompleteDefaultLimit
+			} else if limit > autocompleteMaxLimit {
+				limit = autocompleteMaxLimit
+			}
 
-		if err != nil {
-			limit = autocompleteDefaultLimit
-		} else if limit > autocompleteMaxLimit {
-			limit = autocompleteMaxLimit
+			codebookList, err := h.codebookService.GetAutocompleteCodebook(codebookCode, searchText, limit, userInfo)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, codebookList)
+			}
+
+			return echo.ErrInternalServerError
+		} else {
+			return echo.ErrUnauthorized
 		}
-
-		codebookList, err := h.codebookService.GetAutocompleteCodebook(codebookCode, searchText, limit)
-
-		if err == nil {
-			return c.JSON(http.StatusOK, codebookList)
-		}
-
-		return echo.ErrInternalServerError
 	}
 }

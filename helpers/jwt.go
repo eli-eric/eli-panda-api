@@ -39,3 +39,4 @@ func IsUserInRole(c echo.Context, roleToCheck string) (userInfo *models.JwtCusto
 }
 
 const ROLE_SYSTEMS_VIEW string = "systems-view"
+const ROLE_BASICS_VIEW string = "basics"

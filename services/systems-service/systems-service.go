@@ -22,7 +22,7 @@ type ISystemsService interface {
 	GetSystemCriticalitiesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemUsagesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
-	GetLocationAutocompleteCodebook(searchText string, limit int) (result []codebookModels.Codebook, err error)
+	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook() (result []codebookModels.Codebook, err error)
 	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, userInfo *securityModels.JwtCustomClaims) (result []systemsModels.SystemSimpleResponse, err error)
@@ -80,11 +80,11 @@ func (svc *SystemsService) GetItemConditionsCodebook() (result []codebookModels.
 	return result, err
 }
 
-func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, limit int) (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	if searchText != "" {
-		query := GetLocationsBySearchTextQuery(searchText, limit)
+		query := GetLocationsBySearchTextQuery(searchText, limit, facilityCode)
 		result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 	} else {
 		result = make([]codebookModels.Codebook, 0)
