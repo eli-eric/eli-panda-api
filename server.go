@@ -152,6 +152,8 @@ func main() {
 	log.Println("Catalogue service initialized successfully.")
 
 	systemsSvc := systemsService.NewSystemsService(settings, &neo4jDriver)
+	systemsHandlers := systemsService.NewsystemsHandlers(systemsSvc)
+	systemsService.MapSystemsRoutes(e, systemsHandlers, jwtMiddleware)
 	log.Println("Catalogue service initialized successfully.")
 
 	//security services used in handlers and maped in routes...

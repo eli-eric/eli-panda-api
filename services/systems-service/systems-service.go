@@ -4,6 +4,7 @@ import (
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
+	"panda/apigateway/services/systems-service/models"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -22,6 +23,7 @@ type ISystemsService interface {
 	GetLocationAutocompleteCodebook(searchText string, limit int) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook() (result []codebookModels.Codebook, err error)
 	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
+	GetSubSystemsByParentUID(parentUID string) (result []models.SystemSimpleResponse, err error)
 }
 
 // Create new security service instance
@@ -104,6 +106,16 @@ func (svc *SystemsService) GetSubZonesCodebook(parentUID string) (result []codeb
 
 	query := GetSubZonesByParentUidCodebookQuery(parentUID)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string) (result []models.SystemSimpleResponse, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSubSystemsQuery(parentUID)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemSimpleResponse](session, query)
 
 	return result, err
 }
