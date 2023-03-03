@@ -24,6 +24,7 @@ type ISystemsService interface {
 	GetZonesCodebook() (result []codebookModels.Codebook, err error)
 	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string) (result []models.SystemSimpleResponse, err error)
+	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 }
 
 // Create new security service instance
@@ -116,6 +117,16 @@ func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string) (result []
 
 	query := GetSubSystemsQuery(parentUID)
 	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemSimpleResponse](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemImageByUid(uid string) (result string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := SystemImageByUidQuery(uid)
+	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
 
 	return result, err
 }

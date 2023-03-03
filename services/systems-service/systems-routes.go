@@ -11,4 +11,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.GET("/v1/system/subsystems/", h.GetSubSystemsByParentUID(), jwtMiddleware)
 	e.GET("/v1/system/subsystems", h.GetSubSystemsByParentUID(), jwtMiddleware)
 
+	//get system image - base64string
+	e.GET("/v1/system/:uid/image", h.GetSystemImageByUid(), jwtMiddleware)
 }

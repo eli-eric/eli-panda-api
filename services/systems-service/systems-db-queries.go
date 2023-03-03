@@ -95,3 +95,13 @@ func GetSubSystemsQuery(parentUID string) (result helpers.DatabaseQuery) {
 	result.Parameters["parentUID"] = parentUID
 	return result
 }
+
+func SystemImageByUidQuery(uid string) (result helpers.DatabaseQuery) {
+	result.Query = `match(r:System{uid: $uid})	
+	return r.image as image`
+	result.ReturnAlias = "image"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
