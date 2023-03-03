@@ -15,6 +15,7 @@ type SystemsHandlers struct {
 type ISystemsHandlers interface {
 	GetSubSystemsByParentUID() echo.HandlerFunc
 	GetSystemImageByUid() echo.HandlerFunc
+	GetSystemDetail() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -56,5 +57,23 @@ func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+		if userInfo := helpers.IsUserInRole(c, helpers.ROLE_SYSTEMS_VIEW); userInfo != nil {
+			uid := c.Param("uid")
+			systemDetail, err := h.systemsService.GetSystemDetail(uid, userInfo.FacilityCode)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, systemDetail)
+			}
+
+			return echo.ErrInternalServerError
+		} else {
+			return echo.ErrUnauthorized
+		}
 	}
 }

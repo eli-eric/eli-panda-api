@@ -107,3 +107,36 @@ func SystemImageByUidQuery(uid string) (result helpers.DatabaseQuery) {
 
 	return result
 }
+
+func SystemDetailQuery(uid string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(r:System{uid: $uid})-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode
+	WITH r,f
+OPTIONAL MATCH(r)-[:HAS_LOCATION]->(l)
+OPTIONAL MATCH(r)-[:HAS_ZONE]->(z)
+OPTIONAL MATCH(r)-[:HAS_SYSTEM_TYPE]->(st)
+OPTIONAL MATCH(r)-[:HAS_IMPORTANCE]->(imp)
+OPTIONAL MATCH(r)-[:HAS_OWNER]->(own)
+OPTIONAL MATCH(r)-[:HAS_CRITICALITY]->(cc)
+OPTIONAL MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(r)
+WITH r,l, z, st, imp, own,cc, case when parent is not null then collect({uid: parent.uid, name: parent.name}) else null end as parents
+WITH r,l, z, st, imp, own,cc, reverse(parents) as parents
+RETURN {
+    uid: r.uid, 
+    name: r.name, 
+    description: r.description,
+    location: l.name, 
+    systemType: st.name,
+    systemCode: r.systemCode,
+    systemALias: r.systemAlias,
+    importance: imp.name,
+    owner: own.lastName + " " + own.firstName,
+    zone: z.name,
+    parentPath: parents,
+    criticalityClass: cc.name
+    } as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
