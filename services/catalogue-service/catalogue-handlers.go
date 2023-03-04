@@ -142,6 +142,9 @@ func (h *CatalogueHandlers) DeleteCatalogueCategory() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, "ok")
 		} else {
 			log.Println(err)
+			if err.Error() == "category has related items" {
+				return echo.ErrForbidden
+			}
 		}
 
 		return echo.ErrInternalServerError

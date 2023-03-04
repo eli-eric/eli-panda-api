@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"errors"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -61,6 +62,15 @@ func (svc *CatalogueService) GetCatalogueItems(search string, categoryPath strin
 	return result, err
 }
 
+func (svc *CatalogueService) GetCatalogueCategoryItemsCountRecursive(categoryUID string) (result int64, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetCatalogueCategoryItemsCountRecursiveQuery(categoryUID)
+	result, err = helpers.GetNeo4jSingleRecordSingleValue[int64](session, query)
+
+	return result, err
+}
+
 func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (result models.CatalogueItem, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
@@ -117,8 +127,16 @@ func (svc *CatalogueService) DeleteCatalogueCategory(uid string) (err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := DeleteCatalogueCategoryByUidQuery(uid)
-	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+	//we have to check if this category has some items - if so we cant delete category
+	itemsCount, err := svc.GetCatalogueCategoryItemsCountRecursive(uid)
+	if err == nil {
+		if itemsCount > 0 {
+			err = errors.New("category has related items")
+		} else {
+			query := DeleteCatalogueCategoryByUidQuery(uid)
+			err = helpers.WriteNeo4jAndReturnNothing(session, query)
+		}
+	}
 
 	return err
 }

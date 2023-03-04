@@ -290,6 +290,20 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 	return result
 }
 
+func GetCatalogueCategoryItemsCountRecursiveQuery(categoryUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (n:CatalogueCategory{uid:$categoryUID})
+	WiTH n
+	OPTIONAL MATCH(n)-[:HAS_SUBCATEGORY*1..50]->(subs)<-[:BELONGS_TO_CATEGORY*1..20]-(items) 
+	with count(items) as subItemsCount, n
+	OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(myItems) 
+	WITH subItemsCount, count(myItems) as myItemsCount
+	return subItemsCount + myItemsCount as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["categoryUID"] = categoryUID
+	return result
+}
+
 func getCatalogueCategoryDeletedItems(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (deletedGroupsUids []string, deletedPropsUids []string) {
 
 	for _, oldGroup := range categoryOld.Groups {
