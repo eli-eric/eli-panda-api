@@ -352,6 +352,56 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Delete catalogue category",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "af19b7e2-a074-4302-91b7-fc33df5b8c75",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/catalogue/category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"catalogue",
+								"category",
+								"ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "f2ee209d-b139-4a50-b634-a798a888240d",
