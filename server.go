@@ -33,6 +33,7 @@ func main() {
 	settings, err := config.LoadConfiguraion()
 	ioutils.PanicOnError(err)
 
+	fmt.Print(ioutils.GetWelcomeMessage())
 	log.Println("PANDA REST API Starting...")
 	//new http Echo instance
 	e := echo.New()
@@ -143,7 +144,7 @@ func main() {
 	securitySvc := securityService.NewSecurityService(settings, &neo4jDriver)
 	securityHandlers := securityService.NewSecurityHandlers(securitySvc)
 	securityService.MapSecurityRoutes(e, securityHandlers, jwtMiddleware)
-	log.Println("Security service initialized successfully.")
+	log.Println("Security  service initialized successfully.")
 
 	//security services used in handlers and maped in routes...
 	catalogueSvc := catalogueService.NewCatalogueService(settings, &neo4jDriver)
@@ -154,13 +155,13 @@ func main() {
 	systemsSvc := systemsService.NewSystemsService(settings, &neo4jDriver)
 	systemsHandlers := systemsService.NewsystemsHandlers(systemsSvc)
 	systemsService.MapSystemsRoutes(e, systemsHandlers, jwtMiddleware)
-	log.Println("Catalogue service initialized successfully.")
+	log.Println("Systems   service initialized successfully.")
 
 	//security services used in handlers and maped in routes...
 	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc, systemsSvc)
 	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
 	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
-	log.Println("Codebook service initialized successfully.")
+	log.Println("Codebook  service initialized successfully.")
 
 	// Start server
 	go func() {
