@@ -3,7 +3,7 @@ run:
 	go run server.go
 
 build:
-	go build -v
+	go build -v -ldflags "-s -w"
 
 install:
 	go mod download && go mod verify
