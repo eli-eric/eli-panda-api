@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM golang:1.18-alpine
+FROM golang:1.18-alpine as build
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY go.mod ./
 COPY go.sum ./
@@ -11,6 +11,17 @@ RUN go mod download && go mod verify
 
 COPY . .
 
-RUN go build -v -o /usr/local/bin/app -ldflags "-s -w"
+RUN go build -v -o panda-api -ldflags "-s -w"
 
-CMD [ "app" ]
+## Deploy
+FROM alpine:latest
+
+WORKDIR /root/
+
+COPY --from=build /app/panda-api ./
+COPY --from=build /app/db ./db
+COPY --from=build /app/open-api-specification ./open-api-specification
+
+EXPOSE 50000
+
+CMD [ "./panda-api" ]
