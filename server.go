@@ -8,20 +8,14 @@ import (
 	"os"
 	"os/signal"
 	"panda/apigateway/config"
+	"panda/apigateway/db"
 	"panda/apigateway/ioutils"
-	catalogueService "panda/apigateway/services/catalogue-service"
-	codebookService "panda/apigateway/services/codebook-service"
-	securityService "panda/apigateway/services/security-service"
-	"panda/apigateway/services/security-service/models"
-	systemsService "panda/apigateway/services/systems-service"
+	"panda/apigateway/middlewares"
+	"panda/apigateway/services"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/neo4j"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
@@ -38,130 +32,36 @@ func main() {
 	//new http Echo instance
 	e := echo.New()
 	e.HideBanner = true
-	// Middlewares ************************************************************************************
 
+	// Middlewares ************************************************************************************
 	//Swagger documentation served from open-api-specification
 	swaggerGroup := e.Group("")
-	swaggerGroup.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Root:   "open-api-specification",
-		Browse: true,
-	}))
+	swaggerGroup.Use(middlewares.StaticMiddleware())
 
 	//CORS middleware to allow cross origin access
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowHeaders:     []string{"*"},
-		AllowCredentials: true,
-		AllowMethods:     []string{"*"},
-	}))
+	e.Use(middlewares.CORSMiddleware())
 
-	//logging and autorecover from panics middleware
-	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
-		LogURI:      true,
-		LogMethod:   true,
-		LogStatus:   true,
-		LogRemoteIP: true,
-		LogError:    true,
-		LogLatency:  true,
-		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			userID := ""
-			userContext := c.Get("user")
-			if userContext != nil {
-				u := userContext.(*jwt.Token)
-				claims := u.Claims.(*models.JwtCustomClaims)
-				userID = claims.Subject
-			}
-			if v.Error != nil {
-				fmt.Printf("%v: %v, status: %v, user-id: %v, error: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Error, v.Latency.Milliseconds())
-			} else {
-				fmt.Printf("%v: %v, status: %v, user-id: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Latency.Milliseconds())
-			}
+	//logging middleware
+	e.Use(middlewares.RequestLoggerMiddleware())
 
-			return nil
-		},
-	}))
-
-	e.Use(middleware.Recover())
+	//register recover middleware
+	e.Use(middlewares.RecoverMiddleware())
 
 	//JWT middleware - Configure middleware with the custom claims type
-	jwtMiddlewareConfig := middleware.JWTConfig{
-		Claims:     &models.JwtCustomClaims{},
-		SigningKey: []byte(settings.JwtSecret),
-		ErrorHandler: func(err error) error {
-			if err != nil {
-				fmt.Println(err)
-				return echo.ErrUnauthorized
-			} else {
-				return nil
-			}
-		},
-	}
-	jwtMiddleware := middleware.JWTWithConfig(jwtMiddlewareConfig)
+	jwtMiddleware := middlewares.JwtMiddleware(settings.JwtSecret)
 
 	// Middlewares END **********************************************************************************
 
 	// NEO4J ********************************************************************************************
 	// migrations - init migration lib with neo4j settings
-	m, err := migrate.New(
-		"file://db/neo4j/migrations",
-		"neo4j://"+settings.Neo4jUsername+":"+settings.Neo4jPassword+"@"+settings.Neo4jHost+":"+settings.Neo4jPort+"?x-multi-statement=true")
-	// if there is a db error log and shut down
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Applay migrations...")
-	// if there is an error in migrations log and shut down, if its successful or there are no changes we can continue
-	if err := m.Up(); err != nil && err.Error() != "no change" {
-		log.Fatal(err)
-	}
-	log.Println("Migrations OK")
-
+	db.MigrateNeo4jMainInstance(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort)
 	// Lets create neo4j database driver which we want to share across the "services"
-	// Create new Driver instance
-	neo4jDriver, err := neo4j.NewDriver(
-		"bolt://"+settings.Neo4jHost+":"+settings.Neo4jPort,
-		neo4j.BasicAuth(settings.Neo4jUsername, settings.Neo4jPassword, ""),
-	)
-
-	// Check error in driver instantiation
-	if err != nil {
-		ioutils.PanicOnError(err)
-	}
-
-	// Verify Connectivity
-	err = neo4jDriver.VerifyConnectivity()
-
-	// If connectivity fails, handle the error
-	if err != nil {
-		ioutils.PanicOnError(err)
-	}
-
-	log.Println("Neo4j security database connection established successfully.")
-
+	// Create new DB Driver instance
+	neo4jDriver := db.CreateNeo4jMainInstanceOrPanics(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort)
 	// NEO4J END ****************************************************************************************
 
-	//security services used in handlers and maped in routes...
-	securitySvc := securityService.NewSecurityService(settings, &neo4jDriver)
-	securityHandlers := securityService.NewSecurityHandlers(securitySvc)
-	securityService.MapSecurityRoutes(e, securityHandlers, jwtMiddleware)
-	log.Println("Security  service initialized successfully.")
-
-	//security services used in handlers and maped in routes...
-	catalogueSvc := catalogueService.NewCatalogueService(settings, &neo4jDriver)
-	catalogueHandlers := catalogueService.NewCatalogueHandlers(catalogueSvc)
-	catalogueService.MapCatalogueRoutes(e, catalogueHandlers, jwtMiddleware)
-	log.Println("Catalogue service initialized successfully.")
-
-	systemsSvc := systemsService.NewSystemsService(settings, &neo4jDriver)
-	systemsHandlers := systemsService.NewsystemsHandlers(systemsSvc)
-	systemsService.MapSystemsRoutes(e, systemsHandlers, jwtMiddleware)
-	log.Println("Systems   service initialized successfully.")
-
-	//security services used in handlers and maped in routes...
-	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc, systemsSvc)
-	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
-	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
-	log.Println("Codebook  service initialized successfully.")
+	//Init all services
+	services.InitializeServicesAndMapRoutes(e, settings, neo4jDriver, jwtMiddleware)
 
 	// Start server
 	go func() {
