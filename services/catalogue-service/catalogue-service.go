@@ -20,12 +20,14 @@ type ICatalogueService interface {
 	GetCatalogueItems(search string, categoryPath string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItem], err error)
 	GetCatalogueItemWithDetailsByUid(uid string) (catalogueItem models.CatalogueItem, err error)
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
+	GetCatalogueCategoryWithDetailsForCopyByUid(uid string) (result models.CatalogueCategory, err error)
 	GetCatalogueCategoryImageByUid(uid string) (imageBase64 string, err error)
 	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	DeleteCatalogueCategory(uid string) (err error)
 	GetUnitsCodebook() (result []codebookModels.Codebook, err error)
 	GetPropertyTypesCodebook() (result []codebookModels.Codebook, err error)
+	CopyCatalogueCategoryRecursive(originalUID string) (newUID string, err error)
 }
 
 // Create new security service instance
@@ -84,6 +86,15 @@ func (svc *CatalogueService) GetCatalogueCategoryWithDetailsByUid(uid string) (r
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := CatalogueCategoryWithDetailsQuery(uid)
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.CatalogueCategory](session, query)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoryWithDetailsForCopyByUid(uid string) (result models.CatalogueCategory, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueCategoryWithDetailsForCopyQuery(uid)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.CatalogueCategory](session, query)
 
 	return result, err
@@ -159,4 +170,34 @@ func (svc *CatalogueService) GetPropertyTypesCodebook() (result []codebookModels
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
+}
+
+func (svc *CatalogueService) CopyCatalogueCategoryRecursive(originalUID string) (newUID string, err error) {
+
+	//get existing category
+	category, err := svc.GetCatalogueCategoryWithDetailsForCopyByUid(originalUID)
+	if err == nil {
+		// transform original category to new one
+		category.UID = ""
+
+		category.Name += " copy"
+		category.Code += "-copy"
+		for _, group := range category.Groups {
+			group.UID = ""
+			for _, property := range group.Properties {
+				property.UID = ""
+			}
+		}
+		//create new one from existing one
+		err = svc.CreateCatalogueCategory(&category)
+
+		// if err is null we can continue....
+		if err == nil {
+			newUID = category.UID
+		}
+		//iterate on all sub-categories(recusively) and do the same(copy) for each sub-category
+		//svc.GetCatalogueCategoriesByParentPath()
+	}
+
+	return newUID, err
 }

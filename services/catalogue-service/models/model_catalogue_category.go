@@ -11,6 +11,8 @@ type CatalogueCategory struct {
 
 	ParentPath string `json:"parentPath,omitempty"`
 
+	ParentUID string `json:"parentUID,omitempty"`
+
 	Groups []CatalogueCategoryPropertyGroup `json:"groups"`
 }
 
@@ -34,4 +36,9 @@ type CatalogueCategoryProperty struct {
 	TypeUID string `json:"typeUID,omitempty"`
 
 	UnitUID string `json:"unitUID,omitempty"`
+}
+
+type CatalogueCategoryTreeItem struct {
+	UID             string                      `json:"uid,omitempty"`
+	Has_subcategory []CatalogueCategoryTreeItem `json:"has_subcategory,omitempty"`
 }

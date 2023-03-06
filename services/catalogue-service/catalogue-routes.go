@@ -12,6 +12,7 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.PUT("/v1/catalogue/category/:uid", h.UpdateCatalogueCategory(), jwtMiddleware)
 	e.POST("/v1/catalogue/category", h.CreateCatalogueCategory(), jwtMiddleware)
 	e.DELETE("/v1/catalogue/category/:uid", h.DeleteCatalogueCategory(), jwtMiddleware)
+	e.POST("/v1/catalogue/category/:uid/copy", h.CopyCatalogueCategoryRecursive(), jwtMiddleware)
 
 	//fake image get - get only eli logo img for now
 	e.GET("/v1/catalogue/category/:uid/image", h.GetCatalogueCategoryImageByUid())

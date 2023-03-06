@@ -180,6 +180,29 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	return result
 }
 
+func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(category:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group,property
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	OPTIONAL MATCH(parent)-[:HAS_SUBCATEGORY]->(category)
+	WITH category,parent, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
+	WITH category,parent, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
+	WITH category,parent, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
+	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, parentUID: parent.uid } as category
+	return category`
+
+	result.ReturnAlias = "category"
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
 func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOld *models.CatalogueCategory) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 
@@ -202,7 +225,9 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 
 	// its a new item lets generate new uuid and set parent category
 	if category.UID == "" {
-		result.Parameters["uid"] = uuid.NewString()
+		category.UID = uuid.NewString()
+		result.Parameters["uid"] = category.UID
+		// we could get both parent path or parent uid to identify parent category
 		if category.ParentPath != "" {
 
 			if strings.Index(category.ParentPath, "/") == 0 {
@@ -216,6 +241,12 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 			with category, parentCategory, case when parentPath = "" then parentCategory.code else parentPath + "/" + parentCategory.code end as path
 			where path = $parentPath
 			with parentCategory, category
+			MERGE(parentCategory)-[:HAS_SUBCATEGORY]->(category)
+			WITH category
+			`
+		} else if category.ParentUID != "" {
+			result.Parameters["parentUID"] = category.ParentUID
+			result.Query += `WITH category match(parentCategory:CatalogueCategory{uid: $parentUID})				
 			MERGE(parentCategory)-[:HAS_SUBCATEGORY]->(category)
 			WITH category
 			`

@@ -24,6 +24,7 @@ type ICatalogueHandlers interface {
 	CreateCatalogueCategory() echo.HandlerFunc
 	DeleteCatalogueCategory() echo.HandlerFunc
 	GetCatalogueCategoryImageByUid() echo.HandlerFunc
+	CopyCatalogueCategoryRecursive() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -145,6 +146,26 @@ func (h *CatalogueHandlers) DeleteCatalogueCategory() echo.HandlerFunc {
 			if err.Error() == "category has related items" {
 				return echo.ErrForbidden
 			}
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) CopyCatalogueCategoryRecursive() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		// get catalogue item
+		newUID, err := h.catalogueService.CopyCatalogueCategoryRecursive(uid)
+
+		if err == nil {
+			return c.String(http.StatusCreated, newUID)
+		} else {
+			log.Println(err)
 		}
 
 		return echo.ErrInternalServerError
