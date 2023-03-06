@@ -2,6 +2,7 @@ package catalogueService
 
 import (
 	"errors"
+	"fmt"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -28,6 +29,7 @@ type ICatalogueService interface {
 	GetUnitsCodebook() (result []codebookModels.Codebook, err error)
 	GetPropertyTypesCodebook() (result []codebookModels.Codebook, err error)
 	CopyCatalogueCategoryRecursive(originalUID string) (newUID string, err error)
+	GetCatalogueCategoriesRecursiveByParentUID(parentUID string) (categories []models.CatalogueCategoryTreeItem, err error)
 }
 
 // Create new security service instance
@@ -44,6 +46,20 @@ func (svc *CatalogueService) GetCatalogueCategoriesByParentPath(parentPath strin
 	//get all categories by parent path
 	query := CatalogueCategoriesByParentPathQuery(parentPath)
 	categories, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueCategory](session, query)
+
+	helpers.ProcessArrayResult(&categories, err)
+
+	return categories, err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoriesRecursiveByParentUID(parentUID string) (categories []models.CatalogueCategoryTreeItem, err error) {
+
+	// Open a new Session
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//get all categories by parent path
+	query := CatalogueSubCategoriesByParentQuery(parentUID)
+	categories, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueCategoryTreeItem](session, query)
 
 	helpers.ProcessArrayResult(&categories, err)
 
@@ -196,7 +212,11 @@ func (svc *CatalogueService) CopyCatalogueCategoryRecursive(originalUID string) 
 			newUID = category.UID
 		}
 		//iterate on all sub-categories(recusively) and do the same(copy) for each sub-category
-		//svc.GetCatalogueCategoriesByParentPath()
+		subCategories, err := svc.GetCatalogueCategoriesRecursiveByParentUID(originalUID)
+		if err == nil {
+			fmt.Println(subCategories)
+		}
+
 	}
 
 	return newUID, err

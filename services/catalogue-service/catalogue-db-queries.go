@@ -394,3 +394,15 @@ func GetPropertyTypesCodebookQuery() (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	return result
 }
+
+func CatalogueSubCategoriesByParentQuery(uid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(category:CatalogueCategory{uid:$uid})
+OPTIONAL MATCH p = (category)-[:HAS_SUBCATEGORY*1..20]->(childs)
+with collect(p) as paths
+CALL apoc.convert.toTree(paths, true, { nodes: {CatalogueCategory: ['uid']}, rels:{HAS_SUBCATEGORY: [""]}}) yield value as result
+return result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	return result
+}
