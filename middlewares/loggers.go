@@ -1,8 +1,13 @@
 package middlewares
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"panda/apigateway/services/security-service/models"
+	"strconv"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
@@ -30,8 +35,37 @@ func RequestLoggerMiddleware() echo.MiddlewareFunc {
 			} else {
 				fmt.Printf("%v: %v, status: %v, user-id: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Latency.Milliseconds())
 			}
+			// go func() {
+			// 	LogLokiLog(fmt.Sprintf(`{ "method": "%v", "uri": "%v", "status": "%v" }`, v.Method, v.URI, v.Status))
+			// }()
 
 			return nil
 		},
 	})
+}
+
+func LogLokiLog(logEntry string) {
+	log := LokiLog{}
+	values := []string{strconv.FormatInt(time.Now().UnixNano(), 10), logEntry}
+	log.Streams = append(log.Streams, LokiLogStream{Stream: LokiLogLabels{App: "panda-api", Level: "request"}, Values: values})
+	json_data, err := json.Marshal(log)
+	if err == nil {
+		resp, err := http.Post("http://localhost:3111/loki/api/v1/push", "application/json", bytes.NewBuffer(json_data))
+		fmt.Println(err)
+		fmt.Println(resp)
+	}
+}
+
+type LokiLog struct {
+	Streams []LokiLogStream `json:"streams"`
+}
+
+type LokiLogStream struct {
+	Stream LokiLogLabels `json:"stream"`
+	Values []string      `json:"values"`
+}
+
+type LokiLogLabels struct {
+	App   string `json:"app"`   // panda-api
+	Level string `json:"level"` // request, error, ???
 }
