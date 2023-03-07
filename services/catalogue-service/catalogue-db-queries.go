@@ -94,7 +94,7 @@ func CatalogueCategoriesByParentPathQuery(parentPath string) (result helpers.Dat
 	optional match(parent)-[:HAS_SUBCATEGORY*1..50]->(category) 
 	with category, apoc.text.join(reverse(collect(parent.code)),"/") as parentPath
 	where parentPath = $parentPath
-	return {uid:category.uid,code:category.code, name:category.name,parentPath: parentPath} as categories`
+	return {uid:category.uid,code:category.code, name:category.name,parentPath: parentPath} as categories order by id(category)`
 
 	result.ReturnAlias = "categories"
 
@@ -166,7 +166,8 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	WITH category, group,property
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH category, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
+	WITH category, group,property, propertyType, unit order by id(property)
+	WITH category, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
 	WITH category, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
 	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
@@ -189,7 +190,8 @@ func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.Databa
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(parent)-[:HAS_SUBCATEGORY]->(category)
-	WITH category,parent, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
+	WITH category, group,property, parent, propertyType, unit order by id(property)
+	WITH category,parent, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category,parent, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
 	WITH category,parent, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
 	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image } as category
@@ -389,7 +391,7 @@ func GetUnitsCodebookQuery() (result helpers.DatabaseQuery) {
 }
 
 func GetPropertyTypesCodebookQuery() (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(r:CatalogueCategoryPropertyType) RETURN {uid: r.uid,name:r.name} as result ORDER BY result.name`
+	result.Query = `MATCH(r:CatalogueCategoryPropertyType) RETURN {uid: r.uid,name:r.name} as result ORDER BY id(r)`
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 	return result
