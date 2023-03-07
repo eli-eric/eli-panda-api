@@ -218,9 +218,8 @@ func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
 
 		} else {
 			log.Println(err)
+			return echo.ErrNotFound
 		}
-
-		return echo.ErrInternalServerError
 	}
 }
 
