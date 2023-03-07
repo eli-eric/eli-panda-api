@@ -211,7 +211,7 @@ func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
 		//get query path param
 		uid := c.Param("uid")
 
-		imageString, err := h.catalogueService.GetCatalogueCategoryImageByUid(uid)
+		imageString, err := h.catalogueService.GetCatalogueItemImageByUid(uid)
 		if err == nil {
 
 			return c.String(200, imageString)
