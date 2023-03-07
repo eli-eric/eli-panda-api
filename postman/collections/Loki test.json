@@ -1,0 +1,70 @@
+{
+	"info": {
+		"_postman_id": "a05a0539-3c2a-449c-8067-a376dabfda7f",
+		"name": "Loki test",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_uid": "17678841-a05a0539-3c2a-449c-8067-a376dabfda7f"
+	},
+	"item": [
+		{
+			"name": "Push simple log",
+			"id": "a282b618-ad38-48b8-95f5-20735ec3e8e2",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"streams\": [\n    {\n      \"stream\": {\n          \"app\": \"panda-api\",\n        \"method\": \"GET\",\n        \"host\": \"localhost:50000\",\n        \"status\": \"200\"\n      },\n      \"values\": [\n          [ \"1678226262572123102\", \"Get all items\" ]\n      ]\n    }\n  ]\n}"
+				},
+				"url": {
+					"raw": "localhost:3111/loki/api/v1/push",
+					"host": [
+						"localhost"
+					],
+					"port": "3111",
+					"path": [
+						"loki",
+						"api",
+						"v1",
+						"push"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Labels",
+			"id": "01d8d85f-6400-450c-81df-d68305cf7a42",
+			"protocolProfileBehavior": {
+				"disableBodyPruning": true
+			},
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "localhost:3111/loki/api/v1/labels",
+					"host": [
+						"localhost"
+					],
+					"port": "3111",
+					"path": [
+						"loki",
+						"api",
+						"v1",
+						"labels"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

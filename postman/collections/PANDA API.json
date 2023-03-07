@@ -1173,7 +1173,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/LOCATION?limit=5&searchText=el",
+							"raw": "{{baseUrl}}/codebook/autocomplete/LOCATION?searchText=el&limit=50",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1184,10 +1184,6 @@
 							],
 							"query": [
 								{
-									"key": "limit",
-									"value": "5"
-								},
-								{
 									"key": "searchText",
 									"value": "l.02",
 									"disabled": true
@@ -1195,6 +1191,10 @@
 								{
 									"key": "searchText",
 									"value": "el"
+								},
+								{
+									"key": "limit",
+									"value": "50"
 								}
 							]
 						}
