@@ -4,7 +4,6 @@ import (
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
-	securityModels "panda/apigateway/services/security-service/models"
 	"panda/apigateway/services/systems-service/models"
 	systemsModels "panda/apigateway/services/systems-service/models"
 
@@ -25,7 +24,7 @@ type ISystemsService interface {
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook() (result []codebookModels.Codebook, err error)
 	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
-	GetSubSystemsByParentUID(parentUID string, userInfo *securityModels.JwtCustomClaims) (result []systemsModels.SystemSimpleResponse, err error)
+	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
 }
@@ -114,11 +113,11 @@ func (svc *SystemsService) GetSubZonesCodebook(parentUID string) (result []codeb
 	return result, err
 }
 
-func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, userInfo *securityModels.JwtCustomClaims) (result []models.SystemSimpleResponse, err error) {
+func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.SystemSimpleResponse, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSubSystemsQuery(parentUID, userInfo.FacilityCode)
+	query := GetSubSystemsQuery(parentUID, facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemSimpleResponse](session, query)
 
 	return result, err

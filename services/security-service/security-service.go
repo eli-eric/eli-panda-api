@@ -21,8 +21,8 @@ type SecurityService struct {
 
 type ISecurityService interface {
 	AuthenticateByUsernameAndPassword(username string, password string) (authUser models.UserAuthInfo, err error)
-	GetUsersCodebook(userInfo *models.JwtCustomClaims) (result []codebookModels.Codebook, err error)
-	GetUsersAutocompleteCodebook(searchText string, limit int, userInfo *models.JwtCustomClaims) (result []codebookModels.Codebook, err error)
+	GetUsersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
+	GetUsersAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -77,19 +77,19 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 	return authUser, errors.New("Unauthorized")
 }
 
-func (svc *SecurityService) GetUsersCodebook(userInfo *models.JwtCustomClaims) (result []codebookModels.Codebook, err error) {
+func (svc *SecurityService) GetUsersCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetUsersCodebookQuery(userInfo.FacilityCode)
+	query := GetUsersCodebookQuery(facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
 }
 
-func (svc *SecurityService) GetUsersAutocompleteCodebook(searchText string, limit int, userInfo *models.JwtCustomClaims) (result []codebookModels.Codebook, err error) {
+func (svc *SecurityService) GetUsersAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetUsersAutocompleteCodebookQuery(searchText, limit, userInfo.FacilityCode)
+	query := GetUsersAutocompleteCodebookQuery(searchText, limit, facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err

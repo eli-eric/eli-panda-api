@@ -15,28 +15,3 @@ func GetUserFromJWT(c echo.Context) (userInfo *models.JwtCustomClaims) {
 	}
 	return userInfo
 }
-
-// if the user has a given role then we return userInfo object
-// if the user has not a given role then we return nil
-func IsUserInRole(c echo.Context, roleToCheck string) (userInfo *models.JwtCustomClaims) {
-
-	userContext := c.Get("user")
-	if userContext != nil {
-		u := userContext.(*jwt.Token)
-		userInfo = u.Claims.(*models.JwtCustomClaims)
-		hasRole := false
-		for _, role := range userInfo.Roles {
-			if role == roleToCheck {
-				hasRole = true
-				break
-			}
-		}
-		if !hasRole {
-			userInfo = nil
-		}
-	}
-	return userInfo
-}
-
-const ROLE_SYSTEMS_VIEW string = "systems-view"
-const ROLE_BASICS_VIEW string = "basics"

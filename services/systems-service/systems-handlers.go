@@ -3,7 +3,6 @@ package systemsService
 import (
 	"log"
 	"net/http"
-	"panda/apigateway/helpers"
 
 	"github.com/labstack/echo/v4"
 )
@@ -26,18 +25,16 @@ func NewsystemsHandlers(systemsSvc ISystemsService) ISystemsHandlers {
 func (h *SystemsHandlers) GetSubSystemsByParentUID() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
-		if userInfo := helpers.IsUserInRole(c, helpers.ROLE_SYSTEMS_VIEW); userInfo != nil {
-			parentUID := c.Param("parentUID")
-			subSystems, err := h.systemsService.GetSubSystemsByParentUID(parentUID, userInfo)
 
-			if err == nil {
-				return c.JSON(http.StatusOK, subSystems)
-			}
+		parentUID := c.Param("parentUID")
+		facilityCode := c.Get("facilityCode").(string)
+		subSystems, err := h.systemsService.GetSubSystemsByParentUID(parentUID, facilityCode)
 
-			return echo.ErrInternalServerError
-		} else {
-			return echo.ErrUnauthorized
+		if err == nil {
+			return c.JSON(http.StatusOK, subSystems)
 		}
+
+		return echo.ErrInternalServerError
 	}
 }
 
@@ -63,17 +60,16 @@ func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
-		if userInfo := helpers.IsUserInRole(c, helpers.ROLE_SYSTEMS_VIEW); userInfo != nil {
-			uid := c.Param("uid")
-			systemDetail, err := h.systemsService.GetSystemDetail(uid, userInfo.FacilityCode)
 
-			if err == nil {
-				return c.JSON(http.StatusOK, systemDetail)
-			}
+		uid := c.Param("uid")
+		facilityCode := c.Get("facilityCode").(string)
+		systemDetail, err := h.systemsService.GetSystemDetail(uid, facilityCode)
 
-			return echo.ErrInternalServerError
-		} else {
-			return echo.ErrUnauthorized
+		if err == nil {
+			return c.JSON(http.StatusOK, systemDetail)
 		}
+
+		return echo.ErrInternalServerError
+
 	}
 }

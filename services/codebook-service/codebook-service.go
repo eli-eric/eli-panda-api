@@ -5,7 +5,6 @@ import (
 	catalogueService "panda/apigateway/services/catalogue-service"
 	"panda/apigateway/services/codebook-service/models"
 	securityService "panda/apigateway/services/security-service"
-	securityModels "panda/apigateway/services/security-service/models"
 	systemsService "panda/apigateway/services/systems-service"
 )
 
@@ -16,8 +15,8 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, parentUID string, userInfo *securityModels.JwtCustomClaims) (codebookList []models.Codebook, err error)
-	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, userInfo *securityModels.JwtCustomClaims) (codebookList []models.Codebook, err error)
+	GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error)
+	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error)
 }
 
 // Create new security service instance
@@ -29,7 +28,7 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{catalogueService: catalogueService, securityService: securityService, systemsService: systemsService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, userInfo *securityModels.JwtCustomClaims) (codebookList []models.Codebook, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error) {
 
 	codebookList = make([]models.Codebook, 0)
 
@@ -53,21 +52,21 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, u
 	case "ITEM_CONDITION_STATUS":
 		codebookList, err = svc.systemsService.GetItemConditionsCodebook()
 	case "USER":
-		codebookList, err = svc.securityService.GetUsersCodebook(userInfo)
+		codebookList, err = svc.securityService.GetUsersCodebook(facilityCode)
 	}
 
 	return codebookList, err
 }
 
-func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchString string, limit int, userInfo *securityModels.JwtCustomClaims) (codebookList []models.Codebook, err error) {
+func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error) {
 
 	codebookList = make([]models.Codebook, 0)
 
 	switch codebookCode {
 	case "LOCATION":
-		codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, userInfo.FacilityCode)
+		codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
 	case "USER":
-		codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, userInfo)
+		codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, facilityCode)
 	}
 
 	return codebookList, err

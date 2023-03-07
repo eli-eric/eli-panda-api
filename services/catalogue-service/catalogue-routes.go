@@ -1,45 +1,30 @@
 package catalogueService
 
 import (
-	"panda/apigateway/helpers"
+	m "panda/apigateway/middlewares"
+	"panda/apigateway/shared"
 
 	"github.com/labstack/echo/v4"
 )
 
 func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.MiddlewareFunc) {
 	// categories route/s - return categories by parent path
-	e.GET("/v1/catalogue/categories/*", h.GetCataloguecategoriesByParentPath(), jwtMiddleware)
-	e.GET("/v1/catalogue/categories", h.GetCataloguecategoriesByParentPath(), jwtMiddleware)
-	e.GET("/v1/catalogue/category/:uid", h.GetCatalogueCategoryWithDetailsByUid(), jwtMiddleware)
-	e.PUT("/v1/catalogue/category/:uid", h.UpdateCatalogueCategory(), jwtMiddleware)
-	e.POST("/v1/catalogue/category", h.CreateCatalogueCategory(), jwtMiddleware)
-	e.DELETE("/v1/catalogue/category/:uid", h.DeleteCatalogueCategory(), jwtMiddleware)
-	e.POST("/v1/catalogue/category/:uid/copy", h.CopyCatalogueCategoryRecursive(), jwtMiddleware)
+	e.GET("/v1/catalogue/categories/*", m.Authorization(h.GetCataloguecategoriesByParentPath(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.GET("/v1/catalogue/categories", m.Authorization(h.GetCataloguecategoriesByParentPath(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.GET("/v1/catalogue/category/:uid", m.Authorization(h.GetCatalogueCategoryWithDetailsByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+
+	e.PUT("/v1/catalogue/category/:uid", m.Authorization(h.UpdateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.POST("/v1/catalogue/category", m.Authorization(h.CreateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.DELETE("/v1/catalogue/category/:uid", m.Authorization(h.DeleteCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.POST("/v1/catalogue/category/:uid/copy", m.Authorization(h.CopyCatalogueCategoryRecursive(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	//fake image get - get only eli logo img for now
-	e.GET("/v1/catalogue/category/:uid/image", h.GetCatalogueCategoryImageByUid())
-	e.GET("/v1/catalogue/item/:uid/image", h.GetCatalogueItemImage())
+	e.GET("/v1/catalogue/category/:uid/image", m.Authorization(h.GetCatalogueCategoryImageByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.GET("/v1/catalogue/item/:uid/image", m.Authorization(h.GetCatalogueItemImage(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	// get all catalogue items with details
-	e.GET("/v1/catalogue/items", RoleBasedHandler(helpers.ROLE_SYSTEMS_VIEW, h.GetCatalogueItems()), jwtMiddleware)
+	e.GET("/v1/catalogue/items", m.Authorization(h.GetCatalogueItems(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	//get on catalogue item with details by uid
-	e.GET("/v1/catalogue/item/:uid", h.GetCatalogueItemWithDetailsByUid(), jwtMiddleware)
-}
-
-func RoleBasedHandler(roleToCheck string, handlerFunc echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-
-		user := helpers.GetUserFromJWT(c)
-
-		if user != nil {
-			for _, role := range user.Roles {
-				if role == roleToCheck {
-					return handlerFunc(c)
-				}
-			}
-		}
-
-		return echo.ErrUnauthorized
-	}
+	e.GET("/v1/catalogue/item/:uid", m.Authorization(h.GetCatalogueItemWithDetailsByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 }
