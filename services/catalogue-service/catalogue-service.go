@@ -6,6 +6,7 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
+	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -152,6 +153,8 @@ func (svc *CatalogueService) GetCatalogueCategoryImageByUid(uid string) (result 
 func (svc *CatalogueService) DeleteCatalogueCategory(uid string) (err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	time.Sleep(3 * time.Second)
 
 	//we have to check if this category has some items - if so we cant delete category
 	itemsCount, err := svc.GetCatalogueCategoryItemsCountRecursive(uid)
