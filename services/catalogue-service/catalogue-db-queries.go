@@ -118,6 +118,20 @@ func CatalogueCategoryImageByUidQuery(uid string) (result helpers.DatabaseQuery)
 	return result
 }
 
+func CatalogueItemImageByUidQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `match(r:CatalogueItem{uid: $uid})
+	
+	return r.image as image`
+
+	result.ReturnAlias = "image"
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
 func DeleteCatalogueCategoryByUidQuery(uid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH(p:CatalogueCategory) WHERE p.uid = $uid WITH p

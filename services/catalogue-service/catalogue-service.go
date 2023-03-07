@@ -23,6 +23,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
 	GetCatalogueCategoryWithDetailsForCopyByUid(uid string) (result models.CatalogueCategory, err error)
 	GetCatalogueCategoryImageByUid(uid string) (imageBase64 string, err error)
+	GetCatalogueItemImageByUid(uid string) (imageBase64 string, err error)
 	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	DeleteCatalogueCategory(uid string) (err error)
@@ -145,6 +146,16 @@ func (svc *CatalogueService) GetCatalogueCategoryImageByUid(uid string) (result 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := CatalogueCategoryImageByUidQuery(uid)
+	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueItemImageByUid(uid string) (result string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueItemImageByUidQuery(uid)
 	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
 
 	return result, err

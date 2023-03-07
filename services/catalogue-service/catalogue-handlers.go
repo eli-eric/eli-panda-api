@@ -1,7 +1,6 @@
 package catalogueService
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"panda/apigateway/helpers"
@@ -46,21 +45,6 @@ func (h *CatalogueHandlers) GetCataloguecategoriesByParentPath() echo.HandlerFun
 		}
 
 		return echo.ErrInternalServerError
-	}
-}
-
-func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		//get query path param
-		categoryUid := c.Param("uid")
-
-		fmt.Println(categoryUid)
-
-		imgData := "assets/no-image.png"
-
-		return c.File(imgData)
 	}
 }
 
@@ -212,6 +196,26 @@ func (h *CatalogueHandlers) CreateCatalogueCategory() echo.HandlerFunc {
 			} else {
 				log.Println(err)
 			}
+		} else {
+			log.Println(err)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get query path param
+		uid := c.Param("uid")
+
+		imageString, err := h.catalogueService.GetCatalogueCategoryImageByUid(uid)
+		if err == nil {
+
+			return c.String(200, imageString)
+
 		} else {
 			log.Println(err)
 		}
