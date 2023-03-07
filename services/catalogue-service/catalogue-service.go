@@ -2,7 +2,6 @@ package catalogueService
 
 import (
 	"errors"
-	"fmt"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -193,17 +192,10 @@ func (svc *CatalogueService) CopyCatalogueCategoryRecursive(originalUID string) 
 	//get existing category
 	category, err := svc.GetCatalogueCategoryWithDetailsForCopyByUid(originalUID)
 	if err == nil {
-		// transform original category to new one
-		category.UID = ""
-
 		category.Name += " copy"
 		category.Code += "-copy"
-		for _, group := range category.Groups {
-			group.UID = ""
-			for _, property := range group.Properties {
-				property.UID = ""
-			}
-		}
+		category.Image = ""
+
 		//create new one from existing one
 		err = svc.CreateCatalogueCategory(&category)
 
@@ -214,10 +206,28 @@ func (svc *CatalogueService) CopyCatalogueCategoryRecursive(originalUID string) 
 		//iterate on all sub-categories(recusively) and do the same(copy) for each sub-category
 		subCategories, err := svc.GetCatalogueCategoriesRecursiveByParentUID(originalUID)
 		if err == nil {
-			fmt.Println(subCategories)
+			if len(subCategories) > 0 {
+				childs := subCategories[0].Has_subcategory
+				svc.createSubChildsRecusive(&childs, newUID)
+			}
 		}
-
 	}
 
 	return newUID, err
+}
+
+func (svc *CatalogueService) createSubChildsRecusive(childs *[]models.CatalogueCategoryTreeItem, newParentUID string) {
+	for _, child := range *childs {
+		//get existing category
+		category, err := svc.GetCatalogueCategoryWithDetailsForCopyByUid(child.UID)
+		if err == nil {
+			category.ParentUID = newParentUID
+			err = svc.CreateCatalogueCategory(&category)
+			if err == nil {
+				if len(child.Has_subcategory) > 0 {
+					svc.createSubChildsRecusive(&child.Has_subcategory, category.UID)
+				}
+			}
+		}
+	}
 }

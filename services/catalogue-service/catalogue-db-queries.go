@@ -189,10 +189,10 @@ func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.Databa
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(parent)-[:HAS_SUBCATEGORY]->(category)
-	WITH category,parent, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
+	WITH category,parent, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties
 	WITH category,parent, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
-	WITH category,parent, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, parentUID: parent.uid } as category
+	WITH category,parent, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
+	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image } as category
 	return category`
 
 	result.ReturnAlias = "category"
