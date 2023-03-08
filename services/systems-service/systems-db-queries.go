@@ -117,22 +117,23 @@ OPTIONAL MATCH(r)-[:HAS_SYSTEM_TYPE]->(st)
 OPTIONAL MATCH(r)-[:HAS_IMPORTANCE]->(imp)
 OPTIONAL MATCH(r)-[:HAS_OWNER]->(own)
 OPTIONAL MATCH(r)-[:HAS_CRITICALITY]->(cc)
+OPTIONAL MATCH(r)-[:CONTAINS_ITEM]->(itm)
 OPTIONAL MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(r)
-WITH r,l, z, st, imp, own,cc, case when parent is not null then collect({uid: parent.uid, name: parent.name}) else null end as parents
-WITH r,l, z, st, imp, own,cc, reverse(parents) as parents
+WITH r,l, z, st,itm, imp, own,cc, case when parent is not null then collect({uid: parent.uid, name: parent.name}) else null end as parents
+WITH r,l, z, st,itm, imp, own,cc, reverse(parents) as parents
 RETURN {
     uid: r.uid, 
     name: r.name, 
     description: r.description,
-    location: l.name, 
-    systemType: st.name,
+    location: case when l is not null then {uid: l.uid, name: l.name} else null end, 
+    systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
     systemCode: r.systemCode,
     systemALias: r.systemAlias,
-    importance: imp.name,
-    owner: own.lastName + " " + own.firstName,
-    zone: z.name,
+    importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,
+    owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
+    zone: case when z is not null then {uid: z.uid, name: z.name} else null end,
     parentPath: parents,
-    criticalityClass: cc.name
+	itemUID: itm.uid    
     } as result`
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
