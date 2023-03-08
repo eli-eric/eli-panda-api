@@ -2,7 +2,10 @@ package systemsService
 
 import (
 	"panda/apigateway/helpers"
+	"panda/apigateway/services/systems-service/models"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func GetSystemTypesCodebookQuery() (result helpers.DatabaseQuery) {
@@ -139,5 +142,16 @@ RETURN {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func CreateNewSystem(newSystem *models.SystemForm) (result helpers.DatabaseQuery) {
+	result.Query = `
+CREATE(s:System{uid: $uid})
+return r as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uuid.NewString()
+
 	return result
 }

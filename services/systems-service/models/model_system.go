@@ -16,19 +16,19 @@ type SystemResponse struct {
 }
 
 type SystemForm struct {
-	UID           string  `json:"uid"`
-	ParentUID     string  `json:"parentUID"`
+	UID           *string `json:"uid"`
+	ParentUID     *string `json:"parentUID"`
 	Name          string  `json:"name"`
-	Description   string  `json:"description"`
-	SystemTypeUID string  `json:"systemTypeUID"`
-	SystemCode    string  `json:"systemCode"`
-	SystemAlias   string  `json:"systemAlias"`
-	LocationUID   string  `json:"locationUID"`
+	Description   *string `json:"description"`
+	SystemTypeUID *string `json:"systemTypeUID"`
+	SystemCode    *string `json:"systemCode"`
+	SystemAlias   *string `json:"systemAlias"`
+	LocationUID   *string `json:"locationUID"`
 	ItemUID       *string `json:"itemUID"`
-	OwnerUID      string  `json:"ownerUID"`
-	ImportanceUID string  `json:"importanceUID"`
-	ZoneUID       string  `json:"zoneUID"`
-	Image         string  `json:"image"`
+	OwnerUID      *string `json:"ownerUID"`
+	ImportanceUID *string `json:"importanceUID"`
+	ZoneUID       *string `json:"zoneUID"`
+	Image         *string `json:"image"`
 }
 
 type SystemSimpleResponse struct {
