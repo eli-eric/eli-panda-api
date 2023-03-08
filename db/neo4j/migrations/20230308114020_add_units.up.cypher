@@ -1,0 +1,17 @@
+MERGE(u:Unit{uid:'426e2321-0f7f-4bc7-b83b-04f863b399a9', name: 'V', code: 'v'});
+MERGE(u:Unit{uid:'bfa0e338-fbe2-4c79-90da-a5aa66ce61b9', name: 'kV', code: 'kv'});
+MERGE(u:Unit{uid:'8d434d8e-8787-42e9-b047-95e9293bf797', name: 'mV', code: 'mv'});
+MERGE(u:Unit{uid:'65c658c3-d5bc-4374-a072-938cf84550f4', name: 'J', code: 'j'});
+MERGE(u:Unit{uid:'cd64ba62-5a03-47d9-a289-ce176ba65883', name: 'kJ', code: 'kj'});
+MERGE(u:Unit{uid:'be113c0d-567b-45bb-a38d-e7acfa29b242', name: 'kW', code: 'kw'});
+MERGE(u:Unit{uid:'0874d799-9b2c-4b8a-8ab7-bcf24eec015e', name: 'cm', code: 'cm'});
+MERGE(u:Unit{uid:'a1143aa7-5471-4e2a-8b0b-b0a0c6fe5015', name: 'um', code: 'um'});
+MERGE(u:Unit{uid:'680d9109-e38e-4901-9b1f-9de12e31a787', name: 'kHz', code: 'khz'});
+MERGE(u:Unit{uid:'9a5bb981-7c66-443c-a7dc-7da8cd061787', name: 'MHz', code: 'mhz'});
+MERGE(u:Unit{uid:'118cc6aa-398c-4667-932d-9d3e16f675c4', name: 'GHz', code: 'ghz'});
+MERGE(u:Unit{uid:'bdde3062-64eb-4c87-95cc-6fc531212210', name: 's', code: 's'});
+MERGE(u:Unit{uid:'bcb0250b-b7e1-486a-a3a9-a967df65c295', name: 'ms', code: 'ms'});
+MERGE(u:Unit{uid:'2d728f9c-1fbb-4350-9bc0-723791f4cbcf', name: 'us', code: 'us'});
+MERGE(u:Unit{uid:'93371d35-63a2-4475-a852-c23b0df2deb4', name: 'ns', code: 'ns'});
+MERGE(u:Unit{uid:'8708ba9d-fe8a-4a9e-b47d-818abc29996b', name: 'ps', code: 'ps'});
+MERGE(u:Unit{uid:'b222773c-c98e-4422-978b-ab99d11c64b5', name: 'fs', code: 'fs'});
