@@ -18,7 +18,7 @@ Copy test data to the import folder:
 
 Run database and API in docker:
 
-`docker-compose -f docker-compose-dev.yml up -d --build`
+`docker-compose -f docker-compose-local.yml up -d --build`
 
 It will run all necessary services including neo4j and REST API itself.
 
@@ -32,7 +32,7 @@ Neo4j browser on: [localhost:7470](http://localhost:7470) (change Connect URL to
 
 You can end the dev server and all the related docker services by running:
 
-`docker-compose -f docker-compose-dev.yml down`
+`docker-compose -f docker-compose-local.yml down`
 
 ### Populate databse with test data
 
