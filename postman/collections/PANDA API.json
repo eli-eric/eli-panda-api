@@ -444,7 +444,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"test\",\n  \"password\": \"asterixaobelix\"\n}",
+							"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
