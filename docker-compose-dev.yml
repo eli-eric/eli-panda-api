@@ -13,7 +13,7 @@ services:
       - API_JWT_SECRET=${API_JWT_SECRET}
       - API_PORT=50200
       - BCRYPT_SALT_ROUNDS=12
-      - NEO4J_HOST=panda-neo4j-test
+      - NEO4J_HOST=panda-neo4j-dev
       - NEO4J_PORT=7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD}
