@@ -1,1408 +1,1275 @@
 {
-	"info": {
-		"_postman_id": "976be73f-bbd8-4b90-b8bb-5b36b6eb2a57",
-		"name": "PANDA API",
-		"description": "This is an REST API to the PANDA database. This is the only place to access data from the PANDA database.\n\nContact Support:\n Name: Jiří Švácha\n Email: jiri.svacha@eli-beams.eu",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_uid": "17678841-976be73f-bbd8-4b90-b8bb-5b36b6eb2a57"
-	},
-	"item": [
-		{
-			"name": "Catalogue",
-			"item": [
-				{
-					"name": "Get catalogue categories by parent path",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "073db2d7-a7d0-425a-a253-99b6d5d8b626",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"",
-									"if(pm.request.url.path.indexOf(\"vacuum-technology\") >= 0 && pm.request.url.path.indexOf(\"vacuum-pumps\") >= 0) ",
-									"pm.test(\"Body for parentPath = vacuum-technology/vacuum-pumps is correct\", function () {  ",
-									"    pm.response.to.have.jsonBody()",
-									"     var jsonData = pm.response.json();",
-									"     pm.expect(jsonData.length).to.eql(3)  ",
-									"});",
-									"",
-									"",
-									""
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "243fe204-9d1c-4647-8762-8977e8bb2d04",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"catalogue",
-								"categories",
-								":parentPath"
-							],
-							"variable": [
-								{
-									"key": "parentPath",
-									"value": "vacuum-technology/vacuum-pumps",
-									"description": "(Required) Parent category path"
-								}
-							]
-						},
-						"description": "Get catalogue categories by parent path"
-					},
-					"response": [
-						{
-							"id": "b4f68e8c-7c15-4333-bdf5-fce5fcd50ca2",
-							"name": "Returns array of catalogue categories",
-							"originalRequest": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearerToken}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json"
-									}
-								],
-								"url": {
-									"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"catalogue",
-										"categories",
-										":parentPath"
-									],
-									"variable": [
-										{
-											"key": "parentPath",
-											"value": "vacuum-technology/vacuum-pumps",
-											"description": "(Required) Parent category path"
-										}
-									]
-								},
-								"description": "Get catalogue categories by parent path"
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json"
-								}
-							],
-							"cookie": [],
-							"body": "[\n  {\n    \"uid\": \"50b3844d-6cde-4980-bed5-388618cad292\",\n    \"name\": \"Dry Vacuum Pumps\",\n    \"code\": \"dry-vacuum-pumps\",\n    \"parentPath\": \"vacuum-technology/vacuum-pumps\"\n  },\n  {\n    \"uid\": \"50b3844d-6cde-4980-bed5-388618cad292\",\n    \"name\": \"Dry Vacuum Pumps\",\n    \"code\": \"dry-vacuum-pumps\",\n    \"parentPath\": \"vacuum-technology/vacuum-pumps\"\n  }\n]"
-						},
-						{
-							"id": "cde94084-a9eb-4e1f-9d12-d5c881839dc8",
-							"name": "Unauthorized",
-							"originalRequest": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearerToken}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json"
-									}
-								],
-								"url": {
-									"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"catalogue",
-										"categories",
-										":parentPath"
-									],
-									"variable": [
-										{
-											"key": "parentPath",
-											"value": "vacuum-technology/vacuum-pumps",
-											"description": "(Required) Parent category path"
-										}
-									]
-								},
-								"description": "Get catalogue categories by parent path"
-							},
-							"status": "Unauthorized",
-							"code": 401,
-							"_postman_previewlanguage": "text",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "text/plain"
-								}
-							],
-							"cookie": [],
-							"body": ""
-						},
-						{
-							"id": "99de7be5-932c-4c63-bbb6-ceea89d861b3",
-							"name": "General server error",
-							"originalRequest": {
-								"auth": {
-									"type": "bearer",
-									"bearer": [
-										{
-											"key": "token",
-											"value": "{{bearerToken}}",
-											"type": "string"
-										}
-									]
-								},
-								"method": "GET",
-								"header": [
-									{
-										"key": "Accept",
-										"value": "application/json"
-									}
-								],
-								"url": {
-									"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"catalogue",
-										"categories",
-										":parentPath"
-									],
-									"variable": [
-										{
-											"key": "parentPath",
-											"value": "vacuum-technology/vacuum-pumps",
-											"description": "(Required) Parent category path"
-										}
-									]
-								},
-								"description": "Get catalogue categories by parent path"
-							},
-							"status": "Internal Server Error",
-							"code": 500,
-							"_postman_previewlanguage": "text",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "text/plain"
-								}
-							],
-							"cookie": [],
-							"body": ""
-						}
-					]
-				},
-				{
-					"name": "Get catalogue items",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"pm.test(\"Body is correct\", function () {",
-									"    pm.response.to.have.jsonBody()",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "86477b7a-7112-4398-ab5a-bf97938a3703",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/catalogue/items?page=1&pageSize=10&search=ath",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"catalogue",
-								"items"
-							],
-							"query": [
-								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "pageSize",
-									"value": "10"
-								},
-								{
-									"key": "search",
-									"value": "ath"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Get catalogue item by uid",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"pm.test(\"Body is correct\", function () {",
-									"    pm.response.to.have.jsonBody()",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "f47eae56-7d34-44f7-9fbd-e09dc2c63c0c",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/catalogue/item/18fc7b6e-3353-4711-9a15-0dc83cb3547c",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"catalogue",
-								"item",
-								"18fc7b6e-3353-4711-9a15-0dc83cb3547c"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Delete catalogue category",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});",
-									"pm.test(\"Body is correct\", function () {",
-									"    pm.response.to.have.jsonBody()",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "af19b7e2-a074-4302-91b7-fc33df5b8c75",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "DELETE",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/catalogue/category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"catalogue",
-								"category",
-								"ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"id": "f2ee209d-b139-4a50-b634-a798a888240d",
-			"description": "Everything about catalogue"
-		},
-		{
-			"name": "Security",
-			"item": [
-				{
-					"name": "Authentication of the user",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "d1005378-fd10-4072-968e-92fe5df38ce4",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "113a38d5-6c9e-4e63-97c2-4097c335547d",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json"
-							},
-							{
-								"key": "Accept",
-								"value": "application/json"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/authenticate",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"authenticate"
-							]
-						},
-						"description": "Authenticate user by username and password and return user info and JWT (json web token)"
-					},
-					"response": [
-						{
-							"id": "502d164c-b11c-41f4-ae6e-04b855a9602c",
-							"name": "Successfully authenticated. Returns user info with JWT.",
-							"originalRequest": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "Accept",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"betaverze001\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{baseUrl}}/authenticate",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"authenticate"
-									]
-								},
-								"description": "Authenticate user by username and password and return user info and JWT (json web token)"
-							},
-							"status": "OK",
-							"code": 200,
-							"_postman_previewlanguage": "json",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "application/json"
-								}
-							],
-							"cookie": [],
-							"body": "{\n  \"uid\": \"71864520-9e86-427c-901c-0c220f951775\",\n  \"username\": \"albert.einstein\",\n  \"email\": \"albert.einstein@eli-laser.eu\",\n  \"firstName\": \"Albert\",\n  \"lastName\": \"Einstein\",\n  \"facility\": \"ELI ERIC\",\n  \"facilityCode\": \"E\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOiIxMjM0NTY3ODk5In0.4UuocEvJTR3c1t2kB4f5lbRKfs5yKe7dW1Qtm_LITII\",\n  \"roles\": [\n    \"catalogue-view\",\n    \"spare-parts-view\"\n  ]\n}"
-						},
-						{
-							"id": "f4706857-ae70-45a6-8a65-019dd4255076",
-							"name": "Unauthorized",
-							"originalRequest": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "Accept",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"betaverze001\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{baseUrl}}/authenticate",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"authenticate"
-									]
-								},
-								"description": "Authenticate user by username and password and return user info and JWT (json web token)"
-							},
-							"status": "Unauthorized",
-							"code": 401,
-							"_postman_previewlanguage": "text",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "text/plain"
-								}
-							],
-							"cookie": [],
-							"body": ""
-						},
-						{
-							"id": "692de103-18c0-4731-8cae-a175b7f49691",
-							"name": "General server error",
-							"originalRequest": {
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json"
-									},
-									{
-										"key": "Accept",
-										"value": "application/json"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"betaverze001\"\n}",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "{{baseUrl}}/authenticate",
-									"host": [
-										"{{baseUrl}}"
-									],
-									"path": [
-										"authenticate"
-									]
-								},
-								"description": "Authenticate user by username and password and return user info and JWT (json web token)"
-							},
-							"status": "Internal Server Error",
-							"code": 500,
-							"_postman_previewlanguage": "text",
-							"header": [
-								{
-									"key": "Content-Type",
-									"value": "text/plain"
-								}
-							],
-							"cookie": [],
-							"body": ""
-						}
-					]
-				}
-			],
-			"id": "7956338b-c5eb-4e71-9736-33b5d897ca5a",
-			"description": "Everything about authentication and authorization"
-		},
-		{
-			"name": "Codebooks",
-			"item": [
-				{
-					"name": "Zones",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "88c327ee-e913-4ab0-a75b-961f6a2a2854",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/ZONE",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"ZONE"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Sub-Zones",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "c5cef34b-dfb5-49b0-8e66-5bc120c8d11b",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/SUB_ZONE?parentUID=09bc76b8-7bae-441f-913c-0fa470a29e9b",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"SUB_ZONE"
-							],
-							"query": [
-								{
-									"key": "parentUID",
-									"value": "09bc76b8-7bae-441f-913c-0fa470a29e9b"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Units",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "b2ae2daa-a78f-4a71-a458-e7c89535661b",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/UNIT",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"UNIT"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Catalogue property types",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "dc95ba7c-4a07-479e-bd29-ebaba0d82452",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/CATALOGUE_PROPERTY_TYPE",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"CATALOGUE_PROPERTY_TYPE"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "System types",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "552153cb-66fa-459e-9ff0-f6767e15c016",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/SYSTEM_TYPE",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"SYSTEM_TYPE"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "System importances",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "0ae9d0ee-6238-49fc-ac94-582850b1b5b8",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/SYSTEM_IMPORTANCE",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"SYSTEM_IMPORTANCE"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "System criticalities",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "b4edf872-02fa-4094-8455-1da7267877e8",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/SYSTEM_CRITICALITY_CLASS",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"SYSTEM_CRITICALITY_CLASS"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Item usages",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "3d01322e-e8d3-4114-85d2-8979542619ff",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/ITEM_USAGE",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"ITEM_USAGE"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Item condition statuses",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "9be50fde-1ede-4883-a4e1-f4f56d6389fc",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/ITEM_CONDITION_STATUS",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"ITEM_CONDITION_STATUS"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Users",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "826fe8ea-b885-45f8-a375-968b2000c7c5",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/USER",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"USER"
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"id": "b29e4121-b57a-4674-99f7-f475de6f56d2"
-		},
-		{
-			"name": "Autocompletes",
-			"item": [
-				{
-					"name": "Users",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "563de115-08e3-4b8e-bf37-3e132f567ab9",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/USER",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"autocomplete",
-								"USER"
-							],
-							"query": [
-								{
-									"key": "limit",
-									"value": "2",
-									"disabled": true
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Locations",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "9cbcf8ff-6973-46ab-92e3-91d8cf388a44",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/LOCATION?searchText=el&limit=50",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"autocomplete",
-								"LOCATION"
-							],
-							"query": [
-								{
-									"key": "searchText",
-									"value": "l.02",
-									"disabled": true
-								},
-								{
-									"key": "searchText",
-									"value": "el"
-								},
-								{
-									"key": "limit",
-									"value": "50"
-								}
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"id": "6fc176d2-1027-4be1-96d0-3b8c89ebf9d7"
-		},
-		{
-			"name": "Systems",
-			"item": [
-				{
-					"name": "Sub-systems by parent UID",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "76ed1314-784a-404f-8777-587e96ed71b7",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/system/subsystems",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"system",
-								"subsystems"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "System image",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "e2972282-468e-4e56-9cd3-2389c418bc57",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/system/1/image",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"system",
-								"1",
-								"image"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "System detail",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "3b62916e-69f8-4cb5-a958-6373adc106d0",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/system/1-1-1",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"system",
-								"1-1-1"
-							]
-						}
-					},
-					"response": []
-				}
-			],
-			"id": "2177a51e-329d-4129-840e-fb949f9ae468"
-		},
-		{
-			"name": "Test anything",
-			"id": "dbe50e86-c5a0-4a5b-96c8-ea97c50ad10c",
-			"protocolProfileBehavior": {
-				"disableBodyPruning": true
-			},
-			"request": {
-				"auth": {
-					"type": "bearer",
-					"bearer": [
-						{
-							"key": "token",
-							"value": "{{bearerToken}}",
-							"type": "string"
-						}
-					]
-				},
-				"method": "GET",
-				"header": [],
-				"url": {
-					"raw": "{{baseUrl}}/catalogue/category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b",
-					"host": [
-						"{{baseUrl}}"
-					],
-					"path": [
-						"catalogue",
-						"category",
-						"ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
-					]
-				}
-			},
-			"response": []
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"id": "55618e04-801f-4fd0-8cba-f880844a8ebd",
-				"type": "text/javascript",
-				"exec": [
-					""
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"id": "85c1605d-9537-45b1-a4b7-745b4723c3ae",
-				"type": "text/javascript",
-				"exec": [
-					""
-				]
-			}
-		}
-	]
+  "info": {
+    "_postman_id": "976be73f-bbd8-4b90-b8bb-5b36b6eb2a57",
+    "name": "PANDA API",
+    "description": "This is an REST API to the PANDA database. This is the only place to access data from the PANDA database.\n\nContact Support:\n Name: Jiří Švácha\n Email: jiri.svacha@eli-beams.eu",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_uid": "17678841-976be73f-bbd8-4b90-b8bb-5b36b6eb2a57"
+  },
+  "item": [
+    {
+      "name": "Catalogue",
+      "item": [
+        {
+          "name": "Get catalogue categories by parent path",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "073db2d7-a7d0-425a-a253-99b6d5d8b626",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "if(pm.request.url.path.indexOf(\"vacuum-technology\") >= 0 && pm.request.url.path.indexOf(\"vacuum-pumps\") >= 0) ",
+                  "pm.test(\"Body for parentPath = vacuum-technology/vacuum-pumps is correct\", function () {  ",
+                  "    pm.response.to.have.jsonBody()",
+                  "     var jsonData = pm.response.json();",
+                  "     pm.expect(jsonData.length).to.eql(3)  ",
+                  "});",
+                  "",
+                  "",
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "243fe204-9d1c-4647-8762-8977e8bb2d04",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+              "host": ["{{baseUrl}}"],
+              "path": ["catalogue", "categories", ":parentPath"],
+              "variable": [
+                {
+                  "key": "parentPath",
+                  "value": "vacuum-technology/vacuum-pumps",
+                  "description": "(Required) Parent category path"
+                }
+              ]
+            },
+            "description": "Get catalogue categories by parent path"
+          },
+          "response": [
+            {
+              "id": "b4f68e8c-7c15-4333-bdf5-fce5fcd50ca2",
+              "name": "Returns array of catalogue categories",
+              "originalRequest": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["catalogue", "categories", ":parentPath"],
+                  "variable": [
+                    {
+                      "key": "parentPath",
+                      "value": "vacuum-technology/vacuum-pumps",
+                      "description": "(Required) Parent category path"
+                    }
+                  ]
+                },
+                "description": "Get catalogue categories by parent path"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"uid\": \"50b3844d-6cde-4980-bed5-388618cad292\",\n    \"name\": \"Dry Vacuum Pumps\",\n    \"code\": \"dry-vacuum-pumps\",\n    \"parentPath\": \"vacuum-technology/vacuum-pumps\"\n  },\n  {\n    \"uid\": \"50b3844d-6cde-4980-bed5-388618cad292\",\n    \"name\": \"Dry Vacuum Pumps\",\n    \"code\": \"dry-vacuum-pumps\",\n    \"parentPath\": \"vacuum-technology/vacuum-pumps\"\n  }\n]"
+            },
+            {
+              "id": "cde94084-a9eb-4e1f-9d12-d5c881839dc8",
+              "name": "Unauthorized",
+              "originalRequest": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["catalogue", "categories", ":parentPath"],
+                  "variable": [
+                    {
+                      "key": "parentPath",
+                      "value": "vacuum-technology/vacuum-pumps",
+                      "description": "(Required) Parent category path"
+                    }
+                  ]
+                },
+                "description": "Get catalogue categories by parent path"
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "id": "99de7be5-932c-4c63-bbb6-ceea89d861b3",
+              "name": "General server error",
+              "originalRequest": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{bearerToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["catalogue", "categories", ":parentPath"],
+                  "variable": [
+                    {
+                      "key": "parentPath",
+                      "value": "vacuum-technology/vacuum-pumps",
+                      "description": "(Required) Parent category path"
+                    }
+                  ]
+                },
+                "description": "Get catalogue categories by parent path"
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "cookie": [],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "Get catalogue items",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Body is correct\", function () {",
+                  "    pm.response.to.have.jsonBody()",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "86477b7a-7112-4398-ab5a-bf97938a3703",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/catalogue/items?page=1&pageSize=10&search=ath",
+              "host": ["{{baseUrl}}"],
+              "path": ["catalogue", "items"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "search",
+                  "value": "ath"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get catalogue item by uid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Body is correct\", function () {",
+                  "    pm.response.to.have.jsonBody()",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "f47eae56-7d34-44f7-9fbd-e09dc2c63c0c",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/catalogue/item/18fc7b6e-3353-4711-9a15-0dc83cb3547c",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "catalogue",
+                "item",
+                "18fc7b6e-3353-4711-9a15-0dc83cb3547c"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete catalogue category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Body is correct\", function () {",
+                  "    pm.response.to.have.jsonBody()",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "af19b7e2-a074-4302-91b7-fc33df5b8c75",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/catalogue/category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "catalogue",
+                "category",
+                "ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "f2ee209d-b139-4a50-b634-a798a888240d",
+      "description": "Everything about catalogue"
+    },
+    {
+      "name": "Security",
+      "item": [
+        {
+          "name": "Authentication of the user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "d1005378-fd10-4072-968e-92fe5df38ce4",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "113a38d5-6c9e-4e63-97c2-4097c335547d",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/authenticate",
+              "host": ["{{baseUrl}}"],
+              "path": ["authenticate"]
+            },
+            "description": "Authenticate user by username and password and return user info and JWT (json web token)"
+          },
+          "response": [
+            {
+              "id": "502d164c-b11c-41f4-ae6e-04b855a9602c",
+              "name": "Successfully authenticated. Returns user info with JWT.",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/authenticate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["authenticate"]
+                },
+                "description": "Authenticate user by username and password and return user info and JWT (json web token)"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"uid\": \"71864520-9e86-427c-901c-0c220f951775\",\n  \"username\": \"albert.einstein\",\n  \"email\": \"albert.einstein@eli-laser.eu\",\n  \"firstName\": \"Albert\",\n  \"lastName\": \"Einstein\",\n  \"facility\": \"ELI ERIC\",\n  \"facilityCode\": \"E\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOiIxMjM0NTY3ODk5In0.4UuocEvJTR3c1t2kB4f5lbRKfs5yKe7dW1Qtm_LITII\",\n  \"roles\": [\n    \"catalogue-view\",\n    \"spare-parts-view\"\n  ]\n}"
+            },
+            {
+              "id": "f4706857-ae70-45a6-8a65-019dd4255076",
+              "name": "Unauthorized",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/authenticate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["authenticate"]
+                },
+                "description": "Authenticate user by username and password and return user info and JWT (json web token)"
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "id": "692de103-18c0-4731-8cae-a175b7f49691",
+              "name": "General server error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/authenticate",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["authenticate"]
+                },
+                "description": "Authenticate user by username and password and return user info and JWT (json web token)"
+              },
+              "status": "Internal Server Error",
+              "code": 500,
+              "_postman_previewlanguage": "text",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "text/plain"
+                }
+              ],
+              "cookie": [],
+              "body": ""
+            }
+          ]
+        }
+      ],
+      "id": "7956338b-c5eb-4e71-9736-33b5d897ca5a",
+      "description": "Everything about authentication and authorization"
+    },
+    {
+      "name": "Codebooks",
+      "item": [
+        {
+          "name": "Zones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "88c327ee-e913-4ab0-a75b-961f6a2a2854",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/ZONE",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "ZONE"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Sub-Zones",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "c5cef34b-dfb5-49b0-8e66-5bc120c8d11b",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/SUB_ZONE?parentUID=09bc76b8-7bae-441f-913c-0fa470a29e9b",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "SUB_ZONE"],
+              "query": [
+                {
+                  "key": "parentUID",
+                  "value": "09bc76b8-7bae-441f-913c-0fa470a29e9b"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Units",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b2ae2daa-a78f-4a71-a458-e7c89535661b",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/UNIT",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "UNIT"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Catalogue property types",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "dc95ba7c-4a07-479e-bd29-ebaba0d82452",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/CATALOGUE_PROPERTY_TYPE",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "CATALOGUE_PROPERTY_TYPE"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System types",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "552153cb-66fa-459e-9ff0-f6767e15c016",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/SYSTEM_TYPE",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "SYSTEM_TYPE"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System importances",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "0ae9d0ee-6238-49fc-ac94-582850b1b5b8",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/SYSTEM_IMPORTANCE",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "SYSTEM_IMPORTANCE"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System criticalities",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "b4edf872-02fa-4094-8455-1da7267877e8",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/SYSTEM_CRITICALITY_CLASS",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "SYSTEM_CRITICALITY_CLASS"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Item usages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "3d01322e-e8d3-4114-85d2-8979542619ff",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/ITEM_USAGE",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "ITEM_USAGE"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Item condition statuses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "9be50fde-1ede-4883-a4e1-f4f56d6389fc",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/ITEM_CONDITION_STATUS",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "ITEM_CONDITION_STATUS"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "826fe8ea-b885-45f8-a375-968b2000c7c5",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/USER",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "USER"]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "b29e4121-b57a-4674-99f7-f475de6f56d2"
+    },
+    {
+      "name": "Autocompletes",
+      "item": [
+        {
+          "name": "Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "563de115-08e3-4b8e-bf37-3e132f567ab9",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/autocomplete/USER",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "autocomplete", "USER"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "2",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Locations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "9cbcf8ff-6973-46ab-92e3-91d8cf388a44",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/codebook/autocomplete/LOCATION?searchText=el&limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["codebook", "autocomplete", "LOCATION"],
+              "query": [
+                {
+                  "key": "searchText",
+                  "value": "l.02",
+                  "disabled": true
+                },
+                {
+                  "key": "searchText",
+                  "value": "el"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "6fc176d2-1027-4be1-96d0-3b8c89ebf9d7"
+    },
+    {
+      "name": "Systems",
+      "item": [
+        {
+          "name": "Sub-systems by parent UID",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "76ed1314-784a-404f-8777-587e96ed71b7",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/system/subsystems",
+              "host": ["{{baseUrl}}"],
+              "path": ["system", "subsystems"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "e2972282-468e-4e56-9cd3-2389c418bc57",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/system/1/image",
+              "host": ["{{baseUrl}}"],
+              "path": ["system", "1", "image"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "System detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "id": "be97441d-e330-47f4-bd08-1780dc73864a",
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "id": "3b62916e-69f8-4cb5-a958-6373adc106d0",
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          },
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{bearerToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/system/1-1-1",
+              "host": ["{{baseUrl}}"],
+              "path": ["system", "1-1-1"]
+            }
+          },
+          "response": []
+        }
+      ],
+      "id": "2177a51e-329d-4129-840e-fb949f9ae468"
+    },
+    {
+      "name": "Test anything",
+      "id": "dbe50e86-c5a0-4a5b-96c8-ea97c50ad10c",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{bearerToken}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/catalogue/category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b",
+          "host": ["{{baseUrl}}"],
+          "path": [
+            "catalogue",
+            "category",
+            "ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "id": "55618e04-801f-4fd0-8cba-f880844a8ebd",
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "id": "85c1605d-9537-45b1-a4b7-745b4723c3ae",
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ]
 }
