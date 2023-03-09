@@ -25,3 +25,4 @@ db/neo4j/dev-instance/plugins
 db/neo4j/dev-instance/conf
 db/neo4j/dev-instance/import
 __debug_bin
+app.log
