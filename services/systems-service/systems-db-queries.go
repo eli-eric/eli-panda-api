@@ -128,7 +128,7 @@ RETURN {
     uid: r.uid, 
     name: r.name, 
     description: r.description,
-    location: case when l is not null then {uid: l.uid, name: l.name} else null end, 
+    location: case when l is not null then {uid: l.code, name: l.name} else null end, 
     systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
     systemCode: r.systemCode,
     systemALias: r.systemAlias,
@@ -167,6 +167,11 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 	WITH s
 	`
 
+	if newSystem.ParentUID != nil {
+		result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
+		result.Parameters["parentUID"] = newSystem.ParentUID
+	}
+
 	if newSystem.ZoneUID != nil {
 		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
 		result.Parameters["zoneUID"] = newSystem.ZoneUID
@@ -197,7 +202,7 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 		result.Parameters["image"] = newSystem.Image
 	}
 
-	result.Query += `RETURN s.uid as uid`
+	result.Query += `RETURN s.uid as result`
 
 	result.ReturnAlias = "result"
 

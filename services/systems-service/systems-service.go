@@ -1,6 +1,7 @@
 package systemsService
 
 import (
+	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
@@ -145,7 +146,10 @@ func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (res
 func (svc *SystemsService) SaveSystemDetail(system *models.SystemForm, facilityCode string) (uid string, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	uid, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
+	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
 
+	if err != nil {
+		log.Println(err.Error())
+	}
 	return uid, err
 }
