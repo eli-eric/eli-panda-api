@@ -145,7 +145,7 @@ RETURN {
 	return result
 }
 
-func CreateNewSystem(newSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
+func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["uid"] = uuid.NewString()

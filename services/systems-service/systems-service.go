@@ -27,6 +27,7 @@ type ISystemsService interface {
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
+	SaveSystemDetail(system *models.SystemForm, facilityCode string) (uid string, err error)
 }
 
 // Create new security service instance
@@ -139,4 +140,12 @@ func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (res
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.SystemResponse](session, SystemDetailQuery(uid, facilityCode))
 
 	return result, err
+}
+
+func (svc *SystemsService) SaveSystemDetail(system *models.SystemForm, facilityCode string) (uid string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	uid, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
+
+	return uid, err
 }
