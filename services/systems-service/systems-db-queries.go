@@ -64,17 +64,11 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 }
 
 func GetZonesCodebookQuery() (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(r:Zone) WHERE NOT ()-[:HAS_SUBZONE]->(r) RETURN {uid: r.uid,name: r.code + " - " + r.name} as zones ORDER BY zones.name`
-	result.ReturnAlias = "zones"
+	result.Query = `MATCH(z:Zone)-[:HAS_SUBZONE]->(sz) return {uid:sz.uid, name: z.code+"-"+sz.code + " - " + sz.name + " ("+  z.name + ")"} as zone order by z.code, sz.code
+	UNION
+	MATCH(z:Zone) where not ()-[:HAS_SUBZONE]->(z)  return {uid:z.uid, name:z.code + " - " +z.name } as zone order by z.code`
+	result.ReturnAlias = "zone"
 	result.Parameters = make(map[string]interface{})
-	return result
-}
-
-func GetSubZonesByParentUidCodebookQuery(parentUID string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(parent:Zone{uid:$parentUID})-[:HAS_SUBZONE]->(r) RETURN {uid: r.uid,name:r.code + " - " + r.name} as zones ORDER BY zones.name`
-	result.ReturnAlias = "zones"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["parentUID"] = parentUID
 	return result
 }
 
