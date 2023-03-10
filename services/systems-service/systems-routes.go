@@ -20,5 +20,8 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	// get system detail by uid
 	e.GET("/v1/system/:uid", m.Authorization(h.GetSystemDetail(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
+	//save new system/sub-system
 	e.POST("/v1/system", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	// this one is only becasue of bad request from ui for now
+	e.POST("/v1/system/:xxx", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }
