@@ -167,37 +167,37 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 	WITH s
 	`
 
-	if newSystem.ParentUID != nil {
+	if newSystem.ParentUID != nil && len(*newSystem.ParentUID) > 0 {
 		result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
 		result.Parameters["parentUID"] = newSystem.ParentUID
 	}
 
-	if newSystem.ZoneUID != nil {
+	if newSystem.ZoneUID != nil && len(*newSystem.ZoneUID) > 0 {
 		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
 		result.Parameters["zoneUID"] = newSystem.ZoneUID
 	}
 
-	if newSystem.LocationUID != nil {
+	if newSystem.LocationUID != nil && len(*newSystem.LocationUID) > 0 {
 		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
 		result.Parameters["locationUID"] = newSystem.LocationUID
 	}
 
-	if newSystem.SystemTypeUID != nil {
+	if newSystem.SystemTypeUID != nil && len(*newSystem.SystemTypeUID) > 0 {
 		result.Query += `WITH s MATCH(st:SystemType{uid:$systemTypeUID}) MERGE(s)-[:HAS_SYSTEM_TYPE]->(st) `
 		result.Parameters["systemTypeUID"] = newSystem.SystemTypeUID
 	}
 
-	if newSystem.OwnerUID != nil {
+	if newSystem.OwnerUID != nil && len(*newSystem.OwnerUID) > 0 {
 		result.Query += `WITH s MATCH(owner:User{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
 		result.Parameters["ownerUID"] = newSystem.OwnerUID
 	}
 
-	if newSystem.ImportanceUID != nil {
+	if newSystem.ImportanceUID != nil && len(*newSystem.ImportanceUID) > 0 {
 		result.Query += `WITH s MATCH(imp:SystemImportance{uid:$importanceUID}) MERGE(s)-[:HAS_IMPORTANCE]->(imp) `
 		result.Parameters["importanceUID"] = newSystem.ImportanceUID
 	}
 
-	if newSystem.Image != nil {
+	if newSystem.Image != nil && len(*newSystem.Image) > 0 {
 		result.Query += `WITH s SET s.image = $image `
 		result.Parameters["image"] = newSystem.Image
 	}
