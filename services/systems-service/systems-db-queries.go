@@ -145,32 +145,61 @@ RETURN {
 	return result
 }
 
-func CreateNewSystem(newSystem *models.SystemForm) (result helpers.DatabaseQuery) {
+func CreateNewSystem(newSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["uid"] = uuid.NewString()
+	result.Parameters["name"] = newSystem.Name
+	result.Parameters["description"] = newSystem.Description
+	result.Parameters["systemCode"] = newSystem.SystemCode
+	result.Parameters["systemAlias"] = newSystem.SystemAlias
+
 	result.Query = `
 	CREATE(s:System{uid: $uid})
 	SET 
 	s.name = $name, 
 	s.description = $description,
 	s.systemCode = $systemCode,
-	s.systemAlias = $systemAlias`
+	s.systemAlias = $systemAlias
+	WITH s
+	MATCH(f:Facility{code: $facilityCode})
+	CREATE(s)-[:BELONGS_TO_FACILITY]->(f)
+	WITH s
+	`
 
 	if newSystem.ZoneUID != nil {
-		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z)`
+		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
+		result.Parameters["zoneUID"] = newSystem.ZoneUID
 	}
 
 	if newSystem.LocationUID != nil {
-		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:"B"}) MERGE(s)-[:HAS_LOCATION]->(l)`
+		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
+		result.Parameters["locationUID"] = newSystem.LocationUID
+	}
+
+	if newSystem.SystemTypeUID != nil {
+		result.Query += `WITH s MATCH(st:SystemType{uid:$systemTypeUID}) MERGE(s)-[:HAS_SYSTEM_TYPE]->(st) `
+		result.Parameters["systemTypeUID"] = newSystem.SystemTypeUID
+	}
+
+	if newSystem.OwnerUID != nil {
+		result.Query += `WITH s MATCH(owner:User{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
+		result.Parameters["ownerUID"] = newSystem.OwnerUID
+	}
+
+	if newSystem.ImportanceUID != nil {
+		result.Query += `WITH s MATCH(imp:SystemImportance{uid:$importanceUID}) MERGE(s)-[:HAS_IMPORTANCE]->(imp) `
+		result.Parameters["importanceUID"] = newSystem.ImportanceUID
+	}
+
+	if newSystem.Image != nil {
+		result.Query += `WITH s SET s.image = $image `
+		result.Parameters["image"] = newSystem.Image
 	}
 
 	result.Query += `RETURN s.uid as uid`
 
 	result.ReturnAlias = "result"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["uid"] = uuid.NewString()
-	result.Parameters["name"] = newSystem.Name
-	result.Parameters["description"] = newSystem.Description
-	result.Parameters["systemCode"] = newSystem.SystemCode
-	result.Parameters["systemAlias"] = newSystem.SystemAlias
 
 	return result
 }
