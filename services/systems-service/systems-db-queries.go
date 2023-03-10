@@ -147,11 +147,30 @@ RETURN {
 
 func CreateNewSystem(newSystem *models.SystemForm) (result helpers.DatabaseQuery) {
 	result.Query = `
-CREATE(s:System{uid: $uid})
-return r as result`
+	CREATE(s:System{uid: $uid})
+	SET 
+	s.name = $name, 
+	s.description = $description,
+	s.systemCode = $systemCode,
+	s.systemAlias = $systemAlias`
+
+	if newSystem.ZoneUID != nil {
+		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z)`
+	}
+
+	if newSystem.LocationUID != nil {
+		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:"B"}) MERGE(s)-[:HAS_LOCATION]->(l)`
+	}
+
+	result.Query += `RETURN s.uid as uid`
+
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uuid.NewString()
+	result.Parameters["name"] = newSystem.Name
+	result.Parameters["description"] = newSystem.Description
+	result.Parameters["systemCode"] = newSystem.SystemCode
+	result.Parameters["systemAlias"] = newSystem.SystemAlias
 
 	return result
 }
