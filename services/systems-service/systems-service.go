@@ -144,7 +144,7 @@ func (svc *SystemsService) SaveSystemDetail(system *models.SystemForm, facilityC
 	go func() {
 		// we dont want to log image data
 		system.Image = nil
-		helpers.LogHistory(session, uid, nil, system, userUID, "CREATE")
+		helpers.LogDBHistory(session, uid, nil, system, userUID, "CREATE")
 	}()
 
 	return uid, err
