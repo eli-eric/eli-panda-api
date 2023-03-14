@@ -4,10 +4,11 @@ type SystemResponse struct {
 	UID         string                 `json:"uid"`
 	Name        string                 `json:"name"`
 	ParentPath  []SystemSimpleResponse `json:"parentPath"`
-	Description string                 `json:"description"`
+	ParentUID   *string                `json:"parentUID,omitempty"`
+	Description *string                `json:"description,omitempty"`
 	SystemType  *SystemSimpleResponse  `json:"systemType,omitempty"`
-	SystemCode  string                 `json:"systemCode"`
-	SystemAlias string                 `json:"systemAlias"`
+	SystemCode  *string                `json:"systemCode,omitempty"`
+	SystemAlias *string                `json:"systemAlias,omitempty"`
 	Location    *SystemSimpleResponse  `json:"location,omitempty"`
 	ItemUID     *string                `json:"itemUID,omitempty"`
 	Owner       *SystemSimpleResponse  `json:"owner,omitempty"`

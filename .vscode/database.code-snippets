@@ -1,19 +1,36 @@
 {
-	"Create database query function": {
-		"scope": "go",
-		"prefix": "dbq",
-		"body": [
-			"func $1() (result helpers.DatabaseQuery) {",
-				"result.Query = `",
-				  "return r as $2`",
-			
-				"result.ReturnAlias = \"$2\"",
-				"result.Parameters = make(map[string]interface{})",
-				"//result.Parameters[\"uid\"] = uid",
-			
-				"return result",
-			"}"
-		],
-		"description": "Create database query function - return helpers.DatabaseQuery object"
-	}	
+  "Create database query function": {
+    "scope": "go",
+    "prefix": "dbq",
+    "body": [
+      "func $1() (result helpers.DatabaseQuery) {",
+      "result.Query = `",
+      "return r as $2`",
+
+      "result.ReturnAlias = \"$2\"",
+      "result.Parameters = make(map[string]interface{})",
+      "//result.Parameters[\"uid\"] = uid",
+
+      "return result",
+      "}"
+    ],
+    "description": "Create database query function - return helpers.DatabaseQuery object"
+  },
+  "Update queries": {
+    "scope": "go",
+    "prefix": "dbuq",
+    "body": [
+      "if newSystem.$1UID != nil && oldSystem.$1 == nil {",
+      "result.Query += `WITH s MATCH($2:$1{uid:$$1UID}) MERGE(s)-[:HAS_${1/(.*)/${1:/upcase}/}]->($2) `",
+      "result.Parameters[\"$1UID\"] = newSystem.$1UID",
+      "} else if newSystem.$1UID != nil && oldSystem.$1 != nil && newSystem.$1UID != &oldSystem.$1.UID {",
+      "result.Query += `WITH s MATCH(s)-[r$2:HAS_${1/(.*)/${1:/upcase}/}]->($2) delete r$2 ",
+      "WITH s MATCH(l:$1{uid:$$1UID}) MERGE(s)-[:HAS_${1/(.*)/${1:/upcase}/}]->($2) `",
+      "result.Parameters[\"$1UID\"] = newSystem.$1UID",
+      "} else if newSystem.$1UID == nil && oldSystem.$1 != nil {",
+      "result.Query += `WITH s MATCH(s)-[r$2:HAS_${1/(.*)/${1:/upcase}/}]->($2) delete r$2 `",
+      "}"
+    ],
+    "description": "Create database query statement while update object"
+  }
 }

@@ -208,3 +208,113 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 
 	return result
 }
+
+func UpdateSystemQuery(newSystem *models.SystemForm, oldSystem *models.SystemResponse, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["uid"] = oldSystem.UID
+
+	result.Query = `MATCH(s:System{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
+
+	if newSystem.Name != oldSystem.Name {
+		result.Parameters["name"] = newSystem.Name
+		result.Query += `WITH s SET s.name=$name `
+	}
+
+	if *newSystem.Description != *oldSystem.Description {
+		result.Parameters["description"] = newSystem.Description
+		result.Query += `WITH s SET s.description=$description `
+	}
+
+	if *newSystem.SystemCode != *oldSystem.SystemCode {
+		result.Parameters["systemCode"] = newSystem.SystemCode
+		result.Query += `WITH s SET s.systemCode=$systemCode `
+	}
+
+	if *newSystem.SystemAlias != *oldSystem.SystemAlias {
+		result.Parameters["systemAlias"] = newSystem.SystemAlias
+		result.Query += `WITH s SET s.systemAlias=$systemAlias `
+	}
+
+	//to do later
+	// if *newSystem.ParentUID != *oldSystem.ParentUID {
+	// 	result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
+	// 	result.Parameters["parentUID"] = newSystem.ParentUID
+	// }
+
+	if newSystem.ZoneUID != nil && oldSystem.Zone == nil {
+		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
+		result.Parameters["zoneUID"] = newSystem.ZoneUID
+	} else if newSystem.ZoneUID != nil && oldSystem.Zone != nil && newSystem.ZoneUID != &oldSystem.Zone.UID {
+		result.Query += `WITH s MATCH(s)-[rz:HAS_ZONE]->(z) delete rz 
+						 WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
+		result.Parameters["zoneUID"] = newSystem.ZoneUID
+	} else if newSystem.ZoneUID == nil && oldSystem.Zone != nil {
+		result.Query += `WITH s MATCH(s)-[rz:HAS_ZONE]->(z) delete rz `
+	}
+
+	if newSystem.LocationUID != nil && oldSystem.Location == nil {
+		result.Query += `WITH s MATCH(l:Location{uid:$LocationUID}) MERGE(s)-[:HAS_LOCATION]->(l) `
+		result.Parameters["LocationUID"] = newSystem.LocationUID
+	} else if newSystem.LocationUID != nil && oldSystem.Location != nil && newSystem.LocationUID != &oldSystem.Location.UID {
+		result.Query += `WITH s MATCH(s)-[rl:HAS_LOCATION]->(l) delete rl 
+						 WITH s MATCH(l:Location{uid:$LocationUID}) MERGE(s)-[:HAS_LOCATION]->(l) `
+		result.Parameters["LocationUID"] = newSystem.LocationUID
+	} else if newSystem.LocationUID == nil && oldSystem.Location != nil {
+		result.Query += `WITH s MATCH(s)-[rl:HAS_LOCATION]->(l) delete rl `
+	}
+
+	if newSystem.SystemTypeUID != nil && oldSystem.SystemType == nil {
+		result.Query += `WITH s MATCH(st:SystemType{uid:$SystemTypeUID}) MERGE(s)-[:HAS_SYSTEM_TYPE]->(st) `
+		result.Parameters["SystemTypeUID"] = newSystem.SystemTypeUID
+	} else if newSystem.SystemTypeUID != nil && oldSystem.SystemType != nil && newSystem.SystemTypeUID != &oldSystem.SystemType.UID {
+		result.Query += `WITH s MATCH(s)-[rst:HAS_SYSTEM_TYPE]->(st) delete rst 
+                         WITH s MATCH(l:SystemType{uid:$SystemTypeUID}) MERGE(s)-[:HAS_SYSTEM_TYPE]->(st) `
+		result.Parameters["SystemTypeUID"] = newSystem.SystemTypeUID
+	} else if newSystem.SystemTypeUID == nil && oldSystem.SystemType != nil {
+		result.Query += `WITH s MATCH(s)-[rst:HAS_SYSTEM_TYPE]->(st) delete rst `
+	}
+
+	if newSystem.OwnerUID != nil && len(*newSystem.OwnerUID) > 0 {
+		result.Query += `WITH s MATCH(owner:User{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
+		result.Parameters["ownerUID"] = newSystem.OwnerUID
+	}
+
+	if newSystem.OwnerUID != nil && oldSystem.Owner == nil {
+		result.Query += `WITH s MATCH(own:User{uid:$OwnerUID}) MERGE(s)-[:HAS_OWNER]->(own) `
+		result.Parameters["OwnerUID"] = newSystem.OwnerUID
+	} else if newSystem.OwnerUID != nil && oldSystem.Owner != nil && newSystem.OwnerUID != &oldSystem.Owner.UID {
+		result.Query += `WITH s MATCH(s)-[rown:HAS_OWNER]->(own) delete rown 
+						 WITH s MATCH(l:Owner{uid:$OwnerUID}) MERGE(s)-[:HAS_OWNER]->(own) `
+		result.Parameters["OwnerUID"] = newSystem.OwnerUID
+	} else if newSystem.OwnerUID == nil && oldSystem.Owner != nil {
+		result.Query += `WITH s MATCH(s)-[rown:HAS_OWNER]->(own) delete rown `
+	}
+
+	if newSystem.ImportanceUID != nil && oldSystem.Importance == nil {
+		result.Query += `WITH s MATCH(imp:Importance{uid:$ImportanceUID}) MERGE(s)-[:HAS_IMPORTANCE]->(imp) `
+		result.Parameters["ImportanceUID"] = newSystem.ImportanceUID
+	} else if newSystem.ImportanceUID != nil && oldSystem.Importance != nil && newSystem.ImportanceUID != &oldSystem.Importance.UID {
+		result.Query += `WITH s MATCH(s)-[rimp:HAS_IMPORTANCE]->(imp) delete rimp 
+						 WITH s MATCH(l:Importance{uid:$ImportanceUID}) MERGE(s)-[:HAS_IMPORTANCE]->(imp) `
+		result.Parameters["ImportanceUID"] = newSystem.ImportanceUID
+	} else if newSystem.ImportanceUID == nil && oldSystem.Importance != nil {
+		result.Query += `WITH s MATCH(s)-[rimp:HAS_IMPORTANCE]->(imp) delete rimp `
+	}
+
+	if newSystem.Image != nil {
+		if *newSystem.Image == "deleted" {
+			result.Query += `WITH s SET s.image = null `
+			result.Parameters["image"] = newSystem.Image
+		} else {
+			result.Query += `WITH s SET s.image = $image `
+			result.Parameters["image"] = newSystem.Image
+		}
+	}
+
+	result.Query += `RETURN s.uid as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
