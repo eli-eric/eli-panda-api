@@ -86,7 +86,9 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 		if err := c.Bind(system); err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
-			uid, err := h.systemsService.SaveSystemDetail(system, facilityCode)
+			userUID := c.Get("userUID").(string)
+
+			uid, err := h.systemsService.SaveSystemDetail(system, facilityCode, userUID)
 
 			if err == nil {
 				return c.String(http.StatusCreated, uid)

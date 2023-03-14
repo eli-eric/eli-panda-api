@@ -208,3 +208,27 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 
 	return result
 }
+
+func LogSystemHistoryQuery(systemUID string, originSystemJSON string, newSystemJSON string, userUID string, action string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(u:User{uid:$userUID})
+	MATCH(s:System{uid:$systemUID})
+	with u,s
+	CREATE(h:History{uid: $uid})
+	SET h.timestamp = datetime(), h.originObject = $originSystemJSON, h.newObject = $newSystemJSON, h.action = $action
+	with u,s,h
+	CREATE(s)-[:HAS_HISTORY]->(h)
+	CREATE(h)-[:DONE_BY_USER]->(u)	
+	RETURN h.uid as result`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	result.Parameters["originSystemJSON"] = originSystemJSON
+	result.Parameters["newSystemJSON"] = newSystemJSON
+	result.Parameters["userUID"] = userUID
+	result.Parameters["uid"] = uuid.NewString()
+	result.Parameters["action"] = action
+	return result
+}
