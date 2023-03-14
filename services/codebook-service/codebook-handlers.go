@@ -64,7 +64,7 @@ func (h *CodebookHandlers) GetAutocompleteCodebook() echo.HandlerFunc {
 		codebookList, err := h.codebookService.GetAutocompleteCodebook(codebookCode, searchText, limit, facilityCode)
 
 		if err == nil {
-			return c.JSON(http.StatusOK, codebookList)
+			return c.JSONPretty(http.StatusOK, codebookList, "")
 		}
 
 		return echo.ErrInternalServerError
