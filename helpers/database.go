@@ -1,9 +1,12 @@
 package helpers
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"panda/apigateway/ioutils"
 
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
@@ -128,6 +131,59 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 	}
 
 	return resultArray, err
+}
+
+func LogHistory(session neo4j.Session, objectUID string, originObject any, newObject any, userUID string, action string) (uid string, err error) {
+
+	originSystemJSON := ""
+
+	if originObject != nil {
+
+		originSystemBytes, err := json.Marshal(originObject)
+		if err != nil {
+			log.Println(err.Error())
+			return uid, err
+		}
+		originSystemJSON = string(originSystemBytes)
+	}
+
+	newSystemBytes, err := json.Marshal(newObject)
+	if err != nil {
+		log.Println(err.Error())
+		return uid, err
+	}
+
+	uid, err = WriteNeo4jAndReturnSingleValue[string](session, logHistoryQuery(objectUID, originSystemJSON, string(newSystemBytes), userUID, action))
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	return uid, err
+}
+
+func logHistoryQuery(objectUID string, originObjectJSON string, newObjectJSON string, userUID string, action string) (result DatabaseQuery) {
+
+	result.Query = `
+	MATCH(u:User{uid:$userUID})
+	MATCH(s{uid:$objectUID})
+	with u,s
+	CREATE(h:History{uid: $uid})
+	SET h.timestamp = datetime(), h.originObject = $originObjectJSON, h.newObject = $newObjectJSON, h.action = $action
+	with u,s,h
+	CREATE(s)-[:HAS_HISTORY]->(h)
+	CREATE(h)-[:DONE_BY_USER]->(u)	
+	RETURN h.uid as result`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["objectUID"] = objectUID
+	result.Parameters["originObjectJSON"] = originObjectJSON
+	result.Parameters["newObjectJSON"] = newObjectJSON
+	result.Parameters["userUID"] = userUID
+	result.Parameters["uid"] = uuid.NewString()
+	result.Parameters["action"] = action
+	return result
 }
 
 func GetPaginationResult[T any](data []T, totalCount int64, err error) (result PaginationResult[T]) {

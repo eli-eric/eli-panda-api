@@ -1,7 +1,6 @@
 package systemsService
 
 import (
-	"encoding/json"
 	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
@@ -29,7 +28,6 @@ type ISystemsService interface {
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
 	SaveSystemDetail(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
-	LogSystemHistory(systemUID string, originSystem *models.SystemForm, newSystem *models.SystemForm, userUID string) (uid string, err error)
 }
 
 // Create new security service instance
@@ -144,39 +142,10 @@ func (svc *SystemsService) SaveSystemDetail(system *models.SystemForm, facilityC
 	}
 
 	go func() {
-		svc.LogSystemHistory(uid, nil, system, userUID)
+		// we dont want to log image data
+		system.Image = nil
+		helpers.LogHistory(session, uid, nil, system, userUID, "CREATE")
 	}()
-
-	return uid, err
-}
-
-func (svc *SystemsService) LogSystemHistory(systemUID string, originSystem *models.SystemForm, newSystem *models.SystemForm, userUID string) (uid string, err error) {
-
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	action := "CREATE"
-	originSystemJSON := ""
-
-	if originSystem != nil {
-		action = "UPDATE"
-		originSystemBytes, err := json.Marshal(originSystem)
-		if err != nil {
-			log.Println(err.Error())
-			return uid, err
-		}
-		originSystemJSON = string(originSystemBytes)
-	}
-
-	newSystemBytes, err := json.Marshal(newSystem)
-	if err != nil {
-		log.Println(err.Error())
-		return uid, err
-	}
-
-	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, LogSystemHistoryQuery(systemUID, originSystemJSON, string(newSystemBytes), userUID, action))
-
-	if err != nil {
-		log.Println(err.Error())
-	}
 
 	return uid, err
 }
