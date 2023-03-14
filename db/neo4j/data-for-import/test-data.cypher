@@ -18,7 +18,6 @@ MATCH (catalogueEdit:Role{ uid:'b73df5c2-cb61-45af-96b4-5ca93c32e852' })
 MATCH (catCategoryEdit:Role{ uid:'b6585153-67ae-4c2e-8d3e-f9d7be519216' })
 MATCH (systemsView:Role{ uid:'4a2c7e3a-62f3-4836-93d2-3af202acfcee' })
 MATCH (systemsEdit:Role{ uid:'186dee7b-3afa-46ad-84dd-6b62443fec49' })
-
 MATCH(f:Facility{code: 'B'})
 MERGE (u:User{uid: 'f3b43ae4-8da1-4048-b8db-a9d9e9e1a300'})
 SET u.username = 'test1',
@@ -42,8 +41,8 @@ MATCH (basics:Role{ uid:'6b535e07-2a1c-4498-a1b3-8d63f9275519' })
 MATCH (catalogueView:Role{ uid:'85f4310f-044e-45ef-a146-f531e2d89efe' })
 MATCH (catalogueEdit:Role{ uid:'b73df5c2-cb61-45af-96b4-5ca93c32e852' })
 MATCH (catCategoryEdit:Role{ uid:'b6585153-67ae-4c2e-8d3e-f9d7be519216' })
-
-
+MATCH (systemsView:Role{ uid:'4a2c7e3a-62f3-4836-93d2-3af202acfcee' })
+MATCH (systemsEdit:Role{ uid:'186dee7b-3afa-46ad-84dd-6b62443fec49' })
 MATCH(f:Facility{code: 'B'})
 MERGE (u:User{uid: 'bfb3d08f-9751-4422-aa92-a77986998a60'})
 SET u.username = 'pavel.bakule',
@@ -57,15 +56,16 @@ MERGE(u)-[:BELONGS_TO_FACILITY]->(f)
 MERGE (u)-[:HAS_ROLE]->(basics)
 MERGE (u)-[:HAS_ROLE]->(catalogueView)
 MERGE (u)-[:HAS_ROLE]->(catalogueEdit)
-MERGE (u)-[:HAS_ROLE]->(catCategoryEdit);
+MERGE (u)-[:HAS_ROLE]->(catCategoryEdit)
+MERGE (u)-[:HAS_ROLE]->(systemsView)
+MERGE (u)-[:HAS_ROLE]->(systemsEdit); 
 
 
 MATCH (basics:Role{ uid:'6b535e07-2a1c-4498-a1b3-8d63f9275519' })
 MATCH (catalogueView:Role{ uid:'85f4310f-044e-45ef-a146-f531e2d89efe' })
 MATCH (catalogueEdit:Role{ uid:'b73df5c2-cb61-45af-96b4-5ca93c32e852' })
 MATCH (catCategoryEdit:Role{ uid:'b6585153-67ae-4c2e-8d3e-f9d7be519216' })
-
-
+MATCH (systemsView:Role{ uid:'4a2c7e3a-62f3-4836-93d2-3af202acfcee' })
 MATCH(f:Facility{code: 'B'})
 MERGE (u:User{uid: '30254d16-02ac-4178-9957-43f4aa596e88'})
 SET u.username = 'ana.stajminger',
@@ -78,7 +78,57 @@ MERGE(u)-[:BELONGS_TO_FACILITY]->(f)
 MERGE (u)-[:HAS_ROLE]->(basics)
 MERGE (u)-[:HAS_ROLE]->(catalogueView)
 MERGE (u)-[:HAS_ROLE]->(catalogueEdit)
-MERGE (u)-[:HAS_ROLE]->(catCategoryEdit);
+MERGE (u)-[:HAS_ROLE]->(catCategoryEdit)
+MERGE (u)-[:HAS_ROLE]->(systemsView);
+
+
+MATCH (basics:Role{ uid:'6b535e07-2a1c-4498-a1b3-8d63f9275519' })
+MATCH (catalogueView:Role{ uid:'85f4310f-044e-45ef-a146-f531e2d89efe' })
+MATCH (catalogueEdit:Role{ uid:'b73df5c2-cb61-45af-96b4-5ca93c32e852' })
+MATCH (catCategoryEdit:Role{ uid:'b6585153-67ae-4c2e-8d3e-f9d7be519216' })
+MATCH (systemsView:Role{ uid:'4a2c7e3a-62f3-4836-93d2-3af202acfcee' })
+MATCH (systemsEdit:Role{ uid:'186dee7b-3afa-46ad-84dd-6b62443fec49' })
+MATCH(f:Facility{code: 'A'})
+MERGE (u:User{uid: '3f11e335-1fdd-4660-b34f-062bab80ec95'})
+SET u.username = 'balazs.erdohelyi',
+    u.firstName = 'Balázs',
+    u.lastName = 'Erdohelyi',
+    u.email = 'Balazs.Erdohelyi@eli-alps.hu',
+    u.passwordHash = '$2a$12$VgST1hyF/YiuD.wq.YmUP.DBINUnglA76LNdSiAnojYT4n.u3CJmG',
+    u.isEnabled = true
+MERGE(u)-[:BELONGS_TO_FACILITY]->(f)
+MERGE (u)-[:HAS_ROLE]->(basics)
+MERGE (u)-[:HAS_ROLE]->(catalogueView)
+MERGE (u)-[:HAS_ROLE]->(catalogueEdit)
+MERGE (u)-[:HAS_ROLE]->(catCategoryEdit)
+MERGE (u)-[:HAS_ROLE]->(systemsView)
+MERGE (u)-[:HAS_ROLE]->(systemsEdit); 
+
+
+
+MATCH (basics:Role{ uid:'6b535e07-2a1c-4498-a1b3-8d63f9275519' })
+MATCH (catalogueView:Role{ uid:'85f4310f-044e-45ef-a146-f531e2d89efe' })
+MATCH (catalogueEdit:Role{ uid:'b73df5c2-cb61-45af-96b4-5ca93c32e852' })
+MATCH (catCategoryEdit:Role{ uid:'b6585153-67ae-4c2e-8d3e-f9d7be519216' })
+MATCH (systemsView:Role{ uid:'4a2c7e3a-62f3-4836-93d2-3af202acfcee' })
+MATCH (systemsEdit:Role{ uid:'186dee7b-3afa-46ad-84dd-6b62443fec49' })
+MATCH(f:Facility{code: 'N'})
+MERGE (u:User{uid: '7b7bbd74-7c81-47f6-a446-f0905b91527c'})
+SET u.username = 'robert.schmelz',
+    u.firstName = 'Robert',
+    u.lastName = 'Schmelz',
+    u.email = 'robert.schmelz@eli-np.ro',
+    u.passwordHash = '$2a$12$HDQChHrb9of9sGKKPM.xq.9ayun1IDKFfcJ5NKMet46UUBngwIbT.',
+    u.isEnabled = true
+MERGE(u)-[:BELONGS_TO_FACILITY]->(f)
+MERGE (u)-[:HAS_ROLE]->(basics)
+MERGE (u)-[:HAS_ROLE]->(catalogueView)
+MERGE (u)-[:HAS_ROLE]->(catalogueEdit)
+MERGE (u)-[:HAS_ROLE]->(catCategoryEdit)
+MERGE (u)-[:HAS_ROLE]->(systemsView)
+MERGE (u)-[:HAS_ROLE]->(systemsEdit); 
+
+
 
 
 

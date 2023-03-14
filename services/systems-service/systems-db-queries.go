@@ -1,6 +1,7 @@
 package systemsService
 
 import (
+	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/systems-service/models"
 	"strings"
@@ -8,11 +9,12 @@ import (
 	"github.com/google/uuid"
 )
 
-func GetSystemTypesCodebookQuery() (result helpers.DatabaseQuery) {
-	result.Query = `MATCH (n:SystemTypeGroup)-[:CONTAINS_SYSTEM_TYPE]->(st) with n, st order by st.name 
-					return {uid:st.uid, name: n.name+ " > "+ st.name} as result order by result.name`
+func GetSystemTypesCodebookQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = fmt.Sprintf(`MATCH (n:SystemTypeGroup)-[:CONTAINS_SYSTEM_TYPE]->(st) with n, st order by st.name 
+	return {uid:st.uid, name: n.name+ " > "+ st.name + case when st.mask%v is null then "" else  " (" + st.mask%v  + ")" end } as result order by result.name`, facilityCode, facilityCode)
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
 
@@ -63,12 +65,16 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 	return result
 }
 
-func GetZonesCodebookQuery() (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(z:Zone)-[:HAS_SUBZONE]->(sz) return {uid:sz.uid, name: z.code+"-"+sz.code + " - " + sz.name + " ("+  z.name + ")"} as zone order by z.code, sz.code
-	UNION
-	MATCH(z:Zone) where not ()-[:HAS_SUBZONE]->(z)  return {uid:z.uid, name:z.code + " - " +z.name } as zone order by z.code`
+func GetZonesCodebookQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(f:Facility{code:$facilityCode}) WITH f
+	MATCH(z:Zone)-[:HAS_SUBZONE]->(sz)-[:BELONGS_TO_FACILITY]->(f) return {uid:sz.uid, name: z.code+"-"+sz.code + " - " + sz.name + " ("+  z.name + ")"} as zone order by z.code, sz.code
+		UNION
+		MATCH(f:Facility{code:$facilityCode}) WITH f
+		WITH f
+		MATCH(z:Zone)-[:BELONGS_TO_FACILITY]->(f) where not ()-[:HAS_SUBZONE]->(z)  return {uid:z.uid, name:z.code + " - " +z.name } as zone order by z.code`
 	result.ReturnAlias = "zone"
 	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
 
