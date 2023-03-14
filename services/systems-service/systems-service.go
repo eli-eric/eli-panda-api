@@ -17,13 +17,13 @@ type SystemsService struct {
 }
 
 type ISystemsService interface {
-	GetSystemTypesCodebook() (result []codebookModels.Codebook, err error)
+	GetSystemTypesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetSystemImportancesCodebook() (result []codebookModels.Codebook, err error)
 	GetSystemCriticalitiesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemUsagesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
-	GetZonesCodebook() (result []codebookModels.Codebook, err error)
+	GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
@@ -36,10 +36,10 @@ func NewSystemsService(settings *config.Config, driver *neo4j.Driver) ISystemsSe
 	return &SystemsService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }
 
-func (svc *SystemsService) GetSystemTypesCodebook() (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetSystemTypesCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSystemTypesCodebookQuery()
+	query := GetSystemTypesCodebookQuery(facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
@@ -94,11 +94,11 @@ func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, li
 	return result, err
 }
 
-func (svc *SystemsService) GetZonesCodebook() (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetZonesCodebookQuery()
+	query := GetZonesCodebookQuery(facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err

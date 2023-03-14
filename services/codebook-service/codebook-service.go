@@ -34,13 +34,13 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, f
 
 	switch codebookCode {
 	case "ZONE":
-		codebookList, err = svc.systemsService.GetZonesCodebook()
+		codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode)
 	case "UNIT":
 		codebookList, err = svc.catalogueService.GetUnitsCodebook()
 	case "CATALOGUE_PROPERTY_TYPE":
 		codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
 	case "SYSTEM_TYPE":
-		codebookList, err = svc.systemsService.GetSystemTypesCodebook()
+		codebookList, err = svc.systemsService.GetSystemTypesCodebook(facilityCode)
 	case "SYSTEM_IMPORTANCE":
 		codebookList, err = svc.systemsService.GetSystemImportancesCodebook()
 	case "SYSTEM_CRITICALITY_CLASS":
