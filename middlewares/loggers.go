@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"panda/apigateway/services/security-service/models"
 	"strconv"
@@ -31,9 +32,9 @@ func RequestLoggerMiddleware() echo.MiddlewareFunc {
 				userID = claims.Subject
 			}
 			if v.Error != nil {
-				fmt.Printf("%v: %v, status: %v, user-id: %v, error: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Error, v.Latency.Milliseconds())
+				log.Printf("%v: %v, status: %v, user-id: %v, error: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Error, v.Latency.Milliseconds())
 			} else {
-				fmt.Printf("%v: %v, status: %v, user-id: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Latency.Milliseconds())
+				log.Printf("%v: %v, status: %v, user-id: %v, latency: %vms\n", v.Method, v.URI, v.Status, userID, v.Latency.Milliseconds())
 			}
 			// go func() {
 			// 	LogLokiLog(fmt.Sprintf(`{ "method": "%v", "uri": "%v", "status": "%v" }`, v.Method, v.URI, v.Status))

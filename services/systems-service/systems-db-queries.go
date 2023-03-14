@@ -64,17 +64,11 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 }
 
 func GetZonesCodebookQuery() (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(r:Zone) WHERE NOT ()-[:HAS_SUBZONE]->(r) RETURN {uid: r.uid,name: r.code + " - " + r.name} as zones ORDER BY zones.name`
-	result.ReturnAlias = "zones"
+	result.Query = `MATCH(z:Zone)-[:HAS_SUBZONE]->(sz) return {uid:sz.uid, name: z.code+"-"+sz.code + " - " + sz.name + " ("+  z.name + ")"} as zone order by z.code, sz.code
+	UNION
+	MATCH(z:Zone) where not ()-[:HAS_SUBZONE]->(z)  return {uid:z.uid, name:z.code + " - " +z.name } as zone order by z.code`
+	result.ReturnAlias = "zone"
 	result.Parameters = make(map[string]interface{})
-	return result
-}
-
-func GetSubZonesByParentUidCodebookQuery(parentUID string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(parent:Zone{uid:$parentUID})-[:HAS_SUBZONE]->(r) RETURN {uid: r.uid,name:r.code + " - " + r.name} as zones ORDER BY zones.name`
-	result.ReturnAlias = "zones"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["parentUID"] = parentUID
 	return result
 }
 
@@ -128,7 +122,7 @@ RETURN {
     uid: r.uid, 
     name: r.name, 
     description: r.description,
-    location: case when l is not null then {uid: l.uid, name: l.name} else null end, 
+    location: case when l is not null then {uid: l.code, name: l.name} else null end, 
     systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
     systemCode: r.systemCode,
     systemALias: r.systemAlias,
@@ -145,13 +139,66 @@ RETURN {
 	return result
 }
 
-func CreateNewSystem(newSystem *models.SystemForm) (result helpers.DatabaseQuery) {
-	result.Query = `
-CREATE(s:System{uid: $uid})
-return r as result`
-	result.ReturnAlias = "result"
+func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["uid"] = uuid.NewString()
+	result.Parameters["name"] = newSystem.Name
+	result.Parameters["description"] = newSystem.Description
+	result.Parameters["systemCode"] = newSystem.SystemCode
+	result.Parameters["systemAlias"] = newSystem.SystemAlias
+
+	result.Query = `
+	CREATE(s:System{uid: $uid})
+	SET 
+	s.name = $name, 
+	s.description = $description,
+	s.systemCode = $systemCode,
+	s.systemAlias = $systemAlias
+	WITH s
+	MATCH(f:Facility{code: $facilityCode})
+	CREATE(s)-[:BELONGS_TO_FACILITY]->(f)
+	WITH s
+	`
+
+	if newSystem.ParentUID != nil && len(*newSystem.ParentUID) > 0 {
+		result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
+		result.Parameters["parentUID"] = newSystem.ParentUID
+	}
+
+	if newSystem.ZoneUID != nil && len(*newSystem.ZoneUID) > 0 {
+		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
+		result.Parameters["zoneUID"] = newSystem.ZoneUID
+	}
+
+	if newSystem.LocationUID != nil && len(*newSystem.LocationUID) > 0 {
+		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
+		result.Parameters["locationUID"] = newSystem.LocationUID
+	}
+
+	if newSystem.SystemTypeUID != nil && len(*newSystem.SystemTypeUID) > 0 {
+		result.Query += `WITH s MATCH(st:SystemType{uid:$systemTypeUID}) MERGE(s)-[:HAS_SYSTEM_TYPE]->(st) `
+		result.Parameters["systemTypeUID"] = newSystem.SystemTypeUID
+	}
+
+	if newSystem.OwnerUID != nil && len(*newSystem.OwnerUID) > 0 {
+		result.Query += `WITH s MATCH(owner:User{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
+		result.Parameters["ownerUID"] = newSystem.OwnerUID
+	}
+
+	if newSystem.ImportanceUID != nil && len(*newSystem.ImportanceUID) > 0 {
+		result.Query += `WITH s MATCH(imp:SystemImportance{uid:$importanceUID}) MERGE(s)-[:HAS_IMPORTANCE]->(imp) `
+		result.Parameters["importanceUID"] = newSystem.ImportanceUID
+	}
+
+	if newSystem.Image != nil && len(*newSystem.Image) > 0 {
+		result.Query += `WITH s SET s.image = $image `
+		result.Parameters["image"] = newSystem.Image
+	}
+
+	result.Query += `RETURN s.uid as result`
+
+	result.ReturnAlias = "result"
 
 	return result
 }

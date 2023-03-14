@@ -3,6 +3,7 @@ package systemsService
 import (
 	"log"
 	"net/http"
+	"panda/apigateway/services/systems-service/models"
 
 	"github.com/labstack/echo/v4"
 )
@@ -15,6 +16,7 @@ type ISystemsHandlers interface {
 	GetSubSystemsByParentUID() echo.HandlerFunc
 	GetSystemImageByUid() echo.HandlerFunc
 	GetSystemDetail() echo.HandlerFunc
+	CreateNewSystem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -71,5 +73,28 @@ func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
 
 		return echo.ErrInternalServerError
 
+	}
+}
+
+func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		system := new(models.SystemForm)
+
+		if err := c.Bind(system); err == nil {
+
+			facilityCode := c.Get("facilityCode").(string)
+			uid, err := h.systemsService.SaveSystemDetail(system, facilityCode)
+
+			if err == nil {
+				return c.String(http.StatusCreated, uid)
+			}
+
+			return echo.ErrInternalServerError
+
+		}
+		return echo.ErrBadRequest
 	}
 }

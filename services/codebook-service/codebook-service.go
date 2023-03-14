@@ -35,8 +35,6 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, f
 	switch codebookCode {
 	case "ZONE":
 		codebookList, err = svc.systemsService.GetZonesCodebook()
-	case "SUB_ZONE":
-		codebookList, err = svc.systemsService.GetSubZonesCodebook(parentUID)
 	case "UNIT":
 		codebookList, err = svc.catalogueService.GetUnitsCodebook()
 	case "CATALOGUE_PROPERTY_TYPE":

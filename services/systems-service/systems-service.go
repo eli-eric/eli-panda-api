@@ -1,6 +1,7 @@
 package systemsService
 
 import (
+	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
@@ -23,10 +24,10 @@ type ISystemsService interface {
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook() (result []codebookModels.Codebook, err error)
-	GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
+	SaveSystemDetail(system *models.SystemForm, facilityCode string) (uid string, err error)
 }
 
 // Create new security service instance
@@ -103,16 +104,6 @@ func (svc *SystemsService) GetZonesCodebook() (result []codebookModels.Codebook,
 	return result, err
 }
 
-func (svc *SystemsService) GetSubZonesCodebook(parentUID string) (result []codebookModels.Codebook, err error) {
-
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	query := GetSubZonesByParentUidCodebookQuery(parentUID)
-	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
-
-	return result, err
-}
-
 func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.SystemSimpleResponse, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
@@ -139,4 +130,15 @@ func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (res
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.SystemResponse](session, SystemDetailQuery(uid, facilityCode))
 
 	return result, err
+}
+
+func (svc *SystemsService) SaveSystemDetail(system *models.SystemForm, facilityCode string) (uid string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+	return uid, err
 }
