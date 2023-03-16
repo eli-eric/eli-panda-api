@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"panda/apigateway/ioutils"
@@ -231,3 +232,9 @@ type Pagination struct {
 	PageSize int `query:"pageSize"`
 	Page     int `query:"page"`
 }
+
+const DB_LOG_CREATE string = "CREATE"
+const DB_LOG_UPDATE string = "UPDATE"
+const DB_LOG_DELETE string = "DELETE"
+
+var ERR_INVALID_INPUT = errors.New("INVALID_INPUT")

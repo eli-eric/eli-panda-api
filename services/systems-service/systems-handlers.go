@@ -17,6 +17,7 @@ type ISystemsHandlers interface {
 	GetSystemImageByUid() echo.HandlerFunc
 	GetSystemDetail() echo.HandlerFunc
 	CreateNewSystem() echo.HandlerFunc
+	UpdateSystem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -88,10 +89,36 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
 
-			uid, err := h.systemsService.SaveSystemDetail(system, facilityCode, userUID)
+			uid, err := h.systemsService.CreateNewSystem(system, facilityCode, userUID)
 
 			if err == nil {
 				return c.String(http.StatusCreated, uid)
+			}
+
+			return echo.ErrInternalServerError
+
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		system := new(models.SystemForm)
+
+		if err := c.Bind(system); err == nil {
+			uid := c.Param("uid")
+			system.UID = &uid
+			facilityCode := c.Get("facilityCode").(string)
+			userUID := c.Get("userUID").(string)
+
+			err := h.systemsService.UpdateSystem(system, facilityCode, userUID)
+
+			if err == nil {
+				return c.NoContent(http.StatusNoContent)
 			}
 
 			return echo.ErrInternalServerError

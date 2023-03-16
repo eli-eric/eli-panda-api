@@ -27,7 +27,8 @@ type ISystemsService interface {
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
-	SaveSystemDetail(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
+	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
+	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -132,20 +133,47 @@ func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (res
 	return result, err
 }
 
-func (svc *SystemsService) SaveSystemDetail(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error) {
+func (svc *SystemsService) CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
 
 	if err != nil {
 		log.Println(err.Error())
+	} else {
+		go func() {
+			// we dont want to log image data
+			system.Image = nil
+			helpers.LogDBHistory(session, uid, nil, system, userUID, helpers.DB_LOG_CREATE)
+		}()
 	}
 
-	go func() {
-		// we dont want to log image data
-		system.Image = nil
-		helpers.LogDBHistory(session, uid, nil, system, userUID, "CREATE")
-	}()
-
 	return uid, err
+}
+
+func (svc *SystemsService) UpdateSystem(system *models.SystemForm, facilityCode string, userUID string) (err error) {
+
+	if system != nil {
+		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+		oldSystem, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.SystemForm](session, SystemFormDetailQuery(*system.UID, facilityCode))
+
+		if err == nil {
+			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateSystemQuery(system, &oldSystem, facilityCode))
+		}
+
+		if err != nil {
+			log.Println(err.Error())
+		} else {
+			go func() {
+				// we dont want to log image data
+				system.Image = nil
+				helpers.LogDBHistory(session, *oldSystem.UID, oldSystem, system, userUID, helpers.DB_LOG_UPDATE)
+			}()
+		}
+
+	} else {
+		err = helpers.ERR_INVALID_INPUT
+	}
+	return err
 }
