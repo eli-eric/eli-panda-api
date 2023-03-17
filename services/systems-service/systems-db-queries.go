@@ -267,3 +267,16 @@ func UpdateSystemQuery(newSystem *models.SystemForm, oldSystem *models.SystemFor
 
 	return result
 }
+
+func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(r:System) WHERE r.uid = $uid WITH r
+	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child)
+	WITH r, child, r.uid as uid
+	detach delete r, child`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
