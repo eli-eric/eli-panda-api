@@ -18,6 +18,7 @@ type ISystemsHandlers interface {
 	GetSystemDetail() echo.HandlerFunc
 	CreateNewSystem() echo.HandlerFunc
 	UpdateSystem() echo.HandlerFunc
+	DeleteSystemRecursive() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -125,5 +126,23 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 
 		}
 		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		// get catalogue item
+		err := h.systemsService.DeleteSystemRecursive(uid)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
 	}
 }

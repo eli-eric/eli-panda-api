@@ -29,6 +29,7 @@ type ISystemsService interface {
 	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
 	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
 	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
+	DeleteSystemRecursive(uid string) (err error)
 }
 
 // Create new security service instance
@@ -175,5 +176,15 @@ func (svc *SystemsService) UpdateSystem(system *models.SystemForm, facilityCode 
 	} else {
 		err = helpers.ERR_INVALID_INPUT
 	}
+	return err
+}
+
+func (svc *SystemsService) DeleteSystemRecursive(uid string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteSystemByUidQuery(uid)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
 	return err
 }
