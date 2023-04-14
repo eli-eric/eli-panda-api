@@ -13,6 +13,7 @@ type SecurityHandlers struct {
 
 type ISecurityHandlers interface {
 	AuthenticateByUsernameAndPassword() echo.HandlerFunc
+	//ChangeUserPassword() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor

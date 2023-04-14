@@ -23,6 +23,7 @@ type ISecurityService interface {
 	AuthenticateByUsernameAndPassword(username string, password string) (authUser models.UserAuthInfo, err error)
 	GetUsersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetUsersAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
+	ChangeUserPassword(userName string, userUID string, passwords *models.ChangePasswordRequest) (err error)
 }
 
 // Create new security service instance
@@ -56,6 +57,7 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 				StandardClaims: jwt.StandardClaims{
 					ExpiresAt: time.Now().Add(time.Hour * 876000).Unix(),
 					Subject:   authUser.Uid,
+					Id:        username,
 				},
 			}
 
@@ -93,4 +95,25 @@ func (svc *SecurityService) GetUsersAutocompleteCodebook(searchText string, limi
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
+}
+
+func (svc *SecurityService) ChangeUserPassword(userName string, userUID string, passwords *models.ChangePasswordRequest) (err error) {
+
+	//check the old password first
+	_, err = svc.AuthenticateByUsernameAndPassword(userName, passwords.OldPassword)
+
+	//if it is ok we can change set the new one
+	if err == nil {
+		//create hash from the new password string
+		newHashBytes, err := bcrypt.GenerateFromPassword([]byte(passwords.NewPassword), 12)
+		if err == nil {
+			newPasswordHash := string(newHashBytes)
+			session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+			_, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, ChangeUserPasswordQuery(userUID, newPasswordHash))
+			return err
+		}
+	}
+
+	return err
 }

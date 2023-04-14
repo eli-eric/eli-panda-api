@@ -54,7 +54,7 @@ func GetUsersAutocompleteCodebookQuery(searchText string, limit int, facilityCod
 	return result
 }
 
-func ChangeUserPasswordQuery(userUID string, newPassword string) (result helpers.DatabaseQuery) {
+func ChangeUserPasswordQuery(userUID string, newPasswordHash string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(u:User{uid:$userUID}) SET u.passwordHash = $newPasswordHash RETURN u.uid AS result`
 	result.ReturnAlias = "result"

@@ -16,6 +16,7 @@ func Authorization(handlerFunc echo.HandlerFunc, rolesToCheck ...string) echo.Ha
 			//set user's facility
 			c.Set("facilityCode", user.FacilityCode)
 			c.Set("userUID", user.Subject)
+			c.Set("userName", user.Id)
 			//check user's roles -> return unauthorized if user has no of the accepted roles
 			for _, roleToCheck := range rolesToCheck {
 				for _, role := range user.Roles {
