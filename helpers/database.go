@@ -2,9 +2,12 @@ package helpers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"panda/apigateway/ioutils"
+	"reflect"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -133,6 +136,81 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 	return resultArray, err
 }
 
+// the objects has to be the same type
+// the object has to have neo4j struct Tags - look at the SystemForm for example
+// there has to be existing update query (dbQuery param) with one strict alias for the updated node - updateNodeAlias
+func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, originObject any, updateNodeAlias string) {
+
+	newObj := reflect.TypeOf(newObject)
+	oldObj := reflect.TypeOf(originObject)
+	newValObj := reflect.ValueOf(newObject)
+	oldValObj := reflect.ValueOf(originObject)
+
+	if newObj == oldObj {
+		for i := 0; i < newObj.NumField(); i++ {
+
+			newField := newObj.Field(i)
+			oldField := oldObj.Field(i)
+			neo4jTags := strings.Split(newField.Tag.Get("neo4j"), ",")
+			fieldType := newField.Type.String()
+
+			if len(neo4jTags) > 0 {
+
+				neo4jPropType := neo4jTags[0]
+				if neo4jPropType == "prop" {
+					neo4jPropName := neo4jTags[1]
+
+					if fieldType == "string" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).String()
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).String()
+
+						if newValue != oldValue {
+							dbQuery.Parameters[neo4jPropName] = newValue
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+
+					} else if fieldType == "*string" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if newValue != oldValue {
+							if newValue.IsNil() {
+								dbQuery.Parameters[neo4jPropName] = nil
+							} else {
+								dbQuery.Parameters[neo4jPropName] = newValue.Elem().String()
+							}
+
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					}
+				} else if neo4jPropType == "rel" {
+					neo4jLabel := neo4jTags[1]
+					neo4jRelationType := neo4jTags[2]
+					neo4jID := neo4jTags[3]
+					neo4jAlias := neo4jTags[4]
+
+					if fieldType == "*string" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if !newValue.IsNil() && newValue.Elem().String() != "" && oldValue.IsNil() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[2]v:%[3]v{%[4]v:$%[5]v}) MERGE(%[1]v)-[:%[6]v]->(%[2]v) `, updateNodeAlias, neo4jAlias, neo4jLabel, neo4jID, newField.Name, neo4jRelationType)
+							dbQuery.Parameters[newField.Name] = newValue.Elem().String()
+						} else if !newValue.IsNil() && newValue.Elem().String() != "" && !oldValue.IsNil() && newValue.Elem().String() != oldValue.Elem().String() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[2]v:%[3]v{%[4]v:$%[5]v}) MERGE(%[1]v)-[:%[6]v]->(%[2]v) `, updateNodeAlias, neo4jAlias, neo4jLabel, neo4jID, newField.Name, neo4jRelationType)
+							dbQuery.Parameters[newField.Name] = newValue.Elem().String()
+						} else if (newValue.IsNil() || newValue.Elem().String() == "") && !oldValue.IsNil() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+						}
+					}
+
+				}
+			}
+		}
+	}
+}
+
 func LogDBHistory(session neo4j.Session, objectUID string, originObject any, newObject any, userUID string, action string) (uid string, err error) {
 
 	originSystemJSON := ""
@@ -169,7 +247,7 @@ func logHistoryQuery(objectUID string, originObjectJSON string, newObjectJSON st
 	MATCH(s{uid:$objectUID})
 	with u,s
 	CREATE(h:History{uid: $uid})
-	SET h.timestamp = datetime(), h.originObject = $originObjectJSON, h.newObject = $newObjectJSON, h.action = $action, h.objectType = labels(s)[0]
+	SET h.timestamp = datetime(), h.objectUID = $objectUID, h.originObject = $originObjectJSON, h.newObject = $newObjectJSON, h.action = $action, h.objectType = labels(s)[0]
 	with u,s,h
 	CREATE(s)-[:HAS_HISTORY]->(h)
 	CREATE(h)-[:DONE_BY_USER]->(u)	
@@ -231,3 +309,9 @@ type Pagination struct {
 	PageSize int `query:"pageSize"`
 	Page     int `query:"page"`
 }
+
+const DB_LOG_CREATE string = "CREATE"
+const DB_LOG_UPDATE string = "UPDATE"
+const DB_LOG_DELETE string = "DELETE"
+
+var ERR_INVALID_INPUT = errors.New("INVALID_INPUT")

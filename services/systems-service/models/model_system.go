@@ -1,13 +1,14 @@
 package models
 
 type SystemResponse struct {
-	UID         string                 `json:"uid"`
+	UID         string                 `json:"uid" neo4j:"uid"`
 	Name        string                 `json:"name"`
 	ParentPath  []SystemSimpleResponse `json:"parentPath"`
-	Description string                 `json:"description"`
+	ParentUID   *string                `json:"parentUID,omitempty"`
+	Description *string                `json:"description,omitempty"`
 	SystemType  *SystemSimpleResponse  `json:"systemType,omitempty"`
-	SystemCode  string                 `json:"systemCode"`
-	SystemAlias string                 `json:"systemAlias"`
+	SystemCode  *string                `json:"systemCode,omitempty"`
+	SystemAlias *string                `json:"systemAlias,omitempty"`
 	Location    *SystemSimpleResponse  `json:"location,omitempty"`
 	ItemUID     *string                `json:"itemUID,omitempty"`
 	Owner       *SystemSimpleResponse  `json:"owner,omitempty"`
@@ -16,19 +17,19 @@ type SystemResponse struct {
 }
 
 type SystemForm struct {
-	UID           *string `json:"uid"`
-	ParentUID     *string `json:"parentUID"`
-	Name          string  `json:"name"`
-	Description   *string `json:"description"`
-	SystemTypeUID *string `json:"systemTypeUID"`
-	SystemCode    *string `json:"systemCode"`
-	SystemAlias   *string `json:"systemAlias"`
-	LocationUID   *string `json:"locationUID"`
-	ItemUID       *string `json:"itemUID"`
-	OwnerUID      *string `json:"ownerUID"`
-	ImportanceUID *string `json:"importanceUID"`
-	ZoneUID       *string `json:"zoneUID"`
-	Image         *string `json:"image"`
+	UID           *string `json:"uid" neo4j:"ignore"`
+	ParentUID     *string `json:"parentUID" neo4j:"ignore"`
+	Name          string  `json:"name" neo4j:"prop,name"`
+	Description   *string `json:"description" neo4j:"prop,description"`
+	SystemTypeUID *string `json:"systemTypeUID" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,uid,st"`
+	SystemCode    *string `json:"systemCode" neo4j:"prop,systemCode"`
+	SystemAlias   *string `json:"systemAlias" neo4j:"prop,systemAlias"`
+	LocationUID   *string `json:"locationUID" neo4j:"rel,Location,HAS_LOCATION,code,l"`
+	ItemUID       *string `json:"itemUID" neo4j:"ignore"`
+	OwnerUID      *string `json:"ownerUID" neo4j:"rel,User,HAS_OWNER,uid,own"`
+	ImportanceUID *string `json:"importanceUID" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,uid,imp"`
+	ZoneUID       *string `json:"zoneUID" neo4j:"rel,Zone,HAS_ZONE,uid,z"`
+	Image         *string `json:"image" neo4j:"ignore"`
 }
 
 type SystemSimpleResponse struct {

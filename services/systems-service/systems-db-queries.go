@@ -145,6 +145,39 @@ RETURN {
 	return result
 }
 
+func SystemFormDetailQuery(uid string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(r:System{uid: $uid})-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode
+	WITH r,f
+OPTIONAL MATCH(r)-[:HAS_LOCATION]->(l)
+OPTIONAL MATCH(r)-[:HAS_ZONE]->(z)
+OPTIONAL MATCH(r)-[:HAS_SYSTEM_TYPE]->(st)
+OPTIONAL MATCH(r)-[:HAS_IMPORTANCE]->(imp)
+OPTIONAL MATCH(r)-[:HAS_OWNER]->(own)
+OPTIONAL MATCH(r)-[:HAS_CRITICALITY]->(cc)
+OPTIONAL MATCH(r)-[:CONTAINS_ITEM]->(itm)
+OPTIONAL MATCH(parent)-[:HAS_SUBSYSTEM]->(r)
+WITH r,l, z, st,itm, imp, own,cc, parent
+RETURN {
+    uid: r.uid, 
+    name: r.name, 
+    description: r.description,
+    locationUID: case when l is not null then l.code else null end, 
+    systemTypeUID: case when st is not null then st.uid else null end,
+    systemCode: r.systemCode,
+    systemAlias: r.systemAlias,
+    importanceUID: case when imp is not null then imp.uid else null end,
+    ownerUID: case when own is not null then own.uid else null end,
+    zoneUID: case when z is not null then  z.uid else null end,
+    parentUID: case when parent is not null then parent.uid else null end,
+	itemUID: itm.uid    
+    } as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
 func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
@@ -205,6 +238,45 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 	result.Query += `RETURN s.uid as result`
 
 	result.ReturnAlias = "result"
+
+	return result
+}
+
+func UpdateSystemQuery(newSystem *models.SystemForm, oldSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["uid"] = oldSystem.UID
+
+	result.Query = `MATCH(s:System{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
+
+	helpers.AutoResolveObjectToUpdateQuery(&result, *newSystem, *oldSystem, "s")
+
+	if newSystem.Image != nil {
+		if *newSystem.Image == "deleted" {
+			result.Query += `WITH s SET s.image = null `
+			result.Parameters["image"] = newSystem.Image
+		} else {
+			result.Query += `WITH s SET s.image = $image `
+			result.Parameters["image"] = newSystem.Image
+		}
+	}
+
+	result.Query += `RETURN s.uid as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(r:System) WHERE r.uid = $uid WITH r
+	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child)
+	WITH r, child, r.uid as uid
+	detach delete r, child`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
 
 	return result
 }

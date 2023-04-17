@@ -24,4 +24,8 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.POST("/v1/system", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 	// this one is only becasue of bad request from ui for now
 	e.POST("/v1/system/:xxx", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	e.PUT("/v1/system/:uid", m.Authorization(h.UpdateSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	e.DELETE("/v1/system/:uid", m.Authorization(h.DeleteSystemRecursive(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }
