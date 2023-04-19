@@ -26,6 +26,7 @@ func main() {
 	// application enviroment varibles described in example.env file
 	settings, err := config.LoadConfiguraion()
 	ioutils.PanicOnError(err)
+	
 
 	fmt.Print(ioutils.GetWelcomeMessage())
 	log.Println("PANDA REST API Starting...")
