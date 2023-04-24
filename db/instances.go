@@ -7,9 +7,9 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-func CreateNeo4jMainInstanceOrPanics(userName string, password string, host string, port string) *neo4j.Driver {
+func CreateNeo4jMainInstanceOrPanics(userName string, password string, host string, port string, schema string) *neo4j.Driver {
 	neo4jDriver, err := neo4j.NewDriver(
-		"bolt://"+host+":"+port,
+		schema+host+":"+port,
 		neo4j.BasicAuth(userName, password, ""),
 	)
 

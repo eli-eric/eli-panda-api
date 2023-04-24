@@ -22,6 +22,7 @@ func LoadConfiguraion() (*Config, error) {
 	config.Neo4jPort = os.Getenv("NEO4J_PORT")
 	config.Neo4jUsername = os.Getenv("NEO4J_USER")
 	config.Neo4jPassword = os.Getenv("NEO4J_PASSWORD")
+	config.Neo4jSchema = os.Getenv("NEO4J_SCHEMA")
 
 	return &config, nil
 }
@@ -41,6 +42,7 @@ type Config struct {
 	Neo4jPort     string
 	Neo4jUsername string
 	Neo4jPassword string
+	Neo4jSchema   string
 
 	Port       string
 	JwtSecret  string
