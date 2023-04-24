@@ -4,6 +4,7 @@ import (
 	"panda/apigateway/config"
 	catalogueService "panda/apigateway/services/catalogue-service"
 	"panda/apigateway/services/codebook-service/models"
+	ordersService "panda/apigateway/services/orders-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 )
@@ -12,6 +13,7 @@ type CodebookService struct {
 	catalogueService catalogueService.ICatalogueService
 	securityService  securityService.ISecurityService
 	systemsService   systemsService.ISystemsService
+	ordersService    ordersService.IOrdersService
 }
 
 type ICodebookService interface {
@@ -23,9 +25,10 @@ type ICodebookService interface {
 func NewCodebookService(settings *config.Config,
 	catalogueService catalogueService.ICatalogueService,
 	securityService securityService.ISecurityService,
-	systemsService systemsService.ISystemsService) ICodebookService {
+	systemsService systemsService.ISystemsService,
+	orderService ordersService.IOrdersService) ICodebookService {
 
-	return &CodebookService{catalogueService: catalogueService, securityService: securityService, systemsService: systemsService}
+	return &CodebookService{catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
 func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error) {
@@ -51,6 +54,8 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, f
 		codebookList, err = svc.systemsService.GetItemConditionsCodebook()
 	case "USER":
 		codebookList, err = svc.securityService.GetUsersCodebook(facilityCode)
+	case "ORDER_STATUS":
+		codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
 	}
 
 	return codebookList, err
@@ -65,6 +70,8 @@ func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchS
 		codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
 	case "USER":
 		codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, facilityCode)
+	case "SUPPLIER":
+		codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
 	}
 
 	return codebookList, err
