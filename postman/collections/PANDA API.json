@@ -758,6 +758,52 @@
 					"response": []
 				},
 				{
+					"name": "Order statuses",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "6d723dac-7988-4aeb-973e-0c128516d9c4",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/ORDER_STATUS",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"ORDER_STATUS"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Catalogue property types",
 					"event": [
 						{
