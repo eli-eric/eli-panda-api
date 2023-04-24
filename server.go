@@ -26,6 +26,7 @@ func main() {
 	// application enviroment varibles described in example.env file
 	settings, err := config.LoadConfiguraion()
 	ioutils.PanicOnError(err)
+	
 
 	fmt.Print(ioutils.GetWelcomeMessage())
 	log.Println("PANDA REST API Starting...")
@@ -54,10 +55,10 @@ func main() {
 
 	// NEO4J ********************************************************************************************
 	// migrations - init migration lib with neo4j settings
-	db.MigrateNeo4jMainInstance(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort)
+	db.MigrateNeo4jMainInstance(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort, settings.Neo4jSchema)
 	// Lets create neo4j database driver which we want to share across the "services"
 	// Create new DB Driver instance
-	neo4jDriver := db.CreateNeo4jMainInstanceOrPanics(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort)
+	neo4jDriver := db.CreateNeo4jMainInstanceOrPanics(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort, settings.Neo4jSchema)
 	// NEO4J END ****************************************************************************************
 
 	//Init all services
