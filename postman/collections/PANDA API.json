@@ -1246,6 +1246,63 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Suppliers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "6970771d-d8e7-47b7-8357-bf4517b6553f",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/autocomplete/SUPPLIER?searchText=al&limit=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"autocomplete",
+								"SUPPLIER"
+							],
+							"query": [
+								{
+									"key": "searchText",
+									"value": "al"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "6fc176d2-1027-4be1-96d0-3b8c89ebf9d7"
