@@ -5,3 +5,8 @@ type UserCredentials struct {
 
 	Password string `json:"password,omitempty"`
 }
+
+type ChangePasswordRequest struct {
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
+}

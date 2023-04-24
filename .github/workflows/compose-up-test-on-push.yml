@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - run: |
-          docker-compose -f docker-compose-test.yml up -d --build
+          docker compose -f docker-compose-test.yml up -d --build
         env:
           API_JWT_SECRET: "${{ secrets.API_JWT_SECRET }}"
           NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"

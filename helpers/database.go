@@ -247,7 +247,7 @@ func logHistoryQuery(objectUID string, originObjectJSON string, newObjectJSON st
 	MATCH(s{uid:$objectUID})
 	with u,s
 	CREATE(h:History{uid: $uid})
-	SET h.timestamp = datetime(), h.originObject = $originObjectJSON, h.newObject = $newObjectJSON, h.action = $action, h.objectType = labels(s)[0]
+	SET h.timestamp = datetime(), h.objectUID = $objectUID, h.originObject = $originObjectJSON, h.newObject = $newObjectJSON, h.action = $action, h.objectType = labels(s)[0]
 	with u,s,h
 	CREATE(s)-[:HAS_HISTORY]->(h)
 	CREATE(h)-[:DONE_BY_USER]->(u)	
