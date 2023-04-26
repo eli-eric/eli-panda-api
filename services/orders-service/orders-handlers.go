@@ -1,7 +1,10 @@
 package ordersService
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
+	"panda/apigateway/helpers"
 
 	"github.com/labstack/echo/v4"
 )
@@ -11,6 +14,7 @@ type OrdersHandlers struct {
 }
 
 type IOrdersHandlers interface {
+	GetOrders() echo.HandlerFunc
 	GetOrderStatusesCodebook() echo.HandlerFunc
 }
 
@@ -31,5 +35,32 @@ func (h *OrdersHandlers) GetOrderStatusesCodebook() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+func (h *OrdersHandlers) GetOrders() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get all categories by parent path
+		//orders, err := h.ordersService.GetOrders()
+
+		pagination := c.QueryParam("pagination")
+		sorting := c.QueryParam("sorting")
+		search := c.QueryParam("search")
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		fmt.Println("page: ", pagingObject.Page, "page size: ", pagingObject.PageSize)
+		fmt.Println(sortingObject)
+		fmt.Println(search)
+
+		return c.JSON(http.StatusOK, "ok")
+
+		//return echo.ErrInternalServerError
 	}
 }

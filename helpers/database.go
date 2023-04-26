@@ -306,8 +306,13 @@ type DatabaseQuery struct {
 }
 
 type Pagination struct {
-	PageSize int `query:"pageSize"`
-	Page     int `query:"page"`
+	PageSize int
+	Page     int
+}
+
+type Sorting struct {
+	ID   string
+	DESC bool
 }
 
 const DB_LOG_CREATE string = "CREATE"
