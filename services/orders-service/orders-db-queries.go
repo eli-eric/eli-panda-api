@@ -1,6 +1,9 @@
 package ordersService
 
-import "panda/apigateway/helpers"
+import (
+	"panda/apigateway/helpers"
+	"strings"
+)
 
 func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
 	result.Query = `MATCH(r:OrderStatus) RETURN {uid: r.uid,name:r.name} as orderStatuses ORDER BY orderStatuses.sortOrder ASC`
@@ -42,13 +45,13 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 	` + GetOrdersOrderByClauses(sorting) + `
 
 	WHERE  
-	orderStatus contains $search or
-  	supplier CONTAINS $search or 
-  	notes CONTAINS $search or 
-  	name CONTAINS $search OR
-  	orderNumber CONTAINS $search OR
-  	requestNumber CONTAINS $search OR
-  	contractNumber CONTAINS $search 
+	toLower(orderStatus) contains $search or
+	toLower(supplier) CONTAINS $search or 
+	toLower(notes) CONTAINS $search or 
+	toLower(name) CONTAINS $search OR
+	toLower(orderNumber) CONTAINS $search OR
+	toLower(requestNumber) CONTAINS $search OR
+	toLower(contractNumber) CONTAINS $search 
 
 	WITH uid, 
 	name, 
@@ -81,50 +84,12 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 `
 	result.ReturnAlias = "orders"
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["search"] = searchString
+	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
 
 	return result
 }
-
-////prev version of query - no duplicates
-// `MATCH (o:Order)-[r:UPDATED_BY]->(u:User)
-// WITH o, r, u
-// OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)
-// OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
-
-// WITH o, r.updated AS lastUpdateTime, u.username AS userName, s, os
-// ORDER BY lastUpdateTime DESC
-
-// WITH o, o.name as name, o.orderDate as orderDate, COLLECT({lastUpdateTime:lastUpdateTime, userName:userName})[0] AS lastUpdate, s, os
-
-// WITH o,name, orderDate, lastUpdate, s, os ORDER BY orderDate DESC
-
-// WHERE
-// os.name contains $search or
-//   s.name CONTAINS $search or
-//   o.notes CONTAINS $search or
-//   name CONTAINS $search OR
-//   o.orderNumber CONTAINS $search OR
-//   o.requestNumber CONTAINS $search OR
-//   o.contractNumber CONTAINS $search
-
-// WITH o, name, orderDate, lastUpdate, s, os
-// SKIP 0
-// LIMIT 50
-
-// RETURN {
-// name: name,
-// orderNumber: o.orderNumber,
-// requestNumber: o.requestNumber,
-// contractNumber: o.contractNumber ,
-// orderDate: orderDate,
-// supplier: s.name,
-// orderStatus: os.name,
-// lastUpdateDate:lastUpdate.lastUpdateTime,
-// lastUpdatedBy: lastUpdate.userName
-// }`
 
 func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 
@@ -170,25 +135,37 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 
 func GetOrdersBySearchTextCountQuery(searchString string) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH (o:Order)-[:UPDATED_BY]->(u:User)
-	WITH distinct o, u
+	MATCH (o:Order)
+	WITH o
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
 
-    WITH o, os, s
+    WITH
+	o.uid as uid, 
+	o.name as name, 
+	o.orderDate as orderDate,
+	o.orderNumber as orderNumber, 
+	o.contractNumber as contractNumber,
+	o.requestNumber as requestNumber,
+	o.notes as notes,	
+	o.lastUpdateTime AS lastUpdateTime, 
+	o.lastUpdateBy AS lastUpdateBy, 
+	s.name AS supplier, 
+	os.name AS orderStatus 
+
 	WHERE  
-	os.name contains $search or
-  	s.name CONTAINS $search or 
-  	o.notes CONTAINS $search or 
-  	o.name CONTAINS $search OR
-  	o.orderNumber CONTAINS $search OR
-  	o.requestNumber CONTAINS $search OR
-  	o.contractNumber CONTAINS $search 
+	toLower(orderStatus) contains $search or
+	toLower(supplier) CONTAINS $search or 
+	toLower(notes) CONTAINS $search or 
+	toLower(name) CONTAINS $search OR
+	toLower(orderNumber) CONTAINS $search OR
+	toLower(requestNumber) CONTAINS $search OR
+	toLower(contractNumber) CONTAINS $search 
 		
-    return count(o) as count
+    return count(uid) as count
 `
 	result.ReturnAlias = "count"
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["search"] = searchString
+	result.Parameters["search"] = strings.ToLower(searchString)
 	return result
 }
