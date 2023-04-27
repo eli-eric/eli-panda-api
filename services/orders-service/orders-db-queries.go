@@ -21,12 +21,12 @@ func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpe
 // get orders by search text with pagination and sorting
 func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH (o:Order)-[r:UPDATED_BY]->(u:User)
-	WITH distinct o, r, u
+	MATCH (o:Order)
+	WITH  o
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
 
-	WITH distinct
+	WITH
 	o.uid as uid, 
 	o.name as name, 
 	o.orderDate as orderDate,
@@ -34,26 +34,10 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 	o.contractNumber as contractNumber,
 	o.requestNumber as requestNumber,
 	o.notes as notes,	
-	r.updated AS lastUpdateTime, 
-	u.username AS userName, 
+	o.lastUpdateTime AS lastUpdateTime, 
+	o.lastUpdateBy AS lastUpdateBy, 
 	s.name AS supplier, 
-	os.name AS orderStatus
-
-	ORDER BY lastUpdateTime DESC
-
-	WITH distinct
-	uid, 
-	name, 
-	orderDate,
-	orderNumber, 
-	contractNumber,
-	requestNumber,
-	notes,	
-	lastUpdateTime, 
-	userName, 
-	supplier, 
-	orderStatus,
-	COLLECT({lastUpdateTime:lastUpdateTime, userName:userName})[0] AS lastUpdate 
+	os.name AS orderStatus 
 	
 	` + GetOrdersOrderByClauses(sorting) + `
 
@@ -66,7 +50,7 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
   	requestNumber CONTAINS $search OR
   	contractNumber CONTAINS $search 
 
-	WITH distinct uid, 
+	WITH uid, 
 	name, 
 	orderDate,
 	orderNumber, 
@@ -74,10 +58,9 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 	requestNumber,
 	notes,	
 	lastUpdateTime, 
-	userName, 
+	lastUpdateBy,	 
 	supplier, 
-	orderStatus,
-	lastUpdate
+	orderStatus
 
 	SKIP $skip
 	LIMIT $limit
@@ -92,8 +75,8 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 		supplier: supplier,
 		orderStatus: orderStatus,
 		notes: notes,
-		lastUpdateDate: collect(lastUpdate.lastUpdateTime)[0],
-		lastUpdatedBy: lastUpdate.userName
+		lastUpdateTime: lastUpdateTime,
+		lastUpdateBy: lastUpdateBy
 		} as orders
 `
 	result.ReturnAlias = "orders"
@@ -146,7 +129,7 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return ` WITH distinct uid, 
+		return ` WITH uid, 
 		name, 
 		orderDate,
 		orderNumber, 
@@ -154,10 +137,10 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 		requestNumber,
 		notes,	
 		lastUpdateTime, 
-		userName, 
+		lastUpdateBy, 
 		supplier, 
-		orderStatus,
-		lastUpdate ORDER BY orderDate DESC `
+		orderStatus
+		ORDER BY orderDate DESC `
 	}
 
 	var result string = ` WITH distinct uid, 
@@ -168,10 +151,9 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 	requestNumber,
 	notes,	
 	lastUpdateTime, 
-	userName, 
+	lastUpdateBy,
 	supplier, 
-	orderStatus,
-	lastUpdate  ORDER BY `
+	orderStatus ORDER BY `
 
 	for i, sort := range *sorting {
 		if i > 0 {
