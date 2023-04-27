@@ -1281,7 +1281,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/SUPPLIER?searchText=al&limit=5",
+							"raw": "{{baseUrl}}/codebook/autocomplete/SUPPLIER?searchText=ar&limit=5",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1293,7 +1293,7 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": "al"
+									"value": "ar"
 								},
 								{
 									"key": "limit",
@@ -1505,6 +1505,75 @@
 				}
 			],
 			"id": "2177a51e-329d-4129-840e-fb949f9ae468"
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Get orders with paging and sorting",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "cff0655e-96f9-4807-af79-92d296eb3ef7",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&search=mirror",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders"
+							],
+							"query": [
+								{
+									"key": "pagination",
+									"value": "{\"page\" : 1 , \"pageSize\": 10}"
+								},
+								{
+									"key": "sorting",
+									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
+									"disabled": true
+								},
+								{
+									"key": "search",
+									"value": "mirror"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "93eb67e5-edcf-4dfc-b58b-5239091b4c31"
 		},
 		{
 			"name": "Test anything",
