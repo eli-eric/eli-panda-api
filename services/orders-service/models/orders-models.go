@@ -12,8 +12,8 @@ type OrderListItem struct {
 	Supplier       string    `json:"supplier"`
 	OrderStatus    string    `json:"orderStatus"`
 	OrderDate      time.Time `json:"orderDate"`
-	LastUpdateDate time.Time `json:"lastUpdateDate"`
-	LastUpdatedBy  string    `json:"lastUpdatedBy"`
+	LastUpdateTime time.Time `json:"lastUpdateTime"`
+	LastUpdateBy   string    `json:"lastUpdateBy"`
 }
 type OrderDetail struct {
 	UID            string      `json:"uid"`
