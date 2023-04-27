@@ -54,7 +54,7 @@ func (svc *OrdersService) GetOrdersWithSearchAndPagination(search string, pagina
 
 	query := GetOrdersBySearchTextQuery(search, pagination, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.OrderListItem](session, query)
-	totalCount := 18000
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetOrdersBySearchTextCountQuery(search))
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 

@@ -68,3 +68,28 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
 	return result
 }
+
+func GetOrdersBySearchTextCountQuery(searchString string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (o:Order)-[:UPDATED_BY]->(u:User)
+	WITH distinct o, u
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
+	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+
+    WITH o, os, s
+	WHERE  
+	os.name contains $search or
+  	s.name CONTAINS $search or 
+  	o.notes CONTAINS $search or 
+  	o.name CONTAINS $search OR
+  	o.orderNumber CONTAINS $search OR
+  	o.requestNumber CONTAINS $search OR
+  	o.contractNumber CONTAINS $search 
+		
+    return count(o) as count
+`
+	result.ReturnAlias = "count"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = searchString
+	return result
+}
