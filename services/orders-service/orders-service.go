@@ -5,6 +5,7 @@ import (
 
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
+	"panda/apigateway/services/orders-service/models"
 )
 
 type OrdersService struct {
@@ -14,6 +15,7 @@ type OrdersService struct {
 type IOrdersService interface {
 	GetOrderStatusesCodebook() (result []codebookModels.Codebook, err error)
 	GetSuppliersAutocompleteCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
+	GetOrdersWithSearchAndPagination(search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -42,6 +44,19 @@ func (svc *OrdersService) GetSuppliersAutocompleteCodebook(searchString string, 
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *OrdersService) GetOrdersWithSearchAndPagination(search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetOrdersBySearchTextQuery(search, pagination, sorting)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.OrderListItem](session, query)
+	totalCount := 18000
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 
 	return result, err
 }

@@ -19,7 +19,7 @@ func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpe
 }
 
 // get orders by search text with pagination and sorting
-func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Pagination, sorting *helpers.Sorting) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH (o:Order)-[r:UPDATED_BY]->(u:User)
 	WITH o, r, u
@@ -47,16 +47,19 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 	SKIP $skip
 	LIMIT $limit
 
-	RETURN 
-  o.name AS orderName,
-  o.orderNumber AS orderNumber,
-  o.requestNumber AS requestNumber,
-  o.contractNumber AS contractNumber,
-  o.orderDate AS orderDate,
-  s.name AS supplierName,
-  os.name AS orderStateName,
-  lastUpdate.lastUpdateTime as lastUpdateDate,
-  lastUpdate.userName as lastUpdatedBy
+	RETURN {  
+		uid: o.uid,
+		name: o.name,
+		orderNumber: o.orderNumber,
+		requestNumber: o.requestNumber,
+		contractNumber: o.contractNumber ,
+		orderDate: o.orderDate,
+		supplier: s.name,
+		orderStatus: os.name,
+		notes: o.notes,
+		lastUpdateDate:lastUpdate.lastUpdateTime,
+		lastUpdatedBy: lastUpdate.userName
+		} as orders
 `
 	result.ReturnAlias = "orders"
 	result.Parameters = make(map[string]interface{})

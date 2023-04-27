@@ -3,6 +3,7 @@ package ordersService
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"panda/apigateway/helpers"
 
@@ -16,6 +17,7 @@ type OrdersHandlers struct {
 type IOrdersHandlers interface {
 	GetOrders() echo.HandlerFunc
 	GetOrderStatusesCodebook() echo.HandlerFunc
+	GetOrdersWithSearchAndPagination() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -62,5 +64,31 @@ func (h *OrdersHandlers) GetOrders() echo.HandlerFunc {
 		return c.JSON(http.StatusOK, "ok")
 
 		//return echo.ErrInternalServerError
+	}
+}
+
+func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		pagination := c.QueryParam("pagination")
+		sorting := c.QueryParam("sorting")
+		search := c.QueryParam("search")
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		items, err := h.ordersService.GetOrdersWithSearchAndPagination(search, pagingObject, sortingObject)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
 	}
 }
