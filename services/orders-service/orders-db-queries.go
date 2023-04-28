@@ -91,6 +91,46 @@ func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Paginat
 	return result
 }
 
+func GetOrdersBySearchTextFullTextQuery(searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+
+	if searchString == "" {
+		result.Query = "MATCH(o:Order) WITH o "
+	} else {
+		result.Query = "CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order "
+	}
+
+	result.Query += `	
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
+	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+	RETURN DISTINCT {  
+	uid: o.uid,
+	name: o.name,
+	orderNumber: o.orderNumber,
+	requestNumber: o.requestNumber,
+	contractNumber: o.contractNumber,
+	orderDate: o.orderDate,
+	supplier: s.name,
+	orderStatus: os.name,
+	notes: o.notes,
+	lastUpdateTime: o.lastUpdateTime,
+	lastUpdateBy: o.lastUpdateBy
+} AS orders
+
+` + GetOrdersOrderByClausesV2(sorting) + `
+
+	SKIP $skip
+	LIMIT $limit
+
+`
+	result.ReturnAlias = "orders"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["limit"] = pagination.PageSize
+	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
+
+	return result
+}
+
 func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
@@ -108,7 +148,7 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 		ORDER BY orderDate DESC `
 	}
 
-	var result string = ` WITH distinct uid, 
+	var result string = ` WITH uid, 
 	name, 
 	orderDate,
 	orderNumber, 
@@ -125,6 +165,27 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 			result += ", "
 		}
 		result += sort.ID
+		if sort.DESC {
+			result += " DESC "
+		}
+	}
+
+	return result
+}
+
+func GetOrdersOrderByClausesV2(sorting *[]helpers.Sorting) string {
+
+	if sorting == nil || len(*sorting) == 0 {
+		return `ORDER BY orders.orderDate DESC `
+	}
+
+	var result string = ` ORDER BY `
+
+	for i, sort := range *sorting {
+		if i > 0 {
+			result += ", "
+		}
+		result += "orders." + sort.ID
 		if sort.DESC {
 			result += " DESC "
 		}
@@ -163,6 +224,26 @@ func GetOrdersBySearchTextCountQuery(searchString string) (result helpers.Databa
 	toLower(contractNumber) CONTAINS $search 
 		
     return count(uid) as count
+`
+	result.ReturnAlias = "count"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = strings.ToLower(searchString)
+	return result
+}
+
+func GetOrdersBySearchTextFullTextCountQuery(searchString string) (result helpers.DatabaseQuery) {
+
+	if searchString == "" {
+		result.Query = "MATCH(o:Order) WITH o "
+	} else {
+		result.Query = "CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order "
+	}
+
+	result.Query += `	
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
+	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+		
+    return count(o) as count
 `
 	result.ReturnAlias = "count"
 	result.Parameters = make(map[string]interface{})
