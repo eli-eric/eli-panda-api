@@ -52,6 +52,9 @@ func (svc *OrdersService) GetOrdersWithSearchAndPagination(search string, pagina
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
+	//beacause of the full text search we need to modify the search string
+	search = helpers.GetFullTextSearchString(search)
+
 	query := GetOrdersBySearchTextFullTextQuery(search, pagination, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.OrderListItem](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetOrdersBySearchTextFullTextCountQuery(search))

@@ -294,6 +294,24 @@ func ProcessArrayResult[T any](data *[]T, err error) {
 	}
 }
 
+func GetFullTextSearchString(searchString string) (result string) {
+
+	searchString = strings.TrimSpace(searchString)
+
+	if searchString != "" {
+		searchStrings := strings.Split(searchString, " ")
+		for i, search := range searchStrings {
+			if i == 0 {
+				result += "*" + search + "*"
+			} else {
+				result += " +*" + search + "*"
+			}
+		}
+	}
+
+	return result
+}
+
 type PaginationResult[T any] struct {
 	TotalCount int64 `json:"totalCount"`
 	Data       []T   `json:"data"`
