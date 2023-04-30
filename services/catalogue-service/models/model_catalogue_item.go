@@ -5,6 +5,8 @@ type CatalogueItem struct {
 
 	Name string `json:"name,omitempty"`
 
+	CatalogueNumber string `json:"catalogueNumber,omitempty"`
+
 	Description string `json:"description,omitempty"`
 
 	CategoryPath string `json:"categoryPath,omitempty"`

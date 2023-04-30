@@ -30,10 +30,15 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	WITH itm,cat,categoryPath, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(value) CONTAINS $searchText)
+	(toLower(itm.name) CONTAINS $searchText OR
+	 toLower(itm.description) CONTAINS $searchText or 
+	 toLower(manu.name) CONTAINS $searchText or 
+	 itm.catalogueNumber CONTAINS $searchText or
+	 toLower(value) CONTAINS $searchText)
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
+	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
 	categoryName: cat.name,
 	categoryPath: max(categoryPath),
@@ -75,7 +80,11 @@ func CatalogueItemsFiltersTotalCountQuery(search string, categoryPath string) (r
 	WITH itm,cat,categoryPath, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR toLower(itm.description) CONTAINS $searchText or toLower(manu.name) CONTAINS $searchText or toLower(value) CONTAINS $searchText)
+	(toLower(itm.name) CONTAINS $searchText OR 
+	toLower(itm.description) CONTAINS $searchText or 
+	toLower(manu.name) CONTAINS $searchText or 
+	itm.catalogueNumber CONTAINS $searchText or
+	toLower(value) CONTAINS $searchText)
 	RETURN count(distinct itm.uid) as itemsCount`
 
 	result.ReturnAlias = "itemsCount"
@@ -157,6 +166,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
+	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
 	categoryName: cat.name,
 	manufacturer: manu.name,
