@@ -30,6 +30,7 @@ type ISystemsService interface {
 	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
 	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
+	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -187,4 +188,15 @@ func (svc *SystemsService) DeleteSystemRecursive(uid string) (err error) {
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
+}
+
+func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemsForAutocomplete(searchText, limit, facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
 }

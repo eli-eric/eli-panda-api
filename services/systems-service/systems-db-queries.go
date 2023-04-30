@@ -281,21 +281,23 @@ func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
 	return result
 }
 
-func GetSystemsForAutocomplete(search string, facilityCode string) (result helpers.DatabaseQuery) {
+func GetSystemsForAutocomplete(search string, limit int, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH (n:System)-[:BELONGS_TO_FACILITY]->(f)
-WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->()
-WITH n
-WHERE toLower(n.name) CONTAINS $searchText
-OPTIONAL MATCH (parent)-[:HAS_SUBSYSTEM*1..50]->(n)
-WITH n, collect(parent.name) AS parentNames
-RETURN {uid: n.uid, name: n.name  + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
-ORDER BY result.name
+	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->()
+	WITH n
+	WHERE toLower(n.name) CONTAINS $searchText
+	OPTIONAL MATCH (parent)-[:HAS_SUBSYSTEM*1..50]->(n)
+	WITH n, collect(parent.name) AS parentNames
+	RETURN {uid: n.uid, name: n.name  , additionalData: apoc.text.join(reverse(parentNames), " > ")} AS result
+	ORDER BY result.name
+	LIMIT $limit
 `
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 
 	result.Parameters["searchText"] = strings.ToLower(search)
 	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["limit"] = limit
 	return result
 }
