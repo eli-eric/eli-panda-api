@@ -324,8 +324,8 @@ type DatabaseQuery struct {
 }
 
 type Pagination struct {
-	PageSize int
-	Page     int
+	PageSize int `query:"pageSize"`
+	Page     int `query:"page"`
 }
 
 type Sorting struct {
