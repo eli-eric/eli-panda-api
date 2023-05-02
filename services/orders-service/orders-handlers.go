@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"panda/apigateway/helpers"
+	"panda/apigateway/services/orders-service/models"
 
 	"github.com/labstack/echo/v4"
 )
@@ -17,6 +18,7 @@ type IOrdersHandlers interface {
 	GetOrderStatusesCodebook() echo.HandlerFunc
 	GetOrdersWithSearchAndPagination() echo.HandlerFunc
 	GetOrderWithOrderLinesByUid() echo.HandlerFunc
+	InsertNewOrder() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -76,6 +78,33 @@ func (h *OrdersHandlers) GetOrderWithOrderLinesByUid() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, order)
+		} else {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		order := new(models.OrderDetail)
+		err := c.Bind(order)
+
+		if err != nil {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+
+		newUID, err := h.ordersService.InsertNewOrder(order, facilityCode, userUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, newUID)
 		} else {
 			log.Println(err)
 			return echo.ErrInternalServerError

@@ -17,6 +17,7 @@ type IOrdersService interface {
 	GetSuppliersAutocompleteCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetOrdersWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error)
 	GetOrderWithOrderLinesByUid(orderUid string) (result models.OrderDetail, err error)
+	InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -72,4 +73,13 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string) (result m
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, query)
 
 	return result, err
+}
+
+func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := InsertNewOrderQuery(order, facilityCode, userUID)
+	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+
+	return uid, err
 }

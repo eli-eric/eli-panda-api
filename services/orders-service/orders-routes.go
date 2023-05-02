@@ -14,4 +14,6 @@ func MapOrdersRoutes(e *echo.Echo, h IOrdersHandlers, jwtMiddleware echo.Middlew
 	e.GET("/v1/orders", m.Authorization(h.GetOrdersWithSearchAndPagination(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/order/:uid", m.Authorization(h.GetOrderWithOrderLinesByUid(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
+
+	e.POST("/v1/order", m.Authorization(h.InsertNewOrder(), shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 }

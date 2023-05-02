@@ -2,7 +2,10 @@ package ordersService
 
 import (
 	"panda/apigateway/helpers"
+	"panda/apigateway/services/orders-service/models"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
@@ -143,5 +146,68 @@ func GetOrderWithOrderLinesByUidQuery(uid string) (result helpers.DatabaseQuery)
 	result.ReturnAlias = "order"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
+	return result
+}
+
+func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode}) 
+	MATCH(u:User{uid: $lastUpdateBy})
+	WITH f, u
+	CREATE(o:Order { 
+		uid: $uid,
+		name: $name,
+		orderNumber: $orderNumber,
+		requestNumber: $requestNumber,
+		contractNumber: $contractNumber,
+		notes: $notes,
+		orderDate: $orderDate,
+		lastUpdateTime: datetime(),
+		lastUpdateBy: u.username
+	})-[:BELONGS_TO_FACILITY]->(f)
+	`
+	if newOrder.Supplier != nil {
+		result.Query += `WITH o MATCH(s:Supplier{uid: $supplierUID}) MERGE (o)-[:HAS_SUPPLIER]->(s) `
+		result.Parameters["supplierUID"] = newOrder.Supplier.UID
+	}
+
+	if newOrder.OrderStatus != nil {
+		result.Query += `WITH o MATCH(os:OrderStatus{uid: $orderStatusUID}) MERGE (o)-[:HAS_ORDER_STATUS]->(os) `
+		result.Parameters["orderStatusUID"] = newOrder.OrderStatus.UID
+	}
+
+	// if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+	// 	result.Query += `WITH o `
+	// 	for idxLine, orderLine := range newOrder.OrderLines {
+	// 		// if catalogue item is not set, create new catalogue item
+	// 		if orderLine.CatalogueUID == "" {
+
+	// 		}
+	// 		result.Query += `MATCH(ci:CatalogueItem{uid: $catalogueItemUID` + orderLine.UID + `}) `
+	// 		result.Query += `MERGE (o)-[:HAS_ORDER_LINE{priceEur: $priceEur` + orderLine.UID + `}]->(itm:Item{uid: $itemUID` + orderLine.UID + `}) `
+	// 		result.Query += `MERGE (itm)-[:IS_BASED_ON]->(ci) `
+	// 		result.Parameters["catalogueItemUID"+orderLine.UID] = orderLine.CatalogueUID
+	// 		result.Parameters["priceEur"+orderLine.UID] = orderLine.PriceEUR
+	// 		result.Parameters["itemUID"+orderLine.UID] = orderLine.UID
+	// 	}
+	// }
+
+	result.Query += `
+	RETURN DISTINCT o.uid as uid
+	`
+	result.ReturnAlias = "uid"
+
+	result.Parameters["uid"] = uuid.New().String()
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["name"] = newOrder.Name
+	result.Parameters["orderNumber"] = newOrder.OrderNumber
+	result.Parameters["requestNumber"] = newOrder.RequestNumber
+	result.Parameters["contractNumber"] = newOrder.ContractNumber
+	result.Parameters["notes"] = newOrder.Notes
+	result.Parameters["orderDate"] = newOrder.OrderDate
+	result.Parameters["lastUpdateBy"] = userUID
+
 	return result
 }

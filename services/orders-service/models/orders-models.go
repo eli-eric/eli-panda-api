@@ -32,6 +32,19 @@ type OrderDetail struct {
 	OrderLines     []OrderLine              `json:"orderLines"`
 }
 
+type OrderDetailTest struct {
+	UID            string                   `json:"uid"`
+	Name           string                   `json:"name"`
+	RequestNumber  string                   `json:"requestNumber"`
+	OrderNumber    string                   `json:"orderNumber"`
+	ContractNumber string                   `json:"contractNumber"`
+	Notes          string                   `json:"notes"`
+	OrderDate      time.Time                `json:"orderDate"`
+	Supplier       *codebookModels.Codebook `json:"supplier"`
+	OrderStatus    *codebookModels.Codebook `json:"orderStatus"`
+	OrderLines     []OrderLine              `json:"orderLines"`
+}
+
 type OrderLine struct {
 	Name            string                   `json:"name"`
 	UID             string                   `json:"uid"`
