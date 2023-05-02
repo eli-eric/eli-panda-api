@@ -289,7 +289,7 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string) (r
 	WHERE toLower(n.name) CONTAINS $searchText
 	OPTIONAL MATCH (parent)-[:HAS_SUBSYSTEM*1..50]->(n)
 	WITH n, collect(parent.name) AS parentNames
-	RETURN {uid: n.uid, name: n.name  , additionalData: apoc.text.join(reverse(parentNames), " > ")} AS result
+	RETURN {uid: n.uid, name: n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
 	ORDER BY result.name
 	LIMIT $limit
 `
