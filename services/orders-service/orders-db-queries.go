@@ -21,82 +21,16 @@ func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpe
 	return result
 }
 
-// get orders by search text with pagination and sorting
-func GetOrdersBySearchTextQuery(searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
-	result.Query = `
-	MATCH (o:Order)
-	WITH  o
-	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
-	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
-
-	WITH
-	o.uid as uid, 
-	o.name as name, 
-	o.orderDate as orderDate,
-	o.orderNumber as orderNumber, 
-	o.contractNumber as contractNumber,
-	o.requestNumber as requestNumber,
-	o.notes as notes,	
-	o.lastUpdateTime AS lastUpdateTime, 
-	o.lastUpdateBy AS lastUpdateBy, 
-	s.name AS supplier, 
-	os.name AS orderStatus 
-	
-	` + GetOrdersOrderByClauses(sorting) + `
-
-	WHERE  
-	toLower(orderStatus) contains $search or
-	toLower(supplier) CONTAINS $search or 
-	toLower(notes) CONTAINS $search or 
-	toLower(name) CONTAINS $search OR
-	toLower(orderNumber) CONTAINS $search OR
-	toLower(requestNumber) CONTAINS $search OR
-	toLower(contractNumber) CONTAINS $search 
-
-	WITH uid, 
-	name, 
-	orderDate,
-	orderNumber, 
-	contractNumber,
-	requestNumber,
-	notes,	
-	lastUpdateTime, 
-	lastUpdateBy,	 
-	supplier, 
-	orderStatus
-
-	SKIP $skip
-	LIMIT $limit
-
-	RETURN DISTINCT {  
-		uid: uid,
-		name: name,
-		orderNumber: orderNumber,
-		requestNumber: requestNumber,
-		contractNumber: contractNumber ,
-		orderDate: orderDate,
-		supplier: supplier,
-		orderStatus: orderStatus,
-		notes: notes,
-		lastUpdateTime: lastUpdateTime,
-		lastUpdateBy: lastUpdateBy
-		} as orders
-`
-	result.ReturnAlias = "orders"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["search"] = strings.ToLower(searchString)
-	result.Parameters["limit"] = pagination.PageSize
-	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
-
-	return result
-}
-
-func GetOrdersBySearchTextFullTextQuery(searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 
 	if searchString == "" {
-		result.Query = "MATCH(o:Order) WITH o "
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order)-[:BELONGS_TO_FACILITY]->(f) WITH o "
 	} else {
-		result.Query = "CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order "
+		result.Query = `
+		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order 
+		MATCH(f:Facility{code: $facilityCode}) WITH f, o
+		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
+		WITH o `
 	}
 
 	result.Query += `	
@@ -116,7 +50,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, pagination *helpers
 	lastUpdateBy: o.lastUpdateBy
 } AS orders
 
-` + GetOrdersOrderByClausesV2(sorting) + `
+` + GetOrdersOrderByClauses(sorting) + `
 
 	SKIP $skip
 	LIMIT $limit
@@ -127,53 +61,12 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, pagination *helpers
 	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
+	result.Parameters["facilityCode"] = facilityCode
 
 	return result
 }
 
 func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
-
-	if sorting == nil || len(*sorting) == 0 {
-		return ` WITH uid, 
-		name, 
-		orderDate,
-		orderNumber, 
-		contractNumber,
-		requestNumber,
-		notes,	
-		lastUpdateTime, 
-		lastUpdateBy, 
-		supplier, 
-		orderStatus
-		ORDER BY orderDate DESC `
-	}
-
-	var result string = ` WITH uid, 
-	name, 
-	orderDate,
-	orderNumber, 
-	contractNumber,
-	requestNumber,
-	notes,	
-	lastUpdateTime, 
-	lastUpdateBy,
-	supplier, 
-	orderStatus ORDER BY `
-
-	for i, sort := range *sorting {
-		if i > 0 {
-			result += ", "
-		}
-		result += sort.ID
-		if sort.DESC {
-			result += " DESC "
-		}
-	}
-
-	return result
-}
-
-func GetOrdersOrderByClausesV2(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
 		return `ORDER BY orders.orderDate DESC `
@@ -194,49 +87,16 @@ func GetOrdersOrderByClausesV2(sorting *[]helpers.Sorting) string {
 	return result
 }
 
-func GetOrdersBySearchTextCountQuery(searchString string) (result helpers.DatabaseQuery) {
-	result.Query = `
-	MATCH (o:Order)
-	WITH o
-	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
-	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
-
-    WITH
-	o.uid as uid, 
-	o.name as name, 
-	o.orderDate as orderDate,
-	o.orderNumber as orderNumber, 
-	o.contractNumber as contractNumber,
-	o.requestNumber as requestNumber,
-	o.notes as notes,	
-	o.lastUpdateTime AS lastUpdateTime, 
-	o.lastUpdateBy AS lastUpdateBy, 
-	s.name AS supplier, 
-	os.name AS orderStatus 
-
-	WHERE  
-	toLower(orderStatus) contains $search or
-	toLower(supplier) CONTAINS $search or 
-	toLower(notes) CONTAINS $search or 
-	toLower(name) CONTAINS $search OR
-	toLower(orderNumber) CONTAINS $search OR
-	toLower(requestNumber) CONTAINS $search OR
-	toLower(contractNumber) CONTAINS $search 
-		
-    return count(uid) as count
-`
-	result.ReturnAlias = "count"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["search"] = strings.ToLower(searchString)
-	return result
-}
-
-func GetOrdersBySearchTextFullTextCountQuery(searchString string) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode string) (result helpers.DatabaseQuery) {
 
 	if searchString == "" {
-		result.Query = "MATCH(o:Order) WITH o "
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order)-[:BELONGS_TO_FACILITY]->(f) WITH o "
 	} else {
-		result.Query = "CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order "
+		result.Query = `
+		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order 
+		MATCH(f:Facility{code: $facilityCode}) WITH f, o
+		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
+		WITH o `
 	}
 
 	result.Query += `	
@@ -248,5 +108,6 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string) (result helper
 	result.ReturnAlias = "count"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }

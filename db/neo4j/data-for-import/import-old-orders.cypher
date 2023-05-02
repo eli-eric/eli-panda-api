@@ -5,6 +5,8 @@ CALL {
   with line
   MATCH(adminUser:User{username: "admin"})
   with line, adminUser
+  MATCH(f:Facility{code: "B"}) 
+  with line, f, adminUser
   OPTIONAL MATCH(s:Supplier{shortName: line.supplier})
   with line,s, adminUser
   OPTIONAL MATCH(os:OrderStatus{code: line.orderStatus}) 
@@ -18,6 +20,7 @@ CALL {
   testRecord: true})
   with line,s,o, os, adminUser
   MERGE(o)-[:UPDATED_BY{updated: datetime()}]->(adminUser)
+  MERGE(o)-[:BELONGS_TO_FACILITY]->(f)
   MERGE(o)-[:HAS_SUPPLIER]->(s)
   MERGE(o)-[:HAS_ORDER_STATUS]->(os)
 } IN TRANSACTIONS OF 500 ROWS
