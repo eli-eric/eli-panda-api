@@ -111,3 +111,37 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode s
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func GetOrderWithOrderLinesByUidQuery(uid string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH(o:Order {uid: $uid})
+	WITH o
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
+	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)
+	WITH o, s,os, ol, itm, ci 
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
+	WITH o, s, os, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
+		priceEur: ol.priceEur, 
+		name: itm.name, 
+		catalogueNumber: ci.catalogueNumber, 
+		catalogueUid: ci.uid, 
+		system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid,name: sys.name} ELSE NULL END }) ELSE NULL END as orderLines
+	RETURN DISTINCT {  
+	uid: o.uid,
+	name: o.name,
+	orderNumber: o.orderNumber,
+	requestNumber: o.requestNumber,
+	contractNumber: o.contractNumber,
+	notes: o.notes,
+	supplier: CASE WHEN s IS NOT NULL THEN {uid: s.uid,name: s.name} ELSE NULL END,
+	orderStatus: CASE WHEN s IS NOT NULL THEN {uid: os.uid,name: os.name} ELSE NULL END,
+	orderDate: o.orderDate,
+	orderLines:  orderLines 
+} AS order 
+	`
+	result.ReturnAlias = "order"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	return result
+}

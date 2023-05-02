@@ -16,6 +16,7 @@ type OrdersHandlers struct {
 type IOrdersHandlers interface {
 	GetOrderStatusesCodebook() echo.HandlerFunc
 	GetOrdersWithSearchAndPagination() echo.HandlerFunc
+	GetOrderWithOrderLinesByUid() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -57,6 +58,24 @@ func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) GetOrderWithOrderLinesByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		orderUid := c.Param("uid")
+
+		order, err := h.ordersService.GetOrderWithOrderLinesByUid(orderUid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, order)
 		} else {
 			log.Println(err)
 			return echo.ErrInternalServerError
