@@ -167,6 +167,8 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 		lastUpdateTime: datetime(),
 		lastUpdateBy: u.username
 	})-[:BELONGS_TO_FACILITY]->(f)
+	with o,u
+	CREATE(o)-[:WAS_CHANGED_BY{ updateTime: datetime() }]->(u)	
 	`
 	if newOrder.Supplier != nil {
 		result.Query += `WITH o MATCH(s:Supplier{uid: $supplierUID}) MERGE (o)-[:HAS_SUPPLIER]->(s) `
@@ -181,16 +183,18 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	// if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
 	// 	result.Query += `WITH o `
 	// 	for idxLine, orderLine := range newOrder.OrderLines {
+
+	// 		result.Query += fmt.Sprintf(`MERGE (o)-[:HAS_ORDER_LINE{priceEur: $priceEur%[1]v}]->(itm:Item{uid: $itemUID%[1]v}) `, idxLine)
 	// 		// if catalogue item is not set, create new catalogue item
 	// 		if orderLine.CatalogueUID == "" {
 
 	// 		}
 	// 		result.Query += `MATCH(ci:CatalogueItem{uid: $catalogueItemUID` + orderLine.UID + `}) `
-	// 		result.Query += `MERGE (o)-[:HAS_ORDER_LINE{priceEur: $priceEur` + orderLine.UID + `}]->(itm:Item{uid: $itemUID` + orderLine.UID + `}) `
+
 	// 		result.Query += `MERGE (itm)-[:IS_BASED_ON]->(ci) `
 	// 		result.Parameters["catalogueItemUID"+orderLine.UID] = orderLine.CatalogueUID
-	// 		result.Parameters["priceEur"+orderLine.UID] = orderLine.PriceEUR
-	// 		result.Parameters["itemUID"+orderLine.UID] = orderLine.UID
+	// 		result.Parameters[fmt.Sprintf("priceEur%v", idxLine)] = orderLine.PriceEUR
+	// 		result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
 	// 	}
 	// }
 
@@ -206,7 +210,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	result.Parameters["requestNumber"] = newOrder.RequestNumber
 	result.Parameters["contractNumber"] = newOrder.ContractNumber
 	result.Parameters["notes"] = newOrder.Notes
-	result.Parameters["orderDate"] = newOrder.OrderDate
+	result.Parameters["orderDate"] = newOrder.OrderDate.UTC()
 	result.Parameters["lastUpdateBy"] = userUID
 
 	return result
