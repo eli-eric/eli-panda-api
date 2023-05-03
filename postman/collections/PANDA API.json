@@ -277,7 +277,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/catalogue/items?page=1&pageSize=10&search=ath",
+							"raw": "{{baseUrl}}/catalogue/items?page=1&pageSize=10&search=CKF00040",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -296,7 +296,7 @@
 								},
 								{
 									"key": "search",
-									"value": "ath"
+									"value": "CKF00040"
 								}
 							]
 						}
@@ -1303,6 +1303,63 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Systems",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "f97bf58f-921f-42f3-8710-363896fdbfe1",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/autocomplete/SYSTEM?searchText=&limit=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"autocomplete",
+								"SYSTEM"
+							],
+							"query": [
+								{
+									"key": "searchText",
+									"value": ""
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "6fc176d2-1027-4be1-96d0-3b8c89ebf9d7"
@@ -1566,6 +1623,126 @@
 								{
 									"key": "search",
 									"value": "mirror"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get orders detail with order lines",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "8141c4bd-c3c8-4e3f-b07b-3e6a704c5797",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/order/0eefff48-9885-4b86-ac67-ffbc31cb50ee",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order",
+								"0eefff48-9885-4b86-ac67-ffbc31cb50ee"
+							],
+							"query": [
+								{
+									"key": "sorting",
+									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Insert new order with details",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "a5276229-7134-44f6-95c3-6cfe92237d42",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"uid\": \"\",\n    \"name\": \"XX NEW Test Spare parts\",\n    \"requestNumber\": \"XRN87977\",\n    \"orderNumber\": \"XON950020\",\n    \"contractNumber\": \"XCN97987987\",\n    \"notes\": \"Some notes ....\",\n    \"supplier\": {\n        \"uid\": \"44bbc79d-8ee2-45d7-87b0-1f3250f1b1fb\",\n        \"name\": \"STREICHER, spol. s r.o. Plzeň\"\n    },\n    \"orderStatus\": {\n        \"uid\": \"c5ef9d00-ac38-44c1-b48a-fde0d7095c53\",\n        \"name\": \"Planned\"\n    },\n    \"orderDate\": \"2023-04-25T00:00:00Z\",\n    \"orderLines\": [\n        {\n            \"name\": \"nXDS10i \",\n            \"uid\": \"\",\n            \"catalogueNumber\": \"A73601983\",\n            \"catalogueUid\": \"02558f95-b193-461f-b62f-b8a20e6c6020\",\n            \"system\": null,\n            \"priceEur\": 65.4321\n        },\n        {\n            \"name\": \"ATH 1603 M, DN 250 ISO-F\",\n            \"uid\": \"\",\n            \"catalogueNumber\": \"Y2662100\",\n            \"catalogueUid\": \"7a515237-bd2d-4f0e-a6e4-5612d0544bd8\",\n            \"system\": {\n                \"uid\": \"4cd2fd61-6aa3-4c4b-bd12-3f7d17424831\",\n                \"name\": \"L1\"\n            },\n            \"priceEur\": 12.345\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/order",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order"
+							],
+							"query": [
+								{
+									"key": "sorting",
+									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
+									"disabled": true
 								}
 							]
 						}
