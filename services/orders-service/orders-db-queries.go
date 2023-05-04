@@ -192,22 +192,35 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 		for idxLine, orderLine := range newOrder.OrderLines {
 
 			// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
-			result.Query += fmt.Sprintf(`MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, lastUpdateTime: datetime() }) WITH o,ccg, itm%[1]v `, idxLine)
+			result.Query += fmt.Sprintf(`
+			MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, lastUpdateTime: datetime() }) 
+			WITH o,ccg, itm%[1]v `, idxLine)
 
 			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 			result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
 			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
 
+			// assign system to the item
+			if orderLine.System != nil {
+				result.Query += fmt.Sprintf(`MATCH(sys%[1]v:System{uid: $systemUID%[1]v}) MERGE (sys%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+				result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+			}
+
+			newCatalogueItemUIDs := make(map[string]string, 0)
 			// if catalogue item is not set, create new catalogue item
 			if orderLine.CatalogueUID == "" {
-				//TODO: create new catalogue item
-				// result.Query += fmt.Sprintf(`MERGE (ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v, name: $itemName%[1]v, catalogueNumber: $catalogueNumber%[1]v, lastUpdateTime: datetime() }) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+				if newCatalogueItemUIDs[orderLine.CatalogueNumber] == "" {
+					newCatalogueItemUIDs[orderLine.CatalogueNumber] = uuid.New().String()
+				}
+				result.Query += fmt.Sprintf(`MERGE (ci%[1]v:CatalogueItem{ name: $itemName%[1]v, catalogueNumber: $catalogueNumber%[1]v }) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+				result.Query += fmt.Sprintf(`SET ci%[1]v.uid = $catalogueItemUID%[1]v, ci%[1]v.lastUpdateTime = datetime() WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+				result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+				result.Query += fmt.Sprintf(`MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
 
-				// result.Query += `MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o, itm%[1]v, ci%[1]v `
-
-				// result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = uuid.New().String()
-				// result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
+				result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
+				result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
 
 			} else {
 				result.Query += fmt.Sprintf(`MATCH(ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v}) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
