@@ -19,6 +19,7 @@ type IOrdersHandlers interface {
 	GetOrdersWithSearchAndPagination() echo.HandlerFunc
 	GetOrderWithOrderLinesByUid() echo.HandlerFunc
 	InsertNewOrder() echo.HandlerFunc
+	DeleteOrder() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -105,6 +106,25 @@ func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, newUID)
+		} else {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) DeleteOrder() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		orderUID := c.Param("uid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.ordersService.DeleteOrder(orderUID, userUID)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
 		} else {
 			log.Println(err)
 			return echo.ErrInternalServerError

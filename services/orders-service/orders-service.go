@@ -18,6 +18,7 @@ type IOrdersService interface {
 	GetOrdersWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error)
 	GetOrderWithOrderLinesByUid(orderUid string) (result models.OrderDetail, err error)
 	InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error)
+	DeleteOrder(orderUid string, userUID string) (err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -82,4 +83,13 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 
 	return uid, err
+}
+
+func (svc *OrdersService) DeleteOrder(orderUid string, userUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteOrderQuery(orderUid, userUID)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
+	return err
 }

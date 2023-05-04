@@ -17,6 +17,7 @@ CALL {
   orderDate: datetime(line.orderDate),
   contractNumber: line.contractNumber,  
   createdBy: line.createdBy,  
+  deleted: false,
   testRecord: true})
   with line,s,o, os, adminUser
   MERGE(o)-[:UPDATED_BY{updated: datetime()}]->(adminUser)

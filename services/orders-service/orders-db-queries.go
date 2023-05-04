@@ -28,10 +28,10 @@ func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpe
 func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 
 	if searchString == "" {
-		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order)-[:BELONGS_TO_FACILITY]->(f) WITH o "
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH o "
 	} else {
 		result.Query = `
-		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order 
+		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order AND o.deleted = false WITH o
 		MATCH(f:Facility{code: $facilityCode}) WITH f, o
 		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
 		WITH o `
@@ -73,7 +73,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY orders.orderDate DESC `
+		return `ORDER BY orders.lastUpdateTime DESC `
 	}
 
 	var result string = ` ORDER BY `
@@ -94,10 +94,10 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode string) (result helpers.DatabaseQuery) {
 
 	if searchString == "" {
-		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order)-[:BELONGS_TO_FACILITY]->(f) WITH o "
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH o "
 	} else {
 		result.Query = `
-		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order 
+		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order AND o.deleted = false WITH o
 		MATCH(f:Facility{code: $facilityCode}) WITH f, o
 		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
 		WITH o `
@@ -118,7 +118,7 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode s
 
 func GetOrderWithOrderLinesByUidQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH(o:Order {uid: $uid})
+	MATCH(o:Order {uid: $uid, deleted: false})
 	WITH o
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
@@ -167,10 +167,11 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 		notes: $notes,
 		orderDate: $orderDate,
 		lastUpdateTime: datetime(),
-		lastUpdateBy: u.username
+		lastUpdateBy: u.username,
+		deleted: false
 	})-[:BELONGS_TO_FACILITY]->(f)
 	with o,u
-	CREATE(o)-[:WAS_CHANGED_BY{ updateTime: datetime() }]->(u)	
+	CREATE(o)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)	
 	`
 	if newOrder.Supplier != nil {
 		result.Query += `WITH o MATCH(s:Supplier{uid: $supplierUID}) MERGE (o)-[:HAS_SUPPLIER]->(s) `
@@ -247,6 +248,36 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	result.Parameters["notes"] = newOrder.Notes
 	result.Parameters["orderDate"] = newOrder.OrderDate.UTC()
 	result.Parameters["lastUpdateBy"] = userUID
+
+	return result
+}
+
+// update order query
+func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
+	`
+	result.Parameters = make(map[string]interface{}, 0)
+	result.Parameters["uid"] = oldOrder.UID
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
+func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH (o:Order{uid: $uid}) 	
+	SET o.deleted = true, o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
+	WITH o, u
+	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "DELETE" }]->(u)
+	RETURN o.uid as uid`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["userUID"] = userUID
 
 	return result
 }
