@@ -1,6 +1,7 @@
 package ordersService
 
 import (
+	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/orders-service/models"
 	"strings"
@@ -16,7 +17,7 @@ func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
 }
 
 func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(s:Supplier) WHERE toLower(s.name) CONTAINS toLower($searchString) RETURN {uid: s.uid,name:s.name} as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
+	result.Query = `MATCH(s:Supplier) WHERE toLower(s.name) CONTAINS toLower($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
 	result.ReturnAlias = "suppliers"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchString"] = searchString
@@ -125,7 +126,8 @@ func GetOrderWithOrderLinesByUidQuery(uid string) (result helpers.DatabaseQuery)
 	WITH o, s,os, ol, itm, ci 
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
 	WITH o, s, os, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
-		priceEur: ol.priceEur, 
+		price: ol.price,
+		currency: ol.currency, 
 		name: itm.name, 
 		catalogueNumber: ci.catalogueNumber, 
 		catalogueUid: ci.uid, 
@@ -172,31 +174,51 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	`
 	if newOrder.Supplier != nil {
 		result.Query += `WITH o MATCH(s:Supplier{uid: $supplierUID}) MERGE (o)-[:HAS_SUPPLIER]->(s) `
+
 		result.Parameters["supplierUID"] = newOrder.Supplier.UID
 	}
 
 	if newOrder.OrderStatus != nil {
 		result.Query += `WITH o MATCH(os:OrderStatus{uid: $orderStatusUID}) MERGE (o)-[:HAS_ORDER_STATUS]->(os) `
+
 		result.Parameters["orderStatusUID"] = newOrder.OrderStatus.UID
 	}
 
-	// if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
-	// 	result.Query += `WITH o `
-	// 	for idxLine, orderLine := range newOrder.OrderLines {
+	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+		result.Query += `WITH o MATCH(ccg:CatalogueCategory{uid: $catalogueCategoryGeneralUID}) WITH o, ccg `
 
-	// 		result.Query += fmt.Sprintf(`MERGE (o)-[:HAS_ORDER_LINE{priceEur: $priceEur%[1]v}]->(itm:Item{uid: $itemUID%[1]v}) `, idxLine)
-	// 		// if catalogue item is not set, create new catalogue item
-	// 		if orderLine.CatalogueUID == "" {
+		result.Parameters["catalogueCategoryGeneralUID"] = "97598f04-948f-4da5-95b6-b2a44e0076db"
 
-	// 		}
-	// 		result.Query += `MATCH(ci:CatalogueItem{uid: $catalogueItemUID` + orderLine.UID + `}) `
+		for idxLine, orderLine := range newOrder.OrderLines {
 
-	// 		result.Query += `MERGE (itm)-[:IS_BASED_ON]->(ci) `
-	// 		result.Parameters["catalogueItemUID"+orderLine.UID] = orderLine.CatalogueUID
-	// 		result.Parameters[fmt.Sprintf("priceEur%v", idxLine)] = orderLine.PriceEUR
-	// 		result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
-	// 	}
-	// }
+			// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
+			result.Query += fmt.Sprintf(`MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, lastUpdateTime: datetime() }) WITH o,ccg, itm%[1]v `, idxLine)
+
+			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
+			result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
+			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
+			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+
+			// if catalogue item is not set, create new catalogue item
+			if orderLine.CatalogueUID == "" {
+				//TODO: create new catalogue item
+				// result.Query += fmt.Sprintf(`MERGE (ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v, name: $itemName%[1]v, catalogueNumber: $catalogueNumber%[1]v, lastUpdateTime: datetime() }) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+
+				// result.Query += `MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o, itm%[1]v, ci%[1]v `
+
+				// result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = uuid.New().String()
+				// result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
+
+			} else {
+				result.Query += fmt.Sprintf(`MATCH(ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v}) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
+
+				result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = orderLine.CatalogueUID
+			}
+
+			result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) `, idxLine)
+
+		}
+	}
 
 	result.Query += `
 	RETURN DISTINCT o.uid as uid
