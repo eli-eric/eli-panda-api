@@ -22,11 +22,18 @@ import (
 
 func main() {
 
+	//set locale to europe/prague
+	loc, err := time.LoadLocation("Europe/Prague")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	time.Local = loc
+
 	// configuration settings
 	// application enviroment varibles described in example.env file
 	settings, err := config.LoadConfiguraion()
 	ioutils.PanicOnError(err)
-	
 
 	fmt.Print(ioutils.GetWelcomeMessage())
 	log.Println("PANDA REST API Starting...")

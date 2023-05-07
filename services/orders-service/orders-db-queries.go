@@ -116,9 +116,9 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode s
 	return result
 }
 
-func GetOrderWithOrderLinesByUidQuery(uid string) (result helpers.DatabaseQuery) {
+func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH(o:Order {uid: $uid, deleted: false})
+	MATCH(o:Order {uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
 	WITH o
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
@@ -148,6 +148,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string) (result helpers.DatabaseQuery)
 	result.ReturnAlias = "order"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
 
@@ -246,7 +247,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	result.Parameters["requestNumber"] = newOrder.RequestNumber
 	result.Parameters["contractNumber"] = newOrder.ContractNumber
 	result.Parameters["notes"] = newOrder.Notes
-	result.Parameters["orderDate"] = newOrder.OrderDate.UTC()
+	result.Parameters["orderDate"] = newOrder.OrderDate.Local()
 	result.Parameters["lastUpdateBy"] = userUID
 
 	return result
@@ -254,12 +255,28 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 // update order query
 func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{}, 0)
+
 	result.Query = `
 	MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
 	`
-	result.Parameters = make(map[string]interface{}, 0)
+
+	helpers.AutoResolveObjectToUpdateQuery(&result, *newOrder, *oldOrder, "o")
+
+	result.Query += `
+	WITH o
+	MATCH(u:User{uid: $lastUpdateBy})
+	WITH o, u
+	SET o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
+	WITH o, u
+	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+	RETURN o.uid as uid
+	`
+
 	result.Parameters["uid"] = oldOrder.UID
 	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["lastUpdateBy"] = userUID
+	result.ReturnAlias = "uid"
 
 	return result
 }

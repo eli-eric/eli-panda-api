@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 	"panda/apigateway/ioutils"
+	"panda/apigateway/services/codebook-service/models"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -173,23 +175,49 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
 						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
 
-						if newValue != oldValue {
-							if newValue.IsNil() {
-								dbQuery.Parameters[neo4jPropName] = nil
-							} else {
-								dbQuery.Parameters[neo4jPropName] = newValue.Elem().String()
-							}
+						if newValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = nil
+						} else if oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().String()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if oldValue.Elem().String() != newValue.Elem().String() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().String()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
 
+					} else if fieldType == "time.Time" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Interface().(time.Time)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Interface().(time.Time)
+
+						if newValue != oldValue {
+							dbQuery.Parameters[neo4jPropName] = newValue.Local()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "*time.Time" {
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if newValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = nil
+						} else if oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Interface().(time.Time).Local()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if oldValue.Elem().Interface().(time.Time) != newValue.Elem().Interface().(time.Time) {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Interface().(time.Time).Local()
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
 					}
+
 				} else if neo4jPropType == "rel" {
 					neo4jLabel := neo4jTags[1]
 					neo4jRelationType := neo4jTags[2]
-					neo4jID := neo4jTags[3]
-					neo4jAlias := neo4jTags[4]
 
 					if fieldType == "*string" {
+
+						neo4jID := neo4jTags[3]
+						neo4jAlias := neo4jTags[4]
+
 						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
 						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
 
@@ -203,8 +231,25 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						} else if (newValue.IsNil() || newValue.Elem().String() == "") && !oldValue.IsNil() {
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
 						}
-					}
+					} else if fieldType == "*models.Codebook" {
 
+						neo4jAlias := neo4jTags[3]
+						neo4jID := "uid"
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if !newValue.IsNil() && oldValue.IsNil() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[2]v:%[3]v{%[4]v:$%[5]v}) MERGE(%[1]v)-[:%[6]v]->(%[2]v) `, updateNodeAlias, neo4jAlias, neo4jLabel, neo4jID, newField.Name, neo4jRelationType)
+							dbQuery.Parameters[newField.Name] = newValue.Elem().Interface().(models.Codebook).UID
+						} else if !newValue.IsNil() && !oldValue.IsNil() && newValue.Elem().Interface().(models.Codebook).UID != oldValue.Elem().Interface().(models.Codebook).UID {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[2]v:%[3]v{%[4]v:$%[5]v}) MERGE(%[1]v)-[:%[6]v]->(%[2]v) `, updateNodeAlias, neo4jAlias, neo4jLabel, neo4jID, newField.Name, neo4jRelationType)
+							dbQuery.Parameters[newField.Name] = newValue.Elem().Interface().(models.Codebook).UID
+						} else if newValue.IsNil() && !oldValue.IsNil() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+						}
+					}
 				}
 			}
 		}

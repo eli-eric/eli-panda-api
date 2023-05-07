@@ -19,6 +19,7 @@ type IOrdersHandlers interface {
 	GetOrdersWithSearchAndPagination() echo.HandlerFunc
 	GetOrderWithOrderLinesByUid() echo.HandlerFunc
 	InsertNewOrder() echo.HandlerFunc
+	UpdateOrder() echo.HandlerFunc
 	DeleteOrder() echo.HandlerFunc
 }
 
@@ -74,8 +75,9 @@ func (h *OrdersHandlers) GetOrderWithOrderLinesByUid() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		orderUid := c.Param("uid")
+		facilityCode := c.Get("facilityCode").(string)
 
-		order, err := h.ordersService.GetOrderWithOrderLinesByUid(orderUid)
+		order, err := h.ordersService.GetOrderWithOrderLinesByUid(orderUid, facilityCode)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, order)
@@ -106,6 +108,33 @@ func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, newUID)
+		} else {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		order := new(models.OrderDetail)
+		err := c.Bind(order)
+
+		if err != nil {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+
+		err = h.ordersService.UpdateOrder(order, facilityCode, userUID)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
 		} else {
 			log.Println(err)
 			return echo.ErrInternalServerError

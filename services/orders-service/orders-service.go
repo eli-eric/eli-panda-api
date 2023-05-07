@@ -1,6 +1,8 @@
 package ordersService
 
 import (
+	"log"
+
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 
 	"panda/apigateway/helpers"
@@ -16,8 +18,9 @@ type IOrdersService interface {
 	GetOrderStatusesCodebook() (result []codebookModels.Codebook, err error)
 	GetSuppliersAutocompleteCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetOrdersWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error)
-	GetOrderWithOrderLinesByUid(orderUid string) (result models.OrderDetail, err error)
+	GetOrderWithOrderLinesByUid(orderUid string, facilityCode string) (result models.OrderDetail, err error)
 	InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error)
+	UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error)
 	DeleteOrder(orderUid string, userUID string) (err error)
 }
 
@@ -67,10 +70,10 @@ func (svc *OrdersService) GetOrdersWithSearchAndPagination(search string, facili
 	return result, err
 }
 
-func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string) (result models.OrderDetail, err error) {
+func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityCode string) (result models.OrderDetail, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetOrderWithOrderLinesByUidQuery(orderUid)
+	query := GetOrderWithOrderLinesByUidQuery(orderUid, facilityCode)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, query)
 
 	return result, err
@@ -90,6 +93,28 @@ func (svc *OrdersService) DeleteOrder(orderUid string, userUID string) (err erro
 
 	query := DeleteOrderQuery(orderUid, userUID)
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
+	return err
+}
+
+func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error) {
+	if order != nil {
+		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+		oldOrder, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, GetOrderWithOrderLinesByUidQuery(order.UID, facilityCode))
+
+		if err == nil {
+			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateOrderQuery(order, &oldOrder, facilityCode, userUID))
+		}
+
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+
+	} else {
+		err = helpers.ERR_INVALID_INPUT
+	}
 
 	return err
 }
