@@ -15,6 +15,9 @@ RUN go build -v -o panda-api -ldflags "-s -w"
 
 ## Deploy
 FROM alpine:latest
+RUN apk add --no-cache tzdata
+ENV TZ=Europe/Prague
+
 
 WORKDIR /root/
 
