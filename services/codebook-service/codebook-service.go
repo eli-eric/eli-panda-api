@@ -74,6 +74,8 @@ func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchS
 		codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
 	case "SYSTEM":
 		codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode)
+	case "EMPLOYEE":
+		codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
 	}
 
 	return codebookList, err
