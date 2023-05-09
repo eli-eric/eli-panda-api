@@ -19,7 +19,7 @@ CALL {
   createdBy: line.createdBy,  
   deleted: false,
   testRecord: true})
-  with line,s,o, os, adminUser
+  with line,s,o, os, adminUser, f
   MERGE(o)-[:UPDATED_BY{updated: datetime()}]->(adminUser)
   MERGE(o)-[:BELONGS_TO_FACILITY]->(f)
   MERGE(o)-[:HAS_SUPPLIER]->(s)
