@@ -19,6 +19,7 @@ type CodebookService struct {
 type ICodebookService interface {
 	GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error)
 	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error)
+	GetListOfCodebooks() (codebookList []models.CodebookType)
 }
 
 // Create new security service instance
@@ -79,4 +80,25 @@ func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchS
 	}
 
 	return codebookList, err
+}
+
+func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.CodebookType) {
+
+	return []models.CodebookType{
+		models.ZONE_CODEBOOK,
+		models.UNIT_CODEBOOK,
+		models.CATALOGUE_PROPERTY_TYPE_CODEBOOK,
+		models.SYSTEM_TYPE_CODEBOOK,
+		models.SYSTEM_IMPORTANCE_CODEBOOK,
+		models.SYSTEM_CRITICALITY_CLASS_CODEBOOK,
+		models.ITEM_USAGE_CODEBOOK,
+		models.ITEM_CONDITION_STATUS_CODEBOOK,
+		models.USER_CODEBOOK,
+		models.ORDER_STATUS_CODEBOOK,
+		models.LOCATION_AUTOCOMPLETE_CODEBOOK,
+		models.EMPLOYEE_AUTOCOMPLETE_CODEBOOK,
+		models.SYSTEM_AUTOCOMPLETE_CODEBOOK,
+		models.USER_AUTOCOMPLETE_CODEBOOK,
+		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
+	}
 }

@@ -44,4 +44,5 @@ type OrderLine struct {
 	ItemUsgae       *codebookModels.Codebook `json:"itemUsage"`
 	Price           float64                  `json:"price"`
 	Currency        string                   `json:"currency"`
+	EUN             string                   `json:"eun"`
 }

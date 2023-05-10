@@ -14,6 +14,7 @@ type CodebookHandlers struct {
 type ICodebookHandlers interface {
 	GetCodebook() echo.HandlerFunc
 	GetAutocompleteCodebook() echo.HandlerFunc
+	GetListOfCodebooks() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -68,5 +69,15 @@ func (h *CodebookHandlers) GetAutocompleteCodebook() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		codebookList := h.codebookService.GetListOfCodebooks()
+
+		return c.JSON(http.StatusOK, codebookList)
 	}
 }
