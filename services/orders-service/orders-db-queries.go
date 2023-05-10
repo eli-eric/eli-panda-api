@@ -140,7 +140,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	contractNumber: o.contractNumber,
 	notes: o.notes,
 	supplier: CASE WHEN s IS NOT NULL THEN {uid: s.uid,name: s.name} ELSE NULL END,
-	orderStatus: CASE WHEN s IS NOT NULL THEN {uid: os.uid,name: os.name} ELSE NULL END,
+	orderStatus: CASE WHEN os IS NOT NULL THEN {uid: os.uid,name: os.name} ELSE NULL END,
 	orderDate: o.orderDate,
 	orderLines:  orderLines 
 } AS order 
