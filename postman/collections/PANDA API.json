@@ -1124,6 +1124,52 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Procurementers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "0c402736-5d34-42d3-a569-3e0407d47074",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/PROCUREMENTER",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"PROCUREMENTER"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "b29e4121-b57a-4674-99f7-f475de6f56d2"
@@ -1178,6 +1224,66 @@
 								{
 									"key": "limit",
 									"value": "2",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Employees",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "d56b05a3-4fca-4507-88c2-d104824b19da",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/autocomplete/EMPLOYEE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"autocomplete",
+								"EMPLOYEE"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10",
+									"disabled": true
+								},
+								{
+									"key": "searchText",
+									"value": "Legát",
+									"type": "text",
 									"disabled": true
 								}
 							]
@@ -1603,7 +1709,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&search=mirror",
+							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&search=jirka test",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1622,7 +1728,7 @@
 								},
 								{
 									"key": "search",
-									"value": "mirror"
+									"value": "jirka test"
 								}
 							]
 						}
@@ -1666,13 +1772,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/order/0eefff48-9885-4b86-ac67-ffbc31cb50ee",
+							"raw": "{{baseUrl}}/order/129caae4-70b0-4ef4-b4cd-832d8f847f26",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"order",
-								"0eefff48-9885-4b86-ac67-ffbc31cb50ee"
+								"129caae4-70b0-4ef4-b4cd-832d8f847f26"
 							],
 							"query": [
 								{
@@ -1723,7 +1829,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"uid\": \"\",\n    \"name\": \"XX NEW Test Spare parts\",\n    \"requestNumber\": \"XRN87977\",\n    \"orderNumber\": \"XON950020\",\n    \"contractNumber\": \"XCN97987987\",\n    \"notes\": \"Some notes ....\",\n    \"supplier\": {\n        \"uid\": \"44bbc79d-8ee2-45d7-87b0-1f3250f1b1fb\",\n        \"name\": \"STREICHER, spol. s r.o. Plzeň\"\n    },\n    \"orderStatus\": {\n        \"uid\": \"c5ef9d00-ac38-44c1-b48a-fde0d7095c53\",\n        \"name\": \"Planned\"\n    },\n    \"orderDate\": \"2023-04-25T00:00:00Z\",\n    \"orderLines\": [\n        {\n            \"name\": \"nXDS10i \",\n            \"uid\": \"\",\n            \"catalogueNumber\": \"A73601983\",\n            \"catalogueUid\": \"02558f95-b193-461f-b62f-b8a20e6c6020\",\n            \"system\": null,\n            \"priceEur\": 65.4321\n        },\n        {\n            \"name\": \"ATH 1603 M, DN 250 ISO-F\",\n            \"uid\": \"\",\n            \"catalogueNumber\": \"Y2662100\",\n            \"catalogueUid\": \"7a515237-bd2d-4f0e-a6e4-5612d0544bd8\",\n            \"system\": {\n                \"uid\": \"4cd2fd61-6aa3-4c4b-bd12-3f7d17424831\",\n                \"name\": \"L1\"\n            },\n            \"priceEur\": 12.345\n        }\n    ]\n}",
+							"raw": "{\n    \"orderLines\": [\n        {\n            \"price\": 456,\n            \"system\": {\n                \"uid\": \"f8109b7b-6f23-4e4b-88b0-12d7fee2f499\",\n                \"name\": \"L1.1 branch of front end incl. oscillator - Technological units > L1\"\n            },\n            \"catalogueNumber\": \"123456\",\n            \"name\": \"Custom item 1\",\n            \"catalogueUid\": \"\",\n            \"id\": \"b9af4cf1-cc73-e87f-0db3-e0fcfb6f5b27\"\n        },\n        {\n            \"price\": 456,\n            \"system\": {\n                \"uid\": \"f8109b7b-6f23-4e4b-88b0-12d7fee2f499\",\n                \"name\": \"L1.1 branch of front end incl. oscillator - Technological units > L1\"\n            },\n            \"catalogueNumber\": \"123456\",\n            \"name\": \"Custom item 1\",\n            \"catalogueUid\": \"\",\n            \"id\": \"504fc2bf-c967-8543-8343-2db85c42fd11\"\n        },\n        {\n            \"price\": 456,\n            \"system\": {\n                \"uid\": \"f8109b7b-6f23-4e4b-88b0-12d7fee2f499\",\n                \"name\": \"L1.1 branch of front end incl. oscillator - Technological units > L1\"\n            },\n            \"catalogueNumber\": \"123456\",\n            \"name\": \"Custom item 1\",\n            \"catalogueUid\": \"\",\n            \"id\": \"02a01056-93c5-c3f9-1d8e-658e107646c0\"\n        }\n    ],\n    \"orderDate\": \"2023-05-04T00:00:00+02:00\",\n    \"name\": \"Test multiple items\",\n    \"orderNumber\": \"XXXSDS\",\n    \"requestNumber\": \"\",\n    \"contractNumber\": \"\",\n    \"notes\": \"\",\n    \"orderStatus\": {\n        \"uid\": \"c5ef9d00-ac38-44c1-b48a-fde0d7095c51\",\n        \"name\": \"None\"\n    },\n    \"supplier\": {\n        \"uid\": \"58c140ad-9e2c-4777-95ad-2117d0e218ce\",\n        \"name\": \"\\\"STANDA\\\"\"\n    }\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1748,9 +1854,131 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Set order line delivery",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "070d1697-6530-4cc0-80cd-a2a778470fd2",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"orderLines\": [\n        {\n            \"price\": 456,\n            \"system\": {\n                \"uid\": \"f8109b7b-6f23-4e4b-88b0-12d7fee2f499\",\n                \"name\": \"L1.1 branch of front end incl. oscillator - Technological units > L1\"\n            },\n            \"catalogueNumber\": \"123456\",\n            \"name\": \"Custom item 1\",\n            \"catalogueUid\": \"\",\n            \"id\": \"b9af4cf1-cc73-e87f-0db3-e0fcfb6f5b27\"\n        },\n        {\n            \"price\": 456,\n            \"system\": {\n                \"uid\": \"f8109b7b-6f23-4e4b-88b0-12d7fee2f499\",\n                \"name\": \"L1.1 branch of front end incl. oscillator - Technological units > L1\"\n            },\n            \"catalogueNumber\": \"123456\",\n            \"name\": \"Custom item 1\",\n            \"catalogueUid\": \"\",\n            \"id\": \"504fc2bf-c967-8543-8343-2db85c42fd11\"\n        },\n        {\n            \"price\": 456,\n            \"system\": {\n                \"uid\": \"f8109b7b-6f23-4e4b-88b0-12d7fee2f499\",\n                \"name\": \"L1.1 branch of front end incl. oscillator - Technological units > L1\"\n            },\n            \"catalogueNumber\": \"123456\",\n            \"name\": \"Custom item 1\",\n            \"catalogueUid\": \"\",\n            \"id\": \"02a01056-93c5-c3f9-1d8e-658e107646c0\"\n        }\n    ],\n    \"orderDate\": \"2023-05-04T00:00:00+02:00\",\n    \"name\": \"Test multiple items\",\n    \"orderNumber\": \"XXXSDS\",\n    \"requestNumber\": \"\",\n    \"contractNumber\": \"\",\n    \"notes\": \"\",\n    \"orderStatus\": {\n        \"uid\": \"c5ef9d00-ac38-44c1-b48a-fde0d7095c51\",\n        \"name\": \"None\"\n    },\n    \"supplier\": {\n        \"uid\": \"58c140ad-9e2c-4777-95ad-2117d0e218ce\",\n        \"name\": \"\\\"STANDA\\\"\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/order/a44b7b41-8ae2-45a3-bd1f-0375362d9385/orderline/fddb1dd8-4b27-4cfb-95aa-3f58c9bcbf38/delivery",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order",
+								"a44b7b41-8ae2-45a3-bd1f-0375362d9385",
+								"orderline",
+								"fddb1dd8-4b27-4cfb-95aa-3f58c9bcbf38",
+								"delivery"
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "93eb67e5-edcf-4dfc-b58b-5239091b4c31"
+		},
+		{
+			"name": "General",
+			"item": [
+				{
+					"name": "Get list of available codebooks",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "0e2667f4-efc1-4f48-95fd-6c442fd1011e",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebooks",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebooks"
+							],
+							"query": [
+								{
+									"key": "sorting",
+									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "e9823618-5124-4a8d-a82f-3f2c07425119"
 		},
 		{
 			"name": "Test anything",
