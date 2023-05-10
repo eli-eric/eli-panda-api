@@ -57,6 +57,8 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, f
 		codebookList, err = svc.securityService.GetUsersCodebook(facilityCode)
 	case "ORDER_STATUS":
 		codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
+	case "PROCUREMENTER":
+		codebookList, err = svc.securityService.GetProcurementersCodebook(facilityCode)
 	}
 
 	return codebookList, err

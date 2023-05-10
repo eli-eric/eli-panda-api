@@ -298,3 +298,23 @@ func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery)
 
 	return result
 }
+
+func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, userUID string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(o)-[ol:HAS_ORDER_LINE]->(itm:Item{uid: $itemUid})
+	SET ol.isDelivered = $isDelivered, ol.deliveredTime = datetime(), ol.lastUpdateTime = datetime(), ol.lastUpdateBy = u.username, o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
+	WITH o, u
+	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+
+     return $itemUID as uid`
+
+	result.ReturnAlias = "uid"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["itemUid"] = itemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["isDelivered"] = isDelivered
+
+	return result
+}

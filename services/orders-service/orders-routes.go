@@ -20,4 +20,6 @@ func MapOrdersRoutes(e *echo.Echo, h IOrdersHandlers, jwtMiddleware echo.Middlew
 	e.DELETE("/v1/order/:uid", m.Authorization(h.DeleteOrder(), shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 
 	e.PUT("/v1/order/:uid", m.Authorization(h.UpdateOrder(), shared.ROLE_ORDERS_EDIT), jwtMiddleware)
+
+	e.PUT("/v1/order/:uid/orderline/:itemUid/delivery", m.Authorization(h.UpdateOrderLineDelivery(), shared.ROLE_ORDERS_DELIVERY_EDIT), jwtMiddleware)
 }

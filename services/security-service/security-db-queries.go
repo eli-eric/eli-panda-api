@@ -63,13 +63,19 @@ func ChangeUserPasswordQuery(userUID string, newPasswordHash string) (result hel
 	return result
 }
 
-func GetEmployeesAutocompleteCodebookQuery(searchText string, limit int, facilityCode string) (result helpers.DatabaseQuery) {
+func GetEmployeesAutocompleteCodebookQuery(searchText string, limit int, facilityCode string, flags ...string) (result helpers.DatabaseQuery) {
 	searchText = strings.ToLower(searchText)
 	result.Query = `
 	MATCH(f:Facility{code:$facilityCode})
 	WITH f
 	MATCH(r:Employee)-[:AFFILIATED_WITH_FACILITY]->(f)
-	where toLower(r.lastName) contains $searchText or toLower(r.firstName) contains $searchText 
+	where (toLower(r.lastName) contains $searchText or toLower(r.firstName) contains $searchText) `
+
+	for _, flag := range flags {
+		result.Query += ` AND r.` + flag + ` = true `
+	}
+
+	result.Query += `
 	RETURN {uid: r.uid,name: r.lastName + " " + r.firstName} as result 
 	ORDER BY result.name limit $limit`
 	result.ReturnAlias = "result"

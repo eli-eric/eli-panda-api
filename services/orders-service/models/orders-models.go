@@ -45,4 +45,6 @@ type OrderLine struct {
 	Price           float64                  `json:"price"`
 	Currency        string                   `json:"currency"`
 	EUN             string                   `json:"eun"`
+	IsDelivered     bool                     `json:"isDelivered"`
+	DeliveredTime   *time.Time               `json:"deliveredTime"`
 }

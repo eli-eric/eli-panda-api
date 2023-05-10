@@ -21,6 +21,7 @@ var ITEM_USAGE_CODEBOOK CodebookType = CodebookType{Code: "ITEM_USAGE", Type: "S
 var ITEM_CONDITION_STATUS_CODEBOOK CodebookType = CodebookType{Code: "ITEM_CONDITION_STATUS", Type: "SIMPLE"}
 var USER_CODEBOOK CodebookType = CodebookType{Code: "USER", Type: "SIMPLE"}
 var ORDER_STATUS_CODEBOOK CodebookType = CodebookType{Code: "ORDER_STATUS", Type: "SIMPLE"}
+var PROCUREMENTER_CODEBOOK CodebookType = CodebookType{Code: "PROCUREMENTER", Type: "SIMPLE"}
 var LOCATION_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "LOCATION", Type: "AUTOCOMPLETE"}
 var EMPLOYEE_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "EMPLOYEE", Type: "AUTOCOMPLETE"}
 var SYSTEM_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM", Type: "AUTOCOMPLETE"}

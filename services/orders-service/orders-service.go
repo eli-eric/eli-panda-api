@@ -22,6 +22,7 @@ type IOrdersService interface {
 	InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error)
 	UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error)
 	DeleteOrder(orderUid string, userUID string) (err error)
+	UpdateOrderLineDelivery(itemUid string, isDelivered bool, userUID string) (err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -115,6 +116,15 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 	} else {
 		err = helpers.ERR_INVALID_INPUT
 	}
+
+	return err
+}
+
+func (svc *OrdersService) UpdateOrderLineDelivery(itemUid string, isDelivered bool, userUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := UpdateOrderLineDeliveryQuery(itemUid, isDelivered, userUID)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
 }
