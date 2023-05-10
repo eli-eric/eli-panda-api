@@ -12,10 +12,15 @@ CALL {
   firstName: line.firstname,
   lastName: line.lastname,   
   employeeNumber: line.employeeNumber,
-  deleted: false,
+  deleted: false,  
   lastUpdatedTime: datetime(), 
   lastUpdatedBy: adminUser.username })
   with empl,adminUser, f
   MERGE(empl)-[:WAS_UPDATED_BY{at: datetime()}]->(adminUser)
   MERGE(empl)-[:AFFILIATED_WITH_FACILITY]->(f)  
-} IN TRANSACTIONS OF 500 ROWS
+} IN TRANSACTIONS OF 500 ROWS;
+
+
+
+//assign isProcurementer flag to selected employess
+MATCH(empl:Employee) WHERE empl.employeeNumber in ["02095029.001", "02095025.001", "02095004.001", "02095028.001", "02095032.001", "02094016.001"] SET empl.isProcurementer = true;

@@ -133,8 +133,10 @@ func (svc *SecurityService) GetEmployeesAutocompleteCodebook(searchText string, 
 func (svc *SecurityService) GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetEmployeesAutocompleteCodebookQuery("", 100, facilityCode, "procurementer")
+	query := GetEmployeesAutocompleteCodebookQuery("", 100, facilityCode, EMPLOYEE_FLAG_PROCUREMENTER)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
 }
+
+const EMPLOYEE_FLAG_PROCUREMENTER string = "isProcurementer" //it means that this employee can be selected as procurementer
