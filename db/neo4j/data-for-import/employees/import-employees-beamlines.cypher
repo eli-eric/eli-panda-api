@@ -23,4 +23,4 @@ CALL {
 
 
 //assign isProcurementer flag to selected employess
-MATCH(empl:Employee) WHERE empl.employeeNumber in ["02095029.001", "02095025.001", "02095004.001", "02095028.001", "02095032.001", "02094016.001"] SET empl.isProcurementer = true;
+MATCH(empl:Employee)-[:AFFILIATED_WITH_FACILITY]->(f:Facility{code: "B"}) WHERE empl.employeeNumber in ["02095029.001", "02095025.001", "02095004.001", "02095028.001", "02095032.001", "02094016.001"] SET empl.isProcurementer = true;
