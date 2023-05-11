@@ -8,9 +8,9 @@ CALL {
   MATCH(f:Facility{code: "B"}) 
   with line, f, adminUser
   OPTIONAL MATCH(s:Supplier{shortName: line.supplier})
-  with line,s, adminUser
+  with line,s, adminUser, f
   OPTIONAL MATCH(os:OrderStatus{code: line.orderStatus}) 
-  with line, s, os, adminUser
+  with line, s, os, adminUser, f
   CREATE (o:Order {uid: apoc.create.uuid(),
   name: line.notes,
   orderNumber: line.orderNumber,   
