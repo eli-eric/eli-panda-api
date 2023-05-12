@@ -40,6 +40,8 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 	result.Query += `	
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
+	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -49,6 +51,9 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 	orderDate: o.orderDate,
 	supplier: s.name,
 	orderStatus: os.name,
+	deliveryStatus: o.deliveryStatus,
+	requestor: req.lastName + " " + req.firstName,
+	procurementResponsible: proc.lastName + " " + proc.firstName,
 	notes: o.notes,
 	lastUpdateTime: o.lastUpdateTime,
 	lastUpdateBy: o.lastUpdateBy
@@ -106,6 +111,8 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode s
 	result.Query += `	
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
+	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
 		
     return count(o) as count
 `
@@ -121,11 +128,13 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	MATCH(o:Order {uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
 	WITH o
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
-	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
-	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)
-	WITH o, s,os, ol, itm, ci 
+	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)	
+	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
+	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
+	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
+	WITH o, s,os, ol, itm, ci, req, proc
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
-	WITH o, s, os, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
+	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
 		name: itm.name, 
@@ -137,10 +146,13 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	name: o.name,
 	orderNumber: o.orderNumber,
 	requestNumber: o.requestNumber,
-	contractNumber: o.contractNumber,
+	contractNumber: o.contractNumber,	
 	notes: o.notes,
+	deliveryStatus: o.deliveryStatus,
 	supplier: CASE WHEN s IS NOT NULL THEN {uid: s.uid,name: s.name} ELSE NULL END,
 	orderStatus: CASE WHEN os IS NOT NULL THEN {uid: os.uid,name: os.name} ELSE NULL END,
+	requestor: CASE WHEN req IS NOT NULL THEN {uid: req.uid,name: req.lastName + " " + req.firstName} ELSE NULL END,
+	procurementResponsible: CASE WHEN proc IS NOT NULL THEN {uid: proc.uid,name: proc.lastName + " " + proc.firstName} ELSE NULL END,
 	orderDate: o.orderDate,
 	orderLines:  orderLines 
 } AS order 
@@ -176,14 +188,22 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	`
 	if newOrder.Supplier != nil {
 		result.Query += `WITH o MATCH(s:Supplier{uid: $supplierUID}) MERGE (o)-[:HAS_SUPPLIER]->(s) `
-
 		result.Parameters["supplierUID"] = newOrder.Supplier.UID
 	}
 
 	if newOrder.OrderStatus != nil {
 		result.Query += `WITH o MATCH(os:OrderStatus{uid: $orderStatusUID}) MERGE (o)-[:HAS_ORDER_STATUS]->(os) `
-
 		result.Parameters["orderStatusUID"] = newOrder.OrderStatus.UID
+	}
+
+	if newOrder.Requestor != nil {
+		result.Query += `WITH o MATCH(req:Employee{uid: $requestorUID}) MERGE (o)-[:HAS_REQUESTOR]->(req) `
+		result.Parameters["requestorUID"] = newOrder.Requestor.UID
+	}
+
+	if newOrder.ProcurementResponsible != nil {
+		result.Query += `WITH o MATCH(proc:Employee{uid: $procurementResponsibleUID}) MERGE (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc) `
+		result.Parameters["procurementResponsibleUID"] = newOrder.ProcurementResponsible.UID
 	}
 
 	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
@@ -203,9 +223,9 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
 			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
 
-			// assign system to the item
+			// assign system to the item only  if system(techn. unit) is set
 			if orderLine.System != nil {
-				result.Query += fmt.Sprintf(`MATCH(sys%[1]v:System{uid: $systemUID%[1]v}) MERGE (sys%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`MATCH(sys%[1]v:System{uid: $systemUID%[1]v})  MERGE (sys%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
 
 				result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
 			}

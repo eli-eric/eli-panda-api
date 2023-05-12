@@ -6,33 +6,35 @@ import (
 )
 
 type OrderListItem struct {
-	UID            string    `json:"uid"`
-	Name           string    `json:"name"`
-	RequestNumber  string    `json:"requestNumber"`
-	OrderNumber    string    `json:"orderNumber"`
-	ContractNumber string    `json:"contractNumber"`
-	Notes          string    `json:"notes"`
-	Supplier       string    `json:"supplier"`
-	OrderStatus    string    `json:"orderStatus"`
-	DeliveryStatus int       `json:"deliveryStatus"`
-	OrderDate      time.Time `json:"orderDate"`
-	LastUpdateTime time.Time `json:"lastUpdateTime"`
-	LastUpdateBy   string    `json:"lastUpdateBy"`
+	UID                    string    `json:"uid"`
+	Name                   string    `json:"name"`
+	RequestNumber          string    `json:"requestNumber"`
+	OrderNumber            string    `json:"orderNumber"`
+	ContractNumber         string    `json:"contractNumber"`
+	Notes                  string    `json:"notes"`
+	Supplier               string    `json:"supplier"`
+	OrderStatus            string    `json:"orderStatus"`
+	DeliveryStatus         int       `json:"deliveryStatus"`
+	OrderDate              time.Time `json:"orderDate"`
+	LastUpdateTime         time.Time `json:"lastUpdateTime"`
+	LastUpdateBy           string    `json:"lastUpdateBy"`
+	Requestor              string    `json:"requestor"`
+	ProcurementResponsible string    `json:"procurementResponsible"`
 }
 
 type OrderDetail struct {
-	UID            string                   `json:"uid" neo4j:"ignore"`
-	Name           string                   `json:"name" neo4j:"prop,name"`
-	RequestNumber  *string                  `json:"requestNumber" neo4j:"prop,requestNumber"`
-	OrderNumber    *string                  `json:"orderNumber" neo4j:"prop,orderNumber"`
-	ContractNumber *string                  `json:"contractNumber" neo4j:"prop,contractNumber"`
-	Notes          *string                  `json:"notes" neo4j:"prop,notes"`
-	Supplier       *codebookModels.Codebook `json:"supplier" neo4j:"rel,Supplier,HAS_SUPPLIER,supplier"`
-	OrderStatus    *codebookModels.Codebook `json:"orderStatus" neo4j:"rel,OrderStatus,HAS_ORDER_STATUS,orderStatus"`
-	Requester      *codebookModels.Codebook `json:"requester" neo4j:"rel,Employee,HAS_REQUESTER,requester"`
-	Procurementer  *codebookModels.Codebook `json:"procurementer" neo4j:"rel,Employee,HAS_PROCUREMENTER,procurementer"`
-	OrderDate      time.Time                `json:"orderDate" neo4j:"prop,orderDate"`
-	OrderLines     []OrderLine              `json:"orderLines"`
+	UID                    string                   `json:"uid" neo4j:"ignore"`
+	Name                   string                   `json:"name" neo4j:"prop,name"`
+	RequestNumber          *string                  `json:"requestNumber" neo4j:"prop,requestNumber"`
+	OrderNumber            *string                  `json:"orderNumber" neo4j:"prop,orderNumber"`
+	ContractNumber         *string                  `json:"contractNumber" neo4j:"prop,contractNumber"`
+	Notes                  *string                  `json:"notes" neo4j:"prop,notes"`
+	Supplier               *codebookModels.Codebook `json:"supplier" neo4j:"rel,Supplier,HAS_SUPPLIER,supplier"`
+	OrderStatus            *codebookModels.Codebook `json:"orderStatus" neo4j:"rel,OrderStatus,HAS_ORDER_STATUS,orderStatus"`
+	Requestor              *codebookModels.Codebook `json:"requestor" neo4j:"rel,Employee,HAS_REQUESTOR,requestor"`
+	ProcurementResponsible *codebookModels.Codebook `json:"procurementResponsible" neo4j:"rel,Employee,HAS_PROCUREMENT_RESPONSIBLE,procurementResponsible"`
+	OrderDate              time.Time                `json:"orderDate" neo4j:"prop,orderDate"`
+	OrderLines             []OrderLine              `json:"orderLines"`
 }
 
 type OrderLine struct {
@@ -42,6 +44,7 @@ type OrderLine struct {
 	CatalogueUID    string                   `json:"catalogueUid"`
 	System          *codebookModels.Codebook `json:"system"`
 	ItemUsgae       *codebookModels.Codebook `json:"itemUsage"`
+	Location        *codebookModels.Codebook `json:"location"`
 	Price           float64                  `json:"price"`
 	Currency        string                   `json:"currency"`
 	EUN             string                   `json:"eun"`
