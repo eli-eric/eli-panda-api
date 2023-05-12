@@ -16,7 +16,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	result.Query = `MATCH(category:CatalogueCategory)
 	with category
 	optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category) 
-	with category, apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code as categoryPath
+	with category, case when parent is not null then apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code else category.code end as categoryPath
 	where $categoryPath = '' or (categoryPath = $categoryPath or categoryPath = '/' + $categoryPath)
 	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
 	with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
