@@ -340,8 +340,27 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, userUID stri
 }
 
 func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
-	result.Query = `
-	
+
+	result.ReturnAlias = "items"
+	result.Parameters = make(map[string]interface{})
+
+	if len(euns) == 0 {
+		result.Query = `
+		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.printEUN = true
+	WITH o, itm, ci
+	OPTIONAL MATCH (ci)-[:HAS_MANUFACTURER]->(man)
+	WITH o, itm, ci, man
+	RETURN DISTINCT {
+		eun: itm.eun,
+		name: itm.name,
+		catalogueNumber: ci.catalogueNumber,
+		serialNumber: itm.serialNumber,
+		manufacturer: man.manufacturer,
+		quantity: 1
+	} as items `
+
+	} else {
+		result.Query = `	
 	MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.eun IN $euns
 	WITH o, itm, ci
 	OPTIONAL MATCH (ci)-[:HAS_MANUFACTURER]->(man)
@@ -354,9 +373,24 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 		manufacturer: man.manufacturer,
 		quantity: 1
 	} as items `
-	result.ReturnAlias = "items"
+
+		result.Parameters["euns"] = euns
+	}
+	return result
+}
+
+// db query to set Item printEUN by item uid
+func SetItemPrintEUNQuery(eun string, printEUN bool) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH (itm:Item{eun: $eun}) 
+	SET itm.printEUN = $printEUN
+	RETURN count(itm) as count`
+
+	result.ReturnAlias = "count"
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["euns"] = euns
+	result.Parameters["eun"] = eun
+	result.Parameters["printEUN"] = printEUN
 
 	return result
 }
