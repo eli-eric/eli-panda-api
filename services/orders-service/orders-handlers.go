@@ -23,6 +23,7 @@ type IOrdersHandlers interface {
 	DeleteOrder() echo.HandlerFunc
 	UpdateOrderLineDelivery() echo.HandlerFunc
 	GetItemsForEunPrint() echo.HandlerFunc
+	SetItemPrintEUN() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -196,6 +197,28 @@ func (h *OrdersHandlers) GetItemsForEunPrint() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Println(err)
+			return echo.ErrInternalServerError
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) SetItemPrintEUN() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		eun := c.Param("eun")
+		printEUN := c.QueryParam("printEUN")
+
+		printEUNBool := false
+		json.Unmarshal([]byte(printEUN), &printEUNBool)
+
+		err := h.ordersService.SetItemPrintEUN(eun, printEUNBool)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
 		} else {
 			log.Println(err)
 			return echo.ErrInternalServerError
