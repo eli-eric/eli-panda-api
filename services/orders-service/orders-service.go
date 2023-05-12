@@ -23,6 +23,7 @@ type IOrdersService interface {
 	UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error)
 	DeleteOrder(orderUid string, userUID string) (err error)
 	UpdateOrderLineDelivery(itemUid string, isDelivered bool, userUID string) (err error)
+	GetItemsForEunPrint(euns []string) (result []models.ItemForEunPrint, err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -127,4 +128,15 @@ func (svc *OrdersService) UpdateOrderLineDelivery(itemUid string, isDelivered bo
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
+}
+
+func (svc *OrdersService) GetItemsForEunPrint(euns []string) (result []models.ItemForEunPrint, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetItemsForEunPrintQuery(euns)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.ItemForEunPrint](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
 }
