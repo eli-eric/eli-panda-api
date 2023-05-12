@@ -444,7 +444,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+							"raw": "{\n  \"username\": \"sa-euns-print\",\n  \"password\": \"\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1729,6 +1729,61 @@
 								{
 									"key": "search",
 									"value": "jirka test"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "EUNs for print",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "3b5d6c4c-edfb-4891-81c7-2aba76f5413c",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/eun-for-print?euns=[\"21804\", \"22303\", \"22301\"]",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"eun-for-print"
+							],
+							"query": [
+								{
+									"key": "euns",
+									"value": "[\"21804\", \"22303\", \"22301\"]"
 								}
 							]
 						}
