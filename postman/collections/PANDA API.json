@@ -444,7 +444,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"sa-euns-print\",\n  \"password\": \"xcv564dsfre231reterda231asdfas\"\n}",
+							"raw": "{\n  \"username\": \"sa-euns-print\",\n  \"password\": \"\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
