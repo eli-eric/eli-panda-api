@@ -24,6 +24,8 @@ type ISecurityService interface {
 	GetUsersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetUsersAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	ChangeUserPassword(userName string, userUID string, passwords *models.ChangePasswordRequest) (err error)
+	GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
+	GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -117,3 +119,24 @@ func (svc *SecurityService) ChangeUserPassword(userName string, userUID string, 
 
 	return err
 }
+
+func (svc *SecurityService) GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetEmployeesAutocompleteCodebookQuery(searchText, limit, facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+// get all employess with flag isProcurementer = true
+func (svc *SecurityService) GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetEmployeesAutocompleteCodebookQuery("", 100, facilityCode, EMPLOYEE_FLAG_PROCUREMENTER)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+const EMPLOYEE_FLAG_PROCUREMENTER string = "isProcurementer" //it means that this employee can be selected as procurementer

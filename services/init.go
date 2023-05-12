@@ -5,6 +5,7 @@ import (
 	"panda/apigateway/config"
 	catalogueService "panda/apigateway/services/catalogue-service"
 	codebookService "panda/apigateway/services/codebook-service"
+	ordersService "panda/apigateway/services/orders-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 
@@ -31,8 +32,13 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	systemsService.MapSystemsRoutes(e, systemsHandlers, jwtMiddleware)
 	log.Println("Systems   service initialized successfully.")
 
+	ordersSvc := ordersService.NewOrdersService(neo4jDriver)
+	ordersHandlers := ordersService.NewOrdersHandlers(ordersSvc)
+	ordersService.MapOrdersRoutes(e, ordersHandlers, jwtMiddleware)
+	log.Println("Orders    service initialized successfully.")
+
 	//security services used in handlers and maped in routes...
-	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc, systemsSvc)
+	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc, systemsSvc, ordersSvc)
 	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
 	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
 	log.Println("Codebook  service initialized successfully.")
