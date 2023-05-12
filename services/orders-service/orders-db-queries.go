@@ -338,3 +338,25 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, userUID stri
 
 	return result
 }
+
+func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	
+	MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.eun IN $euns
+	WITH o, itm, ci
+	OPTIONAL MATCH (ci)-[:HAS_MANUFACTURER]->(man)
+	WITH o, itm, ci, man
+	RETURN DISTINCT {
+		eun: itm.eun,
+		name: itm.name,
+		catalogueNumber: ci.catalogueNumber,
+		serialNumber: itm.serialNumber,
+		manufacturer: man.manufacturer,
+		quantity: 1
+	} as items `
+	result.ReturnAlias = "items"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["euns"] = euns
+
+	return result
+}

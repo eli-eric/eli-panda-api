@@ -51,3 +51,12 @@ type OrderLine struct {
 	IsDelivered     bool                     `json:"isDelivered"`
 	DeliveredTime   *time.Time               `json:"deliveredTime"`
 }
+
+type ItemForEunPrint struct {
+	EUN             string `json:"eun"`
+	Name            string `json:"name"`
+	Manufacturer    string `json:"manufacturer"`
+	CatalogueNumber string `json:"catalogueNumber"`
+	SerialNumber    string `json:"serialNumber"`
+	Quantity        int    `json:"quantity"`
+}
