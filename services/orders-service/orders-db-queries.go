@@ -133,14 +133,14 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
 	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
 	WITH o, s,os, ol, itm, ci, req, proc
-	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
 		name: itm.name, 
 		catalogueNumber: ci.catalogueNumber, 
 		catalogueUid: ci.uid, 
-		system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid,name: sys.name} ELSE NULL END }) ELSE NULL END as orderLines
+		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END }) ELSE NULL END as orderLines
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -209,25 +209,27 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
 		result.Query += `WITH o MATCH(ccg:CatalogueCategory{uid: $catalogueCategoryGeneralUID}) WITH o, ccg `
 
-		result.Parameters["catalogueCategoryGeneralUID"] = "97598f04-948f-4da5-95b6-b2a44e0076db"
+		result.Parameters["catalogueCategoryGeneralUID"] = CATALOGUE_CATEGORY_GENERAL_UID
 
 		for idxLine, orderLine := range newOrder.OrderLines {
 
 			// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
 			result.Query += fmt.Sprintf(`
-			MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, lastUpdateTime: datetime() }) 
+			MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
 			WITH o,ccg, itm%[1]v `, idxLine)
 
 			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 			result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
 			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+			result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
 
 			// assign system to the item only  if system(techn. unit) is set
 			if orderLine.System != nil {
-				result.Query += fmt.Sprintf(`MATCH(sys%[1]v:System{uid: $systemUID%[1]v})  MERGE (sys%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
 
 				result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+				result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
 			}
 
 			newCatalogueItemUIDs := make(map[string]string, 0)
@@ -282,6 +284,23 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 	`
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newOrder, *oldOrder, "o")
+
+	//compare new and old order lines and delete the ones that are not in the new order
+	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+		for idxDelete, oldOrderLine := range oldOrder.OrderLines {
+			found := false
+			for _, newOrderLine := range newOrder.OrderLines {
+				if oldOrderLine.UID == newOrderLine.UID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result.Query += fmt.Sprintf(` WITH o MATCH (o)-[:HAS_ORDER_LINE]->(itmForDelete%[1]v:Item{uid: $itemUIDForDelete%[1]v}) DETACH DELETE itmForDelete%[1]v `, idxDelete)
+				result.Parameters[fmt.Sprintf("itemUIDForDelete%v", idxDelete)] = oldOrderLine.UID
+			}
+		}
+	}
 
 	result.Query += `
 	WITH o
@@ -394,3 +413,5 @@ func SetItemPrintEUNQuery(eun string, printEUN bool) (result helpers.DatabaseQue
 
 	return result
 }
+
+const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"
