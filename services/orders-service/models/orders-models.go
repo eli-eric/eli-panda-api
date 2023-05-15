@@ -43,14 +43,14 @@ type OrderLine struct {
 	CatalogueNumber string                   `json:"catalogueNumber"`
 	CatalogueUID    string                   `json:"catalogueUid"`
 	System          *codebookModels.Codebook `json:"system"`
-	ItemUsgae       *codebookModels.Codebook `json:"itemUsage"`
+	ItemUsage       *codebookModels.Codebook `json:"itemUsage"`
 	Location        *codebookModels.Codebook `json:"location"`
-	Price           float64                  `json:"price"`
-	Currency        string                   `json:"currency"`
-	EUN             string                   `json:"eun"`
+	Price           *float64                 `json:"price"`
+	Currency        *string                  `json:"currency"`
+	EUN             *string                  `json:"eun"`
 	IsDelivered     bool                     `json:"isDelivered"`
 	DeliveredTime   *time.Time               `json:"deliveredTime"`
-	SerialNumber    string                   `json:"serialNumber"`
+	SerialNumber    *string                  `json:"serialNumber"`
 }
 
 type ItemForEunPrint struct {
@@ -60,4 +60,9 @@ type ItemForEunPrint struct {
 	CatalogueNumber string `json:"catalogueNumber"`
 	SerialNumber    string `json:"serialNumber"`
 	Quantity        int    `json:"quantity"`
+}
+
+type OrderLineDelivery struct {
+	IsDelivered  bool   `json:"isDelivered"`
+	SerialNumber string `json:"serialNumber"`
 }

@@ -171,8 +171,13 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 
 		itemUID := c.Param("itemUid")
 		userUID := c.Get("userUID").(string)
+		// get the serial number as is delivered from the request body as as struct of OrderLineDelivery
+		orderLineDelivery := new(models.OrderLineDelivery)
+		err := c.Bind(orderLineDelivery)
 
-		err := h.ordersService.UpdateOrderLineDelivery(itemUID, true, userUID)
+		if err != nil {
+			err = h.ordersService.UpdateOrderLineDelivery(itemUID, orderLineDelivery.IsDelivered, orderLineDelivery.SerialNumber, userUID)
+		}
 
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)

@@ -134,13 +134,19 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
 	WITH o, s,os, ol, itm, ci, req, proc
 	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
 		name: itm.name, 
+		eun: itm.eun,
+		serialNumber: itm.serialNumber,
+		isDelivered: ol.isDelivered,
+		deliveredTime: ol.deliveredTime,		
 		catalogueNumber: ci.catalogueNumber, 
-		catalogueUid: ci.uid, 
-		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END }) ELSE NULL END as orderLines
+		catalogueUid: ci.uid, 		
+		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -230,6 +236,13 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 				result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
 				result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+			}
+
+			// assign item usage to the item only  if item usage is set
+			if orderLine.ItemUsage != nil {
+				result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+				result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
 			}
 
 			newCatalogueItemUIDs := make(map[string]string, 0)
@@ -338,13 +351,20 @@ func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery)
 	return result
 }
 
-func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, userUID string) (result helpers.DatabaseQuery) {
+func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber string, userUID string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(u:User{uid: $userUID})
 	WITH u
 	MATCH(o)-[ol:HAS_ORDER_LINE]->(itm:Item{uid: $itemUid})
-	SET ol.isDelivered = $isDelivered, ol.deliveredTime = datetime(), ol.lastUpdateTime = datetime(), ol.lastUpdateBy = u.username, o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
-	WITH o, u
+	SET ol.isDelivered = $isDelivered, ol.deliveredTime = datetime(), ol.lastUpdateTime = datetime(), ol.lastUpdateBy = u.username, o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username `
+
+	if serialNumber != "" {
+		result.Query += `, itm.serialNumber = $serialNumber `
+		result.Parameters["serialNumber"] = serialNumber
+	}
+
+	result.Query +=
+		`WITH o, u
 	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
 
      return $itemUID as uid`
