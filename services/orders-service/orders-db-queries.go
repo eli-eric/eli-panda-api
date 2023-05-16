@@ -51,6 +51,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 	orderDate: o.orderDate,
 	supplier: s.name,
 	orderStatus: os.name,
+	orderStatusObj: case when os is not null then { uid: os.uid,name: os.name, code: os.code} else null end ,
 	deliveryStatus: o.deliveryStatus,
 	requestor: req.lastName + " " + req.firstName,
 	procurementResponsible: proc.lastName + " " + proc.firstName,
@@ -271,6 +272,14 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	}
 
 	result.Query += `
+	WITH o
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines, o
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines, o
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o
+
 	RETURN DISTINCT o.uid as uid
 	`
 	result.ReturnAlias = "uid"
@@ -399,6 +408,12 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 	}
 
 	result.Query += `
+	WITH o
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines, o
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines, o
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
 	WITH o
 	MATCH(u:User{uid: $lastUpdateBy})
 	WITH o, u
