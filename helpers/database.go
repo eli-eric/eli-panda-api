@@ -74,6 +74,30 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 	return result, err
 }
 
+func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
+	resultMap, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(query.Query, query.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
+		record, err := result.Single()
+		if err != nil {
+			return nil, fmt.Errorf(err.Error())
+		}
+
+		rec, _ := record.Get(query.ReturnAlias)
+		return rec, nil
+
+	})
+
+	if err == nil {
+		result, err = MapStruct[T](resultMap.(map[string]interface{}))
+	}
+
+	return result, err
+}
+
 func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
 	resultValue, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(query.Query, query.Parameters)

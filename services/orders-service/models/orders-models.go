@@ -63,6 +63,6 @@ type ItemForEunPrint struct {
 }
 
 type OrderLineDelivery struct {
-	IsDelivered  bool   `json:"isDelivered"`
-	SerialNumber string `json:"serialNumber"`
+	IsDelivered  bool    `json:"isDelivered"`
+	SerialNumber *string `json:"serialNumber"`
 }

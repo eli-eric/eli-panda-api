@@ -221,7 +221,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 			// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
 			result.Query += fmt.Sprintf(`
-			MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
+			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
 			WITH o,ccg, itm%[1]v `, idxLine)
 
 			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
@@ -351,29 +351,71 @@ func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery)
 	return result
 }
 
-func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber string, userUID string) (result helpers.DatabaseQuery) {
-	result.Query = `
-	MATCH(u:User{uid: $userUID})
-	WITH u
-	MATCH(o)-[ol:HAS_ORDER_LINE]->(itm:Item{uid: $itemUid})
-	SET ol.isDelivered = $isDelivered, ol.deliveredTime = datetime(), ol.lastUpdateTime = datetime(), ol.lastUpdateBy = u.username, o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username `
+func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
 
-	if serialNumber != "" {
+	result.Query = `
+	WITH apoc.text.split(toString(date.truncate('month', date())), '-') as dateParts
+	WITH $facilityCode + right(dateParts[0],2) + dateParts[1] as eunPrefix
+	MATCH(u:User{uid: $userUID})
+	WITH u, eunPrefix
+	MATCH(o)-[ol:HAS_ORDER_LINE]->(itm:Item{uid: $itemUID})
+	WITH u, eunPrefix , o, ol, itm 
+	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
+    WITH u, eunPrefix , o, ol, itm , parentSystem, itemUsage
+    OPTIONAL MATCH (itm)-[:IS_BASED_ON]->(ci)	
+	SET ol.isDelivered = $isDelivered, 
+	    ol.deliveredTime = datetime(), 
+		ol.lastUpdateTime = datetime(), 
+		ol.lastUpdateBy = u.username, 
+		o.lastUpdateTime = datetime(), 
+		o.lastUpdateBy = u.username
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage, eunPrefix
+	OPTIONAL MATCH(maxEuns:Item) WHERE maxEuns.eun STARTS WITH eunPrefix
+	WITH max(maxEuns.eun) as maxEun, o, ol, u, itm, ci, parentSystem, itemUsage, eunPrefix 
+	SET itm.eun = case when (itm.eun is null and ol.isDelivered = true) then
+					case when maxEun is not null then 
+						eunPrefix + apoc.text.lpad(toString(toInteger(right(maxEun, 4)) + 1), 4, '0') 
+					else 
+						eunPrefix + '0001' 
+					end 
+				  else 
+					case when ol.isDelivered = true then 
+						itm.eun 
+					else 
+						null 
+					end 
+				  end
+	`
+	if serialNumber != nil && *serialNumber != "" {
 		result.Query += `, itm.serialNumber = $serialNumber `
 		result.Parameters["serialNumber"] = serialNumber
 	}
 
-	result.Query +=
-		`WITH o, u
+	result.Query += `
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage
 	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+	RETURN { uid: itm.uid,  
+			isDelivered: ol.isDelivered,
+			deliveredTime: ol.deliveredTime,
+			price: ol.price,
+			currency: ol.currency, 
+			name: itm.name, 
+			catalogueNumber: ci.catalogueNumber, 
+			catalogueUid: ci.uid, 
+			eun:  itm.eun,
+			serialNumber: itm.serialNumber,
+			system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+			itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END  } as orderLine;
+	 `
 
-     return $itemUID as uid`
+	result.ReturnAlias = "orderLine"
 
-	result.ReturnAlias = "uid"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["itemUid"] = itemUID
+	result.Parameters["itemUID"] = itemUID
 	result.Parameters["userUID"] = userUID
 	result.Parameters["isDelivered"] = isDelivered
+	result.Parameters["facilityCode"] = facilityCode
 
 	return result
 }
