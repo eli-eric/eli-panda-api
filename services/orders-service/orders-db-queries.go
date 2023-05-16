@@ -132,7 +132,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
 	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
-	WITH o, s,os, ol, itm, ci, req, proc
+	WITH o, s,os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
 	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
@@ -297,6 +297,89 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 	`
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newOrder, *oldOrder, "o")
+
+	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+		result.Query += `WITH o MATCH(ccg:CatalogueCategory{uid: $catalogueCategoryGeneralUID}) WITH o, ccg `
+
+		result.Parameters["catalogueCategoryGeneralUID"] = CATALOGUE_CATEGORY_GENERAL_UID
+
+		for idxLine, orderLine := range newOrder.OrderLines {
+			//add new order lines
+			if orderLine.UID == "" {
+				// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
+				result.Query += fmt.Sprintf(`
+			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
+			WITH o,ccg, itm%[1]v `, idxLine)
+
+				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
+				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
+				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
+				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+
+				// assign system to the item only  if system(techn. unit) is set
+				if orderLine.System != nil {
+					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+					result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+				}
+
+				// assign item usage to the item only  if item usage is set
+				if orderLine.ItemUsage != nil {
+					result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
+				}
+
+				newCatalogueItemUIDs := make(map[string]string, 0)
+				// if catalogue item is not set, create new catalogue item
+				if orderLine.CatalogueUID == "" {
+					if newCatalogueItemUIDs[orderLine.CatalogueNumber] == "" {
+						newCatalogueItemUIDs[orderLine.CatalogueNumber] = uuid.New().String()
+					}
+					result.Query += fmt.Sprintf(`MERGE (ci%[1]v:CatalogueItem{ name: $itemName%[1]v, catalogueNumber: $catalogueNumber%[1]v }) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+					result.Query += fmt.Sprintf(`SET ci%[1]v.uid = $catalogueItemUID%[1]v, ci%[1]v.lastUpdateTime = datetime() WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+					result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+					result.Query += fmt.Sprintf(`MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
+					result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
+
+				} else {
+					result.Query += fmt.Sprintf(`MATCH(ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v}) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = orderLine.CatalogueUID
+				}
+
+				result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) `, idxLine)
+			} else {
+				//update existing order lines
+				result.Query += fmt.Sprintf(`WITH o, ccg MATCH (o)-[ol%[1]v:HAS_ORDER_LINE]->(itm%[1]v:Item{uid: $itemUID%[1]v}) SET ol%[1]v.price = $price%[1]v, ol%[1]v.currency = $currency%[1]v, ol%[1]v.lastUpdateTime = datetime(), itm%[1]v.serialNumber = $serialNumber%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
+				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
+				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
+				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+
+				// if orderLine.System != nil {
+				// 	result.Query += fmt.Sprintf(`WITH o MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, itm%[1]v `, idxLine)
+
+				// 	result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+				// 	result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+				// }
+
+				// assign item usage to the item only  if item usage is set
+				if orderLine.ItemUsage != nil {
+					//delete existing item usage relationship
+					result.Query += fmt.Sprintf(`MATCH(itm%[1]v)-[itemUsageRel%[1]v:HAS_ITEM_USAGE]->() DELETE itemUsageRel%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
+				}
+
+			}
+		}
+	}
 
 	//compare new and old order lines and delete the ones that are not in the new order
 	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
