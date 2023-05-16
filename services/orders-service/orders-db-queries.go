@@ -51,6 +51,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 	orderDate: o.orderDate,
 	supplier: s.name,
 	orderStatus: os.name,
+	orderStatusObj: case when os is not null then { uid: os.uid,name: os.name, code: os.code} else null end ,
 	deliveryStatus: o.deliveryStatus,
 	requestor: req.lastName + " " + req.firstName,
 	procurementResponsible: proc.lastName + " " + proc.firstName,
@@ -132,15 +133,21 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
 	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
-	WITH o, s,os, ol, itm, ci, req, proc
-	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
+	WITH o, s,os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
+	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
 		name: itm.name, 
+		eun: itm.eun,
+		serialNumber: itm.serialNumber,
+		isDelivered: ol.isDelivered,
+		deliveredTime: ol.deliveredTime,		
 		catalogueNumber: ci.catalogueNumber, 
-		catalogueUid: ci.uid, 
-		system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid,name: sys.name} ELSE NULL END }) ELSE NULL END as orderLines
+		catalogueUid: ci.uid, 		
+		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -209,25 +216,34 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
 		result.Query += `WITH o MATCH(ccg:CatalogueCategory{uid: $catalogueCategoryGeneralUID}) WITH o, ccg `
 
-		result.Parameters["catalogueCategoryGeneralUID"] = "97598f04-948f-4da5-95b6-b2a44e0076db"
+		result.Parameters["catalogueCategoryGeneralUID"] = CATALOGUE_CATEGORY_GENERAL_UID
 
 		for idxLine, orderLine := range newOrder.OrderLines {
 
 			// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
 			result.Query += fmt.Sprintf(`
-			MERGE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, lastUpdateTime: datetime() }) 
+			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
 			WITH o,ccg, itm%[1]v `, idxLine)
 
 			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 			result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
 			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+			result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
 
 			// assign system to the item only  if system(techn. unit) is set
 			if orderLine.System != nil {
-				result.Query += fmt.Sprintf(`MATCH(sys%[1]v:System{uid: $systemUID%[1]v})  MERGE (sys%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
 
 				result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+				result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+			}
+
+			// assign item usage to the item only  if item usage is set
+			if orderLine.ItemUsage != nil {
+				result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+				result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
 			}
 
 			newCatalogueItemUIDs := make(map[string]string, 0)
@@ -256,6 +272,14 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 	}
 
 	result.Query += `
+	WITH o
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines, o
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines, o
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o
+
 	RETURN DISTINCT o.uid as uid
 	`
 	result.ReturnAlias = "uid"
@@ -283,7 +307,113 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newOrder, *oldOrder, "o")
 
+	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+		result.Query += `WITH o MATCH(ccg:CatalogueCategory{uid: $catalogueCategoryGeneralUID}) WITH o, ccg `
+
+		result.Parameters["catalogueCategoryGeneralUID"] = CATALOGUE_CATEGORY_GENERAL_UID
+
+		for idxLine, orderLine := range newOrder.OrderLines {
+			//add new order lines
+			if orderLine.UID == "" {
+				// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
+				result.Query += fmt.Sprintf(`
+			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
+			WITH o,ccg, itm%[1]v `, idxLine)
+
+				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
+				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
+				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
+				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+
+				// assign system to the item only  if system(techn. unit) is set
+				if orderLine.System != nil {
+					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+					result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+				}
+
+				// assign item usage to the item only  if item usage is set
+				if orderLine.ItemUsage != nil {
+					result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
+				}
+
+				newCatalogueItemUIDs := make(map[string]string, 0)
+				// if catalogue item is not set, create new catalogue item
+				if orderLine.CatalogueUID == "" {
+					if newCatalogueItemUIDs[orderLine.CatalogueNumber] == "" {
+						newCatalogueItemUIDs[orderLine.CatalogueNumber] = uuid.New().String()
+					}
+					result.Query += fmt.Sprintf(`MERGE (ci%[1]v:CatalogueItem{ name: $itemName%[1]v, catalogueNumber: $catalogueNumber%[1]v }) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+					result.Query += fmt.Sprintf(`SET ci%[1]v.uid = $catalogueItemUID%[1]v, ci%[1]v.lastUpdateTime = datetime() WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+					result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) WITH o, itm%[1]v, ci%[1]v, ccg `, idxLine)
+					result.Query += fmt.Sprintf(`MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
+					result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
+
+				} else {
+					result.Query += fmt.Sprintf(`MATCH(ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v}) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = orderLine.CatalogueUID
+				}
+
+				result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) `, idxLine)
+			} else {
+				//update existing order lines
+				result.Query += fmt.Sprintf(`WITH o, ccg MATCH (o)-[ol%[1]v:HAS_ORDER_LINE]->(itm%[1]v:Item{uid: $itemUID%[1]v}) SET ol%[1]v.price = $price%[1]v, ol%[1]v.currency = $currency%[1]v, ol%[1]v.lastUpdateTime = datetime(), itm%[1]v.serialNumber = $serialNumber%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
+				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
+				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
+				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+
+				// if orderLine.System != nil {
+				// 	result.Query += fmt.Sprintf(`WITH o MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, itm%[1]v `, idxLine)
+
+				// 	result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+				// 	result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+				// }
+
+				// assign item usage to the item only  if item usage is set
+				if orderLine.ItemUsage != nil {
+					//delete existing item usage relationship
+					result.Query += fmt.Sprintf(`MATCH(itm%[1]v)-[itemUsageRel%[1]v:HAS_ITEM_USAGE]->() DELETE itemUsageRel%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+
+					result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
+				}
+
+			}
+		}
+	}
+
+	//compare new and old order lines and delete the ones that are not in the new order
+	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+		for idxDelete, oldOrderLine := range oldOrder.OrderLines {
+			found := false
+			for _, newOrderLine := range newOrder.OrderLines {
+				if oldOrderLine.UID == newOrderLine.UID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result.Query += fmt.Sprintf(` WITH o MATCH (o)-[:HAS_ORDER_LINE]->(itmForDelete%[1]v:Item{uid: $itemUIDForDelete%[1]v}) DETACH DELETE itmForDelete%[1]v `, idxDelete)
+				result.Parameters[fmt.Sprintf("itemUIDForDelete%v", idxDelete)] = oldOrderLine.UID
+			}
+		}
+	}
+
 	result.Query += `
+	WITH o
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines, o
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines, o
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
 	WITH o
 	MATCH(u:User{uid: $lastUpdateBy})
 	WITH o, u
@@ -319,22 +449,77 @@ func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery)
 	return result
 }
 
-func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, userUID string) (result helpers.DatabaseQuery) {
-	result.Query = `
-	MATCH(u:User{uid: $userUID})
-	WITH u
-	MATCH(o)-[ol:HAS_ORDER_LINE]->(itm:Item{uid: $itemUid})
-	SET ol.isDelivered = $isDelivered, ol.deliveredTime = datetime(), ol.lastUpdateTime = datetime(), ol.lastUpdateBy = u.username, o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
-	WITH o, u
-	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
-
-     return $itemUID as uid`
-
-	result.ReturnAlias = "uid"
+func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["itemUid"] = itemUID
+
+	result.Query = `
+	WITH apoc.text.split(toString(date.truncate('month', date())), '-') as dateParts
+	WITH $facilityCode + right(dateParts[0],2) + dateParts[1] as eunPrefix
+	MATCH(u:User{uid: $userUID})
+	WITH u, eunPrefix
+	MATCH(o)-[ol:HAS_ORDER_LINE]->(itm:Item{uid: $itemUID})
+	WITH u, eunPrefix , o, ol, itm 
+	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
+    WITH u, eunPrefix , o, ol, itm , parentSystem, itemUsage
+    OPTIONAL MATCH (itm)-[:IS_BASED_ON]->(ci)	
+	SET ol.isDelivered = $isDelivered, 
+	    ol.deliveredTime = datetime(), 
+		ol.lastUpdateTime = datetime(), 
+		ol.lastUpdateBy = u.username, 
+		o.lastUpdateTime = datetime(), 
+		o.lastUpdateBy = u.username
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage, eunPrefix
+	OPTIONAL MATCH(maxEuns:Item) WHERE maxEuns.eun STARTS WITH eunPrefix
+	WITH max(maxEuns.eun) as maxEun, o, ol, u, itm, ci, parentSystem, itemUsage, eunPrefix 
+	SET itm.eun = case when (itm.eun is null and ol.isDelivered = true) then
+					case when maxEun is not null then 
+						eunPrefix + apoc.text.lpad(toString(toInteger(right(maxEun, 4)) + 1), 4, '0') 
+					else 
+						eunPrefix + '0001' 
+					end 
+				  else 
+					case when ol.isDelivered = true then 
+						itm.eun 
+					else 
+						null 
+					end 
+				  end
+	`
+	if serialNumber != nil && *serialNumber != "" {
+		result.Query += `, itm.serialNumber = $serialNumber `
+		result.Parameters["serialNumber"] = serialNumber
+	}
+
+	result.Query += `
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines,o, ol, u, itm, ci, parentSystem , itemUsage 
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines,o, ol, u, itm, ci, parentSystem , itemUsage 
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage 
+	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+	RETURN DISTINCT { uid: itm.uid,  
+			isDelivered: ol.isDelivered,
+			deliveredTime: ol.deliveredTime,
+			price: ol.price,
+			currency: ol.currency, 
+			name: itm.name, 
+			catalogueNumber: ci.catalogueNumber, 
+			catalogueUid: ci.uid, 
+			eun:  itm.eun,
+			serialNumber: itm.serialNumber,
+			system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+			itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END  } as orderLine;
+	 `
+
+	result.ReturnAlias = "orderLine"
+
+	result.Parameters["itemUID"] = itemUID
 	result.Parameters["userUID"] = userUID
 	result.Parameters["isDelivered"] = isDelivered
+	result.Parameters["facilityCode"] = facilityCode
 
 	return result
 }
@@ -394,3 +579,5 @@ func SetItemPrintEUNQuery(eun string, printEUN bool) (result helpers.DatabaseQue
 
 	return result
 }
+
+const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"

@@ -74,6 +74,30 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 	return result, err
 }
 
+func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
+	resultMap, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(query.Query, query.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
+		record, err := result.Single()
+		if err != nil {
+			return nil, fmt.Errorf(err.Error())
+		}
+
+		rec, _ := record.Get(query.ReturnAlias)
+		return rec, nil
+
+	})
+
+	if err == nil {
+		result, err = MapStruct[T](resultMap.(map[string]interface{}))
+	}
+
+	return result, err
+}
+
 func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
 	resultValue, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(query.Query, query.Parameters)
@@ -381,5 +405,7 @@ type Sorting struct {
 const DB_LOG_CREATE string = "CREATE"
 const DB_LOG_UPDATE string = "UPDATE"
 const DB_LOG_DELETE string = "DELETE"
+
+const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"
 
 var ERR_INVALID_INPUT = errors.New("INVALID_INPUT")

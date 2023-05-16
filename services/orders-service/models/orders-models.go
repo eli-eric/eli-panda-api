@@ -6,20 +6,21 @@ import (
 )
 
 type OrderListItem struct {
-	UID                    string    `json:"uid"`
-	Name                   string    `json:"name"`
-	RequestNumber          string    `json:"requestNumber"`
-	OrderNumber            string    `json:"orderNumber"`
-	ContractNumber         string    `json:"contractNumber"`
-	Notes                  string    `json:"notes"`
-	Supplier               string    `json:"supplier"`
-	OrderStatus            string    `json:"orderStatus"`
-	DeliveryStatus         int       `json:"deliveryStatus"` //0 - not delivered, 1 - partially delivered, 2 - delivered
-	OrderDate              time.Time `json:"orderDate"`
-	LastUpdateTime         time.Time `json:"lastUpdateTime"`
-	LastUpdateBy           string    `json:"lastUpdateBy"`
-	Requestor              string    `json:"requestor"`
-	ProcurementResponsible string    `json:"procurementResponsible"`
+	UID                    string                   `json:"uid"`
+	Name                   string                   `json:"name"`
+	RequestNumber          string                   `json:"requestNumber"`
+	OrderNumber            string                   `json:"orderNumber"`
+	ContractNumber         string                   `json:"contractNumber"`
+	Notes                  string                   `json:"notes"`
+	Supplier               string                   `json:"supplier"`
+	OrderStatus            string                   `json:"orderStatus"`
+	OrderStatusObj         *codebookModels.Codebook `json:"orderStatusObj"`
+	DeliveryStatus         int                      `json:"deliveryStatus"` //0 - none delivered, 1 - partially delivered, 2 - delivered
+	OrderDate              time.Time                `json:"orderDate"`
+	LastUpdateTime         time.Time                `json:"lastUpdateTime"`
+	LastUpdateBy           string                   `json:"lastUpdateBy"`
+	Requestor              string                   `json:"requestor"`
+	ProcurementResponsible string                   `json:"procurementResponsible"`
 }
 
 type OrderDetail struct {
@@ -43,13 +44,14 @@ type OrderLine struct {
 	CatalogueNumber string                   `json:"catalogueNumber"`
 	CatalogueUID    string                   `json:"catalogueUid"`
 	System          *codebookModels.Codebook `json:"system"`
-	ItemUsgae       *codebookModels.Codebook `json:"itemUsage"`
+	ItemUsage       *codebookModels.Codebook `json:"itemUsage"`
 	Location        *codebookModels.Codebook `json:"location"`
-	Price           float64                  `json:"price"`
-	Currency        string                   `json:"currency"`
-	EUN             string                   `json:"eun"`
+	Price           *float64                 `json:"price"`
+	Currency        *string                  `json:"currency"`
+	EUN             *string                  `json:"eun"`
 	IsDelivered     bool                     `json:"isDelivered"`
 	DeliveredTime   *time.Time               `json:"deliveredTime"`
+	SerialNumber    *string                  `json:"serialNumber"`
 }
 
 type ItemForEunPrint struct {
@@ -59,4 +61,9 @@ type ItemForEunPrint struct {
 	CatalogueNumber string `json:"catalogueNumber"`
 	SerialNumber    string `json:"serialNumber"`
 	Quantity        int    `json:"quantity"`
+}
+
+type OrderLineDelivery struct {
+	IsDelivered  bool    `json:"isDelivered"`
+	SerialNumber *string `json:"serialNumber"`
 }

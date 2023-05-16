@@ -1772,7 +1772,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/orders/eun-for-print?euns=[\"21804\", \"22303\", \"22301\"]",
+							"raw": "{{baseUrl}}/orders/eun-for-print",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1783,7 +1783,67 @@
 							"query": [
 								{
 									"key": "euns",
-									"value": "[\"21804\", \"22303\", \"22301\"]"
+									"value": "[\"21804\", \"22303\", \"22301\"]",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "EUN - set print",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});",
+									""
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "3834d526-37b4-4440-8e98-55cad3872803",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/eun-for-print/21804?printEUN=false",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"eun-for-print",
+								"21804"
+							],
+							"query": [
+								{
+									"key": "euns",
+									"value": "[\"21804\", \"22303\", \"22301\"]",
+									"disabled": true
+								},
+								{
+									"key": "printEUN",
+									"value": "false"
 								}
 							]
 						}
