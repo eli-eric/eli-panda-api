@@ -14,7 +14,7 @@ type OrderListItem struct {
 	Notes                  string    `json:"notes"`
 	Supplier               string    `json:"supplier"`
 	OrderStatus            string    `json:"orderStatus"`
-	DeliveryStatus         int       `json:"deliveryStatus"` //0 - not delivered, 1 - partially delivered, 2 - delivered
+	DeliveryStatus         int       `json:"deliveryStatus"` //0 - none delivered, 1 - partially delivered, 2 - delivered
 	OrderDate              time.Time `json:"orderDate"`
 	LastUpdateTime         time.Time `json:"lastUpdateTime"`
 	LastUpdateBy           string    `json:"lastUpdateBy"`

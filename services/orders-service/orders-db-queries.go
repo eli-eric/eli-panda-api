@@ -395,8 +395,14 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 
 	result.Query += `
 	WITH o, ol, u, itm, ci, parentSystem , itemUsage
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines,o, ol, u, itm, ci, parentSystem , itemUsage 
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines,o, ol, u, itm, ci, parentSystem , itemUsage 
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage 
 	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
-	RETURN { uid: itm.uid,  
+	RETURN DISTINCT { uid: itm.uid,  
 			isDelivered: ol.isDelivered,
 			deliveredTime: ol.deliveredTime,
 			price: ol.price,
