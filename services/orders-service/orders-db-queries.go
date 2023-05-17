@@ -136,6 +136,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	WITH o, s,os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
 	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
@@ -147,6 +148,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		catalogueNumber: ci.catalogueNumber, 
 		catalogueUid: ci.uid, 		
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
 	RETURN DISTINCT {  
 	uid: o.uid,
@@ -233,8 +235,10 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 			// assign system to the item only  if system(techn. unit) is set
 			if orderLine.System != nil {
-				result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`MATCH(f:Facility{code: $facilityCode})  MERGE(sys%[1]v)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm%[1]v `, idxLine)
 
+				//
 				result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
 				result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
 			}
@@ -328,7 +332,8 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 
 				// assign system to the item only  if system(techn. unit) is set
 				if orderLine.System != nil {
-					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(f:Facility{code: $facilityCode})  MERGE(sys%[1]v)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm%[1]v `, idxLine)
 
 					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
 					result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
@@ -368,14 +373,35 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
+				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
 				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
 
-				// if orderLine.System != nil {
-				// 	result.Query += fmt.Sprintf(`WITH o MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, itm%[1]v `, idxLine)
+				if orderLine.System != nil {
+					//delete existing system
+					result.Query += fmt.Sprintf(`OPTIONAL MATCH(oldSystem%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) DETACH DELETE oldSystem%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+					//then create new one
+					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o,ccg, itm%[1]v, sys%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(f:Facility{code: $facilityCode})  MERGE(sys%[1]v)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
 
-				// 	result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
-				// 	result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
-				// }
+					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
+					result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
+
+					if orderLine.Location != nil {
+						//delete existing location
+						result.Query += fmt.Sprintf(`OPTIONAL MATCH()<-[oldLocation%[1]v:HAS_LOCATION]-(sys%[1]v) DELETE oldLocation%[1]v WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
+						//then create new one
+						result.Query += fmt.Sprintf(`MATCH(loc%[1]v:Location{code: $locationUID%[1]v}) MERGE(sys%[1]v)-[:HAS_LOCATION]->(loc%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
+
+						result.Parameters[fmt.Sprintf("locationUID%v", idxLine)] = orderLine.Location.UID
+					} else {
+						//delete existing location
+						result.Query += fmt.Sprintf(`OPTIONAL MATCH()<-[oldLocation%[1]v:HAS_LOCATION]-(sys%[1]v) DELETE oldLocation%[1]v WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
+					}
+				} else {
+					//only delete existing system
+					result.Query += fmt.Sprintf(`OPTIONAL MATCH(oldSystem%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) DETACH DELETE oldSystem%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+
+				}
 
 				// assign item usage to the item only  if item usage is set
 				if orderLine.ItemUsage != nil {
