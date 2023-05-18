@@ -25,16 +25,18 @@ func RequestLoggerMiddleware() echo.MiddlewareFunc {
 		LogLatency:  true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			userID := ""
+			userName := ""
 			userContext := c.Get("user")
 			if userContext != nil {
 				u := userContext.(*jwt.Token)
 				claims := u.Claims.(*models.JwtCustomClaims)
 				userID = claims.Subject
+				userName = claims.Id
 			}
 			if v.Error != nil {
-				log.Printf("%v|%v: %v, status: %v, user-id: %v, error: %v, latency: %vms\n", v.Method, v.Status, v.URI, v.Status, userID, v.Error, v.Latency.Milliseconds())
+				log.Printf("%v|%v: %v, status: %v, user-id: %v, user-name: %v, error: %v, latency: %vms, ip: %v \n", v.Method, v.Status, v.URI, v.Status, userID, userName, v.Error, v.Latency.Milliseconds(), v.RemoteIP)
 			} else {
-				log.Printf("%v|%v: %v, status: %v, user-id: %v, latency: %vms\n", v.Method, v.Status, v.URI, v.Status, userID, v.Latency.Milliseconds())
+				log.Printf("%v|%v: %v, status: %v, user-id: %v, user-name: %v, latency: %vms, ip: %v \n", v.Method, v.Status, v.URI, v.Status, userID, userName, v.Latency.Milliseconds(), v.RemoteIP)
 			}
 			// go func() {
 			// 	LogLokiLog(fmt.Sprintf(`{ "method": "%v", "uri": "%v", "status": "%v" }`, v.Method, v.URI, v.Status))

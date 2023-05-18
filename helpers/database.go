@@ -366,6 +366,7 @@ func ProcessArrayResult[T any](data *[]T, err error) {
 func GetFullTextSearchString(searchString string) (result string) {
 
 	searchString = strings.TrimSpace(searchString)
+	searchString = strings.ReplaceAll(searchString, "/", " ")
 
 	if searchString != "" {
 		searchStrings := strings.Split(searchString, " ")

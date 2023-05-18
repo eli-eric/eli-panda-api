@@ -1387,7 +1387,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/SUPPLIER?searchText=ar&limit=5",
+							"raw": "{{baseUrl}}/codebook/autocomplete/SUPPLIER?searchText=thorl&limit=5",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1399,7 +1399,7 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": "ar"
+									"value": "thorl"
 								},
 								{
 									"key": "limit",
@@ -1709,7 +1709,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&search=jirka test",
+							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&supplierUID=174c8ace-eabf-40ea-862f-8aae7ea2e15a",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1728,7 +1728,19 @@
 								},
 								{
 									"key": "search",
-									"value": "jirka test"
+									"value": "jirka test",
+									"disabled": true
+								},
+								{
+									"key": "supplierUID",
+									"value": "174c8ace-eabf-40ea-862f-8aae7ea2e15a",
+									"type": "text"
+								},
+								{
+									"key": "orderStatusUID",
+									"value": "c5ef9d00-ac38-44c1-b48a-fde0d7095c54",
+									"type": "text",
+									"disabled": true
 								}
 							]
 						}
