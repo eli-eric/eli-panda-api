@@ -50,12 +50,12 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 	}
 
 	if procurementResponsibleUID != "" {
-		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:User{uid: $procurementResponsibleUID}) `
+		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:Employee{uid: $procurementResponsibleUID}) `
 		result.Parameters["procurementResponsibleUID"] = procurementResponsibleUID
 	}
 
 	if requestorUID != "" {
-		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:User{uid: $requestorUID}) `
+		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:Employee{uid: $requestorUID}) `
 		result.Parameters["requestorUID"] = requestorUID
 	}
 
