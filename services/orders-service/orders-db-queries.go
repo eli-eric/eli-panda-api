@@ -25,7 +25,9 @@ func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpe
 	return result
 }
 
-func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string, orderStatusUID string, procurementResponsibleUID string, requestorUID string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
 
 	if searchString == "" {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH o "
@@ -35,6 +37,26 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 		MATCH(f:Facility{code: $facilityCode}) WITH f, o
 		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
 		WITH o `
+	}
+
+	if supplierUID != "" {
+		result.Query += `MATCH(o)-[:HAS_SUPPLIER]->(ss:Supplier{uid: $supplierUID}) `
+		result.Parameters["supplierUID"] = supplierUID
+	}
+
+	if orderStatusUID != "" {
+		result.Query += `MATCH(o)-[:HAS_ORDER_STATUS]->(oss:OrderStatus{uid: $orderStatusUID}) `
+		result.Parameters["orderStatusUID"] = orderStatusUID
+	}
+
+	if procurementResponsibleUID != "" {
+		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:User{uid: $procurementResponsibleUID}) `
+		result.Parameters["procurementResponsibleUID"] = procurementResponsibleUID
+	}
+
+	if requestorUID != "" {
+		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:User{uid: $requestorUID}) `
+		result.Parameters["requestorUID"] = requestorUID
 	}
 
 	result.Query += `	
@@ -67,7 +89,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string
 
 `
 	result.ReturnAlias = "orders"
-	result.Parameters = make(map[string]interface{})
+
 	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
@@ -97,7 +119,9 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 	return result
 }
 
-func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode string) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextFullTextCountQuery(searchString string, supplierUID string, orderStatusUID string, procurementResponsibleUID string, requestorUID string, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
 
 	if searchString == "" {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH o "
@@ -109,6 +133,26 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode s
 		WITH o `
 	}
 
+	if supplierUID != "" {
+		result.Query += `MATCH(o)-[:HAS_SUPPLIER]->(ss:Supplier{uid: $supplierUID}) `
+		result.Parameters["supplierUID"] = supplierUID
+	}
+
+	if orderStatusUID != "" {
+		result.Query += `MATCH(o)-[:HAS_ORDER_STATUS]->(oss:OrderStatus{uid: $orderStatusUID}) `
+		result.Parameters["orderStatusUID"] = orderStatusUID
+	}
+
+	if procurementResponsibleUID != "" {
+		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:User{uid: $procurementResponsibleUID}) `
+		result.Parameters["procurementResponsibleUID"] = procurementResponsibleUID
+	}
+
+	if requestorUID != "" {
+		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:User{uid: $requestorUID}) `
+		result.Parameters["requestorUID"] = requestorUID
+	}
+
 	result.Query += `	
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
@@ -118,7 +162,7 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode s
     return count(o) as count
 `
 	result.ReturnAlias = "count"
-	result.Parameters = make(map[string]interface{})
+
 	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["facilityCode"] = facilityCode
 	return result

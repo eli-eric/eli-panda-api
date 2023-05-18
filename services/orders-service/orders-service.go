@@ -17,7 +17,7 @@ type OrdersService struct {
 type IOrdersService interface {
 	GetOrderStatusesCodebook() (result []codebookModels.Codebook, err error)
 	GetSuppliersAutocompleteCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
-	GetOrdersWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error)
+	GetOrdersWithSearchAndPagination(search string, supplierUID string, orderStatusUID string, procurementResponsibleUID string, requestorUID string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error)
 	GetOrderWithOrderLinesByUid(orderUid string, facilityCode string) (result models.OrderDetail, err error)
 	InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error)
 	UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error)
@@ -57,16 +57,16 @@ func (svc *OrdersService) GetSuppliersAutocompleteCodebook(searchString string, 
 	return result, err
 }
 
-func (svc *OrdersService) GetOrdersWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error) {
+func (svc *OrdersService) GetOrdersWithSearchAndPagination(search string, supplierUID string, orderStatusUID string, procurementResponsibleUID string, requestorUID string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.OrderListItem], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//beacause of the full text search we need to modify the search string
 	search = helpers.GetFullTextSearchString(search)
 
-	query := GetOrdersBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	query := GetOrdersBySearchTextFullTextQuery(search, supplierUID, orderStatusUID, procurementResponsibleUID, requestorUID, facilityCode, pagination, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.OrderListItem](session, query)
-	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetOrdersBySearchTextFullTextCountQuery(search, facilityCode))
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetOrdersBySearchTextFullTextCountQuery(search, supplierUID, orderStatusUID, procurementResponsibleUID, requestorUID, facilityCode))
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 
