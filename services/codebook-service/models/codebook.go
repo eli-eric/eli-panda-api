@@ -14,7 +14,12 @@ type CodebookType struct {
 	Code      string `json:"code"`
 	Type      string `json:"type"`
 	RoleEdit  string `json:"roleEdit,omitempty"`
-	NodeLabel string `json:"ignore,omitempty"`
+	NodeLabel string `json:"-"`
+}
+
+type CodebookResponse struct {
+	Metadata CodebookType `json:"metadata"`
+	Data     []Codebook   `json:"data"`
 }
 
 var ZONE_CODEBOOK CodebookType = CodebookType{Code: "ZONE", Type: "SIMPLE"}

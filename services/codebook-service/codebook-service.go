@@ -22,8 +22,8 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error)
-	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error)
+	GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookResponse models.CodebookResponse, err error)
+	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (CodebookResponse models.CodebookResponse, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 }
@@ -39,56 +39,76 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
 
-	codebookList = make([]models.Codebook, 0)
+	codebookList := make([]models.Codebook, 0)
+	codebookMetadata := codebooksMap[codebookCode]
 
-	switch codebookCode {
-	case "ZONE":
-		codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode)
-	case "UNIT":
-		codebookList, err = svc.catalogueService.GetUnitsCodebook()
-	case "CATALOGUE_PROPERTY_TYPE":
-		codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
-	case "SYSTEM_TYPE":
-		codebookList, err = svc.systemsService.GetSystemTypesCodebook(facilityCode)
-	case "SYSTEM_IMPORTANCE":
-		codebookList, err = svc.systemsService.GetSystemImportancesCodebook()
-	case "SYSTEM_CRITICALITY_CLASS":
-		codebookList, err = svc.systemsService.GetSystemCriticalitiesCodebook()
-	case "ITEM_USAGE":
-		codebookList, err = svc.systemsService.GetItemUsagesCodebook()
-	case "ITEM_CONDITION_STATUS":
-		codebookList, err = svc.systemsService.GetItemConditionsCodebook()
-	case "USER":
-		codebookList, err = svc.securityService.GetUsersCodebook(facilityCode)
-	case "ORDER_STATUS":
-		codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
-	case "PROCUREMENTER":
-		codebookList, err = svc.securityService.GetProcurementersCodebook(facilityCode)
+	if codebookMetadata != (models.CodebookType{}) {
+
+		switch codebookCode {
+		case "ZONE":
+			codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode)
+		case "UNIT":
+			codebookList, err = svc.catalogueService.GetUnitsCodebook()
+		case "CATALOGUE_PROPERTY_TYPE":
+			codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
+		case "SYSTEM_TYPE":
+			codebookList, err = svc.systemsService.GetSystemTypesCodebook(facilityCode)
+		case "SYSTEM_IMPORTANCE":
+			codebookList, err = svc.systemsService.GetSystemImportancesCodebook()
+		case "SYSTEM_CRITICALITY_CLASS":
+			codebookList, err = svc.systemsService.GetSystemCriticalitiesCodebook()
+		case "ITEM_USAGE":
+			codebookList, err = svc.systemsService.GetItemUsagesCodebook()
+		case "ITEM_CONDITION_STATUS":
+			codebookList, err = svc.systemsService.GetItemConditionsCodebook()
+		case "ORDER_STATUS":
+			codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
+		case "PROCUREMENTER":
+			codebookList, err = svc.securityService.GetProcurementersCodebook(facilityCode)
+		}
+
+		if err == nil {
+			codebookResponse = models.CodebookResponse{Metadata: codebookMetadata, Data: codebookList}
+		}
+
+	} else {
+		err = helpers.ERR_NOT_FOUND
 	}
 
-	return codebookList, err
+	return codebookResponse, err
 }
 
-func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error) {
+func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
 
-	codebookList = make([]models.Codebook, 0)
+	codebookList := make([]models.Codebook, 0)
+	codebookMetadata := codebooksMap[codebookCode]
 
-	switch codebookCode {
-	case "LOCATION":
-		codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
-	case "USER":
-		codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, facilityCode)
-	case "SUPPLIER":
-		codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
-	case "SYSTEM":
-		codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode)
-	case "EMPLOYEE":
-		codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+	if codebookMetadata != (models.CodebookType{}) {
+
+		switch codebookCode {
+		case "LOCATION":
+			codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
+		case "USER":
+			codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, facilityCode)
+		case "SUPPLIER":
+			codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
+		case "SYSTEM":
+			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode)
+		case "EMPLOYEE":
+			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+		}
+
+		if err == nil {
+			codebookResponse = models.CodebookResponse{Metadata: codebookMetadata, Data: codebookList}
+		}
+
+	} else {
+		err = helpers.ERR_NOT_FOUND
 	}
 
-	return codebookList, err
+	return codebookResponse, err
 }
 
 func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.CodebookType) {
