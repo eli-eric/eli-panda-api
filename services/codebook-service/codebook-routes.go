@@ -16,5 +16,5 @@ func MapCodebookRoutes(e *echo.Echo, h ICodebookHandlers, jwtMiddleware echo.Mid
 	e.GET("/v1/codebooks", m.Authorization(h.GetListOfCodebooks(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 
 	// create new codebook
-	e.POST("/v1/codebook", m.Authorization(h.CreateNewCodebook(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
+	e.POST("/v1/codebook/:codebookCode", m.Authorization(h.CreateNewCodebook(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 }

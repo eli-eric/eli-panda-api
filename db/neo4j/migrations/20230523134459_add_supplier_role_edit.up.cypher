@@ -1,0 +1,1 @@
+MERGE (r:Role{ uid:'261db693-659f-49bf-bcad-6c75a0a86f9d', name: 'Supplier Edit', code: 'supplier-edit' });
