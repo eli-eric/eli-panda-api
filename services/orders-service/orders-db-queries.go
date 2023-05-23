@@ -450,7 +450,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				// assign item usage to the item only  if item usage is set
 				if orderLine.ItemUsage != nil {
 					//delete existing item usage relationship
-					result.Query += fmt.Sprintf(`MATCH(itm%[1]v)-[itemUsageRel%[1]v:HAS_ITEM_USAGE]->() DELETE itemUsageRel%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`OPTIONAL MATCH(itm%[1]v)-[itemUsageRel%[1]v:HAS_ITEM_USAGE]->() DELETE itemUsageRel%[1]v WITH o, ccg, itm%[1]v `, idxLine)
 					result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
 
 					result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
