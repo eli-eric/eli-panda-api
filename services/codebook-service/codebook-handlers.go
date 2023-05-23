@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"panda/apigateway/services/codebook-service/models"
 	"strconv"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 )
@@ -79,7 +80,11 @@ func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
 			// create new codebook
 			createdCodebook, err := h.codebookService.CreateNewCodebook(codebookCode, facilityCode, userUID, userRoles, codebook)
 			if err != nil {
-				return err
+				if strings.ContainsAny(err.Error(), "already exists") {
+					return c.NoContent(http.StatusConflict)
+				} else {
+					return err
+				}
 			}
 
 			return c.JSON(http.StatusOK, createdCodebook)
