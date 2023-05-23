@@ -2,6 +2,7 @@ package codebookService
 
 import (
 	"net/http"
+	"panda/apigateway/services/codebook-service/models"
 	"strconv"
 
 	"github.com/labstack/echo/v4"
@@ -15,6 +16,7 @@ type ICodebookHandlers interface {
 	GetCodebook() echo.HandlerFunc
 	GetAutocompleteCodebook() echo.HandlerFunc
 	GetListOfCodebooks() echo.HandlerFunc
+	CreateNewCodebook() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -79,5 +81,29 @@ func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
 		codebookList := h.codebookService.GetListOfCodebooks()
 
 		return c.JSON(http.StatusOK, codebookList)
+	}
+}
+
+func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		codebook := new(models.Codebook)
+		if err := c.Bind(codebook); err == nil {
+			userUID := c.Get("userUID").(string)
+			userRoles := c.Get("userRoles").([]string)
+			facilityCode := c.Get("facilityCode").(string)
+			codebookCode := c.Param("codebookCode")
+
+			// create new codebook
+			createdCodebook, err := h.codebookService.CreateNewCodebook(codebookCode, facilityCode, userUID, userRoles, codebook)
+			if err != nil {
+				return err
+			}
+
+			return c.JSON(http.StatusOK, createdCodebook)
+		} else {
+			return echo.ErrInternalServerError
+		}
 	}
 }

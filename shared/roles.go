@@ -15,3 +15,6 @@ const ROLE_CATALOGUE_CATEGORY_EDIT string = "catalogue-category-edit"
 const ROLE_ORDERS_VIEW string = "orders-view"
 const ROLE_ORDERS_EDIT string = "orders-edit"
 const ROLE_ORDERS_DELIVERY_EDIT string = "orders-delivery-edit"
+
+const ROLE_SUPPLIER_VIEW string = "supplier-view"
+const ROLE_SUPPLIER_EDIT string = "supplier-edit"

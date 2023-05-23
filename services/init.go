@@ -38,7 +38,7 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	log.Println("Orders    service initialized successfully.")
 
 	//security services used in handlers and maped in routes...
-	codebookSvc := codebookService.NewCodebookService(settings, catalogueSvc, securitySvc, systemsSvc, ordersSvc)
+	codebookSvc := codebookService.NewCodebookService(settings, neo4jDriver, catalogueSvc, securitySvc, systemsSvc, ordersSvc)
 	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
 	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
 	log.Println("Codebook  service initialized successfully.")
