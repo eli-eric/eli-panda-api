@@ -10,6 +10,7 @@ import (
 	systemsService "panda/apigateway/services/systems-service"
 
 	"github.com/google/uuid"
+	"github.com/labstack/gommon/log"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
@@ -22,8 +23,7 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error)
-	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error)
+	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 }
@@ -39,56 +39,92 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookList []models.Codebook, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
 
-	codebookList = make([]models.Codebook, 0)
+	codebookList := make([]models.Codebook, 0)
+	codebookMetadata := codebooksMap[codebookCode]
 
-	switch codebookCode {
-	case "ZONE":
-		codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode)
-	case "UNIT":
-		codebookList, err = svc.catalogueService.GetUnitsCodebook()
-	case "CATALOGUE_PROPERTY_TYPE":
-		codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
-	case "SYSTEM_TYPE":
-		codebookList, err = svc.systemsService.GetSystemTypesCodebook(facilityCode)
-	case "SYSTEM_IMPORTANCE":
-		codebookList, err = svc.systemsService.GetSystemImportancesCodebook()
-	case "SYSTEM_CRITICALITY_CLASS":
-		codebookList, err = svc.systemsService.GetSystemCriticalitiesCodebook()
-	case "ITEM_USAGE":
-		codebookList, err = svc.systemsService.GetItemUsagesCodebook()
-	case "ITEM_CONDITION_STATUS":
-		codebookList, err = svc.systemsService.GetItemConditionsCodebook()
-	case "USER":
-		codebookList, err = svc.securityService.GetUsersCodebook(facilityCode)
-	case "ORDER_STATUS":
-		codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
-	case "PROCUREMENTER":
-		codebookList, err = svc.securityService.GetProcurementersCodebook(facilityCode)
+	if codebookMetadata != (models.CodebookType{}) {
+
+		switch codebookCode {
+		case "ZONE":
+			codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode)
+		case "UNIT":
+			codebookList, err = svc.catalogueService.GetUnitsCodebook()
+		case "CATALOGUE_PROPERTY_TYPE":
+			codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
+		case "SYSTEM_TYPE":
+			codebookList, err = svc.systemsService.GetSystemTypesCodebook(facilityCode)
+		case "SYSTEM_IMPORTANCE":
+			codebookList, err = svc.systemsService.GetSystemImportancesCodebook()
+		case "SYSTEM_CRITICALITY_CLASS":
+			codebookList, err = svc.systemsService.GetSystemCriticalitiesCodebook()
+		case "ITEM_USAGE":
+			codebookList, err = svc.systemsService.GetItemUsagesCodebook()
+		case "ITEM_CONDITION_STATUS":
+			codebookList, err = svc.systemsService.GetItemConditionsCodebook()
+		case "ORDER_STATUS":
+			codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
+		case "PROCUREMENTER":
+			codebookList, err = svc.securityService.GetProcurementersCodebook(facilityCode)
+		case "LOCATION":
+			codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
+		case "USER":
+			codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, facilityCode)
+		case "SUPPLIER":
+			codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
+		case "SYSTEM":
+			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode)
+		case "EMPLOYEE":
+			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+		}
+
+		if err == nil {
+			codebookResponse = models.CodebookResponse{Metadata: codebookMetadata, Data: codebookList}
+		}
+
+	} else {
+		err = helpers.ERR_NOT_FOUND
+		log.Error(err)
 	}
 
-	return codebookList, err
+	return codebookResponse, err
 }
 
-func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookList []models.Codebook, err error) {
+func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error) {
 
-	codebookList = make([]models.Codebook, 0)
+	codebookDefinition := codebooksMap[codebookCode]
 
-	switch codebookCode {
-	case "LOCATION":
-		codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
-	case "USER":
-		codebookList, err = svc.securityService.GetUsersAutocompleteCodebook(searchString, limit, facilityCode)
-	case "SUPPLIER":
-		codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
-	case "SYSTEM":
-		codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode)
-	case "EMPLOYEE":
-		codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+	if codebookDefinition != (models.CodebookType{}) {
+		if checkUserRoles(userRoles, codebookDefinition.RoleEdit) {
+
+			if codebookDefinition.NodeLabel != "" {
+				// Open a new Session
+				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+				dbquery := helpers.DatabaseQuery{}
+				dbquery.Query = `				
+				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name }) 
+					WITH n
+					MATCH (u:User {uid: $userUID})
+					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+				RETURN { uid: n.uid, name: n.name } as codebook`
+
+				dbquery.Parameters = map[string]interface{}{
+					"uid":     uuid.New().String(),
+					"name":    codebook.Name,
+					"userUID": userUID,
+				}
+				dbquery.ReturnAlias = "codebook"
+
+				result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Codebook](session, dbquery)
+			}
+		} else {
+			err = helpers.ERR_UNAUTHORIZED
+		}
 	}
 
-	return codebookList, err
+	return result, err
 }
 
 func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.CodebookType) {
@@ -110,42 +146,6 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.USER_AUTOCOMPLETE_CODEBOOK,
 		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 	}
-}
-
-func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error) {
-
-	codebookDefinition := codebooksMap[codebookCode]
-
-	if codebookDefinition != (models.CodebookType{}) {
-		if checkUserRoles(userRoles, codebookDefinition.RoleEdit) {
-
-			if codebookDefinition.NodeLabel != "" {
-				// Open a new Session
-				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-				dbquery := helpers.DatabaseQuery{}
-				dbquery.Query = `				
-				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name ) 
-					WITH n
-					MATCH (u:User {uid: $userUID})
-					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
-				RETURN { uid: n.uid, name: n.name } as codebook }`
-
-				dbquery.Parameters = map[string]interface{}{
-					"uid":     uuid.New().String(),
-					"name":    codebook.Name,
-					"userUID": userUID,
-				}
-				dbquery.ReturnAlias = "codebook"
-
-				result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Codebook](session, dbquery)
-			}
-		} else {
-			err = helpers.ERR_UNAUTHORIZED
-		}
-	}
-
-	return result, err
 }
 
 func checkUserRoles(userRoles []string, role string) (result bool) {
@@ -173,4 +173,5 @@ var codebooksMap = map[string]models.CodebookType{
 	"SYSTEM":                     models.SYSTEM_AUTOCOMPLETE_CODEBOOK,
 	"USER_AUTOCOMPLETE_CODEBOOK": models.USER_AUTOCOMPLETE_CODEBOOK,
 	"SUPPLIER":                   models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
+	"PROCUREMENTER":              models.PROCUREMENTER_CODEBOOK,
 }
