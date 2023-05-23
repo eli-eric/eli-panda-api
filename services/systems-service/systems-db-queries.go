@@ -284,7 +284,7 @@ func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
 func GetSystemsForAutocomplete(search string, limit int, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH (n:System{isTechnologicalUnit: true})-[:BELONGS_TO_FACILITY]->(f)
-	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->()
+	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->(:System{isTechnologicalUnit: true})
 	WITH n
 	WHERE toLower(n.name) CONTAINS $searchText
 	OPTIONAL MATCH (parent)-[:HAS_SUBSYSTEM*1..50]->(n{isTechnologicalUnit: true})
