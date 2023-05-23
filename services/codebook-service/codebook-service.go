@@ -125,11 +125,11 @@ func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode 
 
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
-				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name ) 
+				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name }) 
 					WITH n
 					MATCH (u:User {uid: $userUID})
 					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
-				RETURN { uid: n.uid, name: n.name } as codebook }`
+				RETURN { uid: n.uid, name: n.name } as codebook`
 
 				dbquery.Parameters = map[string]interface{}{
 					"uid":     uuid.New().String(),
