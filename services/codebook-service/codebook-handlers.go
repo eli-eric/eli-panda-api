@@ -14,7 +14,6 @@ type CodebookHandlers struct {
 
 type ICodebookHandlers interface {
 	GetCodebook() echo.HandlerFunc
-	GetAutocompleteCodebook() echo.HandlerFunc
 	GetListOfCodebooks() echo.HandlerFunc
 	CreateNewCodebook() echo.HandlerFunc
 }
@@ -30,27 +29,6 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		//get query path param
 		codebookCode := c.Param("codebookCode")
 		parentUID := c.QueryParams().Get("parentUID")
-		facilityCode := c.Get("facilityCode").(string)
-		// get all categories of the given parentPath
-		codebookList, err := h.codebookService.GetCodebook(codebookCode, parentUID, facilityCode)
-
-		if err == nil {
-			return c.JSON(http.StatusOK, codebookList)
-		}
-
-		return echo.ErrInternalServerError
-	}
-}
-
-const autocompleteMaxLimit int = 100
-const autocompleteDefaultLimit int = 10
-
-func (h *CodebookHandlers) GetAutocompleteCodebook() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		//get query path param
-		codebookCode := c.Param("codebookCode")
 		searchText := c.QueryParams().Get("searchText")
 		limitParam := c.QueryParams().Get("limit")
 		facilityCode := c.Get("facilityCode").(string)
@@ -64,15 +42,18 @@ func (h *CodebookHandlers) GetAutocompleteCodebook() echo.HandlerFunc {
 			limit = autocompleteMaxLimit
 		}
 
-		codebookList, err := h.codebookService.GetAutocompleteCodebook(codebookCode, searchText, limit, facilityCode)
+		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode)
 
 		if err == nil {
-			return c.JSONPretty(http.StatusOK, codebookList, "")
+			return c.JSON(http.StatusOK, codebookResponse)
 		}
 
 		return echo.ErrInternalServerError
 	}
 }
+
+const autocompleteMaxLimit int = 100
+const autocompleteDefaultLimit int = 10
 
 func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
 

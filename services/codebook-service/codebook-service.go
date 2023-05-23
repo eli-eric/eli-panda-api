@@ -10,6 +10,7 @@ import (
 	systemsService "panda/apigateway/services/systems-service"
 
 	"github.com/google/uuid"
+	"github.com/labstack/gommon/log"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
@@ -22,8 +23,7 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookResponse models.CodebookResponse, err error)
-	GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (CodebookResponse models.CodebookResponse, err error)
+	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 }
@@ -39,7 +39,7 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
 
 	codebookList := make([]models.Codebook, 0)
 	codebookMetadata := codebooksMap[codebookCode]
@@ -67,27 +67,6 @@ func (svc *CodebookService) GetCodebook(codebookCode string, parentUID string, f
 			codebookList, err = svc.ordersService.GetOrderStatusesCodebook()
 		case "PROCUREMENTER":
 			codebookList, err = svc.securityService.GetProcurementersCodebook(facilityCode)
-		}
-
-		if err == nil {
-			codebookResponse = models.CodebookResponse{Metadata: codebookMetadata, Data: codebookList}
-		}
-
-	} else {
-		err = helpers.ERR_NOT_FOUND
-	}
-
-	return codebookResponse, err
-}
-
-func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchString string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
-
-	codebookList := make([]models.Codebook, 0)
-	codebookMetadata := codebooksMap[codebookCode]
-
-	if codebookMetadata != (models.CodebookType{}) {
-
-		switch codebookCode {
 		case "LOCATION":
 			codebookList, err = svc.systemsService.GetLocationAutocompleteCodebook(searchString, limit, facilityCode)
 		case "USER":
@@ -106,30 +85,10 @@ func (svc *CodebookService) GetAutocompleteCodebook(codebookCode string, searchS
 
 	} else {
 		err = helpers.ERR_NOT_FOUND
+		log.Error(err)
 	}
 
 	return codebookResponse, err
-}
-
-func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.CodebookType) {
-
-	return []models.CodebookType{
-		models.ZONE_CODEBOOK,
-		models.UNIT_CODEBOOK,
-		models.CATALOGUE_PROPERTY_TYPE_CODEBOOK,
-		models.SYSTEM_TYPE_CODEBOOK,
-		models.SYSTEM_IMPORTANCE_CODEBOOK,
-		models.SYSTEM_CRITICALITY_CLASS_CODEBOOK,
-		models.ITEM_USAGE_CODEBOOK,
-		models.ITEM_CONDITION_STATUS_CODEBOOK,
-		models.USER_CODEBOOK,
-		models.ORDER_STATUS_CODEBOOK,
-		models.LOCATION_AUTOCOMPLETE_CODEBOOK,
-		models.EMPLOYEE_AUTOCOMPLETE_CODEBOOK,
-		models.SYSTEM_AUTOCOMPLETE_CODEBOOK,
-		models.USER_AUTOCOMPLETE_CODEBOOK,
-		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
-	}
 }
 
 func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error) {
@@ -168,6 +127,27 @@ func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode 
 	return result, err
 }
 
+func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.CodebookType) {
+
+	return []models.CodebookType{
+		models.ZONE_CODEBOOK,
+		models.UNIT_CODEBOOK,
+		models.CATALOGUE_PROPERTY_TYPE_CODEBOOK,
+		models.SYSTEM_TYPE_CODEBOOK,
+		models.SYSTEM_IMPORTANCE_CODEBOOK,
+		models.SYSTEM_CRITICALITY_CLASS_CODEBOOK,
+		models.ITEM_USAGE_CODEBOOK,
+		models.ITEM_CONDITION_STATUS_CODEBOOK,
+		models.USER_CODEBOOK,
+		models.ORDER_STATUS_CODEBOOK,
+		models.LOCATION_AUTOCOMPLETE_CODEBOOK,
+		models.EMPLOYEE_AUTOCOMPLETE_CODEBOOK,
+		models.SYSTEM_AUTOCOMPLETE_CODEBOOK,
+		models.USER_AUTOCOMPLETE_CODEBOOK,
+		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
+	}
+}
+
 func checkUserRoles(userRoles []string, role string) (result bool) {
 	for _, userRole := range userRoles {
 		if userRole == role {
@@ -193,4 +173,5 @@ var codebooksMap = map[string]models.CodebookType{
 	"SYSTEM":                     models.SYSTEM_AUTOCOMPLETE_CODEBOOK,
 	"USER_AUTOCOMPLETE_CODEBOOK": models.USER_AUTOCOMPLETE_CODEBOOK,
 	"SUPPLIER":                   models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
+	"PROCUREMENTER":              models.PROCUREMENTER_CODEBOOK,
 }
