@@ -660,58 +660,6 @@
 					"response": []
 				},
 				{
-					"name": "Sub-Zones",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "c5cef34b-dfb5-49b0-8e66-5bc120c8d11b",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{baseUrl}}/codebook/SUB_ZONE?parentUID=09bc76b8-7bae-441f-913c-0fa470a29e9b",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"SUB_ZONE"
-							],
-							"query": [
-								{
-									"key": "parentUID",
-									"value": "09bc76b8-7bae-441f-913c-0fa470a29e9b"
-								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
 					"name": "Units",
 					"event": [
 						{
@@ -1211,13 +1159,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/USER",
+							"raw": "{{baseUrl}}/codebook/USER",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"autocomplete",
 								"USER"
 							],
 							"query": [
@@ -1265,13 +1212,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/EMPLOYEE",
+							"raw": "{{baseUrl}}/codebook/EMPLOYEE",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"autocomplete",
 								"EMPLOYEE"
 							],
 							"query": [
@@ -1325,13 +1271,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/LOCATION?searchText=el&limit=50",
+							"raw": "{{baseUrl}}/codebook/LOCATION?searchText=el&limit=50",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"autocomplete",
 								"LOCATION"
 							],
 							"query": [
@@ -1387,24 +1332,78 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/SUPPLIER?searchText=thorl&limit=5",
+							"raw": "{{baseUrl}}/codebook/SUPPLIER?searchText=tho&limit=5",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"autocomplete",
 								"SUPPLIER"
 							],
 							"query": [
 								{
 									"key": "searchText",
-									"value": "thorl"
+									"value": "tho"
 								},
 								{
 									"key": "limit",
 									"value": "5"
 								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Supplier - new one",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "6d2c368b-c4c4-40bf-a3ad-653ae8f9a90e",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"TEST SUPPLIER NEW 2\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/codebook/SUPPLIER",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"SUPPLIER"
 							]
 						}
 					},
@@ -1444,13 +1443,12 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/autocomplete/SYSTEM?searchText=&limit=20",
+							"raw": "{{baseUrl}}/codebook/SYSTEM?searchText=&limit=20",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"autocomplete",
 								"SYSTEM"
 							],
 							"query": [
@@ -1709,7 +1707,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&supplierUID=174c8ace-eabf-40ea-862f-8aae7ea2e15a",
+							"raw": "{{baseUrl}}/orders?pagination={\"page\" : 1 , \"pageSize\": 10}&supplierUID=174c8ace-eabf-40ea-862f-8aae7ea2e15a&orderStatusUID=c5ef9d00-ac38-44c1-b48a-fde0d7095c54",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1733,14 +1731,12 @@
 								},
 								{
 									"key": "supplierUID",
-									"value": "174c8ace-eabf-40ea-862f-8aae7ea2e15a",
-									"type": "text"
+									"value": "174c8ace-eabf-40ea-862f-8aae7ea2e15a"
 								},
 								{
 									"key": "orderStatusUID",
 									"value": "c5ef9d00-ac38-44c1-b48a-fde0d7095c54",
-									"type": "text",
-									"disabled": true
+									"type": "text"
 								}
 							]
 						}
@@ -1849,13 +1845,13 @@
 							],
 							"query": [
 								{
+									"key": "printEUN",
+									"value": "false"
+								},
+								{
 									"key": "euns",
 									"value": "[\"21804\", \"22303\", \"22301\"]",
 									"disabled": true
-								},
-								{
-									"key": "printEUN",
-									"value": "false"
 								}
 							]
 						}
@@ -2127,14 +2123,12 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "{{baseUrl}}/catalogue/category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b",
+					"raw": "{{baseUrl}}/codebooks",
 					"host": [
 						"{{baseUrl}}"
 					],
 					"path": [
-						"catalogue",
-						"category",
-						"ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
+						"codebooks"
 					]
 				}
 			},
