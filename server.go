@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,6 +12,8 @@ import (
 	"panda/apigateway/middlewares"
 	"panda/apigateway/services"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
 
@@ -36,7 +37,7 @@ func main() {
 	ioutils.PanicOnError(err)
 
 	fmt.Print(ioutils.GetWelcomeMessage())
-	log.Println("PANDA REST API Starting...")
+	log.Info().Msg("PANDA REST API Starting...")
 	//new http Echo instance
 	e := echo.New()
 	e.HideBanner = true

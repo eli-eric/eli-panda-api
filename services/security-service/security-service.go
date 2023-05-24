@@ -2,12 +2,13 @@ package securityService
 
 import (
 	"errors"
-	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/security-service/models"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -75,7 +76,7 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 			return authUser, err
 		}
 	} else {
-		log.Println(err)
+		log.Error().Msg(err.Error())
 	}
 
 	return authUser, errors.New("Unauthorized")

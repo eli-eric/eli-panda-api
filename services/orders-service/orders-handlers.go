@@ -2,10 +2,11 @@ package ordersService
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/orders-service/models"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
 )
@@ -70,7 +71,7 @@ func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -89,7 +90,7 @@ func (h *OrdersHandlers) GetOrderWithOrderLinesByUid() echo.HandlerFunc {
 		if err == nil {
 			return c.JSON(http.StatusOK, order)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -104,7 +105,7 @@ func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 		err := c.Bind(order)
 
 		if err != nil {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -116,7 +117,7 @@ func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 		if err == nil {
 			return c.JSON(http.StatusOK, newUID)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -131,7 +132,7 @@ func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 		err := c.Bind(order)
 
 		if err != nil {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -143,7 +144,7 @@ func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -162,7 +163,7 @@ func (h *OrdersHandlers) DeleteOrder() echo.HandlerFunc {
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -181,7 +182,7 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 		err := c.Bind(orderLineDelivery)
 
 		if err != nil {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -190,7 +191,7 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 		if err == nil {
 			return c.JSON(http.StatusOK, orderLine)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 	}
@@ -210,7 +211,7 @@ func (h *OrdersHandlers) GetItemsForEunPrint() echo.HandlerFunc {
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 
@@ -232,7 +233,7 @@ func (h *OrdersHandlers) SetItemPrintEUN() echo.HandlerFunc {
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 

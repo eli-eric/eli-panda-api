@@ -1,12 +1,13 @@
 package systemsService
 
 import (
-	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
 	systemsModels "panda/apigateway/services/systems-service/models"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -141,7 +142,7 @@ func (svc *SystemsService) CreateNewSystem(system *models.SystemForm, facilityCo
 	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Info().Msg(err.Error())
 	} else {
 		go func() {
 			// we dont want to log image data
@@ -165,7 +166,7 @@ func (svc *SystemsService) UpdateSystem(system *models.SystemForm, facilityCode 
 		}
 
 		if err != nil {
-			log.Println(err.Error())
+			log.Info().Msg(err.Error())
 		} else {
 			go func() {
 				// we dont want to log image data

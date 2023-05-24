@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"panda/apigateway/ioutils"
 	"panda/apigateway/services/codebook-service/models"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -288,7 +289,7 @@ func LogDBHistory(session neo4j.Session, objectUID string, originObject any, new
 
 		originSystemBytes, err := json.Marshal(originObject)
 		if err != nil {
-			log.Println(err.Error())
+			log.Info().Msg(err.Error())
 			return uid, err
 		}
 		originSystemJSON = string(originSystemBytes)
@@ -296,14 +297,14 @@ func LogDBHistory(session neo4j.Session, objectUID string, originObject any, new
 
 	newSystemBytes, err := json.Marshal(newObject)
 	if err != nil {
-		log.Println(err.Error())
+		log.Info().Msg(err.Error())
 		return uid, err
 	}
 
 	uid, err = WriteNeo4jAndReturnSingleValue[string](session, logHistoryQuery(objectUID, originSystemJSON, string(newSystemBytes), userUID, action))
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Info().Msg(err.Error())
 	}
 
 	return uid, err

@@ -1,10 +1,11 @@
 package catalogueService
 
 import (
-	"log"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
 )
@@ -65,7 +66,7 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 			if err == nil {
 				return c.JSON(http.StatusOK, items)
 			} else {
-				log.Println(err)
+				log.Error().Msg(err.Error())
 			}
 		}
 
@@ -86,7 +87,7 @@ func (h *CatalogueHandlers) GetCatalogueItemWithDetailsByUid() echo.HandlerFunc 
 		if err == nil {
 			return c.JSON(http.StatusOK, item)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -106,7 +107,7 @@ func (h *CatalogueHandlers) GetCatalogueCategoryWithDetailsByUid() echo.HandlerF
 		if err == nil {
 			return c.JSON(http.StatusOK, item)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -126,7 +127,7 @@ func (h *CatalogueHandlers) DeleteCatalogueCategory() echo.HandlerFunc {
 		if err == nil {
 			return c.JSON(http.StatusOK, "ok")
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			if err.Error() == "category has related items" {
 				return echo.ErrForbidden
 			}
@@ -149,7 +150,7 @@ func (h *CatalogueHandlers) CopyCatalogueCategoryRecursive() echo.HandlerFunc {
 		if err == nil {
 			return c.String(http.StatusCreated, newUID)
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -170,10 +171,10 @@ func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
 			if err == nil {
 				return c.JSON(http.StatusOK, catalogueCatgeory)
 			} else {
-				log.Println(err)
+				log.Error().Msg(err.Error())
 			}
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -194,10 +195,10 @@ func (h *CatalogueHandlers) CreateCatalogueCategory() echo.HandlerFunc {
 			if err == nil {
 				return c.JSON(http.StatusOK, catalogueCatgeory)
 			} else {
-				log.Println(err)
+				log.Error().Msg(err.Error())
 			}
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -217,7 +218,7 @@ func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
 			return c.String(200, imageString)
 
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return echo.ErrNotFound
 		}
 	}
@@ -250,7 +251,7 @@ func (h *CatalogueHandlers) GetCatalogueCategoryImageByUid() echo.HandlerFunc {
 			return c.String(200, imageString)
 
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError

@@ -1,7 +1,7 @@
 package ordersService
 
 import (
-	"log"
+	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 
@@ -111,7 +111,7 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 		}
 
 		if err != nil {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 			return err
 		}
 
