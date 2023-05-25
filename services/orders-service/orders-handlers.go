@@ -186,7 +186,7 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 			return echo.ErrInternalServerError
 		}
 
-		orderLine, err := h.ordersService.UpdateOrderLineDelivery(itemUID, orderLineDelivery.IsDelivered, orderLineDelivery.SerialNumber, userUID, facilityCode)
+		orderLine, err := h.ordersService.UpdateOrderLineDelivery(itemUID, orderLineDelivery.IsDelivered, orderLineDelivery.SerialNumber, orderLineDelivery.EUN, userUID, facilityCode)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, orderLine)

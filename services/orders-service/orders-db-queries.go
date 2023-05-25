@@ -519,7 +519,7 @@ func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery)
 	return result
 }
 
-func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
+func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber *string, eun *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 
 	result.Query = `
@@ -539,7 +539,10 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 		ol.lastUpdateBy = u.username, 
 		o.lastUpdateTime = datetime(), 
 		o.lastUpdateBy = u.username
-	WITH o, ol, u, itm, ci, parentSystem , itemUsage, eunPrefix
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage, eunPrefix `
+
+	if eun == nil {
+		result.Query += `
 	OPTIONAL MATCH(maxEuns:Item) WHERE maxEuns.eun STARTS WITH eunPrefix
 	WITH max(maxEuns.eun) as maxEun, o, ol, u, itm, ci, parentSystem, itemUsage, eunPrefix 
 	SET itm.eun = case when (itm.eun is null and ol.isDelivered = true) then
@@ -556,6 +559,11 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 					end 
 				  end
 	`
+	} else {
+		result.Query += `SET itm.eun = $eun `
+		result.Parameters["eun"] = eun
+	}
+
 	if serialNumber != nil && *serialNumber != "" {
 		result.Query += `, itm.serialNumber = $serialNumber `
 		result.Parameters["serialNumber"] = serialNumber
