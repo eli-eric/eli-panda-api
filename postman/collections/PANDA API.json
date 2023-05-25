@@ -1443,7 +1443,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/SYSTEM?searchText=&limit=20",
+							"raw": "{{baseUrl}}/codebook/SYSTEM?searchText=biol&limit=200&filter=[{\"key\": \"technologicalUnits\" , \"value\" : true}]",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1454,11 +1454,16 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": ""
+									"value": "biol"
 								},
 								{
 									"key": "limit",
-									"value": "20"
+									"value": "200"
+								},
+								{
+									"key": "filter",
+									"value": "[{\"key\": \"technologicalUnits\" , \"value\" : true}]",
+									"type": "text"
 								}
 							]
 						}
