@@ -1,7 +1,9 @@
 package codebookService
 
 import (
+	"encoding/json"
 	"net/http"
+	"panda/apigateway/helpers"
 	"panda/apigateway/services/codebook-service/models"
 	"strconv"
 	"strings"
@@ -33,6 +35,12 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		searchText := c.QueryParams().Get("searchText")
 		limitParam := c.QueryParams().Get("limit")
 		facilityCode := c.Get("facilityCode").(string)
+		filter := c.QueryParams().Get("filter")
+
+		filterObject := new([]helpers.Filter)
+		if filter != "" {
+			json.Unmarshal([]byte(filter), filterObject)
+		}
 
 		limit := autocompleteDefaultLimit
 		limit, err := strconv.Atoi(limitParam)
@@ -43,7 +51,7 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 			limit = autocompleteMaxLimit
 		}
 
-		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode)
+		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, codebookResponse)

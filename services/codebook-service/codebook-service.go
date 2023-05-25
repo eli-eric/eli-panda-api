@@ -23,7 +23,7 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error)
+	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 }
@@ -39,7 +39,7 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string) (codebookResponse models.CodebookResponse, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error) {
 
 	codebookList := make([]models.Codebook, 0)
 	codebookMetadata := codebooksMap[codebookCode]
@@ -74,7 +74,7 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 		case "SUPPLIER":
 			codebookList, err = svc.ordersService.GetSuppliersAutocompleteCodebook(searchString, limit)
 		case "SYSTEM":
-			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode)
+			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode, filter)
 		case "EMPLOYEE":
 			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
 		}

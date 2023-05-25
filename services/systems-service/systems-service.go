@@ -31,7 +31,7 @@ type ISystemsService interface {
 	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
 	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
-	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
+	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -191,10 +191,20 @@ func (svc *SystemsService) DeleteSystemRecursive(uid string) (err error) {
 	return err
 }
 
-func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSystemsForAutocomplete(searchText, limit, facilityCode)
+	onlyTechnologicalUnits := true
+
+	if filter != nil {
+		for _, f := range *filter {
+			if f.Key == "technologicalUnits" {
+				onlyTechnologicalUnits = f.Value.(bool)
+			}
+		}
+	}
+
+	query := GetSystemsForAutocomplete(searchText, limit, facilityCode, onlyTechnologicalUnits)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
