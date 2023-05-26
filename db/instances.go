@@ -1,8 +1,9 @@
 package db
 
 import (
-	"log"
 	"panda/apigateway/ioutils"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -26,7 +27,7 @@ func CreateNeo4jMainInstanceOrPanics(userName string, password string, host stri
 		ioutils.PanicOnError(err)
 	}
 
-	log.Println("Neo4j security database connection established successfully.")
+	log.Info().Msg("Neo4j security database connection established successfully.")
 
 	return &neo4jDriver
 }

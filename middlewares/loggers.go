@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"os"
 	"panda/apigateway/services/security-service/models"
 	"strconv"
 	"time"
@@ -13,9 +13,11 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/rs/zerolog"
 )
 
 func RequestLoggerMiddleware() echo.MiddlewareFunc {
+	logger := zerolog.New(os.Stdout)
 	return middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogURI:      true,
 		LogMethod:   true,
@@ -34,13 +36,11 @@ func RequestLoggerMiddleware() echo.MiddlewareFunc {
 				userName = claims.Id
 			}
 			if v.Error != nil {
-				log.Printf("%v|%v: %v, status: %v, user-id: %v, user-name: %v, error: %v, latency: %vms, ip: %v \n", v.Method, v.Status, v.URI, v.Status, userID, userName, v.Error, v.Latency.Milliseconds(), v.RemoteIP)
+				logger.Error().Timestamp().Int("status", v.Status).Str("method", v.Method).Str("uri", v.URI).Str("user-id", userID).Str("user-name", userName).Int64("latency", v.Latency.Milliseconds()).Str("remote-ip", v.RemoteIP).Msg(v.Error.Error())
 			} else {
-				log.Printf("%v|%v: %v, status: %v, user-id: %v, user-name: %v, latency: %vms, ip: %v \n", v.Method, v.Status, v.URI, v.Status, userID, userName, v.Latency.Milliseconds(), v.RemoteIP)
+				//log.Printf("status=%v method=%v uri=%v user-id=%v user-name=%v latency=%vms remote-ip=%v \n", v.Status, v.Method, v.URI, userID, userName, v.Latency.Milliseconds(), v.RemoteIP)
+				logger.Info().Timestamp().Int("status", v.Status).Str("method", v.Method).Str("uri", v.URI).Str("user-id", userID).Str("user-name", userName).Int64("latency", v.Latency.Milliseconds()).Str("remote-ip", v.RemoteIP).Send()
 			}
-			// go func() {
-			// 	LogLokiLog(fmt.Sprintf(`{ "method": "%v", "uri": "%v", "status": "%v" }`, v.Method, v.URI, v.Status))
-			// }()
 
 			return nil
 		},

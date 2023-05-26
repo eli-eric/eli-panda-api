@@ -1,5 +1,9 @@
 package models
 
+import (
+	"panda/apigateway/shared"
+)
+
 type Codebook struct {
 	UID            string `json:"uid"`
 	Name           string `json:"name"`
@@ -7,8 +11,15 @@ type Codebook struct {
 }
 
 type CodebookType struct {
-	Code string `json:"code"`
-	Type string `json:"type"`
+	Code      string `json:"code"`
+	Type      string `json:"type"`
+	RoleEdit  string `json:"roleEdit,omitempty"`
+	NodeLabel string `json:"-"`
+}
+
+type CodebookResponse struct {
+	Metadata CodebookType `json:"metadata"`
+	Data     []Codebook   `json:"data"`
 }
 
 var ZONE_CODEBOOK CodebookType = CodebookType{Code: "ZONE", Type: "SIMPLE"}
@@ -26,4 +37,4 @@ var LOCATION_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "LOCATION",
 var EMPLOYEE_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "EMPLOYEE", Type: "AUTOCOMPLETE"}
 var SYSTEM_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM", Type: "AUTOCOMPLETE"}
 var USER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "USER", Type: "AUTOCOMPLETE"}
-var SUPPLIER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SUPPLIER", Type: "AUTOCOMPLETE"}
+var SUPPLIER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SUPPLIER", Type: "AUTOCOMPLETE", NodeLabel: "Supplier", RoleEdit: shared.ROLE_SUPPLIER_EDIT}

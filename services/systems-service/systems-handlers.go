@@ -1,9 +1,10 @@
 package systemsService
 
 import (
-	"log"
 	"net/http"
 	"panda/apigateway/services/systems-service/models"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
 )
@@ -54,7 +55,7 @@ func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 			return c.String(200, imageString)
 
 		} else {
-			log.Println(err)
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError

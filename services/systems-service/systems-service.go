@@ -1,12 +1,13 @@
 package systemsService
 
 import (
-	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
 	systemsModels "panda/apigateway/services/systems-service/models"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -30,7 +31,7 @@ type ISystemsService interface {
 	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
 	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
-	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
+	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -141,7 +142,7 @@ func (svc *SystemsService) CreateNewSystem(system *models.SystemForm, facilityCo
 	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Info().Msg(err.Error())
 	} else {
 		go func() {
 			// we dont want to log image data
@@ -165,7 +166,7 @@ func (svc *SystemsService) UpdateSystem(system *models.SystemForm, facilityCode 
 		}
 
 		if err != nil {
-			log.Println(err.Error())
+			log.Info().Msg(err.Error())
 		} else {
 			go func() {
 				// we dont want to log image data
@@ -190,10 +191,20 @@ func (svc *SystemsService) DeleteSystemRecursive(uid string) (err error) {
 	return err
 }
 
-func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSystemsForAutocomplete(searchText, limit, facilityCode)
+	onlyTechnologicalUnits := true
+
+	if filter != nil {
+		for _, f := range *filter {
+			if f.Key == "technologicalUnits" {
+				onlyTechnologicalUnits = f.Value.(bool)
+			}
+		}
+	}
+
+	query := GetSystemsForAutocomplete(searchText, limit, facilityCode, onlyTechnologicalUnits)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	helpers.ProcessArrayResult(&result, err)

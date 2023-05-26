@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"panda/apigateway/ioutils"
 	"panda/apigateway/services/codebook-service/models"
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -288,7 +289,7 @@ func LogDBHistory(session neo4j.Session, objectUID string, originObject any, new
 
 		originSystemBytes, err := json.Marshal(originObject)
 		if err != nil {
-			log.Println(err.Error())
+			log.Info().Msg(err.Error())
 			return uid, err
 		}
 		originSystemJSON = string(originSystemBytes)
@@ -296,14 +297,14 @@ func LogDBHistory(session neo4j.Session, objectUID string, originObject any, new
 
 	newSystemBytes, err := json.Marshal(newObject)
 	if err != nil {
-		log.Println(err.Error())
+		log.Info().Msg(err.Error())
 		return uid, err
 	}
 
 	uid, err = WriteNeo4jAndReturnSingleValue[string](session, logHistoryQuery(objectUID, originSystemJSON, string(newSystemBytes), userUID, action))
 
 	if err != nil {
-		log.Println(err.Error())
+		log.Info().Msg(err.Error())
 	}
 
 	return uid, err
@@ -366,6 +367,7 @@ func ProcessArrayResult[T any](data *[]T, err error) {
 func GetFullTextSearchString(searchString string) (result string) {
 
 	searchString = strings.TrimSpace(searchString)
+	searchString = strings.ReplaceAll(searchString, "/", " ")
 
 	if searchString != "" {
 		searchStrings := strings.Split(searchString, " ")
@@ -402,6 +404,11 @@ type Sorting struct {
 	DESC bool
 }
 
+type Filter struct {
+	Key   string `json:"key"`
+	Value any    `json:"value"`
+}
+
 const DB_LOG_CREATE string = "CREATE"
 const DB_LOG_UPDATE string = "UPDATE"
 const DB_LOG_DELETE string = "DELETE"
@@ -409,3 +416,5 @@ const DB_LOG_DELETE string = "DELETE"
 const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"
 
 var ERR_INVALID_INPUT = errors.New("INVALID_INPUT")
+var ERR_UNAUTHORIZED = errors.New("UNAUTHORIZED")
+var ERR_NOT_FOUND = errors.New("NOT_FOUND")

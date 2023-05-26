@@ -50,12 +50,12 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 	}
 
 	if procurementResponsibleUID != "" {
-		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:User{uid: $procurementResponsibleUID}) `
+		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:Employee{uid: $procurementResponsibleUID}) `
 		result.Parameters["procurementResponsibleUID"] = procurementResponsibleUID
 	}
 
 	if requestorUID != "" {
-		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:User{uid: $requestorUID}) `
+		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:Employee{uid: $requestorUID}) `
 		result.Parameters["requestorUID"] = requestorUID
 	}
 
@@ -450,7 +450,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				// assign item usage to the item only  if item usage is set
 				if orderLine.ItemUsage != nil {
 					//delete existing item usage relationship
-					result.Query += fmt.Sprintf(`MATCH(itm%[1]v)-[itemUsageRel%[1]v:HAS_ITEM_USAGE]->() DELETE itemUsageRel%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`OPTIONAL MATCH(itm%[1]v)-[itemUsageRel%[1]v:HAS_ITEM_USAGE]->() DELETE itemUsageRel%[1]v WITH o, ccg, itm%[1]v `, idxLine)
 					result.Query += fmt.Sprintf(`MATCH(itemUsage%[1]v:ItemUsage{uid: $itemUsageUID%[1]v}) MERGE(itm%[1]v)-[:HAS_ITEM_USAGE]->(itemUsage%[1]v) WITH o, ccg, itm%[1]v `, idxLine)
 
 					result.Parameters[fmt.Sprintf("itemUsageUID%v", idxLine)] = orderLine.ItemUsage.UID
@@ -519,7 +519,7 @@ func DeleteOrderQuery(uid string, userUID string) (result helpers.DatabaseQuery)
 	return result
 }
 
-func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
+func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber *string, eun *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 
 	result.Query = `
@@ -539,7 +539,10 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 		ol.lastUpdateBy = u.username, 
 		o.lastUpdateTime = datetime(), 
 		o.lastUpdateBy = u.username
-	WITH o, ol, u, itm, ci, parentSystem , itemUsage, eunPrefix
+	WITH o, ol, u, itm, ci, parentSystem , itemUsage, eunPrefix `
+
+	if eun == nil {
+		result.Query += `
 	OPTIONAL MATCH(maxEuns:Item) WHERE maxEuns.eun STARTS WITH eunPrefix
 	WITH max(maxEuns.eun) as maxEun, o, ol, u, itm, ci, parentSystem, itemUsage, eunPrefix 
 	SET itm.eun = case when (itm.eun is null and ol.isDelivered = true) then
@@ -556,6 +559,11 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 					end 
 				  end
 	`
+	} else {
+		result.Query += `SET itm.eun = $eun `
+		result.Parameters["eun"] = eun
+	}
+
 	if serialNumber != nil && *serialNumber != "" {
 		result.Query += `, itm.serialNumber = $serialNumber `
 		result.Parameters["serialNumber"] = serialNumber
