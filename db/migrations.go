@@ -1,8 +1,9 @@
 package db
 
 import (
-	"log"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/golang-migrate/migrate/v4"
 )
@@ -19,12 +20,12 @@ func MigrateNeo4jMainInstance(userName string, password string, host string, por
 		"neo4j://"+userName+":"+password+"@"+host+":"+port+"?x-multi-statement=true"+tlsString)
 	// if there is a db error log and shut down
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
-	log.Println("Applay migrations...")
+	log.Info().Msg("Applay migrations...")
 	// if there is an error in migrations log and shut down, if its successful or there are no changes we can continue
 	if err := m.Up(); err != nil && err.Error() != "no change" {
-		log.Fatal(err)
+		log.Fatal().Msg(err.Error())
 	}
-	log.Println("Migrations OK")
+	log.Info().Msg("Migrations OK")
 }
