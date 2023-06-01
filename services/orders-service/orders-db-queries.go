@@ -192,7 +192,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		catalogueNumber: ci.catalogueNumber, 
 		catalogueUid: ci.uid, 		
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
-		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
+		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.code,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
 	RETURN DISTINCT {  
 	uid: o.uid,
