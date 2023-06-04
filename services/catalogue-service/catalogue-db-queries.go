@@ -432,3 +432,37 @@ return result`
 	result.Parameters["uid"] = uid
 	return result
 }
+
+func CatalogueCategoriesForAutocompleteQuery(search string, limit int) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (n:CatalogueCategory)
+	WHERE NOT (n)-[:HAS_SUBCATEGORY]->()
+	WITH n
+	WHERE toLower(n.name) CONTAINS toLower($search)
+	OPTIONAL MATCH (parent)-[:HAS_SUBCATEGORY*1..50]->(n)
+	WITH n, collect(parent.name) AS parentNames
+	RETURN {uid: n.uid, name: n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
+	ORDER BY result.name
+	LIMIT $limit;`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = search
+	result.Parameters["limit"] = limit
+
+	return result
+}
+
+func ManufacturersForAutocompletQuery(search string, limit int) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (n:Manufacturer)
+	WHERE toLower(n.name) CONTAINS toLower($search)
+	RETURN {uid: n.uid, name: n.name} AS result
+	ORDER BY result.name
+	LIMIT $limit;`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = search
+	result.Parameters["limit"] = limit
+
+	return result
+}

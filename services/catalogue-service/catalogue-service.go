@@ -30,6 +30,8 @@ type ICatalogueService interface {
 	GetPropertyTypesCodebook() (result []codebookModels.Codebook, err error)
 	CopyCatalogueCategoryRecursive(originalUID string) (newUID string, err error)
 	GetCatalogueCategoriesRecursiveByParentUID(parentUID string) (categories []models.CatalogueCategoryTreeItem, err error)
+	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
+	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -241,4 +243,28 @@ func (svc *CatalogueService) createSubChildsRecusive(childs *[]models.CatalogueC
 			}
 		}
 	}
+}
+
+func (svc *CatalogueService) GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := ManufacturersForAutocompletQuery(searchString, limit)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult[codebookModels.Codebook](&result, err)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueCategoriesForAutocompleteQuery(searchString, limit)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult[codebookModels.Codebook](&result, err)
+
+	return result, err
 }
