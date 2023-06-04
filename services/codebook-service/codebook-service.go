@@ -77,6 +77,10 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode, filter)
 		case "EMPLOYEE":
 			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+		case "CATALOGUE_CATEGORY":
+			codebookList, err = svc.catalogueService.GetCatalogueCategoriesCodebook(searchString, limit)
+		case "MANUFACTURER":
+			codebookList, err = svc.catalogueService.GetManufacturersCodebook(searchString, limit)
 		}
 
 		if err == nil {
@@ -145,6 +149,9 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.SYSTEM_AUTOCOMPLETE_CODEBOOK,
 		models.USER_AUTOCOMPLETE_CODEBOOK,
 		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
+		models.PROCUREMENTER_CODEBOOK,
+		models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
+		models.MANUFACTURER_AUTOCOMPLETE_CODEBOOK,
 	}
 }
 
@@ -174,4 +181,6 @@ var codebooksMap = map[string]models.CodebookType{
 	"USER_AUTOCOMPLETE_CODEBOOK": models.USER_AUTOCOMPLETE_CODEBOOK,
 	"SUPPLIER":                   models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 	"PROCUREMENTER":              models.PROCUREMENTER_CODEBOOK,
+	"MANUFACTURER":               models.MANUFACTURER_AUTOCOMPLETE_CODEBOOK,
+	"CATALOGUE_CATEGORY":         models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
 }
