@@ -162,18 +162,27 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm, cat, prop, propType, manu, unit,  group.name as groupName, toString(propVal.value) as value
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
 	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
-	categoryName: cat.name,
-	manufacturer: manu.name,
+	category: {uid: cat.uid, name: cat.name},
+	manufacturer: case when manu is not null then {uid: manu.uid, name: manu.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,
 	manufacturerNumber: itm.catalogueNumber,
-	details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
-	} as catalogueItem`
+	details: collect({ 
+					property:{
+						uid: prop.uid,
+						name: prop.name, 
+						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
+						type: { uid: propType.code, name: propType.name },
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: groupName, 
+						value: value})
+	} as catalogueItem;`
 
 	result.ReturnAlias = "catalogueItem"
 
