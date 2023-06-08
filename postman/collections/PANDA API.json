@@ -88,7 +88,7 @@
 									"bearer": [
 										{
 											"key": "token",
-											"value": "{{bearerToken}}",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6WyJzeXN0ZW1zLWVkaXQiLCJjYXRhbG9ndWUtZWRpdCIsImNhdGFsb2d1ZS12aWV3Iiwic3lzdGVtcy12aWV3Iiwi...",
 											"type": "string"
 										}
 									]
@@ -101,11 +101,16 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+									"raw": "https://api-test.panda.eli-beams.eu/v1/catalogue/categories/:parentPath",
+									"protocol": "https",
 									"host": [
-										"{{baseUrl}}"
+										"api-test",
+										"panda",
+										"eli-beams",
+										"eu"
 									],
 									"path": [
+										"v1",
 										"catalogue",
 										"categories",
 										":parentPath"
@@ -444,7 +449,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"sa-euns-print\",\n  \"password\": \"\"\n}",
+							"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -480,7 +485,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"betaverze001\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -488,11 +493,16 @@
 									}
 								},
 								"url": {
-									"raw": "{{baseUrl}}/authenticate",
+									"raw": "https://api-test.panda.eli-beams.eu/v1/authenticate",
+									"protocol": "https",
 									"host": [
-										"{{baseUrl}}"
+										"api-test",
+										"panda",
+										"eli-beams",
+										"eu"
 									],
 									"path": [
+										"v1",
 										"authenticate"
 									]
 								},
@@ -1444,7 +1454,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/CATALOGUE_CATEGORY?searchText=cryo&limit=5",
+							"raw": "{{baseUrl}}/codebook/CATALOGUE_CATEGORY?limit=5",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1455,7 +1465,8 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": "cryo"
+									"value": "",
+									"disabled": true
 								},
 								{
 									"key": "limit",
