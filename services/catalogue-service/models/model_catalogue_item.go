@@ -3,25 +3,25 @@ package models
 import "panda/apigateway/services/codebook-service/models"
 
 type CatalogueItem struct {
-	Uid string `json:"uid,omitempty"`
+	Uid string `json:"uid,omitempty" neo4j:"ignore"`
 
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty" neo4j:"prop,name"`
 
-	CatalogueNumber string `json:"catalogueNumber,omitempty"`
+	CatalogueNumber string `json:"catalogueNumber,omitempty" neo4j:"prop,catalogueNumber"`
 
-	Description *string `json:"description,omitempty"`
+	Description *string `json:"description,omitempty" neo4j:"prop,description"`
 
-	CategoryPath string `json:"categoryPath,omitempty"`
+	CategoryPath string `json:"categoryPath,omitempty" neo4j:"ignore"`
 
-	Category models.Codebook `json:"category,omitempty"`
+	Category models.Codebook `json:"category,omitempty" neo4j:"rel,CatalogueCategory,BELONGS_TO_CATEGORY,uid,cc"`
 
-	Manufacturer *models.Codebook `json:"manufacturer,omitempty"`
+	Manufacturer *models.Codebook `json:"manufacturer,omitempty" neo4j:"rel,Manufacturer,HAS_MANUFACTURER,uid,man"`
 
-	ManufacturerNumber *string `json:"manufacturerNumber,omitempty"`
+	ManufacturerNumber *string `json:"manufacturerNumber,omitempty" neo4j:"prop,manufacturerNumber"`
 
-	ManufacturerUrl *string `json:"manufacturerUrl,omitempty"`
+	ManufacturerUrl *string `json:"manufacturerUrl,omitempty" neo4j:"prop,manufacturerUrl"`
 
-	Details []CatalogueItemDetail `json:"details,omitempty"`
+	Details []CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
 }
 
 type CatalogueItemDetail struct {

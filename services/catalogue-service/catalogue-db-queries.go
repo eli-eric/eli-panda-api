@@ -475,3 +475,35 @@ func ManufacturersForAutocompletQuery(search string, limit int) (result helpers.
 
 	return result
 }
+
+// save new catalogue item query
+func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["name"] = item.Name
+	result.Parameters["description"] = item.Description
+	result.Parameters["categoryUid"] = item.Category.UID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["manufacturerNumber"] = item.ManufacturerNumber
+	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
+	result.Parameters["catalogueNumber"] = item.CatalogueNumber
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(cat:CatalogueCategory{uid: $categoryUid})
+	WITH u, cat
+	CREATE(item:CatalogueItem{  uid: apoc.create.uuid(),
+								name: $name, 
+								catalogueNumber: $catalogueNumber,
+								description: $description,
+								manufacturerNumber: $manufacturerNumber,
+								manufacturerUrl: $manufacturerUrl })
+	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	RETURN DISTINCT item.uid as uid;`
+
+	result.ReturnAlias = "uid"
+
+	return result
+}

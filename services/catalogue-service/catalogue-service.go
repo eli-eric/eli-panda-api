@@ -32,6 +32,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoriesRecursiveByParentUID(parentUID string) (categories []models.CatalogueCategoryTreeItem, err error)
 	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
+	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
 }
 
 // Create new security service instance
@@ -267,4 +268,15 @@ func (svc *CatalogueService) GetCatalogueCategoriesCodebook(searchString string,
 	helpers.ProcessArrayResult[codebookModels.Codebook](&result, err)
 
 	return result, err
+}
+
+func (svc *CatalogueService) CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//create new item
+	query := NewCatalogueItemQuery(catalogueItem, userUID)
+	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+
+	return uid, err
 }
