@@ -172,7 +172,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	manufacturer: case when manu is not null then {uid: manu.uid, name: manu.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,
 	manufacturerNumber: itm.catalogueNumber,
-	details: collect({ 
+	details: case when count(prop) > 0 then collect({ 
 					property:{
 						uid: prop.uid,
 						name: prop.name, 
@@ -181,7 +181,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: groupName, 
-						value: value})
+						value: value}) else null end
 	} as catalogueItem;`
 
 	result.ReturnAlias = "catalogueItem"
