@@ -88,7 +88,7 @@
 									"bearer": [
 										{
 											"key": "token",
-											"value": "{{bearerToken}}",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlcyI6WyJzeXN0ZW1zLWVkaXQiLCJjYXRhbG9ndWUtZWRpdCIsImNhdGFsb2d1ZS12aWV3Iiwic3lzdGVtcy12aWV3Iiwi...",
 											"type": "string"
 										}
 									]
@@ -101,11 +101,16 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+									"raw": "https://api-test.panda.eli-beams.eu/v1/catalogue/categories/:parentPath",
+									"protocol": "https",
 									"host": [
-										"{{baseUrl}}"
+										"api-test",
+										"panda",
+										"eli-beams",
+										"eu"
 									],
 									"path": [
+										"v1",
 										"catalogue",
 										"categories",
 										":parentPath"
@@ -444,7 +449,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"sa-euns-print\",\n  \"password\": \"\"\n}",
+							"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -480,7 +485,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+									"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"betaverze001\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -488,11 +493,16 @@
 									}
 								},
 								"url": {
-									"raw": "{{baseUrl}}/authenticate",
+									"raw": "https://api-test.panda.eli-beams.eu/v1/authenticate",
+									"protocol": "https",
 									"host": [
-										"{{baseUrl}}"
+										"api-test",
+										"panda",
+										"eli-beams",
+										"eu"
 									],
 									"path": [
+										"v1",
 										"authenticate"
 									]
 								},
@@ -1355,6 +1365,119 @@
 					"response": []
 				},
 				{
+					"name": "Manufacturers",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "b3982348-1de2-4ac8-a052-f3dcd8f71df6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/MANUFACTURER?searchText=pfeif&limit=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"MANUFACTURER"
+							],
+							"query": [
+								{
+									"key": "searchText",
+									"value": "pfeif"
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Catalogue Categories",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "7f5fabbe-e129-45a2-ad67-9a102ca242eb",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/CATALOGUE_CATEGORY?limit=5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"CATALOGUE_CATEGORY"
+							],
+							"query": [
+								{
+									"key": "searchText",
+									"value": "",
+									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "5"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Supplier - new one",
 					"event": [
 						{
@@ -1443,7 +1566,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/SYSTEM?searchText=biol&limit=200&filter=[{\"key\": \"technologicalUnits\" , \"value\" : true}]",
+							"raw": "{{baseUrl}}/codebook/SYSTEM?searchText=&limit=20",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1454,16 +1577,11 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": "biol"
+									"value": ""
 								},
 								{
 									"key": "limit",
-									"value": "200"
-								},
-								{
-									"key": "filter",
-									"value": "[{\"key\": \"technologicalUnits\" , \"value\" : true}]",
-									"type": "text"
+									"value": "20"
 								}
 							]
 						}

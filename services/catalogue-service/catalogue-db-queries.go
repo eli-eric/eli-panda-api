@@ -162,18 +162,27 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm, cat, prop, propType, manu, unit,  group.name as groupName, toString(propVal.value) as value
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
 	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
-	categoryName: cat.name,
-	manufacturer: manu.name,
+	category: {uid: cat.uid, name: cat.name},
+	manufacturer: case when manu is not null then {uid: manu.uid, name: manu.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,
 	manufacturerNumber: itm.catalogueNumber,
-	details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
-	} as catalogueItem`
+	details: case when count(prop) > 0 then collect({ 
+					property:{
+						uid: prop.uid,
+						name: prop.name, 
+						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
+						type: { uid: propType.code, name: propType.name },
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: groupName, 
+						value: value}) else null end
+	} as catalogueItem;`
 
 	result.ReturnAlias = "catalogueItem"
 
@@ -307,11 +316,11 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 					result.Parameters["prop_listOfValues_"+idPropString] = strings.Join(property.ListOfValues, ";")
 
 					result.Query += fmt.Sprintf("MERGE(prop_%s:CatalogueCategoryProperty{uid: '%s'}) SET prop_%s.name=$prop_name_%s, prop_%s.defaultValue=$prop_defaultValue_%s, prop_%s.listOfValues=$prop_listOfValues_%s MERGE(group%d)-[:CONTAINS_PROPERTY]->(prop_%s) ", idPropString, propertyUID, idPropString, idPropString, idPropString, idPropString, idPropString, idPropString, idg, idPropString)
-					if property.TypeUID != "" {
-						result.Query += fmt.Sprintf("MERGE(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.TypeUID, idPropString, idPropString)
-					}
-					if property.UnitUID != "" {
-						result.Query += fmt.Sprintf("MERGE(unit%s:Unit{uid:'%s'}) MERGE(prop_%s)-[:HAS_UNIT]->(unit%s) ", idPropString, property.UnitUID, idPropString, idPropString)
+
+					result.Query += fmt.Sprintf("MERGE(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.Type.UID, idPropString, idPropString)
+
+					if property.Unit != nil {
+						result.Query += fmt.Sprintf("MERGE(unit%s:Unit{uid:'%s'}) MERGE(prop_%s)-[:HAS_UNIT]->(unit%s) ", idPropString, property.Unit.UID, idPropString, idPropString)
 					}
 				}
 
@@ -463,6 +472,38 @@ func ManufacturersForAutocompletQuery(search string, limit int) (result helpers.
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["search"] = search
 	result.Parameters["limit"] = limit
+
+	return result
+}
+
+// save new catalogue item query
+func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["name"] = item.Name
+	result.Parameters["description"] = item.Description
+	result.Parameters["categoryUid"] = item.Category.UID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["manufacturerNumber"] = item.ManufacturerNumber
+	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
+	result.Parameters["catalogueNumber"] = item.CatalogueNumber
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(cat:CatalogueCategory{uid: $categoryUid})
+	WITH u, cat
+	CREATE(item:CatalogueItem{  uid: apoc.create.uuid(),
+								name: $name, 
+								catalogueNumber: $catalogueNumber,
+								description: $description,
+								manufacturerNumber: $manufacturerNumber,
+								manufacturerUrl: $manufacturerUrl })
+	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	RETURN DISTINCT item.uid as uid;`
+
+	result.ReturnAlias = "uid"
 
 	return result
 }

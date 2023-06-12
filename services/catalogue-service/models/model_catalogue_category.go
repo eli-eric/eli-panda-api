@@ -1,5 +1,7 @@
 package models
 
+import "panda/apigateway/services/codebook-service/models"
+
 type CatalogueCategory struct {
 	UID string `json:"uid,omitempty"`
 
@@ -33,9 +35,9 @@ type CatalogueCategoryProperty struct {
 
 	DefaultValue string `json:"defaultValue,omitempty"`
 
-	TypeUID string `json:"typeUID,omitempty"`
+	Type models.Codebook `json:"type,omitempty"`
 
-	UnitUID string `json:"unitUID,omitempty"`
+	Unit *models.Codebook `json:"unit,omitempty"`
 }
 
 type CatalogueCategoryTreeItem struct {
