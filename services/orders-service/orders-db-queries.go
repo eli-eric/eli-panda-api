@@ -430,7 +430,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
 					result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
 
-					if orderLine.Location != nil {
+					if orderLine.Location != nil && orderLine.Location.UID != "" {
 						//delete existing location
 						result.Query += fmt.Sprintf(`OPTIONAL MATCH()<-[oldLocation%[1]v:HAS_LOCATION]-(sys%[1]v) DELETE oldLocation%[1]v WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
 						//then create new one
