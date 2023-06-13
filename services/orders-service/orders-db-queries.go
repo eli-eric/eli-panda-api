@@ -17,7 +17,7 @@ func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
 }
 
 func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(s:Supplier) WHERE toLower(s.name) CONTAINS toLower($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
+	result.Query = `MATCH(s:Supplier) WHERE toLower(s.name) STARTS WITH toLower($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
 	result.ReturnAlias = "suppliers"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchString"] = searchString
@@ -430,7 +430,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
 					result.Parameters[fmt.Sprintf("newSystemUID%v", idxLine)] = uuid.New().String()
 
-					if orderLine.Location != nil {
+					if orderLine.Location != nil && orderLine.Location.UID != "" {
 						//delete existing location
 						result.Query += fmt.Sprintf(`OPTIONAL MATCH()<-[oldLocation%[1]v:HAS_LOCATION]-(sys%[1]v) DELETE oldLocation%[1]v WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
 						//then create new one
