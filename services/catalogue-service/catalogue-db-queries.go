@@ -200,7 +200,13 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	WITH category, group,property, propertyType, unit order by id(property)
-	WITH category, group, collect({uid: property.uid, name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
+	WITH category, group, collect({
+		uid: property.uid, 
+		name: property.name,
+		defaultValue: property.defaultValue, 
+		type: {uid: propertyType.uid, name: propertyType.name}, 
+		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
+		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
 	WITH category, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
 	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
