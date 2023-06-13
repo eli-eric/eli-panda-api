@@ -470,7 +470,7 @@ func CatalogueCategoriesForAutocompleteQuery(search string, limit int) (result h
 func ManufacturersForAutocompletQuery(search string, limit int) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH (n:Manufacturer)
-	WHERE toLower(n.name) CONTAINS toLower($search)
+	WHERE toLower(n.name) STARTS WITH toLower($search)
 	RETURN {uid: n.uid, name: n.name} AS result
 	ORDER BY result.name
 	LIMIT $limit;`
