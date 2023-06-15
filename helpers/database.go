@@ -150,8 +150,10 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 		var txResults []T
 		for _, record := range records {
 			itm, _ := record.Get(query.ReturnAlias)
-			mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
-			txResults = append(txResults, mappedItem)
+			if itm != nil {
+				mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
+				txResults = append(txResults, mappedItem)
+			}
 		}
 		return txResults, nil
 	})
