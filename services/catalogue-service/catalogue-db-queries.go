@@ -177,7 +177,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 						uid: prop.uid,
 						name: prop.name, 
 						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-						type: { uid: propType.code, name: propType.name },
+						type: { uid: propType.uid, name: propType.name },
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: groupName, 
@@ -215,6 +215,52 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	result.ReturnAlias = "category"
 
 	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
+func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(category)-[:HAS_SUBCATEGORY*1..50]->(childs:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group,property
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH group,property, propertyType, unit order by id(property)
+	WITH case when count(property) > 0 then { property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name },
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: group.name, 
+						value: null} else null end as properties
+						return properties
+	UNION	
+	MATCH(category:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group,property
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH group,property, propertyType, unit order by id(property)
+	WITH case when count(property) > 0 then { 
+					property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name },
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: group.name, 
+						value: null} else null end as properties
+						return properties;`
+
+	result.ReturnAlias = "properties"
+	result.Parameters = make(map[string]interface{}, 1)
 	result.Parameters["uid"] = uid
 
 	return result
