@@ -562,3 +562,49 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 
 	return result
 }
+
+// save existing catalogue item query
+func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["name"] = item.Name
+	result.Parameters["description"] = item.Description
+	result.Parameters["categoryUid"] = item.Category.UID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["manufacturerNumber"] = item.ManufacturerNumber
+	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
+	result.Parameters["catalogueNumber"] = item.CatalogueNumber
+	result.Parameters["uid"] = item.Uid
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(cat:CatalogueCategory{uid: $categoryUid})
+	WITH u, cat
+	MATCH(item:CatalogueItem{uid: $uid})
+	SET item.name = $name, 
+		item.catalogueNumber = $catalogueNumber,
+		item.description = $description,
+		item.manufacturerNumber = $manufacturerNumber,
+		item.manufacturerUrl = $manufacturerUrl
+	
+	WITH item, cat
+	OPTIONAL MATCH(item)-[r:BELONGS_TO_CATEGORY]->()
+	DELETE r
+	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
+
+
+	
+	WITH item, u
+
+
+
+
+
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	RETURN DISTINCT item.uid as uid;`
+
+	result.ReturnAlias = "uid"
+
+	return result
+}
