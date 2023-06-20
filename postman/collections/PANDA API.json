@@ -2089,6 +2089,62 @@
 					"response": []
 				},
 				{
+					"name": "Get order UID by order number",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e0ebbfea-4c6e-4309-88fe-3cb7470fe0e3",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/order-uid-by-order-number/20910099",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order-uid-by-order-number",
+								"20910099"
+							],
+							"query": [
+								{
+									"key": "sorting",
+									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Insert new order with details",
 					"event": [
 						{
