@@ -593,14 +593,6 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	DELETE r
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
 
-
-	
-	WITH item, u
-
-
-
-
-
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
 	RETURN DISTINCT item.uid as uid;`
 
