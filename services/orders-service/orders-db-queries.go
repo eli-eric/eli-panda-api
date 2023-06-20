@@ -19,7 +19,7 @@ func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
 }
 
 func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(s:Supplier) WHERE toLower(s.name) STARTS WITH toLower($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
+	result.Query = `MATCH(s:Supplier) WHERE apoc.text.clean(s.name) STARTS WITH apoc.text.clean($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
 	result.ReturnAlias = "suppliers"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchString"] = searchString
