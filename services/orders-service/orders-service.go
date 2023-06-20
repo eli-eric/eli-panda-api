@@ -25,6 +25,7 @@ type IOrdersService interface {
 	UpdateOrderLineDelivery(itemUid string, isDelivered bool, serialNumber *string, eun *string, userUID string, facilityCode string) (result models.OrderLine, err error)
 	GetItemsForEunPrint(euns []string) (result []models.ItemForEunPrint, err error)
 	SetItemPrintEUN(eun string, printEUN bool) (err error)
+	GetOrderUidByOrderNumber(orderNumber string) (result string, err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -149,4 +150,13 @@ func (svc *OrdersService) SetItemPrintEUN(eun string, printEUN bool) (err error)
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
+}
+
+func (svc *OrdersService) GetOrderUidByOrderNumber(orderNumber string) (result string, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetOrderUidByOrderNumberQuery(orderNumber)
+	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
+
+	return result, err
 }
