@@ -27,6 +27,7 @@ type ICatalogueHandlers interface {
 	CopyCatalogueCategoryRecursive() echo.HandlerFunc
 	CreateNewCatalogueItem() echo.HandlerFunc
 	GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc
+	UpdateCatalogueItem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -298,6 +299,33 @@ func (h *CatalogueHandlers) GetCatalogueCategoryPropertiesByUid() echo.HandlerFu
 
 		if err == nil {
 			return c.JSON(http.StatusOK, properties)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue item data from request body
+		catalogueItem := new(models.CatalogueItem)
+
+		if err := c.Bind(catalogueItem); err == nil {
+
+			userUID := c.Get("userUID").(string)
+			// create catalogue item
+			err := h.catalogueService.UpdateCatalogueItem(catalogueItem, userUID)
+
+			if err == nil {
+				//return c.NoContent(http.StatusNoContent)
+				return c.JSON(http.StatusOK, catalogueItem.Uid)
+			} else {
+				log.Error().Msg(err.Error())
+			}
 		} else {
 			log.Error().Msg(err.Error())
 		}

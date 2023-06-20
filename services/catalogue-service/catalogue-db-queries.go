@@ -369,11 +369,11 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 
 					result.Query += fmt.Sprintf("MERGE(prop_%s:CatalogueCategoryProperty{uid: '%s'}) SET prop_%s.name=$prop_name_%s, prop_%s.defaultValue=$prop_defaultValue_%s, prop_%s.listOfValues=$prop_listOfValues_%s MERGE(group%d)-[:CONTAINS_PROPERTY]->(prop_%s) ", idPropString, propertyUID, idPropString, idPropString, idPropString, idPropString, idPropString, idPropString, idg, idPropString)
 
-					result.Query += fmt.Sprintf("WITH prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:IS_PROPERTY_TYPE]->() DELETE r_prop_%[1]v WITH prop_%[1]v, category ", idPropString)
+					result.Query += fmt.Sprintf("WITH group%[2]d, prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:IS_PROPERTY_TYPE]->() DELETE r_prop_%[1]v WITH group%[2]d, prop_%[1]v, category ", idPropString, idg)
 
-					result.Query += fmt.Sprintf("MERGE(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.Type.UID, idPropString, idPropString)
+					result.Query += fmt.Sprintf("MATCH(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.Type.UID, idPropString, idPropString)
 
-					result.Query += fmt.Sprintf("WITH prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:HAS_UNIT]->() DELETE r_prop_%[1]v WITH prop_%[1]v, category ", idPropString)
+					result.Query += fmt.Sprintf("WITH group%[2]d, prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:HAS_UNIT]->() DELETE r_prop_%[1]v WITH group%[2]d, prop_%[1]v, category ", idPropString, idg)
 					if property.Unit != nil && property.Unit.UID != "" {
 						result.Query += fmt.Sprintf("MERGE(unit%s:Unit{uid:'%s'}) MERGE(prop_%s)-[:HAS_UNIT]->(unit%s) ", idPropString, property.Unit.UID, idPropString, idPropString)
 					}
@@ -556,6 +556,44 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 								manufacturerUrl: $manufacturerUrl })
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	RETURN DISTINCT item.uid as uid;`
+
+	result.ReturnAlias = "uid"
+
+	return result
+}
+
+// save existing catalogue item query
+func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["name"] = item.Name
+	result.Parameters["description"] = item.Description
+	result.Parameters["categoryUid"] = item.Category.UID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["manufacturerNumber"] = item.ManufacturerNumber
+	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
+	result.Parameters["catalogueNumber"] = item.CatalogueNumber
+	result.Parameters["uid"] = item.Uid
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(cat:CatalogueCategory{uid: $categoryUid})
+	WITH u, cat
+	MATCH(item:CatalogueItem{uid: $uid})
+	SET item.name = $name, 
+		item.catalogueNumber = $catalogueNumber,
+		item.description = $description,
+		item.manufacturerNumber = $manufacturerNumber,
+		item.manufacturerUrl = $manufacturerUrl
+	
+	WITH item, cat
+	OPTIONAL MATCH(item)-[r:BELONGS_TO_CATEGORY]->()
+	DELETE r
+	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
+
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
 	RETURN DISTINCT item.uid as uid;`
 
 	result.ReturnAlias = "uid"

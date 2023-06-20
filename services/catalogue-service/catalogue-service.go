@@ -35,6 +35,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
 	GetCatalogueCategoryPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
+	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -318,4 +319,19 @@ func (svc *CatalogueService) GetCatalogueCategoryPropertiesByUid(uid string) (pr
 	helpers.ProcessArrayResult(&properties, err)
 
 	return properties, err
+}
+
+func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//get the original record from db to compare because of the delete
+	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(catalogueItem.Uid)
+	if err == nil {
+		//update category query
+		query := UpdateCatalogueItemQuery(catalogueItem, &originalItem, userUID)
+		_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	}
+
+	return err
 }
