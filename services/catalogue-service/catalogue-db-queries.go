@@ -600,3 +600,23 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 
 	return result
 }
+
+// delete catalogue item query
+func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = itemUid
+	result.Parameters["userUID"] = userUID
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	OPTIONAL MATCH(ci:CatalogueItem{uid: $uid})<-[:IS_BASED_ON]-(i) 
+	WITH count(i) as itemsCount, ci, u
+	CALL apoc.do.when(itemsCount = 0, 'MATCH(ci:CatalogueItem{uid: uid}) DETACH DELETE ci CREATE(i:CatalogueItemDeleted{uid: uid})-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u) return itemsCount', 'return itemsCount', {itemsCount: itemsCount, u:u, uid: $uid})
+	YIELD value	
+	RETURN value.itemsCount as itemsCount;`
+
+	result.ReturnAlias = "itemsCount"
+
+	return result
+}
