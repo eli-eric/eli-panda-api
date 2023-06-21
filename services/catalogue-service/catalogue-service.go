@@ -36,6 +36,7 @@ type ICatalogueService interface {
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
 	GetCatalogueCategoryPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
+	DeleteCatalogueItem(uid string, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -331,6 +332,20 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 		//update category query
 		query := UpdateCatalogueItemQuery(catalogueItem, &originalItem, userUID)
 		_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	}
+
+	return err
+}
+
+func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteCatalogueItemQuery(uid, userUID)
+	itemsAffected, err := helpers.WriteNeo4jAndReturnSingleValue[int64](session, query)
+
+	if itemsAffected > 0 {
+		err = helpers.ERR_DELETE_RELATED_ITEMS
 	}
 
 	return err
