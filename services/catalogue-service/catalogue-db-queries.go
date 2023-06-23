@@ -621,6 +621,25 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 		}
 	}
 
+	//finally delete all properties that are not in the new item
+	for _, oldProp := range oldItem.Details {
+		delete := true
+		for _, newProp := range item.Details {
+			if oldProp.Property.UID == newProp.Property.UID {
+				delete = false
+				break
+			}
+		}
+		if delete {
+			result.Query += fmt.Sprintf(`
+			WITH item
+			MATCH(propToDelete:CatalogueCategoryProperty{uid: "%s"})
+			OPTIONAL MATCH(item)-[r_propToDelete:HAS_CATALOGUE_PROPERTY]->(propToDelete)
+			DELETE r_propToDelete
+			`, oldProp.Property.UID)
+		}
+	}
+
 	result.Query += `RETURN DISTINCT item.uid as uid;`
 
 	result.ReturnAlias = "uid"
