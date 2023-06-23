@@ -34,7 +34,7 @@ type ICatalogueService interface {
 	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
-	GetCatalogueCategoryPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
+	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 }
@@ -107,7 +107,7 @@ func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (resul
 	} else {
 		//fitt we got the item with details(but only details/properties with a value)
 		//now we need add all properties for the specific category and parent categories
-		allProperties, err := svc.GetCatalogueCategoryPropertiesByUid(result.Category.UID)
+		allProperties, err := svc.GetCatalogueCategoryPropertiesByUid(result.Category.UID, nil)
 		if err == nil {
 			//we have to iterate on all properties and check if we have this property in the result
 			for _, property := range allProperties {
@@ -310,12 +310,29 @@ func (svc *CatalogueService) CreateNewCatalogueItem(catalogueItem *models.Catalo
 	return uid, err
 }
 
-func (svc *CatalogueService) GetCatalogueCategoryPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error) {
+func (svc *CatalogueService) GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := CatalogueCategoryPropertiesQuery(uid)
 	properties, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueItemDetail](session, query)
+
+	//get item if we have itemUID
+	if itemUID != nil && *itemUID != "" {
+		//get item
+		item, err := svc.GetCatalogueItemWithDetailsByUid(*itemUID)
+		if err == nil {
+			//iterate on all properties and set the value from item
+			for i, property := range properties {
+				for _, detail := range item.Details {
+					if detail.Property.UID == property.Property.UID {
+						properties[i].Value = detail.Value
+						break
+					}
+				}
+			}
+		}
+	}
 
 	helpers.ProcessArrayResult(&properties, err)
 

@@ -294,9 +294,11 @@ func (h *CatalogueHandlers) GetCatalogueCategoryPropertiesByUid() echo.HandlerFu
 
 		//get uid path param
 		uid := c.Param("uid")
+		//get item uid from query
+		itemUID := c.QueryParam("itemUid")
 
 		// get catalogue item
-		properties, err := h.catalogueService.GetCatalogueCategoryPropertiesByUid(uid)
+		properties, err := h.catalogueService.GetCatalogueCategoryPropertiesByUid(uid, &itemUID)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, properties)
