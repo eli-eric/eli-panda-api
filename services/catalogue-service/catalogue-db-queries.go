@@ -227,7 +227,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 	WITH category, group,property
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH group,property, propertyType, unit order by id(property)
+	WITH group,property, propertyType, unit order by property.name
 	WITH case when count(property) > 0 then { property:{
 						uid: property.uid,
 						name: property.name, 
@@ -242,10 +242,10 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 	UNION	
 	MATCH(category:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
-	WITH category, group,property
+	WITH category, group,property 
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH group,property, propertyType, unit order by id(property)
+	WITH group,property, propertyType, unit order by property.name
 	WITH case when count(property) > 0 then { 
 					property:{
 						uid: property.uid,
@@ -560,17 +560,20 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	for idxProp, prop := range item.Details {
 		if prop.Value != nil && *prop.Value != "" {
 
+			propIdx := fmt.Sprintf("prop%d", idxProp)
 			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
 			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
 
 			result.Parameters[propUidIdx] = prop.Property.UID
 			result.Parameters[propValueIdx] = prop.Value
 
 			result.Query += fmt.Sprintf(`
-			WITH item, cat
-			MATCH(prop:CatalogueCategoryProperty{uid: $%s})
-			CREATE(item)-[:HAS_CATALOGUE_PROPERTY{value: $%s}]->(prop)
-			`, propUidIdx, propValueIdx)
+			WITH item
+			MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
+			MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
+			SET %[1]s.value = $%[3]s
+			`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
 		}
 	}
 
@@ -585,52 +588,38 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["name"] = item.Name
-	result.Parameters["description"] = item.Description
-	result.Parameters["categoryUid"] = item.Category.UID
 	result.Parameters["userUID"] = userUID
-	result.Parameters["manufacturerNumber"] = item.ManufacturerNumber
-	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
-	result.Parameters["catalogueNumber"] = item.CatalogueNumber
 	result.Parameters["uid"] = item.Uid
 
 	result.Query = `
 	MATCH(u:User{uid: $userUID})
-	WITH u
-	MATCH(cat:CatalogueCategory{uid: $categoryUid})
-	WITH u, cat
-	MATCH(item:CatalogueItem{uid: $uid})
-	SET item.name = $name, 
-		item.catalogueNumber = $catalogueNumber,
-		item.description = $description,
-		item.manufacturerNumber = $manufacturerNumber,
-		item.manufacturerUrl = $manufacturerUrl
-	
-	WITH item, cat
-	OPTIONAL MATCH(item)-[r:BELONGS_TO_CATEGORY]->()
-	DELETE r
-	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
+	WITH u	
+	MATCH(item:CatalogueItem{uid: $uid})	
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	WITh item
 	`
 
-	// for idxProp, prop := range item.Details {
-	// 	if prop.Value != nil && *prop.Value != "" {
+	helpers.AutoResolveObjectToUpdateQuery(&result, *item, *oldItem, "item")
 
-	// 		propUidIdx := fmt.Sprintf("propUID%d", idxProp)
-	// 		propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+	for idxProp, prop := range item.Details {
+		if prop.Value != nil && *prop.Value != "" {
 
-	// 		result.Parameters[propUidIdx] = prop.Property.UID
-	// 		result.Parameters[propValueIdx] = prop.Value
+			propIdx := fmt.Sprintf("prop%d", idxProp)
+			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
 
-	// 		result.Query += fmt.Sprintf(`
-	// 		WITH item, cat
-	// 		MATCH(prop:CatalogueCategoryProperty{uid: $%s})
-	// 		CREATE(item)-[:HAS_CATALOGUE_PROPERTY{value: $%s}]->(prop)
-	// 		`, propUidIdx, propValueIdx)
-	// 	}
-	// }
+			result.Parameters[propUidIdx] = prop.Property.UID
+			result.Parameters[propValueIdx] = prop.Value
 
-	// helpers.AutoResolveObjectToUpdateQuery(&result, item, oldItem, "uid")
+			result.Query += fmt.Sprintf(`
+			WITH item
+			MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
+			MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
+			SET %[1]s.value = $%[3]s
+			`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+		}
+	}
 
 	result.Query += `RETURN DISTINCT item.uid as uid;`
 
