@@ -276,6 +276,19 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						} else if newValue.IsNil() && !oldValue.IsNil() {
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
 						}
+					} else if fieldType == "models.Codebook" {
+
+						neo4jAlias := neo4jTags[3]
+						neo4jID := "uid"
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Interface().(models.Codebook).UID
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Interface().(models.Codebook).UID
+
+						if newValue != oldValue {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[2]v:%[3]v{%[4]v:$%[5]v}) MERGE(%[1]v)-[:%[6]v]->(%[2]v) `, updateNodeAlias, neo4jAlias, neo4jLabel, neo4jID, newField.Name, neo4jRelationType)
+							dbQuery.Parameters[newField.Name] = newValue
+						}
 					}
 				}
 			}
