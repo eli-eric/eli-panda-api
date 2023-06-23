@@ -172,7 +172,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	manufacturer: case when manu is not null then {uid: manu.uid, name: manu.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,
 	manufacturerNumber: itm.catalogueNumber,
-	details: case when count(prop) > 0 then collect({ 
+	details: case when count(prop) > 0 then collect(DISTINCT { 
 					property:{
 						uid: prop.uid,
 						name: prop.name, 
@@ -556,7 +556,25 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 								manufacturerUrl: $manufacturerUrl })
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
-	RETURN DISTINCT item.uid as uid;`
+	`
+	for idxProp, prop := range item.Details {
+		if prop.Value != nil && *prop.Value != "" {
+
+			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+
+			result.Parameters[propUidIdx] = prop.Property.UID
+			result.Parameters[propValueIdx] = prop.Value
+
+			result.Query += fmt.Sprintf(`
+			WITH item, cat
+			MATCH(prop:CatalogueCategoryProperty{uid: $%s})
+			CREATE(item)-[:HAS_CATALOGUE_PROPERTY{value: $%s}]->(prop)
+			`, propUidIdx, propValueIdx)
+		}
+	}
+
+	result.Query += `RETURN DISTINCT item.uid as uid;`
 
 	result.ReturnAlias = "uid"
 
@@ -592,9 +610,29 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	OPTIONAL MATCH(item)-[r:BELONGS_TO_CATEGORY]->()
 	DELETE r
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
-
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-	RETURN DISTINCT item.uid as uid;`
+	`
+
+	// for idxProp, prop := range item.Details {
+	// 	if prop.Value != nil && *prop.Value != "" {
+
+	// 		propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+	// 		propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+
+	// 		result.Parameters[propUidIdx] = prop.Property.UID
+	// 		result.Parameters[propValueIdx] = prop.Value
+
+	// 		result.Query += fmt.Sprintf(`
+	// 		WITH item, cat
+	// 		MATCH(prop:CatalogueCategoryProperty{uid: $%s})
+	// 		CREATE(item)-[:HAS_CATALOGUE_PROPERTY{value: $%s}]->(prop)
+	// 		`, propUidIdx, propValueIdx)
+	// 	}
+	// }
+
+	// helpers.AutoResolveObjectToUpdateQuery(&result, item, oldItem, "uid")
+
+	result.Query += `RETURN DISTINCT item.uid as uid;`
 
 	result.ReturnAlias = "uid"
 
