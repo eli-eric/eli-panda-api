@@ -172,12 +172,12 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	manufacturer: case when manu is not null then {uid: manu.uid, name: manu.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,
 	manufacturerNumber: itm.catalogueNumber,
-	details: case when count(prop) > 0 then collect({ 
+	details: case when count(prop) > 0 then collect(DISTINCT { 
 					property:{
 						uid: prop.uid,
 						name: prop.name, 
 						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-						type: { uid: propType.code, name: propType.name },
+						type: { uid: propType.uid, name: propType.name },
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: groupName, 
@@ -215,6 +215,52 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	result.ReturnAlias = "category"
 
 	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
+func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(category)-[:HAS_SUBCATEGORY*1..50]->(childs:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group,property
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH group,property, propertyType, unit order by property.name
+	WITH case when count(property) > 0 then { property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name },
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: group.name, 
+						value: null} else null end as properties
+						return properties
+	UNION	
+	MATCH(category:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group,property 
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH group,property, propertyType, unit order by property.name
+	WITH case when count(property) > 0 then { 
+					property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name },
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: group.name, 
+						value: null} else null end as properties
+						return properties;`
+
+	result.ReturnAlias = "properties"
+	result.Parameters = make(map[string]interface{}, 1)
 	result.Parameters["uid"] = uid
 
 	return result
@@ -323,11 +369,11 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 
 					result.Query += fmt.Sprintf("MERGE(prop_%s:CatalogueCategoryProperty{uid: '%s'}) SET prop_%s.name=$prop_name_%s, prop_%s.defaultValue=$prop_defaultValue_%s, prop_%s.listOfValues=$prop_listOfValues_%s MERGE(group%d)-[:CONTAINS_PROPERTY]->(prop_%s) ", idPropString, propertyUID, idPropString, idPropString, idPropString, idPropString, idPropString, idPropString, idg, idPropString)
 
-					result.Query += fmt.Sprintf("WITH prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:IS_PROPERTY_TYPE]->() DELETE r_prop_%[1]v WITH prop_%[1]v, category ", idPropString)
+					result.Query += fmt.Sprintf("WITH group%[2]d, prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:IS_PROPERTY_TYPE]->() DELETE r_prop_%[1]v WITH group%[2]d, prop_%[1]v, category ", idPropString, idg)
 
-					result.Query += fmt.Sprintf("MERGE(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.Type.UID, idPropString, idPropString)
+					result.Query += fmt.Sprintf("MATCH(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.Type.UID, idPropString, idPropString)
 
-					result.Query += fmt.Sprintf("WITH prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:HAS_UNIT]->() DELETE r_prop_%[1]v WITH prop_%[1]v, category ", idPropString)
+					result.Query += fmt.Sprintf("WITH group%[2]d, prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:HAS_UNIT]->() DELETE r_prop_%[1]v WITH group%[2]d, prop_%[1]v, category ", idPropString, idg)
 					if property.Unit != nil && property.Unit.UID != "" {
 						result.Query += fmt.Sprintf("MERGE(unit%s:Unit{uid:'%s'}) MERGE(prop_%s)-[:HAS_UNIT]->(unit%s) ", idPropString, property.Unit.UID, idPropString, idPropString)
 					}
@@ -510,9 +556,113 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 								manufacturerUrl: $manufacturerUrl })
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
-	RETURN DISTINCT item.uid as uid;`
+	`
+	for idxProp, prop := range item.Details {
+		if prop.Value != nil && *prop.Value != "" {
+
+			propIdx := fmt.Sprintf("prop%d", idxProp)
+			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
+
+			result.Parameters[propUidIdx] = prop.Property.UID
+			result.Parameters[propValueIdx] = prop.Value
+
+			result.Query += fmt.Sprintf(`
+			WITH item
+			MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
+			MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
+			SET %[1]s.value = $%[3]s
+			`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+		}
+	}
+
+	result.Query += `RETURN DISTINCT item.uid as uid;`
 
 	result.ReturnAlias = "uid"
+
+	return result
+}
+
+// save existing catalogue item query
+func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["uid"] = item.Uid
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u	
+	MATCH(item:CatalogueItem{uid: $uid})	
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	WITh item
+	`
+
+	helpers.AutoResolveObjectToUpdateQuery(&result, *item, *oldItem, "item")
+
+	for idxProp, prop := range item.Details {
+		if prop.Value != nil && *prop.Value != "" {
+
+			propIdx := fmt.Sprintf("prop%d", idxProp)
+			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
+
+			result.Parameters[propUidIdx] = prop.Property.UID
+			result.Parameters[propValueIdx] = prop.Value
+
+			result.Query += fmt.Sprintf(`
+			WITH item
+			MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
+			MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
+			SET %[1]s.value = $%[3]s
+			`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+		}
+	}
+
+	//finally delete all properties that are not in the new item
+	for _, oldProp := range oldItem.Details {
+		delete := true
+		for _, newProp := range item.Details {
+			if oldProp.Property.UID == newProp.Property.UID {
+				delete = false
+				break
+			}
+		}
+		if delete {
+			result.Query += fmt.Sprintf(`
+			WITH item
+			MATCH(propToDelete:CatalogueCategoryProperty{uid: "%s"})
+			OPTIONAL MATCH(item)-[r_propToDelete:HAS_CATALOGUE_PROPERTY]->(propToDelete)
+			DELETE r_propToDelete
+			`, oldProp.Property.UID)
+		}
+	}
+
+	result.Query += `RETURN DISTINCT item.uid as uid;`
+
+	result.ReturnAlias = "uid"
+
+	return result
+}
+
+// delete catalogue item query
+func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = itemUid
+	result.Parameters["userUID"] = userUID
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	OPTIONAL MATCH(ci:CatalogueItem{uid: $uid})<-[:IS_BASED_ON]-(i) 
+	WITH count(i) as itemsCount, ci, u
+	CALL apoc.do.when(itemsCount = 0, 'MATCH(ci:CatalogueItem{uid: uid}) DETACH DELETE ci CREATE(i:CatalogueItemDeleted{uid: uid})-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u) return itemsCount', 'return itemsCount', {itemsCount: itemsCount, u:u, uid: $uid})
+	YIELD value	
+	RETURN value.itemsCount as itemsCount;`
+
+	result.ReturnAlias = "itemsCount"
 
 	return result
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/google/uuid"
 )
 
+const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"
+
 func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
 	result.Query = `MATCH(r:OrderStatus) RETURN {uid: r.uid,name:r.name} as orderStatuses ORDER BY orderStatuses.sortOrder ASC`
 	result.ReturnAlias = "orderStatuses"
@@ -17,7 +19,7 @@ func GetOrderStatusesCodebookQuery() (result helpers.DatabaseQuery) {
 }
 
 func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(s:Supplier) WHERE toLower(s.name) STARTS WITH toLower($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
+	result.Query = `MATCH(s:Supplier) WHERE apoc.text.clean(s.name) STARTS WITH apoc.text.clean($searchString) RETURN {uid: s.uid,name:s.name + case when s.CIN is not null then " (" + s.CIN + ")" else "" end } as suppliers ORDER BY suppliers.name ASC LIMIT $limit`
 	result.ReturnAlias = "suppliers"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchString"] = searchString
@@ -658,4 +660,14 @@ func SetItemPrintEUNQuery(eun string, printEUN bool) (result helpers.DatabaseQue
 	return result
 }
 
-const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"
+func GetOrderUidByOrderNumberQuery(orderNumber string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (o:Order{orderNumber: $orderNumber}) 
+	RETURN o.uid as uid limit 1`
+
+	result.ReturnAlias = "uid"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["orderNumber"] = orderNumber
+
+	return result
+}

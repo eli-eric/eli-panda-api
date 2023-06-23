@@ -12,6 +12,7 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.GET("/v1/catalogue/categories/*", m.Authorization(h.GetCataloguecategoriesByParentPath(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.GET("/v1/catalogue/categories", m.Authorization(h.GetCataloguecategoriesByParentPath(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.GET("/v1/catalogue/category/:uid", m.Authorization(h.GetCatalogueCategoryWithDetailsByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.GET("/v1/catalogue/category/:uid/properties", m.Authorization(h.GetCatalogueCategoryPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	e.PUT("/v1/catalogue/category/:uid", m.Authorization(h.UpdateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.POST("/v1/catalogue/category", m.Authorization(h.CreateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
@@ -29,5 +30,8 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.GET("/v1/catalogue/item/:uid", m.Authorization(h.GetCatalogueItemWithDetailsByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	//create new catalogue item
 	e.POST("/v1/catalogue/item", m.Authorization(h.CreateNewCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
-
+	//update catalogue item
+	e.PUT("/v1/catalogue/item/:uid", m.Authorization(h.UpdateCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
+	//delete catalogue item
+	e.DELETE("/v1/catalogue/item/:uid", m.Authorization(h.DeleteCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
 }

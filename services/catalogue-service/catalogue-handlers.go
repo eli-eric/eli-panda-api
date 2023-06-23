@@ -26,6 +26,9 @@ type ICatalogueHandlers interface {
 	GetCatalogueCategoryImageByUid() echo.HandlerFunc
 	CopyCatalogueCategoryRecursive() echo.HandlerFunc
 	CreateNewCatalogueItem() echo.HandlerFunc
+	GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc
+	UpdateCatalogueItem() echo.HandlerFunc
+	DeleteCatalogueItem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -279,6 +282,80 @@ func (h *CatalogueHandlers) CreateNewCatalogueItem() echo.HandlerFunc {
 			}
 		} else {
 			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+		//get item uid from query
+		itemUID := c.QueryParam("itemUid")
+
+		// get catalogue item
+		properties, err := h.catalogueService.GetCatalogueCategoryPropertiesByUid(uid, &itemUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, properties)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue item data from request body
+		catalogueItem := new(models.CatalogueItem)
+
+		if err := c.Bind(catalogueItem); err == nil {
+
+			userUID := c.Get("userUID").(string)
+			// create catalogue item
+			err := h.catalogueService.UpdateCatalogueItem(catalogueItem, userUID)
+
+			if err == nil {
+				//return c.NoContent(http.StatusNoContent)
+				return c.JSON(http.StatusOK, catalogueItem.Uid)
+			} else {
+				log.Error().Msg(err.Error())
+			}
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) DeleteCatalogueItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+		//get user uid from context
+		userUID := c.Get("userUID").(string)
+
+		// delete catalogue item
+		err := h.catalogueService.DeleteCatalogueItem(uid, userUID)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		} else {
+			log.Error().Msg(err.Error())
+			if err.Error() == helpers.ERR_DELETE_RELATED_ITEMS.Error() {
+				return echo.NewHTTPError(http.StatusConflict, err.Error())
+			}
 		}
 
 		return echo.ErrInternalServerError

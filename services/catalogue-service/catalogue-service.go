@@ -8,6 +8,7 @@ import (
 	codebookModels "panda/apigateway/services/codebook-service/models"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/rs/zerolog/log"
 )
 
 type CatalogueService struct {
@@ -33,6 +34,9 @@ type ICatalogueService interface {
 	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
+	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
+	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
+	DeleteCatalogueItem(uid string, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -97,6 +101,31 @@ func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (resul
 
 	query := CatalogueItemWithDetailsByUidQuery(uid)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.CatalogueItem](session, query)
+
+	if err != nil {
+		log.Error().Msgf("Error while getting catalogue item with details by uid: %s", uid)
+	} else {
+		//fitt we got the item with details(but only details/properties with a value)
+		//now we need add all properties for the specific category and parent categories
+		allProperties, err := svc.GetCatalogueCategoryPropertiesByUid(result.Category.UID, nil)
+		if err == nil {
+			//we have to iterate on all properties and check if we have this property in the result
+			for _, property := range allProperties {
+				//check if we have this property in the result
+				found := false
+				for _, detail := range result.Details {
+					if detail.Property.UID == property.Property.UID {
+						found = true
+						break
+					}
+				}
+				//if we dont have this property in the result we have to add it with empty value
+				if !found {
+					result.Details = append(result.Details, models.CatalogueItemDetail{Property: property.Property, PropertyGroup: property.PropertyGroup, Value: nil})
+				}
+			}
+		}
+	}
 
 	return result, err
 }
@@ -253,7 +282,7 @@ func (svc *CatalogueService) GetManufacturersCodebook(searchString string, limit
 	query := ManufacturersForAutocompletQuery(searchString, limit)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
-	helpers.ProcessArrayResult[codebookModels.Codebook](&result, err)
+	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
 }
@@ -265,7 +294,7 @@ func (svc *CatalogueService) GetCatalogueCategoriesCodebook(searchString string,
 	query := CatalogueCategoriesForAutocompleteQuery(searchString, limit)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
-	helpers.ProcessArrayResult[codebookModels.Codebook](&result, err)
+	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
 }
@@ -279,4 +308,62 @@ func (svc *CatalogueService) CreateNewCatalogueItem(catalogueItem *models.Catalo
 	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 
 	return uid, err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueCategoryPropertiesQuery(uid)
+	properties, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueItemDetail](session, query)
+
+	//get item if we have itemUID
+	if itemUID != nil && *itemUID != "" {
+		//get item
+		item, err := svc.GetCatalogueItemWithDetailsByUid(*itemUID)
+		if err == nil {
+			//iterate on all properties and set the value from item
+			for i, property := range properties {
+				for _, detail := range item.Details {
+					if detail.Property.UID == property.Property.UID {
+						properties[i].Value = detail.Value
+						break
+					}
+				}
+			}
+		}
+	}
+
+	helpers.ProcessArrayResult(&properties, err)
+
+	return properties, err
+}
+
+func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//get the original record from db to compare because of the delete
+	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(catalogueItem.Uid)
+	if err == nil {
+		//update category query
+		query := UpdateCatalogueItemQuery(catalogueItem, &originalItem, userUID)
+		_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	}
+
+	return err
+}
+
+func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteCatalogueItemQuery(uid, userUID)
+	itemsAffected, err := helpers.WriteNeo4jAndReturnSingleValue[int64](session, query)
+
+	if itemsAffected > 0 {
+		err = helpers.ERR_DELETE_RELATED_ITEMS
+	}
+
+	return err
 }

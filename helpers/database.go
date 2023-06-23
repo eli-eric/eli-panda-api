@@ -150,8 +150,10 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 		var txResults []T
 		for _, record := range records {
 			itm, _ := record.Get(query.ReturnAlias)
-			mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
-			txResults = append(txResults, mappedItem)
+			if itm != nil {
+				mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
+				txResults = append(txResults, mappedItem)
+			}
 		}
 		return txResults, nil
 	})
@@ -273,6 +275,19 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 							dbQuery.Parameters[newField.Name] = newValue.Elem().Interface().(models.Codebook).UID
 						} else if newValue.IsNil() && !oldValue.IsNil() {
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+						}
+					} else if fieldType == "models.Codebook" {
+
+						neo4jAlias := neo4jTags[3]
+						neo4jID := "uid"
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Interface().(models.Codebook).UID
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Interface().(models.Codebook).UID
+
+						if newValue != oldValue {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[1]v)-[r%[2]v:%[3]v]->(%[2]v) delete r%[2]v `, updateNodeAlias, neo4jAlias, neo4jRelationType)
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v MATCH(%[2]v:%[3]v{%[4]v:$%[5]v}) MERGE(%[1]v)-[:%[6]v]->(%[2]v) `, updateNodeAlias, neo4jAlias, neo4jLabel, neo4jID, newField.Name, neo4jRelationType)
+							dbQuery.Parameters[newField.Name] = newValue
 						}
 					}
 				}
@@ -418,3 +433,4 @@ const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e007
 var ERR_INVALID_INPUT = errors.New("INVALID_INPUT")
 var ERR_UNAUTHORIZED = errors.New("UNAUTHORIZED")
 var ERR_NOT_FOUND = errors.New("NOT_FOUND")
+var ERR_DELETE_RELATED_ITEMS = errors.New("DELETE_NOT_POSSIBLE_RELATED_ITEMS")

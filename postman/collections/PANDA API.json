@@ -359,6 +359,123 @@
 					"response": []
 				},
 				{
+					"name": "Insert new catalogue item",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "73fa5541-933e-4106-9767-2cedcfdeb934",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"hasImageGalleryChanges\": false,\n    \"name\": \"HP neco\",\n    \"catalogueNumber\": \"789fff\",\n    \"category\": {\n        \"uid\": \"c6850f95-9205-4b8e-b81a-e23671089416\",\n        \"name\": \"Non-Touch - Notebooks\"\n    },\n    \"manufacturer\": null,\n    \"manufacturerNumber\": \"\",\n    \"manufacturerUrl\": \"\",\n    \"description\": \"\",\n    \"details\": [\n        {\n            \"value\": \"\"\n        },\n        {\n            \"value\": \"\"\n        },\n        {\n            \"value\": \"\"\n        },\n        {\n            \"value\": null\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/catalogue/item",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"catalogue",
+								"item"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update catalogue item Copy",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "7ee9e02c-79b8-47b1-843e-7bf5d0a518b6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"uid\": \"b9bd1efc-7399-43a7-8bc3-f1bb4a5e4f07\",\n    \"name\": \"HP neco FFFF ddd\",\n    \"catalogueNumber\": \"789fff\",\n    \"description\": \"\",\n    \"category\": {\n        \"uid\": \"c6850f95-9205-4b8e-b81a-e23671089416\",\n        \"name\": \"Non-Touch\"\n    },\n    \"manufacturerNumber\": \"789fff\",\n    \"manufacturerUrl\": \"\",\n    \"details\": [\n        {\n            \"property\": {\n                \"uid\": \"3cf532b3-86ab-4ef8-a9db-cd9e6a4cd5a6\",\n                \"name\": \"Height\",\n                \"type\": {\n                    \"uid\": \"45f0d238-4067-4033-9e52-58f1d454b6d3\",\n                    \"name\": \"number\"\n                },\n                \"unit\": {\n                    \"uid\": \"8a18b753-e0c9-4d5b-80ef-2e0de38ac2b8\",\n                    \"name\": \"mm\"\n                }\n            },\n            \"propertyGroup\": \"Dimensions\",\n            \"value\": \"23\"\n        },\n        {\n            \"property\": {\n                \"uid\": \"5883441a-4262-4e10-a878-fc6af2bb0e74\",\n                \"name\": \"Depth\",\n                \"type\": {\n                    \"uid\": \"45f0d238-4067-4033-9e52-58f1d454b6d3\",\n                    \"name\": \"number\"\n                },\n                \"unit\": {\n                    \"uid\": \"8a18b753-e0c9-4d5b-80ef-2e0de38ac2b8\",\n                    \"name\": \"mm\"\n                }\n            },\n            \"propertyGroup\": \"Dimensions\",\n            \"value\": \"\"\n        },\n        {\n            \"property\": {\n                \"uid\": \"6697f9d3-c6ee-4ca7-ae89-f57cbe84a957\",\n                \"name\": \"Width\",\n                \"type\": {\n                    \"uid\": \"45f0d238-4067-4033-9e52-58f1d454b6d3\",\n                    \"name\": \"number\"\n                },\n                \"unit\": {\n                    \"uid\": \"8a18b753-e0c9-4d5b-80ef-2e0de38ac2b8\",\n                    \"name\": \"mm\"\n                }\n            },\n            \"propertyGroup\": \"Dimensions\",\n            \"value\": \"\"\n        },\n        {\n            \"property\": {\n                \"uid\": \"ac8dbb56-5d21-4f27-93ef-176f2cf3286e\",\n                \"name\": \"Color\",\n                \"listOfValues\": [\n                    \"Silver\",\n                    \"Black\",\n                    \"Other\"\n                ],\n                \"type\": {\n                    \"uid\": \"9b56eba5-d650-442c-9235-0f6fd3cc8a91\",\n                    \"name\": \"List Of Values\"\n                }\n            },\n            \"propertyGroup\": \"Design\",\n            \"value\": null\n        }\n    ],\n    \"manufacturer\": null\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/catalogue/item/b9bd1efc-7399-43a7-8bc3-f1bb4a5e4f07",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"catalogue",
+								"item",
+								"b9bd1efc-7399-43a7-8bc3-f1bb4a5e4f07"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Delete catalogue category",
 					"event": [
 						{
@@ -403,6 +520,57 @@
 								"catalogue",
 								"category",
 								"ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get catalogue category properties",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "6b5c3ca3-0e19-4453-89fe-0191692042f8",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/catalogue/category/098186db-3169-4c64-b823-44b5f59bbd6b/properties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"catalogue",
+								"category",
+								"098186db-3169-4c64-b823-44b5f59bbd6b",
+								"properties"
 							]
 						}
 					},
@@ -2025,6 +2193,62 @@
 							"path": [
 								"order",
 								"129caae4-70b0-4ef4-b4cd-832d8f847f26"
+							],
+							"query": [
+								{
+									"key": "sorting",
+									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get order UID by order number",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e0ebbfea-4c6e-4309-88fe-3cb7470fe0e3",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/order-uid-by-order-number/20910099",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"order-uid-by-order-number",
+								"20910099"
 							],
 							"query": [
 								{
