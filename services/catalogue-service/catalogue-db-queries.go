@@ -22,17 +22,17 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
 	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
 	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
-	OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
+	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
 	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat,categoryPath, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm,cat,categoryPath, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR
 	 toLower(itm.description) CONTAINS $searchText or 
-	 toLower(manu.name) CONTAINS $searchText or 
+	 toLower(supp.name) CONTAINS $searchText or 
 	 itm.catalogueNumber CONTAINS $searchText or
 	 toLower(value) CONTAINS $searchText)
 	RETURN {
@@ -42,9 +42,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	description: itm.description,
 	categoryName: cat.name,
 	categoryPath: max(categoryPath),
-	manufacturer: manu.name,
-	manufacturerUrl: itm.manufacturerUrl,
-	manufacturerNumber: itm.catalogueNumber,
+	supplier: supp.name,
+	manufacturerUrl: itm.manufacturerUrl,	
 	details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
 	} as items
 	SKIP $skip
@@ -72,17 +71,17 @@ func CatalogueItemsFiltersTotalCountQuery(search string, categoryPath string) (r
 	with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
 	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
 	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
-	OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
+	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
 	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat,categoryPath, propType.code as propTypeCode, manu, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm,cat,categoryPath, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR 
 	toLower(itm.description) CONTAINS $searchText or 
-	toLower(manu.name) CONTAINS $searchText or 
+	toLower(supp.name) CONTAINS $searchText or 
 	itm.catalogueNumber CONTAINS $searchText or
 	toLower(value) CONTAINS $searchText)
 	RETURN count(distinct itm.uid) as itemsCount`
@@ -157,21 +156,20 @@ func DeleteCatalogueCategoryByUidQuery(uid string) (result helpers.DatabaseQuery
 func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `match(itm:CatalogueItem{uid: $uid})-[:BELONGS_TO_CATEGORY]->(cat)			
-	OPTIONAL MATCH(itm)-[:HAS_MANUFACTURER]->(manu)
+	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
 	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm, cat, prop, propType, manu, unit,  group.name as groupName, toString(propVal.value) as value
+	WITH itm, cat, prop, propType, supp, unit,  group.name as groupName, toString(propVal.value) as value
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
 	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
 	category: {uid: cat.uid, name: cat.name},
-	manufacturer: case when manu is not null then {uid: manu.uid, name: manu.name} else null end,
-	manufacturerUrl: itm.manufacturerUrl,
-	manufacturerNumber: itm.catalogueNumber,
+	manufacturer: case when supp is not null then {uid: supp.uid, name: supp.name} else null end,
+	manufacturerUrl: itm.manufacturerUrl,	
 	details: case when count(prop) > 0 then collect(DISTINCT { 
 					property:{
 						uid: prop.uid,
@@ -539,7 +537,6 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	result.Parameters["description"] = item.Description
 	result.Parameters["categoryUid"] = item.Category.UID
 	result.Parameters["userUID"] = userUID
-	result.Parameters["manufacturerNumber"] = item.ManufacturerNumber
 	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
 	result.Parameters["catalogueNumber"] = item.CatalogueNumber
 
@@ -551,12 +548,20 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	CREATE(item:CatalogueItem{  uid: apoc.create.uuid(),
 								name: $name, 
 								catalogueNumber: $catalogueNumber,
-								description: $description,
-								manufacturerNumber: $manufacturerNumber,
+								description: $description,							
 								manufacturerUrl: $manufacturerUrl })
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
 	`
+	if item.Supplier != nil && item.Supplier.UID != "" {
+		result.Query += `
+		WITH item
+		MATCH(s:Supplier{uid: $supplierUid})
+		CREATE(item)-[:HAS_SUPPLIER]->(s)
+		`
+		result.Parameters["supplierUid"] = item.Supplier.UID
+	}
+
 	for idxProp, prop := range item.Details {
 		if prop.Value != nil && *prop.Value != "" {
 
