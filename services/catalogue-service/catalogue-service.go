@@ -33,6 +33,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoriesRecursiveByParentUID(parentUID string) (categories []models.CatalogueCategoryTreeItem, err error)
 	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
+	GetCatalogueCategoriesCodebookTree() (result []codebookModels.CodebookTreeItem, err error)
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
 	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
@@ -366,4 +367,37 @@ func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (er
 	}
 
 	return err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoriesCodebookTree() (result []codebookModels.CodebookTreeItem, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueCategoriesTreeQuery()
+	categoriesTreeResult, err := helpers.GetNeo4jArrayOfNodes[codebookModels.CodebookTreeItemCatalogueCategory](session, query)
+
+	if categoriesTreeResult != nil {
+		result = make([]codebookModels.CodebookTreeItem, len(categoriesTreeResult))
+		for i, item := range categoriesTreeResult {
+			result[i] = codebookModels.CodebookTreeItem{UID: item.UID, Name: item.Name, Children: svc.convertCatalogueCategoriesTreeToCodebookTree(item.Children)}
+		}
+	} else {
+		helpers.ProcessArrayResult(&categoriesTreeResult, err)
+	}
+
+	return result, err
+}
+
+// convert []codebookModels.CodebookTreeItemCatalogueCategory to []codebookModels.CodebookTreeItem recursively
+func (svc *CatalogueService) convertCatalogueCategoriesTreeToCodebookTree(categoriesTree []codebookModels.CodebookTreeItemCatalogueCategory) (result []codebookModels.CodebookTreeItem) {
+
+	result = make([]codebookModels.CodebookTreeItem, len(categoriesTree))
+	for i, item := range categoriesTree {
+		result[i] = codebookModels.CodebookTreeItem{UID: item.UID, Name: item.Name}
+		if item.Children != nil {
+			result[i].Children = svc.convertCatalogueCategoriesTreeToCodebookTree(item.Children)
+		}
+	}
+
+	return result
 }

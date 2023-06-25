@@ -666,3 +666,23 @@ func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.Da
 
 	return result
 }
+
+func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
+
+	//get catalogue categories as tree
+	result.Query = `
+	MATCH (parentCat:CatalogueCategory)
+	WHERE NOT (parentCat)<-[:HAS_SUBCATEGORY]-()
+	WITH parentCat
+	OPTIONAL MATCH path = (parentCat)-[:HAS_SUBCATEGORY*1..50]->(children)
+	WITH collect(path) AS paths
+	CALL apoc.convert.toTree(paths, true, {
+	  nodes: {CatalogueCategory: ['uid', 'name']}
+	})
+	YIELD value
+	RETURN value as tree;`
+
+	result.ReturnAlias = "tree"
+
+	return result
+}

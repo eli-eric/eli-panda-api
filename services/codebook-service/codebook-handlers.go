@@ -17,6 +17,7 @@ type CodebookHandlers struct {
 
 type ICodebookHandlers interface {
 	GetCodebook() echo.HandlerFunc
+	GetCodebookTree() echo.HandlerFunc
 	GetListOfCodebooks() echo.HandlerFunc
 	CreateNewCodebook() echo.HandlerFunc
 }
@@ -55,6 +56,23 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, codebookResponse)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+		//get query path param
+		codebookCode := c.Param("codebookCode")
+		facilityCode := c.Get("facilityCode").(string)
+
+		codebookTree, err := h.codebookService.GetCodebookTree(codebookCode, facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, codebookTree)
 		}
 
 		return echo.ErrInternalServerError
