@@ -2451,6 +2451,66 @@
 			"id": "e9823618-5124-4a8d-a82f-3f2c07425119"
 		},
 		{
+			"name": "TreeCodebooks",
+			"item": [
+				{
+					"name": "Catalogue Categories",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e494b171-9ce5-4882-9b27-372db935cc44",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/CATALOGUE_CATEGORY/tree",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"CATALOGUE_CATEGORY",
+								"tree"
+							],
+							"query": [
+								{
+									"key": "searchText",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "01487c49-9ef9-4ea5-b363-9197129bef0f"
+		},
+		{
 			"name": "Test anything",
 			"id": "dbe50e86-c5a0-4a5b-96c8-ea97c50ad10c",
 			"protocolProfileBehavior": {
