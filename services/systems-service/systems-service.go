@@ -27,7 +27,7 @@ type ISystemsService interface {
 	GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
-	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
+	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
 	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
 	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
@@ -128,10 +128,10 @@ func (svc *SystemsService) GetSystemImageByUid(uid string) (result string, err e
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error) {
+func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (result models.System, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.SystemResponse](session, SystemDetailQuery(uid, facilityCode))
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(uid, facilityCode))
 
 	return result, err
 }

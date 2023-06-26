@@ -1,19 +1,21 @@
 package models
 
-type SystemResponse struct {
+import "panda/apigateway/services/codebook-service/models"
+
+type System struct {
 	UID         string                 `json:"uid" neo4j:"uid"`
 	Name        string                 `json:"name"`
 	ParentPath  []SystemSimpleResponse `json:"parentPath"`
 	ParentUID   *string                `json:"parentUID,omitempty"`
 	Description *string                `json:"description,omitempty"`
-	SystemType  *SystemSimpleResponse  `json:"systemType,omitempty"`
+	SystemType  *models.Codebook       `json:"systemType,omitempty"`
 	SystemCode  *string                `json:"systemCode,omitempty"`
 	SystemAlias *string                `json:"systemAlias,omitempty"`
-	Location    *SystemSimpleResponse  `json:"location,omitempty"`
 	ItemUID     *string                `json:"itemUID,omitempty"`
-	Owner       *SystemSimpleResponse  `json:"owner,omitempty"`
-	Importance  *SystemSimpleResponse  `json:"importance,omitempty"`
-	Zone        *SystemSimpleResponse  `json:"zone,omitempty"`
+	Owner       *models.Codebook       `json:"owner,omitempty"`
+	Importance  *models.Codebook       `json:"importance,omitempty"`
+	Zone        *models.Codebook       `json:"zone,omitempty"`
+	Location    *models.Codebook       `json:"location,omitempty"`
 }
 
 type SystemForm struct {
