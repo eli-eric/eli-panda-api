@@ -119,6 +119,7 @@ OPTIONAL MATCH(r)-[:HAS_ZONE]->(z)
 OPTIONAL MATCH(r)-[:HAS_SYSTEM_TYPE]->(st)
 OPTIONAL MATCH(r)-[:HAS_IMPORTANCE]->(imp)
 OPTIONAL MATCH(r)-[:HAS_OWNER]->(own)
+OPTIONAL MATCH(r)-[:HAS_RESPONSIBLE]->(responsilbe)
 OPTIONAL MATCH(r)-[:HAS_CRITICALITY]->(cc)
 OPTIONAL MATCH(r)-[:CONTAINS_ITEM]->(itm)
 OPTIONAL MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(r)
@@ -145,40 +146,7 @@ RETURN {
 	return result
 }
 
-func SystemFormDetailQuery(uid string, facilityCode string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(r:System{uid: $uid})-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode
-	WITH r,f
-OPTIONAL MATCH(r)-[:HAS_LOCATION]->(l)
-OPTIONAL MATCH(r)-[:HAS_ZONE]->(z)
-OPTIONAL MATCH(r)-[:HAS_SYSTEM_TYPE]->(st)
-OPTIONAL MATCH(r)-[:HAS_IMPORTANCE]->(imp)
-OPTIONAL MATCH(r)-[:HAS_OWNER]->(own)
-OPTIONAL MATCH(r)-[:HAS_CRITICALITY]->(cc)
-OPTIONAL MATCH(r)-[:CONTAINS_ITEM]->(itm)
-OPTIONAL MATCH(parent)-[:HAS_SUBSYSTEM]->(r)
-WITH r,l, z, st,itm, imp, own,cc, parent
-RETURN {
-    uid: r.uid, 
-    name: r.name, 
-    description: r.description,
-    locationUID: case when l is not null then l.code else null end, 
-    systemTypeUID: case when st is not null then st.uid else null end,
-    systemCode: r.systemCode,
-    systemAlias: r.systemAlias,
-    importanceUID: case when imp is not null then imp.uid else null end,
-    ownerUID: case when own is not null then own.uid else null end,
-    zoneUID: case when z is not null then  z.uid else null end,
-    parentUID: case when parent is not null then parent.uid else null end,
-	itemUID: itm.uid    
-    } as result`
-	result.ReturnAlias = "result"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["uid"] = uid
-	result.Parameters["facilityCode"] = facilityCode
-	return result
-}
-
-func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
+func CreateNewSystemQuery(newSystem *models.System, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["uid"] = uuid.NewString()
@@ -200,39 +168,34 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 	WITH s
 	`
 
-	if newSystem.ParentUID != nil && len(*newSystem.ParentUID) > 0 {
-		result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
-		result.Parameters["parentUID"] = newSystem.ParentUID
-	}
-
-	if newSystem.ZoneUID != nil && len(*newSystem.ZoneUID) > 0 {
+	if newSystem.Zone != nil && newSystem.Zone.UID != "" {
 		result.Query += `WITH s MATCH(z:Zone{uid:$zoneUID}) MERGE(s)-[:HAS_ZONE]->(z) `
-		result.Parameters["zoneUID"] = newSystem.ZoneUID
+		result.Parameters["zoneUID"] = newSystem.Zone.UID
 	}
 
-	if newSystem.LocationUID != nil && len(*newSystem.LocationUID) > 0 {
+	if newSystem.Location != nil && newSystem.Location.UID != "" {
 		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
-		result.Parameters["locationUID"] = newSystem.LocationUID
+		result.Parameters["locationUID"] = newSystem.Location.UID
 	}
 
-	if newSystem.SystemTypeUID != nil && len(*newSystem.SystemTypeUID) > 0 {
+	if newSystem.SystemType != nil && newSystem.SystemType.UID != "" {
 		result.Query += `WITH s MATCH(st:SystemType{uid:$systemTypeUID}) MERGE(s)-[:HAS_SYSTEM_TYPE]->(st) `
-		result.Parameters["systemTypeUID"] = newSystem.SystemTypeUID
+		result.Parameters["systemTypeUID"] = newSystem.SystemType.UID
 	}
 
-	if newSystem.OwnerUID != nil && len(*newSystem.OwnerUID) > 0 {
-		result.Query += `WITH s MATCH(owner:User{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
-		result.Parameters["ownerUID"] = newSystem.OwnerUID
+	if newSystem.Owner != nil && newSystem.Owner.UID != "" {
+		result.Query += `WITH s MATCH(owner:Employee{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
+		result.Parameters["ownerUID"] = newSystem.Owner.UID
 	}
 
-	if newSystem.ImportanceUID != nil && len(*newSystem.ImportanceUID) > 0 {
+	if newSystem.Responsible != nil && newSystem.Responsible.UID != "" {
+		result.Query += `WITH s MATCH(responsible:Employee{uid:$responsibleUID}) MERGE(s)-[:HAS_RESPONSIBLE]->(responsible) `
+		result.Parameters["responsibleUID"] = newSystem.Responsible.UID
+	}
+
+	if newSystem.Importance != nil && newSystem.Importance.UID != "" {
 		result.Query += `WITH s MATCH(imp:SystemImportance{uid:$importanceUID}) MERGE(s)-[:HAS_IMPORTANCE]->(imp) `
-		result.Parameters["importanceUID"] = newSystem.ImportanceUID
-	}
-
-	if newSystem.Image != nil && len(*newSystem.Image) > 0 {
-		result.Query += `WITH s SET s.image = $image `
-		result.Parameters["image"] = newSystem.Image
+		result.Parameters["importanceUID"] = newSystem.Importance.UID
 	}
 
 	result.Query += `RETURN s.uid as result`
@@ -242,7 +205,7 @@ func CreateNewSystemQuery(newSystem *models.SystemForm, facilityCode string) (re
 	return result
 }
 
-func UpdateSystemQuery(newSystem *models.SystemForm, oldSystem *models.SystemForm, facilityCode string) (result helpers.DatabaseQuery) {
+func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["uid"] = oldSystem.UID
@@ -250,16 +213,6 @@ func UpdateSystemQuery(newSystem *models.SystemForm, oldSystem *models.SystemFor
 	result.Query = `MATCH(s:System{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newSystem, *oldSystem, "s")
-
-	if newSystem.Image != nil {
-		if *newSystem.Image == "deleted" {
-			result.Query += `WITH s SET s.image = null `
-			result.Parameters["image"] = newSystem.Image
-		} else {
-			result.Query += `WITH s SET s.image = $image `
-			result.Parameters["image"] = newSystem.Image
-		}
-	}
 
 	result.Query += `RETURN s.uid as result`
 

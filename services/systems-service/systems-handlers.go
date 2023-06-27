@@ -84,7 +84,7 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		// lets bind catalogue category data from request body
-		system := new(models.SystemForm)
+		system := new(models.System)
 
 		if err := c.Bind(system); err == nil {
 
@@ -109,11 +109,10 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		// lets bind catalogue category data from request body
-		system := new(models.SystemForm)
+		system := new(models.System)
 
 		if err := c.Bind(system); err == nil {
-			uid := c.Param("uid")
-			system.UID = &uid
+
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
 
