@@ -1796,12 +1796,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/subsystems",
+							"raw": "{{baseUrl}}/system/d06a074f-c78a-4cd3-9006-5a0c3259e8b6/subsystems",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
+								"d06a074f-c78a-4cd3-9006-5a0c3259e8b6",
 								"subsystems"
 							]
 						}
@@ -1889,13 +1890,69 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/414fe0a8-7c92-411c-a483-2234157dadf8",
+							"raw": "{{baseUrl}}/system/e4569a3d-56c1-4b80-b8c5-3445a6bd7121",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
-								"414fe0a8-7c92-411c-a483-2234157dadf8"
+								"e4569a3d-56c1-4b80-b8c5-3445a6bd7121"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get systems",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "ebd5abd9-3ec4-49ed-a41b-80b3bec62366",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10}",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"systems"
+							],
+							"query": [
+								{
+									"key": "pagination",
+									"value": "{\"page\" : 1 , \"pageSize\": 10}"
+								},
+								{
+									"key": "search",
+									"value": "vhru",
+									"disabled": true
+								}
 							]
 						}
 					},
