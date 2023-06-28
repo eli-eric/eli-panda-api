@@ -6,19 +6,21 @@ import (
 )
 
 type System struct {
-	UID          string                 `json:"uid" neo4j:"uid"`
-	Name         string                 `json:"name"`
-	ParentPath   []SystemSimpleResponse `json:"parentPath"`
-	Description  *string                `json:"description,omitempty"`
-	SystemType   *models.Codebook       `json:"systemType,omitempty"`
-	SystemCode   *string                `json:"systemCode,omitempty"`
-	SystemAlias  *string                `json:"systemAlias,omitempty"`
-	Owner        *models.Codebook       `json:"owner,omitempty"`
-	Responsible  *models.Codebook       `json:"responsible,omitempty"`
-	Importance   *models.Codebook       `json:"importance,omitempty"`
-	Zone         *models.Codebook       `json:"zone,omitempty"`
-	Location     *models.Codebook       `json:"location,omitempty"`
-	PhysicalItem *PhysicalItem          `json:"physicalItem,omitempty"`
+	UID           string                 `json:"uid" neo4j:"uid"`
+	Name          string                 `json:"name"`
+	ParentPath    []SystemSimpleResponse `json:"parentPath"`
+	ParentUID     *string                `json:"parentUid,omitempty"`
+	Description   *string                `json:"description,omitempty"`
+	SystemType    *models.Codebook       `json:"systemType,omitempty"`
+	SystemCode    *string                `json:"systemCode,omitempty"`
+	SystemAlias   *string                `json:"systemAlias,omitempty"`
+	Owner         *models.Codebook       `json:"owner,omitempty"`
+	Responsible   *models.Codebook       `json:"responsible,omitempty"`
+	Importance    *models.Codebook       `json:"importance,omitempty"`
+	Zone          *models.Codebook       `json:"zone,omitempty"`
+	Location      *models.Codebook       `json:"location,omitempty"`
+	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty"`
+	HasSubsystems bool                   `json:"hasSubsystems"`
 }
 
 type PhysicalItem struct {

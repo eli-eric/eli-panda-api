@@ -78,29 +78,6 @@ func GetZonesCodebookQuery(facilityCode string) (result helpers.DatabaseQuery) {
 	return result
 }
 
-func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.DatabaseQuery) {
-
-	//we have to diff queries depend if it is or not a root parent
-	if parentUID != "" {
-		result.Query = `
-		MATCH(r:System)-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode WITH r			
-		MATCH (parent)-[:HAS_SUBSYSTEM]->(r)
-		where parent.uid = $parentUID
-		return {uid: r.uid, name: r.name} as result;`
-	} else {
-		result.Query = `
-		MATCH(r:System)-[:BELONGS_TO_FACILITY]->(f)			
-		where not ()-[:HAS_SUBSYSTEM]->(r) and f.code = $facilityCode
-		return {uid: r.uid, name: r.name} as result;`
-	}
-
-	result.ReturnAlias = "result"
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["parentUID"] = parentUID
-	result.Parameters["facilityCode"] = facilityCode
-	return result
-}
-
 func SystemImageByUidQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `match(r:System{uid: $uid})	
 	return r.image as image`
@@ -112,34 +89,47 @@ func SystemImageByUidQuery(uid string) (result helpers.DatabaseQuery) {
 }
 
 func SystemDetailQuery(uid string, facilityCode string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(r:System{uid: $uid})-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode
-	WITH r,f
-OPTIONAL MATCH(r)-[:HAS_LOCATION]->(l)
-OPTIONAL MATCH(r)-[:HAS_ZONE]->(z)
-OPTIONAL MATCH(r)-[:HAS_SYSTEM_TYPE]->(st)
-OPTIONAL MATCH(r)-[:HAS_IMPORTANCE]->(imp)
-OPTIONAL MATCH(r)-[:HAS_OWNER]->(own)
-OPTIONAL MATCH(r)-[:HAS_RESPONSIBLE]->(responsilbe)
-OPTIONAL MATCH(r)-[:HAS_CRITICALITY]->(cc)
-OPTIONAL MATCH(r)-[:CONTAINS_ITEM]->(itm)
-OPTIONAL MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(r)
-WITH r,l, z, st,itm, imp, own,cc, case when parent is not null then collect({uid: parent.uid, name: parent.name}) else null end as parents
-WITH r,l, z, st,itm, imp, own,cc, reverse(parents) as parents
-RETURN {
-    uid: r.uid, 
-    name: r.name, 
-    description: r.description,
-    location: case when l is not null then {uid: l.code, name: l.name} else null end, 
-    systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-    systemCode: r.systemCode,
-    systemALias: r.systemAlias,
-    importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,
-    owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
-    zone: case when z is not null then {uid: z.uid, name: z.name} else null end,
-    parentPath: parents,
-	itemUID: itm.uid    
-    } as result`
-	result.ReturnAlias = "result"
+	result.Query = `MATCH(sys:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f) WHERE f.code = $facilityCode
+	WITH sys
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
+	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
+	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
+	RETURN DISTINCT {  
+	uid: sys.uid,
+	description: sys.description,
+	name: sys.name,
+	parentPath: case when parents is not null then reverse(collect({uid: parents.uid, name: parents.name})) else null end,
+	systemCode: sys.systemCode,
+	systemAlias: sys.systemAlias,
+	isTechnologicalUnit: sys.isTechnologicalUnit,
+	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
+	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
+	owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
+	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
+	lastUpdateTime: sys.lastUpdateTime,
+	lastUpdateBy: sys.lastUpdateBy,
+	physicalItem: case when physicalItem is not null then {
+		uid: physicalItem.uid, 
+		eun: physicalItem.eun, 
+		serialNumber: physicalItem.serialNumber,
+		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
+		catalogueItem: case when catalogueItem is not null then {
+			uid: catalogueItem.uid,
+			name: catalogueItem.name,
+			catalogueNumber: catalogueItem.catalogueNumber,
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+		} else null end	
+	} else null end
+} AS system`
+	result.ReturnAlias = "system"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["facilityCode"] = facilityCode
@@ -210,7 +200,7 @@ func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facil
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["uid"] = oldSystem.UID
 
-	result.Query = `MATCH(s:System{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
+	result.Query = `MATCH(s:System{uid:$uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newSystem, *oldSystem, "s")
 
@@ -226,7 +216,7 @@ func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `MATCH(r:System) WHERE r.uid = $uid WITH r
 	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child)
 	WITH r, child, r.uid as uid
-	detach delete r, child`
+	SET r.deleted=true, child.deleted=true`
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
@@ -238,11 +228,11 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 
 	if onlyTechnologicalUnits {
 		result.Query = `
-	MATCH (n:System{isTechnologicalUnit: true})-[:BELONGS_TO_FACILITY]->(f)
-	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->(:System{isTechnologicalUnit: true})
+	MATCH (n:System{isTechnologicalUnit: true, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->(:System{isTechnologicalUnit: true, deleted: false})
 	WITH n
 	WHERE toLower(n.name) CONTAINS $searchText
-	OPTIONAL MATCH (parent)-[:HAS_SUBSYSTEM*1..50]->(n{isTechnologicalUnit: true})
+	OPTIONAL MATCH (parent{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(n{isTechnologicalUnit: true, deleted: false})
 	WITH n, collect(parent.name) AS parentNames
 	RETURN {uid: n.uid, name: n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
 	ORDER BY result.name
@@ -250,11 +240,11 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 
 	} else {
 		result.Query = `
-	MATCH (n:System)-[:BELONGS_TO_FACILITY]->(f)
+	MATCH (n:System{deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->()
 	WITH n
 	WHERE toLower(n.name) CONTAINS $searchText
-	OPTIONAL MATCH (parent)-[:HAS_SUBSYSTEM*1..50]->(n)
+	OPTIONAL MATCH (parent{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(n)
 	WITH n, collect(parent.name) AS parentNames
 	RETURN {uid: n.uid, name: n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
 	ORDER BY result.name
@@ -268,5 +258,190 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 	result.Parameters["searchText"] = strings.ToLower(search)
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["limit"] = limit
+	return result
+}
+
+func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+
+	if searchString == "" {
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
+	} else {
+		result.Query = `
+		CALL db.index.fulltext.queryNodes('searchIndexSystems', $search) YIELD node AS sys WHERE sys:System AND sys.deleted = false WITH sys
+		MATCH(f:Facility{code: $facilityCode}) WITH f, sys
+		MATCH(sys)-[:BELONGS_TO_FACILITY]->(f)
+		WITH sys `
+	}
+
+	result.Query += `	
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
+	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
+	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM]->(subsys)
+	RETURN DISTINCT {  
+	uid: sys.uid,
+	description: sys.description,
+	name: sys.name,
+	parentPath: case when parents is not null then reverse(collect({uid: parents.uid, name: parents.name})) else null end,
+	hasSubsystems: case when subsys is not null then true else false end,
+	systemCode: sys.systemCode,
+	systemAlias: sys.systemAlias,
+	isTechnologicalUnit: sys.isTechnologicalUnit,
+	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
+	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
+	owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
+	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
+	lastUpdateTime: sys.lastUpdateTime,
+	lastUpdateBy: sys.lastUpdateBy,
+	physicalItem: case when physicalItem is not null then {
+		uid: physicalItem.uid, 
+		eun: physicalItem.eun, 
+		serialNumber: physicalItem.serialNumber,
+		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
+		catalogueItem: case when catalogueItem is not null then {
+			uid: catalogueItem.uid,
+			name: catalogueItem.name,
+			catalogueNumber: catalogueItem.catalogueNumber,
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+		} else null end	
+	} else null end
+} AS systems
+
+` + GetSystemsOrderByClauses(sorting) + `
+
+	SKIP $skip
+	LIMIT $limit
+
+`
+	result.ReturnAlias = "systems"
+
+	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["limit"] = pagination.PageSize
+	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
+func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
+
+	if sorting == nil || len(*sorting) == 0 {
+		return `ORDER BY systems.lastUpdateTime DESC `
+	}
+
+	var result string = ` ORDER BY `
+
+	for i, sort := range *sorting {
+		if i > 0 {
+			result += ", "
+		}
+		result += "systems." + sort.ID
+		if sort.DESC {
+			result += " DESC "
+		}
+	}
+
+	return result
+}
+
+func GetSystemsBySearchTextFullTextCountQuery(searchString string, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+
+	if searchString == "" {
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
+	} else {
+		result.Query = `
+		CALL db.index.fulltext.queryNodes('searchIndexSystems', $search) YIELD node AS sys WHERE sys:System AND sys.deleted = false WITH sys
+		MATCH(f:Facility{code: $facilityCode}) WITH f, sys
+		MATCH(sys)-[:BELONGS_TO_FACILITY]->(f)
+		WITH sys `
+	}
+
+	result.Query += `	
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
+	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
+		
+    return count(sys) as count
+`
+	result.ReturnAlias = "count"
+
+	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode}) 
+	WITH f
+	MATCH(parent:System{uid: $parentUID})-[:BELONGS_TO_FACILITY]->(f) WITH parent
+	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys{ deleted: false }) WITH sys `
+
+	result.Query += `	
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
+	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
+	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM]->(subsys)
+	RETURN DISTINCT {  
+	uid: sys.uid,
+	description: sys.description,
+	name: sys.name,
+	parentPath: case when parents is not null then reverse(collect({uid: parents.uid, name: parents.name})) else null end,
+	hasSubsystems: case when subsys is not null then true else false end,
+	systemCode: sys.systemCode,
+	systemAlias: sys.systemAlias,
+	isTechnologicalUnit: sys.isTechnologicalUnit,
+	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
+	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
+	owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
+	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
+	lastUpdateTime: sys.lastUpdateTime,
+	lastUpdateBy: sys.lastUpdateBy,
+	physicalItem: case when physicalItem is not null then {
+		uid: physicalItem.uid, 
+		eun: physicalItem.eun, 
+		serialNumber: physicalItem.serialNumber,
+		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
+		catalogueItem: case when catalogueItem is not null then {
+			uid: catalogueItem.uid,
+			name: catalogueItem.name,
+			catalogueNumber: catalogueItem.catalogueNumber,
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+		} else null end	
+	} else null end
+} AS systems
+	LIMIT 1000
+`
+	result.ReturnAlias = "systems"
+
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["parentUID"] = parentUID
+
 	return result
 }

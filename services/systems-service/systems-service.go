@@ -25,13 +25,14 @@ type ISystemsService interface {
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
-	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
+	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
 	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
 	UpdateSystem(newSystem *models.System, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
+	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error)
 }
 
 // Create new security service instance
@@ -108,12 +109,12 @@ func (svc *SystemsService) GetZonesCodebook(facilityCode string) (result []codeb
 	return result, err
 }
 
-func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.SystemSimpleResponse, err error) {
+func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.System, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := GetSubSystemsQuery(parentUID, facilityCode)
-	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemSimpleResponse](session, query)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.System](session, query)
 
 	return result, err
 }
@@ -208,6 +209,22 @@ func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, lim
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//beacause of the full text search we need to modify the search string
+	search = helpers.GetFullTextSearchString(search)
+
+	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 
 	return result, err
 }
