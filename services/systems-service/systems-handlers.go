@@ -1,7 +1,9 @@
 package systemsService
 
 import (
+	"encoding/json"
 	"net/http"
+	"panda/apigateway/helpers"
 	"panda/apigateway/services/systems-service/models"
 
 	"github.com/rs/zerolog/log"
@@ -20,6 +22,7 @@ type ISystemsHandlers interface {
 	CreateNewSystem() echo.HandlerFunc
 	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
+	GetSystemsWithSearchAndPagination() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -37,6 +40,8 @@ func (h *SystemsHandlers) GetSubSystemsByParentUID() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, subSystems)
+		} else {
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -72,6 +77,8 @@ func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, systemDetail)
+		} else {
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
@@ -84,7 +91,7 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		// lets bind catalogue category data from request body
-		system := new(models.SystemForm)
+		system := new(models.System)
 
 		if err := c.Bind(system); err == nil {
 
@@ -109,11 +116,10 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		// lets bind catalogue category data from request body
-		system := new(models.SystemForm)
+		system := new(models.System)
 
 		if err := c.Bind(system); err == nil {
-			uid := c.Param("uid")
-			system.UID = &uid
+
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
 
@@ -145,5 +151,31 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		pagination := c.QueryParam("pagination")
+		sorting := c.QueryParam("sorting")
+		search := c.QueryParam("search")
+		facilityCode := c.Get("facilityCode").(string)
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		items, err := h.systemsService.GetSystemsWithSearchAndPagination(search, facilityCode, pagingObject, sortingObject)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }

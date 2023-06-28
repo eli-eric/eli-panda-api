@@ -10,9 +10,7 @@ import (
 func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.MiddlewareFunc) {
 	// get all subsystems for given parent system spec. by parentUID
 	// if no parentUID is presented then get all root systems
-	e.GET("/v1/system/subsystems/:parentUID", m.Authorization(h.GetSubSystemsByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
-	e.GET("/v1/system/subsystems/", m.Authorization(h.GetSubSystemsByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
-	e.GET("/v1/system/subsystems", m.Authorization(h.GetSubSystemsByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+	e.GET("/v1/system/:parentUID/subsystems", m.Authorization(h.GetSubSystemsByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	//get system image - base64string
 	e.GET("/v1/system/:uid/image", m.Authorization(h.GetSystemImageByUid(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
@@ -28,4 +26,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.PUT("/v1/system/:uid", m.Authorization(h.UpdateSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
 	e.DELETE("/v1/system/:uid", m.Authorization(h.DeleteSystemRecursive(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	// get systems with search and pagination
+	e.GET("/v1/systems", m.Authorization(h.GetSystemsWithSearchAndPagination(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 }
