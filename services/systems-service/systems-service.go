@@ -140,7 +140,7 @@ func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (res
 func (svc *SystemsService) CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
+	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode, userUID))
 
 	if err != nil {
 		log.Info().Msg(err.Error())
@@ -163,7 +163,7 @@ func (svc *SystemsService) UpdateSystem(system *models.System, facilityCode stri
 		oldSystem, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(system.UID, facilityCode))
 
 		if err == nil {
-			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateSystemQuery(system, &oldSystem, facilityCode))
+			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateSystemQuery(system, &oldSystem, facilityCode, userUID))
 		}
 
 		if err != nil {
