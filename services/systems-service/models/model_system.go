@@ -21,6 +21,7 @@ type System struct {
 	Location      *models.Codebook       `json:"location,omitempty"`
 	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty"`
 	HasSubsystems bool                   `json:"hasSubsystems"`
+	Statistics    *SystemStatistics      `json:"statistics,omitempty"`
 }
 
 type PhysicalItem struct {
@@ -36,4 +37,9 @@ type PhysicalItem struct {
 type SystemSimpleResponse struct {
 	UID  string `json:"uid"`
 	Name string `json:"name"`
+}
+
+type SystemStatistics struct {
+	SubsystemsCount int `json:"subsystemsCount"`
+	SparePartsCount int `json:"sparePartsCount"`
 }
