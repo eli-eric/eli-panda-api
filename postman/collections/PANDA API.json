@@ -1890,13 +1890,59 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/e4569a3d-56c1-4b80-b8c5-3445a6bd7121",
+							"raw": "{{baseUrl}}/system/a7dbd6d6-ecf7-419b-9cde-9a55e1639c83",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
-								"e4569a3d-56c1-4b80-b8c5-3445a6bd7121"
+								"a7dbd6d6-ecf7-419b-9cde-9a55e1639c83"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete System",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "9ae79569-3a06-4fff-b772-63dded153cdf",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/12afcefa-a66d-457e-b824-6f7f7f87de73",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"12afcefa-a66d-457e-b824-6f7f7f87de73"
 							]
 						}
 					},
@@ -1936,7 +1982,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10}",
+							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10}&search=l1",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1950,8 +1996,7 @@
 								},
 								{
 									"key": "search",
-									"value": "vhru",
-									"disabled": true
+									"value": "l1"
 								}
 							]
 						}
