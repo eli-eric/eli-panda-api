@@ -6,22 +6,22 @@ import (
 )
 
 type System struct {
-	UID           string                 `json:"uid" neo4j:"uid"`
-	Name          string                 `json:"name"`
-	ParentPath    []SystemSimpleResponse `json:"parentPath"`
-	ParentUID     *string                `json:"parentUid,omitempty"`
-	Description   *string                `json:"description,omitempty"`
-	SystemType    *models.Codebook       `json:"systemType,omitempty"`
-	SystemCode    *string                `json:"systemCode,omitempty"`
-	SystemAlias   *string                `json:"systemAlias,omitempty"`
-	Owner         *models.Codebook       `json:"owner,omitempty"`
-	Responsible   *models.Codebook       `json:"responsible,omitempty"`
-	Importance    *models.Codebook       `json:"importance,omitempty"`
-	Zone          *models.Codebook       `json:"zone,omitempty"`
-	Location      *models.Codebook       `json:"location,omitempty"`
-	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty"`
-	HasSubsystems bool                   `json:"hasSubsystems"`
-	Statistics    *SystemStatistics      `json:"statistics,omitempty"`
+	UID           string                 `json:"uid" neo4j:"ignore"`
+	Name          string                 `json:"name" neo4j:"prop,name"`
+	ParentPath    []SystemSimpleResponse `json:"parentPath" neo4j:"ignore"`
+	ParentUID     *string                `json:"parentUid,omitempty" neo4j:"ignore"`
+	Description   *string                `json:"description,omitempty" neo4j:"prop,description"`
+	SystemType    *models.Codebook       `json:"systemType,omitempty" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,systemType"`
+	SystemCode    *string                `json:"systemCode,omitempty" neo4j:"prop,systemCode"`
+	SystemAlias   *string                `json:"systemAlias,omitempty" neo4j:"prop,systemAlias"`
+	Owner         *models.Codebook       `json:"owner,omitempty" neo4j:"rel,Employee,HAS_OWNER,owner"`
+	Responsible   *models.Codebook       `json:"responsible,omitempty" neo4j:"rel,Employee,HAS_RESPONSIBLE,responsible"`
+	Importance    *models.Codebook       `json:"importance,omitempty" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,importance"`
+	Zone          *models.Codebook       `json:"zone,omitempty" neo4j:"rel,Zone,HAS_ZONE,zone"`
+	Location      *models.Codebook       `json:"location,omitempty" neo4j:"ignore"`
+	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty" neo4j:"ignore"`
+	HasSubsystems bool                   `json:"hasSubsystems" neo4j:"ignore"`
+	Statistics    *SystemStatistics      `json:"statistics,omitempty" neo4j:"ignore"`
 }
 
 type PhysicalItem struct {
