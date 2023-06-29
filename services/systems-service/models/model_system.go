@@ -27,7 +27,7 @@ type System struct {
 type PhysicalItem struct {
 	UID           string                        `json:"uid"`
 	ItemUsage     *models.Codebook              `json:"itemUsage,omitempty"`
-	Price         *float64                      `json:"price,omitempty"`
+	Price         *any                          `json:"price,omitempty"`
 	Currency      *string                       `json:"currency,omitempty"`
 	EUN           *string                       `json:"eun,omitempty"`
 	SerialNumber  *string                       `json:"serialNumber,omitempty"`
