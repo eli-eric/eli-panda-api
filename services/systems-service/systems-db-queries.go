@@ -108,7 +108,7 @@ func CreateNewSystemQuery(newSystem *models.System, facilityCode string, userUID
 	s.systemCode = $systemCode,
 	s.systemAlias = $systemAlias
 	WITH s, u
-	CREATE(o)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)	
+	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)	
 	WITH s
 	`
 
@@ -147,6 +147,40 @@ func CreateNewSystemQuery(newSystem *models.System, facilityCode string, userUID
 		result.Parameters["parentUID"] = *newSystem.ParentUID
 	}
 
+	if newSystem.PhysicalItem != nil && newSystem.PhysicalItem.UID != "" {
+		//unassign from previous system
+		result.Query += `WITH s MATCH(prevSystem)-[rpiold:CONTAINS_ITEM]->(pi:Item{uid:$physicalItemUID})-[:IS_BASED_ON]->(ci) DELETE rpiold `
+
+		result.Query += `WITH s, pi, ci MERGE(s)-[:CONTAINS_ITEM]->(pi) `
+		result.Query += `
+		WITH s, pi, ci
+		SET pi.lastUpdateTime = datetime(), 
+		pi.lastUpdatedBy = s.lastUpdatedBy,
+		pi.serialNUmber = $serialNumber,
+		pi.price = $price,
+		pi.currency = $currency,
+		ci.name = $catalogueName,
+		ci.description = $catalogueDescription,
+		ci.catalogueNumber = $catalogueNumber `
+
+		result.Parameters["physicalItemUID"] = newSystem.PhysicalItem.UID
+		result.Parameters["serialNumber"] = newSystem.PhysicalItem.SerialNumber
+		result.Parameters["price"] = newSystem.PhysicalItem.Price
+		result.Parameters["currency"] = newSystem.PhysicalItem.Currency
+		result.Parameters["catalogueDescription"] = newSystem.PhysicalItem.CatalogueItem.Description
+		result.Parameters["catalogueName"] = newSystem.PhysicalItem.CatalogueItem.Name
+		result.Parameters["catalogueNumber"] = newSystem.PhysicalItem.CatalogueItem.CatalogueNumber
+
+		if newSystem.PhysicalItem.ItemUsage != nil && newSystem.PhysicalItem.ItemUsage.UID != "" {
+			result.Query += `WITH s, pi, ci OPTIONAL MATCH(pi)-[rpiUsage:HAS_ITEM_USAGE]->() DELETE rpiUsage `
+			result.Query += `WITH s, pi, ci MATCH(piUsage:ItemUsage{uid:$itemUsageUID}) MERGE(pi)-[:HAS_ITEM_USAGE]->(piUsage) `
+			result.Parameters["itemUsageUID"] = newSystem.PhysicalItem.ItemUsage.UID
+		} else {
+			result.Query += `WITH s, pi, ci OPTIONAL MATCH(pi)-[rpiUsage:HAS_ITEM_USAGE]->() DELETE rpiUsage `
+		}
+
+	}
+
 	result.Query += `RETURN s.uid as result`
 
 	result.ReturnAlias = "result"
@@ -162,13 +196,52 @@ func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facil
 	result.Query = `MATCH(s:System{uid:$uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
 
 	if newSystem.Location != nil && newSystem.Location.UID != "" {
+		result.Query += `WITH s OPTIONAL MATCH(s)-[rl:HAS_LOCATION]->() DELETE rl `
 		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
 		result.Parameters["locationUID"] = newSystem.Location.UID
 	} else {
-		result.Query += `WITH s OPTIONAL MATCH(s)-[r:HAS_LOCATION]->() DELETE r `
+		result.Query += `WITH s OPTIONAL MATCH(s)-[rl:HAS_LOCATION]->() DELETE rl `
 	}
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newSystem, *oldSystem, "s")
+
+	if newSystem.PhysicalItem != nil && newSystem.PhysicalItem.UID != "" {
+		//unassign from previous system if its another system
+		if oldSystem.PhysicalItem != nil && oldSystem.PhysicalItem.UID != newSystem.PhysicalItem.UID {
+			result.Query += `WITH s MATCH(prevSystem)-[rpiold:CONTAINS_ITEM]->(pi:Item{uid:$physicalItemUID})-[:IS_BASED_ON]->(ci) DELETE rpiold `
+			result.Query += `WITH s, pi, ci MERGE(s)-[:CONTAINS_ITEM]->(pi) `
+		} else if oldSystem.PhysicalItem != nil && oldSystem.PhysicalItem.UID == newSystem.PhysicalItem.UID {
+			result.Query += `WITH s MATCH(s)-[:CONTAINS_ITEM]->(pi:Item{uid:$physicalItemUID})-[:IS_BASED_ON]->(ci) `
+		}
+
+		result.Query += `
+		WITH s, pi, ci
+		SET pi.lastUpdateTime = datetime(), 
+		pi.lastUpdatedBy = s.lastUpdatedBy,
+		pi.serialNUmber = $serialNumber,
+		pi.price = $price,
+		pi.currency = $currency,
+		ci.name = $catalogueName,
+		ci.description = $catalogueDescription,
+		ci.catalogueNumber = $catalogueNumber `
+
+		result.Parameters["physicalItemUID"] = newSystem.PhysicalItem.UID
+		result.Parameters["serialNumber"] = newSystem.PhysicalItem.SerialNumber
+		result.Parameters["price"] = newSystem.PhysicalItem.Price
+		result.Parameters["currency"] = newSystem.PhysicalItem.Currency
+		result.Parameters["catalogueDescription"] = newSystem.PhysicalItem.CatalogueItem.Description
+		result.Parameters["catalogueName"] = newSystem.PhysicalItem.CatalogueItem.Name
+		result.Parameters["catalogueNumber"] = newSystem.PhysicalItem.CatalogueItem.CatalogueNumber
+
+		if newSystem.PhysicalItem.ItemUsage != nil && newSystem.PhysicalItem.ItemUsage.UID != "" {
+			result.Query += `WITH s, pi, ci OPTIONAL MATCH(pi)-[rpiUsage:HAS_ITEM_USAGE]->() DELETE rpiUsage `
+			result.Query += `WITH s, pi, ci MATCH(piUsage:ItemUsage{uid:$itemUsageUID}) MERGE(pi)-[:HAS_ITEM_USAGE]->(piUsage) `
+			result.Parameters["itemUsageUID"] = newSystem.PhysicalItem.ItemUsage.UID
+		} else {
+			result.Query += `WITH s, pi, ci OPTIONAL MATCH(pi)-[rpiUsage:HAS_ITEM_USAGE]->() DELETE rpiUsage `
+		}
+
+	}
 
 	result.Query += `RETURN s.uid as result`
 
@@ -273,6 +346,8 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
+		price: physicalItem.price,
+		currency: physicalItem.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
 		catalogueItem: case when catalogueItem is not null then {
 			uid: catalogueItem.uid,
@@ -394,6 +469,8 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
+		price: physicalItem.price,
+		currency: physicalItem.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
 		catalogueItem: case when catalogueItem is not null then {
 			uid: catalogueItem.uid,
@@ -447,6 +524,8 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
+		price: physicalItem.price,
+		currency: physicalItem.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
 		catalogueItem: case when catalogueItem is not null then {
 			uid: catalogueItem.uid,

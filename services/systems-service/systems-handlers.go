@@ -106,6 +106,8 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 
 			return echo.ErrInternalServerError
 
+		} else {
+			log.Error().Msg(err.Error())
 		}
 		return echo.ErrBadRequest
 	}
