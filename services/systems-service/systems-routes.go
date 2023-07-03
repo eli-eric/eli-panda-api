@@ -29,4 +29,10 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// get systems with search and pagination
 	e.GET("/v1/systems", m.Authorization(h.GetSystemsWithSearchAndPagination(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	// get systems for relationship
+	e.GET("/v1/systems/for-relationship", m.Authorization(h.GetSystemsForRelationship(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	// get system relationships
+	e.GET("/v1/system/:uid/relationships", m.Authorization(h.GetSystemRelationships(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 }

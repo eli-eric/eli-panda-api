@@ -33,6 +33,8 @@ type ISystemsService interface {
 	DeleteSystemRecursive(uid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error)
+	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
+	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
 }
 
 // Create new security service instance
@@ -225,6 +227,32 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//beacause of the full text search we need to modify the search string
+	search = helpers.GetFullTextSearchString(search)
+
+	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemRelationships(uid string) (result []models.SystemRelationship, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemRelationshipsQuery(uid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemRelationship](session, query)
 
 	return result, err
 }

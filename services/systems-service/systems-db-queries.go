@@ -542,3 +542,30 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH(sys:System{uid: $uid, deleted: false})
+	MATCH (parents)-[rParent:HAS_SUBSYSTEM]->(sys)	
+	return distinct {
+		direction: "to",
+		foreignSystemName: parents.name,
+		relationUid: rParent.uid,
+		relationTypeCode: "HAS_SUBSYSTEM"
+		} as relationships
+	UNION
+	MATCH(sys:System{uid: $uid, deleted: false})
+	MATCH (sys)-[rSubsys:HAS_SUBSYSTEM]->(subsys)	
+	return distinct {
+		direction: "from",
+		foreignSystemName: subsys.name,
+		relationUid: rSubsys.uid,
+		relationTypeCode: "HAS_SUBSYSTEM"
+		} as relationships;`
+
+	result.ReturnAlias = "relationships"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
