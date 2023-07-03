@@ -43,3 +43,19 @@ type SystemStatistics struct {
 	SubsystemsCount int `json:"subsystemsCount"`
 	SparePartsCount int `json:"sparePartsCount"`
 }
+
+// {
+// 	"0": {
+// 		"direction": "to",
+// 		"relationTypeCode": "IS_SPARE_FOR",
+// 		"foreignSystemName": "Switchable radical protocol",
+// 		"relationUid": "bd6f9ad8-28f3-4a2c-a499-9d7519d28e1d"
+// 	}
+// }
+
+type SystemRelationship struct {
+	Direction         string `json:"direction"`
+	RelationTypeCode  string `json:"relationTypeCode"`
+	ForeignSystemName string `json:"foreignSystemName"`
+	RelationUID       string `json:"relationUid"`
+}

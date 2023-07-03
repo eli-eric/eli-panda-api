@@ -23,6 +23,8 @@ type ISystemsHandlers interface {
 	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
+	GetSystemsForRelationship() echo.HandlerFunc
+	GetSystemRelationships() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -172,6 +174,52 @@ func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 		json.Unmarshal([]byte(sorting), &sortingObject)
 
 		items, err := h.systemsService.GetSystemsWithSearchAndPagination(search, facilityCode, pagingObject, sortingObject)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *SystemsHandlers) GetSystemsForRelationship() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+		search := c.QueryParam("search")
+
+		pagingObject := new(helpers.Pagination)
+		pagination := c.QueryParam("pagination")
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		sorting := c.QueryParam("sorting")
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		systemFromUid := c.QueryParam("systemFromUid")
+		relationTypeCode := c.QueryParam("relationTypeCode")
+
+		items, err := h.systemsService.GetSystemsForRelationship(search, facilityCode, pagingObject, sortingObject, systemFromUid, relationTypeCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *SystemsHandlers) GetSystemRelationships() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		systemUid := c.Param("uid")
+
+		items, err := h.systemsService.GetSystemRelationships(systemUid)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
