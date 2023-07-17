@@ -27,7 +27,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat,categoryPath, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm,cat,categoryPath, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR
@@ -44,7 +44,16 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	categoryPath: max(categoryPath),
 	supplier: supp.name,
 	manufacturerUrl: itm.manufacturerUrl,	
-	details: collect({ propertyName: propName, propertyType: propTypeCode,propertyUnit: unit, propertyGroup: groupName, value: value})
+	details: case when count(prop) > 0 then collect(DISTINCT { 
+		property:{
+			uid: prop.uid,
+			name: prop.name, 
+			listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
+			type: { uid: propType.uid, name: propType.name },
+			unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+			},
+			propertyGroup: groupName, 
+			value: value}) else null end
 	} as items
 	SKIP $skip
 	LIMIT $limit`
