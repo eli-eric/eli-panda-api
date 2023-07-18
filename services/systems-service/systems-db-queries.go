@@ -550,7 +550,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	return distinct {
 		direction: "to",
 		foreignSystemName: parents.name,
-		relationUid: rParent.uid,
+		relationUid: id(rParent),
 		relationTypeCode: "HAS_SUBSYSTEM"
 		} as relationships
 	UNION
@@ -559,13 +559,86 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	return distinct {
 		direction: "from",
 		foreignSystemName: subsys.name,
-		relationUid: rSubsys.uid,
+		relationUid: id(rSubsys),
 		relationTypeCode: "HAS_SUBSYSTEM"
+		} as relationships
+	UNION
+	MATCH(sys:System{uid: $uid, deleted: false})
+	MATCH (parents)-[rParent:IS_SPARE_FOR]->(sys)	
+	return distinct {
+		direction: "to",
+		foreignSystemName: parents.name,
+		relationUid: id(rParent),
+		relationTypeCode: "IS_SPARE_FOR"
+		} as relationships
+	UNION
+	MATCH(sys:System{uid: $uid, deleted: false})
+	MATCH (sys)-[rSubsys:IS_SPARE_FOR]->(subsys)	
+	return distinct {
+		direction: "from",
+		foreignSystemName: subsys.name,
+		relationUid: id(rSubsys),
+		relationTypeCode: "IS_SPARE_FOR"
 		} as relationships;`
 
 	result.ReturnAlias = "relationships"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
+
+	return result
+}
+
+// create new system relationship query
+func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["uid"] = uuid.NewString()
+	result.Parameters["fromSystemUID"] = newRelationship.SystemFromUID
+	result.Parameters["toSystemUID"] = newRelationship.SystemToUID
+	result.Parameters["relationshipTypeCode"] = newRelationship.RelationTypeCode
+	result.Parameters["lastUpdateBy"] = userUID
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode}) WITH f	
+	MATCH(u:User{uid: $lastUpdateBy}) WITH u, f
+	MATCH(fromSystem:System{uid: $fromSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(toSystem:System{uid: $toSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)`
+
+	if newRelationship.RelationTypeCode == "IS_SPARE_FOR" {
+		result.Query += `CREATE(fromSystem)-[newRel:IS_SPARE_FOR]->(toSystem) `
+	} else {
+		result.Query += `REALTIONSHIP NOT DEFINED`
+	}
+
+	result.Query += `
+	WITH fromSystem, toSystem, u, newRel
+	CREATE(fromSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)	
+	WITH fromSystem, toSystem, newRel
+	CREATE(toSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)	
+	WITH fromSystem, toSystem, newRel
+	`
+
+	result.Query += `RETURN id(newRel) as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func DeleteSystemRelationshipQuery(uid int64, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["lastUpdateBy"] = userUID
+
+	result.Query = `
+	MATCH (u:User{uid: $lastUpdateBy}) WITH u
+	MATCH ()-[r]-() WHERE id(r) = $uid DELETE r
+	WITH u
+	CREATE(u)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)	
+	return true as result`
+
+	result.ReturnAlias = "result"
 
 	return result
 }
