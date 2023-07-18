@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/systems-service/models"
+	"strconv"
 
 	"github.com/rs/zerolog/log"
 
@@ -25,6 +26,8 @@ type ISystemsHandlers interface {
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
 	GetSystemsForRelationship() echo.HandlerFunc
 	GetSystemRelationships() echo.HandlerFunc
+	DeleteSystemRelationship() echo.HandlerFunc
+	CreateNewSystemRelationship() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -227,5 +230,58 @@ func (h *SystemsHandlers) GetSystemRelationships() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+func (h *SystemsHandlers) DeleteSystemRelationship() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get userUID
+		userUID := c.Get("userUID").(string)
+		//get uid path param
+		uid := c.Param("uid")
+		//convert uid to int64
+		uidInt64, err := strconv.ParseInt(uid, 10, 64)
+
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+
+		err = h.systemsService.DeleteSystemRelationship(uidInt64, userUID)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		systemRelationshipRequest := new(models.SystemRelationshipRequest)
+
+		if err := c.Bind(systemRelationshipRequest); err == nil {
+
+			userUID := c.Get("userUID").(string)
+			facilityCode := c.Get("facilityCode").(string)
+
+			newId, err := h.systemsService.CreateNewSystemRelationship(systemRelationshipRequest, facilityCode, userUID)
+
+			if err == nil {
+				return c.String(http.StatusCreated, strconv.FormatInt(newId, 10))
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
 	}
 }

@@ -35,6 +35,8 @@ type ISystemsService interface {
 	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error)
 	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
+	DeleteSystemRelationship(uid int64, userUID string) (err error)
+	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
 }
 
 // Create new security service instance
@@ -255,4 +257,30 @@ func (svc *SystemsService) GetSystemRelationships(uid string) (result []models.S
 	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemRelationship](session, query)
 
 	return result, err
+}
+
+func (svc *SystemsService) DeleteSystemRelationship(uid int64, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteSystemRelationshipQuery(uid, userUID)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
+	if err != nil {
+		log.Info().Msg(err.Error())
+	}
+
+	return err
+}
+
+func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	relId, err = helpers.WriteNeo4jAndReturnSingleValue[int64](session, CreateNewSystemRelationshipQuery(newRelationship, facilityCode, userUID))
+
+	if err != nil {
+		log.Info().Msg(err.Error())
+	}
+
+	return relId, err
 }
