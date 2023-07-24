@@ -260,7 +260,7 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						}
 					} else if fieldType == "*models.Codebook" {
 
-						neo4jAlias := neo4jTags[3]
+						neo4jAlias := neo4jTags[4]
 						neo4jID := "uid"
 
 						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
@@ -278,7 +278,7 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						}
 					} else if fieldType == "models.Codebook" {
 
-						neo4jAlias := neo4jTags[3]
+						neo4jAlias := neo4jTags[4]
 						neo4jID := "uid"
 
 						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Interface().(models.Codebook).UID

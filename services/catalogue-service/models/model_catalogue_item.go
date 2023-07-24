@@ -45,7 +45,7 @@ type CatalogueItemSimple struct {
 
 	CategoryName string `json:"categoryName,omitempty"`
 
-	Manufacturer string `json:"manufacturer,omitempty"`
+	Supplier *models.Codebook `json:"supplier,omitempty"`
 
 	ManufacturerNumber string `json:"manufacturerNumber,omitempty"`
 

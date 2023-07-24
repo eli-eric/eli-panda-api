@@ -42,7 +42,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	description: itm.description,
 	categoryName: cat.name,
 	categoryPath: max(categoryPath),
-	supplier: supp.name,
+	supplier: case when supp is not null then { uid: supp.uid, name: supp.name } else null end,
 	manufacturerUrl: itm.manufacturerUrl,	
 	details: case when count(prop) > 0 then collect(DISTINCT { 
 		property:{
@@ -177,7 +177,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
 	category: {uid: cat.uid, name: cat.name},
-	manufacturer: case when supp is not null then {uid: supp.uid, name: supp.name} else null end,
+	supplier: case when supp is not null then {uid: supp.uid, name: supp.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,	
 	details: case when count(prop) > 0 then collect(DISTINCT { 
 					property:{
