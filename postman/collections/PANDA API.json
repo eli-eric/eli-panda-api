@@ -1796,12 +1796,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/subsystems",
+							"raw": "{{baseUrl}}/system/d06a074f-c78a-4cd3-9006-5a0c3259e8b6/subsystems",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
+								"d06a074f-c78a-4cd3-9006-5a0c3259e8b6",
 								"subsystems"
 							]
 						}
@@ -1889,13 +1890,114 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/414fe0a8-7c92-411c-a483-2234157dadf8",
+							"raw": "{{baseUrl}}/system/a7dbd6d6-ecf7-419b-9cde-9a55e1639c83",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
-								"414fe0a8-7c92-411c-a483-2234157dadf8"
+								"a7dbd6d6-ecf7-419b-9cde-9a55e1639c83"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete System",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "9ae79569-3a06-4fff-b772-63dded153cdf",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/12afcefa-a66d-457e-b824-6f7f7f87de73",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"12afcefa-a66d-457e-b824-6f7f7f87de73"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get systems",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "ebd5abd9-3ec4-49ed-a41b-80b3bec62366",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10}&search=l1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"systems"
+							],
+							"query": [
+								{
+									"key": "pagination",
+									"value": "{\"page\" : 1 , \"pageSize\": 10}"
+								},
+								{
+									"key": "search",
+									"value": "l1"
+								}
 							]
 						}
 					},
@@ -2449,6 +2551,66 @@
 				}
 			],
 			"id": "e9823618-5124-4a8d-a82f-3f2c07425119"
+		},
+		{
+			"name": "TreeCodebooks",
+			"item": [
+				{
+					"name": "Catalogue Categories",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e494b171-9ce5-4882-9b27-372db935cc44",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/CATALOGUE_CATEGORY/tree",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"CATALOGUE_CATEGORY",
+								"tree"
+							],
+							"query": [
+								{
+									"key": "searchText",
+									"value": "",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "01487c49-9ef9-4ea5-b363-9197129bef0f"
 		},
 		{
 			"name": "Test anything",

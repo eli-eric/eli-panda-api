@@ -10,6 +10,18 @@ type Codebook struct {
 	AdditionalData string `json:"additionalData,omitempty"`
 }
 
+type CodebookTreeItem struct {
+	UID      string             `json:"uid"`
+	Name     string             `json:"name"`
+	Children []CodebookTreeItem `json:"children,omitempty"`
+}
+
+type CodebookTreeItemCatalogueCategory struct {
+	UID      string                              `json:"uid"`
+	Name     string                              `json:"name"`
+	Children []CodebookTreeItemCatalogueCategory `json:"has_subcategory,omitempty"`
+}
+
 type CodebookType struct {
 	Code      string `json:"code"`
 	Type      string `json:"type"`

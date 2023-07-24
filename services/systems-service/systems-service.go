@@ -25,13 +25,18 @@ type ISystemsService interface {
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
-	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.SystemSimpleResponse, err error)
+	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
-	GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error)
-	CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error)
-	UpdateSystem(newSystem *models.SystemForm, facilityCode string, userUID string) (err error)
+	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
+	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
+	UpdateSystem(newSystem *models.System, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
+	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error)
+	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
+	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
+	DeleteSystemRelationship(uid int64, userUID string) (err error)
+	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
 }
 
 // Create new security service instance
@@ -108,12 +113,12 @@ func (svc *SystemsService) GetZonesCodebook(facilityCode string) (result []codeb
 	return result, err
 }
 
-func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.SystemSimpleResponse, err error) {
+func (svc *SystemsService) GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.System, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := GetSubSystemsQuery(parentUID, facilityCode)
-	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemSimpleResponse](session, query)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.System](session, query)
 
 	return result, err
 }
@@ -128,52 +133,52 @@ func (svc *SystemsService) GetSystemImageByUid(uid string) (result string, err e
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (result models.SystemResponse, err error) {
+func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (result models.System, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.SystemResponse](session, SystemDetailQuery(uid, facilityCode))
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(uid, facilityCode))
 
 	return result, err
 }
 
-func (svc *SystemsService) CreateNewSystem(system *models.SystemForm, facilityCode string, userUID string) (uid string, err error) {
+func (svc *SystemsService) CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode))
+	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemQuery(system, facilityCode, userUID))
 
 	if err != nil {
 		log.Info().Msg(err.Error())
-	} else {
-		go func() {
-			// we dont want to log image data
-			system.Image = nil
-			helpers.LogDBHistory(session, uid, nil, system, userUID, helpers.DB_LOG_CREATE)
-		}()
 	}
+	// we will do that later, more precise
+	// else {
+	// 	go func() {
+	// 		helpers.LogDBHistory(session, uid, nil, system, userUID, helpers.DB_LOG_CREATE)
+	// 	}()
+	// }
 
 	return uid, err
 }
 
-func (svc *SystemsService) UpdateSystem(system *models.SystemForm, facilityCode string, userUID string) (err error) {
+func (svc *SystemsService) UpdateSystem(system *models.System, facilityCode string, userUID string) (err error) {
 
 	if system != nil {
 		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-		oldSystem, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.SystemForm](session, SystemFormDetailQuery(*system.UID, facilityCode))
+		oldSystem, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(system.UID, facilityCode))
 
 		if err == nil {
-			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateSystemQuery(system, &oldSystem, facilityCode))
+			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateSystemQuery(system, &oldSystem, facilityCode, userUID))
 		}
 
 		if err != nil {
 			log.Info().Msg(err.Error())
-		} else {
-			go func() {
-				// we dont want to log image data
-				system.Image = nil
-				helpers.LogDBHistory(session, *oldSystem.UID, oldSystem, system, userUID, helpers.DB_LOG_UPDATE)
-			}()
 		}
+		// we will do that later, more precise
+		// else {
+		// 	go func() {
+		// 		helpers.LogDBHistory(session, oldSystem.UID, oldSystem, system, userUID, helpers.DB_LOG_UPDATE)
+		// 	}()
+		// }
 
 	} else {
 		err = helpers.ERR_INVALID_INPUT
@@ -210,4 +215,72 @@ func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, lim
 	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
+}
+
+func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//beacause of the full text search we need to modify the search string
+	search = helpers.GetFullTextSearchString(search)
+
+	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	//beacause of the full text search we need to modify the search string
+	search = helpers.GetFullTextSearchString(search)
+
+	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemRelationships(uid string) (result []models.SystemRelationship, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemRelationshipsQuery(uid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemRelationship](session, query)
+
+	return result, err
+}
+
+func (svc *SystemsService) DeleteSystemRelationship(uid int64, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteSystemRelationshipQuery(uid, userUID)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
+	if err != nil {
+		log.Info().Msg(err.Error())
+	}
+
+	return err
+}
+
+func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	relId, err = helpers.WriteNeo4jAndReturnSingleValue[int64](session, CreateNewSystemRelationshipQuery(newRelationship, facilityCode, userUID))
+
+	if err != nil {
+		log.Info().Msg(err.Error())
+	}
+
+	return relId, err
 }

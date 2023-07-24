@@ -281,7 +281,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 			// assign system to the item only  if system(techn. unit) is set
 			if orderLine.System != nil {
-				result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, deleted: false, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
 				result.Query += fmt.Sprintf(`MATCH(f:Facility{code: $facilityCode})  MERGE(sys%[1]v)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm%[1]v `, idxLine)
 
 				//
@@ -378,7 +378,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 
 				// assign system to the item only  if system(techn. unit) is set
 				if orderLine.System != nil {
-					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, deleted: false, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
 					result.Query += fmt.Sprintf(`MATCH(f:Facility{code: $facilityCode})  MERGE(sys%[1]v)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm%[1]v `, idxLine)
 
 					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
@@ -613,14 +613,14 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 		result.Query = `
 		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.printEUN = true
 	WITH o, itm, ci
-	OPTIONAL MATCH (ci)-[:HAS_MANUFACTURER]->(man)
-	WITH o, itm, ci, man
+	OPTIONAL MATCH (ci)-[:HAS_SUPPLIER]->(supplier)
+	WITH o, itm, ci, supplier
 	RETURN DISTINCT {
 		eun: itm.eun,
 		name: itm.name,
 		catalogueNumber: ci.catalogueNumber,
 		serialNumber: itm.serialNumber,
-		manufacturer: man.manufacturer,
+		manufacturer: supplier.name,
 		quantity: 1
 	} as items `
 
@@ -628,14 +628,14 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 		result.Query = `	
 	MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.eun IN $euns
 	WITH o, itm, ci
-	OPTIONAL MATCH (ci)-[:HAS_MANUFACTURER]->(man)
-	WITH o, itm, ci, man
+	OPTIONAL MATCH (ci)-[:HAS_SUPPLIER]->(supplier)
+	WITH o, itm, ci, supplier
 	RETURN DISTINCT {
 		eun: itm.eun,
 		name: itm.name,
 		catalogueNumber: ci.catalogueNumber,
 		serialNumber: itm.serialNumber,
-		manufacturer: man.manufacturer,
+		manufacturer: supplier.name,
 		quantity: 1
 	} as items `
 

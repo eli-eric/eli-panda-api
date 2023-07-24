@@ -15,7 +15,7 @@ type CatalogueItem struct {
 
 	Category models.Codebook `json:"category,omitempty" neo4j:"rel,CatalogueCategory,BELONGS_TO_CATEGORY,uid,cc"`
 
-	Manufacturer *models.Codebook `json:"manufacturer,omitempty" neo4j:"rel,Manufacturer,HAS_MANUFACTURER,uid,man"`
+	Supplier *models.Codebook `json:"supplier,omitempty" neo4j:"rel,Supplier,HAS_SUPPLIER,uid,supp"`
 
 	ManufacturerNumber *string `json:"manufacturerNumber,omitempty" neo4j:"prop,manufacturerNumber"`
 
@@ -45,7 +45,7 @@ type CatalogueItemSimple struct {
 
 	CategoryName string `json:"categoryName,omitempty"`
 
-	Manufacturer string `json:"manufacturer,omitempty"`
+	Supplier *models.Codebook `json:"supplier,omitempty"`
 
 	ManufacturerNumber string `json:"manufacturerNumber,omitempty"`
 

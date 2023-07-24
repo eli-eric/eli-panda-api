@@ -24,6 +24,7 @@ type CodebookService struct {
 
 type ICodebookService interface {
 	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error)
+	GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 }
@@ -93,6 +94,17 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 	}
 
 	return codebookResponse, err
+}
+
+func (svc *CodebookService) GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error) {
+
+	switch codebookCode {
+
+	case "CATALOGUE_CATEGORY":
+		treeData, err = svc.catalogueService.GetCatalogueCategoriesCodebookTree()
+	}
+
+	return treeData, err
 }
 
 func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error) {
