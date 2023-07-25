@@ -30,10 +30,10 @@ type OrderDetail struct {
 	OrderNumber            *string                  `json:"orderNumber" neo4j:"prop,orderNumber"`
 	ContractNumber         *string                  `json:"contractNumber" neo4j:"prop,contractNumber"`
 	Notes                  *string                  `json:"notes" neo4j:"prop,notes"`
-	Supplier               *codebookModels.Codebook `json:"supplier" neo4j:"rel,Supplier,HAS_SUPPLIER,supplier"`
-	OrderStatus            *codebookModels.Codebook `json:"orderStatus" neo4j:"rel,OrderStatus,HAS_ORDER_STATUS,orderStatus"`
-	Requestor              *codebookModels.Codebook `json:"requestor" neo4j:"rel,Employee,HAS_REQUESTOR,requestor"`
-	ProcurementResponsible *codebookModels.Codebook `json:"procurementResponsible" neo4j:"rel,Employee,HAS_PROCUREMENT_RESPONSIBLE,procurementResponsible"`
+	Supplier               *codebookModels.Codebook `json:"supplier" neo4j:"rel,Supplier,HAS_SUPPLIER,uid,supplier"`
+	OrderStatus            *codebookModels.Codebook `json:"orderStatus" neo4j:"rel,OrderStatus,HAS_ORDER_STATUS,uid,orderStatus"`
+	Requestor              *codebookModels.Codebook `json:"requestor" neo4j:"rel,Employee,HAS_REQUESTOR,uid,requestor"`
+	ProcurementResponsible *codebookModels.Codebook `json:"procurementResponsible" neo4j:"rel,Employee,HAS_PROCUREMENT_RESPONSIBLE,uid,procurementResponsible"`
 	OrderDate              time.Time                `json:"orderDate" neo4j:"prop,orderDate"`
 	OrderLines             []OrderLine              `json:"orderLines"`
 }

@@ -11,13 +11,13 @@ type System struct {
 	ParentPath    []SystemSimpleResponse `json:"parentPath" neo4j:"ignore"`
 	ParentUID     *string                `json:"parentUid,omitempty" neo4j:"ignore"`
 	Description   *string                `json:"description,omitempty" neo4j:"prop,description"`
-	SystemType    *models.Codebook       `json:"systemType,omitempty" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,systemType"`
+	SystemType    *models.Codebook       `json:"systemType,omitempty" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,uid,systemType"`
 	SystemCode    *string                `json:"systemCode,omitempty" neo4j:"prop,systemCode"`
 	SystemAlias   *string                `json:"systemAlias,omitempty" neo4j:"prop,systemAlias"`
-	Owner         *models.Codebook       `json:"owner,omitempty" neo4j:"rel,Employee,HAS_OWNER,owner"`
-	Responsible   *models.Codebook       `json:"responsible,omitempty" neo4j:"rel,Employee,HAS_RESPONSIBLE,responsible"`
-	Importance    *models.Codebook       `json:"importance,omitempty" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,importance"`
-	Zone          *models.Codebook       `json:"zone,omitempty" neo4j:"rel,Zone,HAS_ZONE,zone"`
+	Owner         *models.Codebook       `json:"owner,omitempty" neo4j:"rel,Employee,HAS_OWNER,uid,owner"`
+	Responsible   *models.Codebook       `json:"responsible,omitempty" neo4j:"rel,Employee,HAS_RESPONSIBLE,uid,responsible"`
+	Importance    *models.Codebook       `json:"importance,omitempty" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,uid,importance"`
+	Zone          *models.Codebook       `json:"zone,omitempty" neo4j:"rel,Zone,HAS_ZONE,uid,zone"`
 	Location      *models.Codebook       `json:"location,omitempty" neo4j:"ignore"`
 	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty" neo4j:"ignore"`
 	HasSubsystems bool                   `json:"hasSubsystems" neo4j:"ignore"`
