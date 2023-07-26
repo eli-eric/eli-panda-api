@@ -31,11 +31,19 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 
 	result.Parameters = make(map[string]interface{})
 
+	//beacause of the full text search we need to modify the search string
+	searchFulltext := helpers.GetFullTextSearchString(searchString)
+
 	if searchString == "" {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH o "
 	} else {
 		result.Query = `
-		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order AND o.deleted = false WITH o
+		CALL {
+			CALL db.index.fulltext.queryNodes('searchIndexOrders', $searchFulltext) YIELD node AS o WHERE o:Order AND o.deleted = false return o
+			UNION
+			MATCH(o)-[:HAS_ORDER_LINE]->(itm) where o.deleted = false AND toLower(itm.eun) = $searchString return o
+		}
+		WITH o
 		MATCH(f:Facility{code: $facilityCode}) WITH f, o
 		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
 		WITH o `
@@ -91,7 +99,8 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 `
 	result.ReturnAlias = "orders"
 
-	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["searchFulltext"] = strings.ToLower(searchFulltext)
+	result.Parameters["searchString"] = strings.ToLower(searchString)
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
 	result.Parameters["facilityCode"] = facilityCode
@@ -124,11 +133,19 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, supplierUID st
 
 	result.Parameters = make(map[string]interface{})
 
+	//beacause of the full text search we need to modify the search string
+	searchFulltext := helpers.GetFullTextSearchString(searchString)
+
 	if searchString == "" {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(o:Order{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH o "
 	} else {
 		result.Query = `
-		CALL db.index.fulltext.queryNodes('searchIndexOrders', $search) YIELD node AS o WHERE o:Order AND o.deleted = false WITH o
+		CALL {
+			CALL db.index.fulltext.queryNodes('searchIndexOrders', $searchFulltext) YIELD node AS o WHERE o:Order AND o.deleted = false return o
+			UNION
+			MATCH(o)-[:HAS_ORDER_LINE]->(itm) where o.deleted = false AND toLower(itm.eun) = $searchString return o
+		}
+		WITH o
 		MATCH(f:Facility{code: $facilityCode}) WITH f, o
 		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
 		WITH o `
@@ -164,7 +181,8 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, supplierUID st
 `
 	result.ReturnAlias = "count"
 
-	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["searchFulltext"] = strings.ToLower(searchFulltext)
+	result.Parameters["searchString"] = strings.ToLower(searchString)
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
