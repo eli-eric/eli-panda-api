@@ -26,6 +26,7 @@ type IOrdersService interface {
 	GetItemsForEunPrint(euns []string) (result []models.ItemForEunPrint, err error)
 	SetItemPrintEUN(eun string, printEUN bool) (err error)
 	GetOrderUidByOrderNumber(orderNumber string) (result string, err error)
+	GetOrdersForCatalogueItem(catalogueItemUid string) (result []models.OrderListItem, err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -157,6 +158,18 @@ func (svc *OrdersService) GetOrderUidByOrderNumber(orderNumber string) (result s
 
 	query := GetOrderUidByOrderNumberQuery(orderNumber)
 	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
+
+	return result, err
+}
+
+func (svc *OrdersService) GetOrdersForCatalogueItem(catalogueItemUid string) (result []models.OrderListItem, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetOrdersForCatalogueItemQuery(catalogueItemUid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.OrderListItem](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
 }

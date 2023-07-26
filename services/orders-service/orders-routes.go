@@ -28,4 +28,6 @@ func MapOrdersRoutes(e *echo.Echo, h IOrdersHandlers, jwtMiddleware echo.Middlew
 	e.PUT("/v1/orders/eun-for-print/:eun", m.Authorization(h.SetItemPrintEUN(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_DELIVERY_EDIT), jwtMiddleware)
 
 	e.GET("/v1/order-uid-by-order-number/:orderNumber", h.GetOrderUidByOrderNumber())
+
+	e.GET("/v1/catalogue/:catalogueItemUid/orders", m.Authorization(h.GetOrdersForCatalogueItem(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 }

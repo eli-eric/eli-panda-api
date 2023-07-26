@@ -26,6 +26,7 @@ type IOrdersHandlers interface {
 	GetItemsForEunPrint() echo.HandlerFunc
 	SetItemPrintEUN() echo.HandlerFunc
 	GetOrderUidByOrderNumber() echo.HandlerFunc
+	GetOrdersForCatalogueItem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -251,6 +252,24 @@ func (h *OrdersHandlers) GetOrderUidByOrderNumber() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, orderUid)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrNotFound
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) GetOrdersForCatalogueItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		catalogueItemUid := c.Param("catalogueItemUid")
+
+		orders, err := h.ordersService.GetOrdersForCatalogueItem(catalogueItemUid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, orders)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrNotFound
