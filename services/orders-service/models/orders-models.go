@@ -13,8 +13,7 @@ type OrderListItem struct {
 	ContractNumber         string                   `json:"contractNumber"`
 	Notes                  string                   `json:"notes"`
 	Supplier               string                   `json:"supplier"`
-	OrderStatus            string                   `json:"orderStatus"`
-	OrderStatusObj         *codebookModels.Codebook `json:"orderStatusObj"`
+	OrderStatus            *codebookModels.Codebook `json:"orderStatus"`
 	DeliveryStatus         int                      `json:"deliveryStatus"` //0 - none delivered, 1 - partially delivered, 2 - delivered
 	OrderDate              time.Time                `json:"orderDate"`
 	LastUpdateTime         time.Time                `json:"lastUpdateTime"`

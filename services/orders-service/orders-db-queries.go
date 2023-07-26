@@ -74,8 +74,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 	contractNumber: o.contractNumber,
 	orderDate: o.orderDate,
 	supplier: s.name,
-	orderStatus: os.name,
-	orderStatusObj: case when os is not null then { uid: os.uid,name: os.name, code: os.code} else null end ,
+	orderStatus: case when os is not null then { uid: os.uid,name: os.name, code: os.code} else null end ,
 	deliveryStatus: o.deliveryStatus,
 	requestor: req.lastName + " " + req.firstName,
 	procurementResponsible: proc.lastName + " " + proc.firstName,
@@ -668,6 +667,39 @@ func GetOrderUidByOrderNumberQuery(orderNumber string) (result helpers.DatabaseQ
 	result.ReturnAlias = "uid"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["orderNumber"] = orderNumber
+
+	return result
+}
+
+// db query to get all orders for a given catalogue item by catalogue item uid
+func GetOrdersForCatalogueItemQuery(catalogueItemUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH (o)-[:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci{uid: $catalogueItemUID}) 
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
+	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
+	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
+	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
+	RETURN DISTINCT {  
+		uid: o.uid,
+		name: o.name,
+		orderNumber: o.orderNumber,
+		requestNumber: o.requestNumber,
+		contractNumber: o.contractNumber,
+		orderDate: o.orderDate,
+		supplier: s.name,
+		orderStatus: case when os is not null then { uid: os.uid,name: os.name, code: os.code} else null end ,
+		deliveryStatus: o.deliveryStatus,
+		requestor: req.lastName + " " + req.firstName,
+		procurementResponsible: proc.lastName + " " + proc.firstName,
+		notes: o.notes,
+		lastUpdateTime: o.lastUpdateTime,
+		lastUpdateBy: o.lastUpdateBy
+	} AS orders`
+
+	result.ReturnAlias = "orders"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["catalogueItemUID"] = catalogueItemUID
 
 	return result
 }
