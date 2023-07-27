@@ -61,7 +61,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	result.ReturnAlias = "items"
 
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = search
+	result.Parameters["searchText"] = strings.ToLower(search)
 	result.Parameters["skip"] = skip
 	result.Parameters["limit"] = limit
 	result.Parameters["categoryPath"] = categoryPath
@@ -98,7 +98,7 @@ func CatalogueItemsFiltersTotalCountQuery(search string, categoryPath string) (r
 	result.ReturnAlias = "itemsCount"
 
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = search
+	result.Parameters["searchText"] = strings.ToLower(search)
 	result.Parameters["categoryPath"] = categoryPath
 
 	return result
