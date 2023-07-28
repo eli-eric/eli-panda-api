@@ -270,10 +270,11 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 	MATCH (n:System{isTechnologicalUnit: true, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->(:System{isTechnologicalUnit: true, deleted: false})
 	WITH n
-	WHERE toLower(n.name) CONTAINS $searchText
 	OPTIONAL MATCH (parent{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(n{isTechnologicalUnit: true, deleted: false})
 	WITH n, collect(parent.name) AS parentNames
-	RETURN {uid: n.uid, name: n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
+	WITH {uid: n.uid, name: n.name + " < " + apoc.text.join((parentNames), " < ")} AS result
+	WHERE toLower(result.name) CONTAINS $searchText
+	RETURN result
 	ORDER BY result.name
 	LIMIT $limit`
 
@@ -281,11 +282,12 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 		result.Query = `
 	MATCH (n:System{deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->()
-	WITH n
-	WHERE toLower(n.name) CONTAINS $searchText
+	WITH n	
 	OPTIONAL MATCH (parent{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(n)
 	WITH n, collect(parent.name) AS parentNames
-	RETURN {uid: n.uid, name: n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} AS result
+	WITH {uid: n.uid, name: n.name + " < " + apoc.text.join((parentNames), " < ")} AS result
+	WHERE toLower(result.name) CONTAINS $searchText
+	RETURN result
 	ORDER BY result.name
 	LIMIT $limit`
 
