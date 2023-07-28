@@ -443,7 +443,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 					//delete existing system
 					result.Query += fmt.Sprintf(`OPTIONAL MATCH(oldSystem%[1]v)-[:CONTAINS_ITEM]->(itm%[1]v) DETACH DELETE oldSystem%[1]v WITH o, ccg, itm%[1]v `, idxLine)
 					//then create new one
-					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o,ccg, itm%[1]v, sys%[1]v `, idxLine)
+					result.Query += fmt.Sprintf(`MATCH(parentSystem%[1]v:System{uid: $systemUID%[1]v})  MERGE(parentSystem%[1]v)-[:HAS_SUBSYSTEM]->(sys%[1]v:System{ uid: $newSystemUID%[1]v, deleted: false, name: $itemName%[1]v  })-[:CONTAINS_ITEM]->(itm%[1]v) WITH o,ccg, itm%[1]v, sys%[1]v `, idxLine)
 					result.Query += fmt.Sprintf(`MATCH(f:Facility{code: $facilityCode})  MERGE(sys%[1]v)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm%[1]v, sys%[1]v `, idxLine)
 
 					result.Parameters[fmt.Sprintf("systemUID%v", idxLine)] = orderLine.System.UID
