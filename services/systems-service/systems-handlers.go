@@ -129,6 +129,7 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
+			system.UID = c.Param("uid")
 
 			err := h.systemsService.UpdateSystem(system, facilityCode, userUID)
 
