@@ -1,0 +1,1 @@
+MERGE (r:Role{ uid:'40c299cb-1820-4106-8126-3d6510f1fc70', name: 'Codebooks Admin', code: 'codebooks-admin' });

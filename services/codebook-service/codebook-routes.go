@@ -16,4 +16,8 @@ func MapCodebookRoutes(e *echo.Echo, h ICodebookHandlers, jwtMiddleware echo.Mid
 	e.GET("/v1/codebooks", m.Authorization(h.GetListOfCodebooks(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 	// create new codebook
 	e.POST("/v1/codebook/:codebookCode", m.Authorization(h.CreateNewCodebook(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
+	// update codebook
+	e.PUT("/v1/codebook/:codebookCode/:uid", m.Authorization(h.UpdateCodebook(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
+	// delete codebook
+	e.DELETE("/v1/codebook/:codebookCode/:uid", m.Authorization(h.DeleteCodebook(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 }

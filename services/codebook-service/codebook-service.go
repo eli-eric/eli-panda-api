@@ -26,7 +26,10 @@ type ICodebookService interface {
 	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error)
 	GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
+	GetListOfEditableCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
+	UpdateCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
+	DeleteCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebookUID string) (err error)
 }
 
 // Create new security service instance
@@ -143,6 +146,78 @@ func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode 
 	return result, err
 }
 
+func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error) {
+
+	codebookDefinition := codebooksMap[codebookCode]
+
+	if codebookDefinition != (models.CodebookType{}) {
+		if checkUserRoles(userRoles, codebookDefinition.RoleEdit) {
+
+			if codebookDefinition.NodeLabel != "" {
+				// Open a new Session
+				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+				dbquery := helpers.DatabaseQuery{}
+				dbquery.Query = `				
+				MATCH (n:` + codebookDefinition.NodeLabel + ` {uid: $uid }) 
+					WITH n
+					SET n.name = $name
+					WITH n
+					MATCH (u:User {uid: $userUID})
+					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+				RETURN { uid: n.uid, name: n.name } as codebook`
+
+				dbquery.Parameters = map[string]interface{}{
+					"uid":     codebook.UID,
+					"name":    codebook.Name,
+					"userUID": userUID,
+				}
+				dbquery.ReturnAlias = "codebook"
+
+				result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Codebook](session, dbquery)
+			}
+		} else {
+			err = helpers.ERR_UNAUTHORIZED
+		}
+	}
+
+	return result, err
+}
+
+func (svc *CodebookService) DeleteCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebookUID string) (err error) {
+
+	codebookDefinition := codebooksMap[codebookCode]
+
+	if codebookDefinition != (models.CodebookType{}) {
+		if checkUserRoles(userRoles, codebookDefinition.RoleEdit) {
+
+			if codebookDefinition.NodeLabel != "" {
+				// Open a new Session
+				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+				dbquery := helpers.DatabaseQuery{}
+				dbquery.Query = `				
+				MATCH (n:` + codebookDefinition.NodeLabel + ` {uid: $uid }) 
+					WITH n
+					DETACH DELETE n
+				RETURN true as deleted`
+
+				dbquery.Parameters = map[string]interface{}{
+					"uid":     codebookUID,
+					"userUID": userUID,
+				}
+				dbquery.ReturnAlias = "deleted"
+
+				err = helpers.WriteNeo4jAndReturnNothing(session, dbquery)
+			}
+		} else {
+			err = helpers.ERR_UNAUTHORIZED
+		}
+	}
+
+	return err
+}
+
 func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.CodebookType) {
 
 	return []models.CodebookType{
@@ -165,6 +240,19 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
 		models.MANUFACTURER_AUTOCOMPLETE_CODEBOOK,
 	}
+}
+
+func (svc *CodebookService) GetListOfEditableCodebooks() (codebookList []models.CodebookType) {
+
+	result := []models.CodebookType{}
+
+	for _, cb := range svc.GetListOfCodebooks() {
+		if cb.RoleEdit != "" {
+			result = append(result, cb)
+		}
+	}
+
+	return result
 }
 
 func checkUserRoles(userRoles []string, role string) (result bool) {
