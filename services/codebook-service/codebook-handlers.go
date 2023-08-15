@@ -44,7 +44,7 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		roles := c.Get("userRoles").([]string)
 
 		//has the user role CODEBOOKS_ADMIN ?
-		isCodebooksAdmin := strings.ContainsAny(strings.Join(roles, ","), "CODEBOOKS_ADMIN")
+		isCodebooksAdmin := strings.ContainsAny(strings.Join(roles, ","), "codebooks-admin")
 
 		filterObject := new([]helpers.Filter)
 		if filter != "" {
