@@ -617,7 +617,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"test1\",\n  \"password\": \"{{test1_password}}\"\n}",
+							"raw": "{\n  \"username\": \"jiri.svacha@eli-beams.eu\",\n  \"password\": \"\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1510,7 +1510,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/SUPPLIER?searchText=tho&limit=5",
+							"raw": "{{baseUrl}}/codebook/SUPPLIER?limit=10000",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1521,11 +1521,12 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": "tho"
+									"value": "tho",
+									"disabled": true
 								},
 								{
 									"key": "limit",
-									"value": "5"
+									"value": "10000"
 								}
 							]
 						}
@@ -1640,61 +1641,6 @@
 									"key": "limit",
 									"value": "5"
 								}
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "Supplier - new one",
-					"event": [
-						{
-							"listen": "test",
-							"script": {
-								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
-								"exec": [
-									"pm.test(\"Status code is 200\", function () {",
-									"    pm.response.to.have.status(200);",
-									"});"
-								],
-								"type": "text/javascript"
-							}
-						}
-					],
-					"id": "6d2c368b-c4c4-40bf-a3ad-653ae8f9a90e",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{bearerToken}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"name\": \"TEST SUPPLIER NEW 2\"\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/codebook/SUPPLIER",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"codebook",
-								"SUPPLIER"
 							]
 						}
 					},
@@ -2531,7 +2477,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebooks",
+							"raw": "{{baseUrl}}/codebooks?editable=true",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -2540,9 +2486,8 @@
 							],
 							"query": [
 								{
-									"key": "sorting",
-									"value": "[{\"id\"%3A\"orderStatus\"%2C\"desc\"%3Afalse}%2C{\"id\"%3A\"supplier\"%2C\"desc\"%3Afalse}]",
-									"disabled": true
+									"key": "editable",
+									"value": "true"
 								}
 							]
 						}
@@ -2611,6 +2556,170 @@
 				}
 			],
 			"id": "01487c49-9ef9-4ea5-b363-9197129bef0f"
+		},
+		{
+			"name": "Codebook",
+			"item": [
+				{
+					"name": "Create new codebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "6d2c368b-c4c4-40bf-a3ad-653ae8f9a90e",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"TEST X\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/codebook/ITEM_USAGE",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"ITEM_USAGE"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update codebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "02fe04fe-c38b-4ebd-9a1d-10b7cc8c4fa6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"TEST DDDX\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/codebook/ITEM_USAGE/6e89936a-a765-4cda-b9b7-9ca5ba5debe5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"ITEM_USAGE",
+								"6e89936a-a765-4cda-b9b7-9ca5ba5debe5"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete codebook",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "0ab622f6-6a4f-49be-895c-a94e34bec1b1",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/codebook/ITEM_USAGE/6e89936a-a765-4cda-b9b7-9ca5ba5debe5",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"codebook",
+								"ITEM_USAGE",
+								"6e89936a-a765-4cda-b9b7-9ca5ba5debe5"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "d846bb33-0a62-471a-bc94-432f4367932d"
 		},
 		{
 			"name": "Test anything",
