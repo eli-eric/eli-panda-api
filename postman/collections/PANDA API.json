@@ -1567,7 +1567,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/MANUFACTURER?searchText=pfeif&limit=5",
+							"raw": "{{baseUrl}}/codebook/MANUFACTURER",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1578,11 +1578,13 @@
 							"query": [
 								{
 									"key": "searchText",
-									"value": "pfeif"
+									"value": "pfeif",
+									"disabled": true
 								},
 								{
 									"key": "limit",
-									"value": "5"
+									"value": "5",
+									"disabled": true
 								}
 							]
 						}
@@ -2595,7 +2597,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"TEST X\"\n}",
+							"raw": "{\n    \"name\": \"TEST Xkk\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2603,13 +2605,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{baseUrl}}/codebook/ITEM_USAGE",
+							"raw": "{{baseUrl}}/codebook/UNIT",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"ITEM_USAGE"
+								"UNIT"
 							]
 						}
 					},
@@ -2650,7 +2652,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"TEST DDDX\"\n}",
+							"raw": "{\n    \"name\": \"hhhhhh DDDX\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2658,14 +2660,14 @@
 							}
 						},
 						"url": {
-							"raw": "{{baseUrl}}/codebook/ITEM_USAGE/6e89936a-a765-4cda-b9b7-9ca5ba5debe5",
+							"raw": "{{baseUrl}}/codebook/UNIT/93da3f7c-f031-455e-afa3-f88c5973c173",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"codebook",
-								"ITEM_USAGE",
-								"6e89936a-a765-4cda-b9b7-9ca5ba5debe5"
+								"UNIT",
+								"93da3f7c-f031-455e-afa3-f88c5973c173"
 							]
 						}
 					},
