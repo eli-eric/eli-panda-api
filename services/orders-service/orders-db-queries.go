@@ -41,7 +41,7 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 		CALL {
 			CALL db.index.fulltext.queryNodes('searchIndexOrders', $searchFulltext) YIELD node AS o WHERE o:Order AND o.deleted = false return o
 			UNION
-			MATCH(o)-[:HAS_ORDER_LINE]->(itm) where o.deleted = false AND toLower(itm.eun) = $searchString return o
+			MATCH(o)-[:HAS_ORDER_LINE]->(itm) where o.deleted = false AND toLower(itm.eun) STARTS WITH $searchString return o
 		}
 		WITH o
 		MATCH(f:Facility{code: $facilityCode}) WITH f, o

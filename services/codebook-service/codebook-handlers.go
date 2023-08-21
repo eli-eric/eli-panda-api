@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v4"
+
+	"github.com/rs/zerolog/log"
 )
 
 type CodebookHandlers struct {
@@ -20,6 +22,8 @@ type ICodebookHandlers interface {
 	GetCodebookTree() echo.HandlerFunc
 	GetListOfCodebooks() echo.HandlerFunc
 	CreateNewCodebook() echo.HandlerFunc
+	UpdateCodebook() echo.HandlerFunc
+	DeleteCodebook() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -37,6 +41,10 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		limitParam := c.QueryParams().Get("limit")
 		facilityCode := c.Get("facilityCode").(string)
 		filter := c.QueryParams().Get("filter")
+		roles := c.Get("userRoles").([]string)
+
+		//has the user role CODEBOOKS_ADMIN ?
+		isCodebooksAdmin := strings.ContainsAny(strings.Join(roles, ","), "codebooks-admin")
 
 		filterObject := new([]helpers.Filter)
 		if filter != "" {
@@ -48,7 +56,7 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 
 		if err != nil {
 			limit = autocompleteDefaultLimit
-		} else if limit > autocompleteMaxLimit {
+		} else if limit > autocompleteMaxLimit && !isCodebooksAdmin {
 			limit = autocompleteMaxLimit
 		}
 
@@ -86,9 +94,19 @@ func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
 
-		codebookList := h.codebookService.GetListOfCodebooks()
+		editable := c.QueryParams().Get("editable")
+		onlyEditable := false
+		if editable == "true" {
+			onlyEditable = true
+		}
 
-		return c.JSON(http.StatusOK, codebookList)
+		if onlyEditable {
+			codebookList := h.codebookService.GetListOfEditableCodebooks()
+			return c.JSON(http.StatusOK, codebookList)
+		} else {
+			codebookList := h.codebookService.GetListOfCodebooks()
+			return c.JSON(http.StatusOK, codebookList)
+		}
 	}
 }
 
@@ -108,6 +126,8 @@ func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
 			if err != nil {
 				if strings.ContainsAny(err.Error(), "already exists") {
 					return c.NoContent(http.StatusConflict)
+				} else if strings.ContainsAny(err.Error(), "UNAUTHORIZED") {
+					return echo.ErrUnauthorized
 				} else {
 					return err
 				}
@@ -115,6 +135,55 @@ func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
 
 			return c.JSON(http.StatusOK, createdCodebook)
 		} else {
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *CodebookHandlers) UpdateCodebook() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		codebook := new(models.Codebook)
+
+		err := c.Bind(codebook)
+		if err == nil {
+			userUID := c.Get("userUID").(string)
+			userRoles := c.Get("userRoles").([]string)
+			facilityCode := c.Get("facilityCode").(string)
+			codebookCode := c.Param("codebookCode")
+			codebook.UID = c.Param("uid")
+
+			// create new codebook
+			_, err = h.codebookService.UpdateCodebook(codebookCode, facilityCode, userUID, userRoles, codebook)
+		}
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *CodebookHandlers) DeleteCodebook() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		userUID := c.Get("userUID").(string)
+		userRoles := c.Get("userRoles").([]string)
+		facilityCode := c.Get("facilityCode").(string)
+		codebookCode := c.Param("codebookCode")
+		codebookUID := c.Param("uid")
+
+		// create new codebook
+		err := h.codebookService.DeleteCodebook(codebookCode, facilityCode, userUID, userRoles, codebookUID)
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		} else {
+			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
 	}

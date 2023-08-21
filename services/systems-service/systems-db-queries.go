@@ -195,6 +195,12 @@ func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facil
 
 	result.Query = `MATCH(s:System{uid:$uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
 
+	if newSystem.ParentUID != nil && *newSystem.ParentUID != "" {
+		result.Query += `WITH s OPTIONAL MATCH(parent)-[oldParent:HAS_SUBSYSTEM]->(s) DELETE oldParent `
+		result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
+		result.Parameters["parentUID"] = *newSystem.ParentUID
+	}
+
 	if newSystem.Location != nil && newSystem.Location.UID != "" {
 		result.Query += `WITH s OPTIONAL MATCH(s)-[rl:HAS_LOCATION]->() DELETE rl `
 		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
@@ -483,6 +489,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end,
 		statistics: {subsystemsCount: count(subsys)}
 		} AS systems
+	ORDER BY systems.name
 	LIMIT 1000
 `
 	result.ReturnAlias = "systems"
