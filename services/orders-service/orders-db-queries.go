@@ -294,7 +294,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 			result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
-			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = strings.TrimSpace(orderLine.Name)
 			result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
 			result.Parameters[fmt.Sprintf("notes%v", idxLine)] = orderLine.Notes
 
@@ -327,7 +327,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 				result.Query += fmt.Sprintf(`MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
 
 				result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
-				result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
+				result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = strings.TrimSpace(orderLine.CatalogueNumber)
 
 			} else {
 				result.Query += fmt.Sprintf(`MATCH(ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v}) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
@@ -355,7 +355,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 	result.Parameters["uid"] = uuid.New().String()
 	result.Parameters["facilityCode"] = facilityCode
-	result.Parameters["name"] = newOrder.Name
+	result.Parameters["name"] = strings.TrimSpace(newOrder.Name)
 	result.Parameters["orderNumber"] = newOrder.OrderNumber
 	result.Parameters["requestNumber"] = newOrder.RequestNumber
 	result.Parameters["contractNumber"] = newOrder.ContractNumber
@@ -392,7 +392,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
-				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = strings.TrimSpace(orderLine.Name)
 				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
 				result.Parameters[fmt.Sprintf("notes%v", idxLine)] = orderLine.Notes
 
@@ -424,7 +424,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 					result.Query += fmt.Sprintf(`MERGE (ci%[1]v)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
 
 					result.Parameters[fmt.Sprintf("catalogueItemUID%v", idxLine)] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
-					result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = orderLine.CatalogueNumber
+					result.Parameters[fmt.Sprintf("catalogueNumber%v", idxLine)] = strings.TrimSpace(orderLine.CatalogueNumber)
 
 				} else {
 					result.Query += fmt.Sprintf(`MATCH(ci%[1]v:CatalogueItem{uid: $catalogueItemUID%[1]v}) WITH o,ccg, itm%[1]v, ci%[1]v `, idxLine)
@@ -439,7 +439,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
-				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
+				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = strings.TrimSpace(orderLine.Name)
 				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
 				result.Parameters[fmt.Sprintf("notes%v", idxLine)] = orderLine.Notes
 

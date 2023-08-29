@@ -194,7 +194,7 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).String()
 
 						if newValue != oldValue {
-							dbQuery.Parameters[neo4jPropName] = newValue
+							dbQuery.Parameters[neo4jPropName] = strings.TrimSpace(newValue)
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
 
@@ -205,10 +205,10 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						if newValue.IsNil() {
 							dbQuery.Parameters[neo4jPropName] = nil
 						} else if oldValue.IsNil() {
-							dbQuery.Parameters[neo4jPropName] = newValue.Elem().String()
+							dbQuery.Parameters[neo4jPropName] = strings.TrimSpace(newValue.Elem().String())
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						} else if oldValue.Elem().String() != newValue.Elem().String() {
-							dbQuery.Parameters[neo4jPropName] = newValue.Elem().String()
+							dbQuery.Parameters[neo4jPropName] = strings.TrimSpace(newValue.Elem().String())
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
 
