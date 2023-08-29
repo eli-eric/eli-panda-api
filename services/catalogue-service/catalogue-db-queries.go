@@ -33,7 +33,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	(toLower(itm.name) CONTAINS $searchText OR
 	 toLower(itm.description) CONTAINS $searchText or 
 	 toLower(supp.name) CONTAINS $searchText or 
-	 itm.catalogueNumber CONTAINS $searchText or
+	 toLower(itm.catalogueNumber) CONTAINS $searchText or
 	 toLower(value) CONTAINS $searchText)
 	RETURN {
 	uid: itm.uid,
@@ -61,7 +61,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	result.ReturnAlias = "items"
 
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = strings.ToLower(search)
+	result.Parameters["searchText"] = strings.TrimSpace(strings.ToLower(search))
 	result.Parameters["skip"] = skip
 	result.Parameters["limit"] = limit
 	result.Parameters["categoryPath"] = categoryPath
@@ -542,12 +542,12 @@ func ManufacturersForAutocompletQuery(search string, limit int) (result helpers.
 func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["name"] = item.Name
+	result.Parameters["name"] = strings.TrimSpace(item.Name)
 	result.Parameters["description"] = item.Description
 	result.Parameters["categoryUid"] = item.Category.UID
 	result.Parameters["userUID"] = userUID
 	result.Parameters["manufacturerUrl"] = item.ManufacturerUrl
-	result.Parameters["catalogueNumber"] = item.CatalogueNumber
+	result.Parameters["catalogueNumber"] = strings.TrimSpace(item.CatalogueNumber)
 
 	result.Query = `
 	MATCH(u:User{uid: $userUID})
