@@ -203,6 +203,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
+		notes: ol.notes,
 		name: itm.name, 
 		eun: itm.eun,
 		serialNumber: itm.serialNumber,
@@ -287,7 +288,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 
 			// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
 			result.Query += fmt.Sprintf(`
-			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
+			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, notes: $notes%[1]v, lastUpdateTime: datetime() }) 
 			WITH o,ccg, itm%[1]v `, idxLine)
 
 			result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
@@ -295,6 +296,7 @@ func InsertNewOrderQuery(newOrder *models.OrderDetail, facilityCode string, user
 			result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
 			result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
 			result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+			result.Parameters[fmt.Sprintf("notes%v", idxLine)] = orderLine.Notes
 
 			// assign system to the item only  if system(techn. unit) is set
 			if orderLine.System != nil {
@@ -384,7 +386,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 			if orderLine.UID == "" {
 				// the item is everytime new so we create a new one and the edge HAS_ORDER_LINE will have the price and lastUpdateTime
 				result.Query += fmt.Sprintf(`
-			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, lastUpdateTime: datetime() }) 
+			CREATE (o)-[:HAS_ORDER_LINE{price: $price%[1]v, currency: $currency%[1]v, lastUpdateTime: datetime() }]->(itm%[1]v:Item{uid: $itemUID%[1]v, name: $itemName%[1]v, serialNumber: $serialNumber%[1]v, notes: $notes%[1]v , lastUpdateTime: datetime() }) 
 			WITH o,ccg, itm%[1]v `, idxLine)
 
 				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
@@ -392,6 +394,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = uuid.New().String()
 				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
 				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+				result.Parameters[fmt.Sprintf("notes%v", idxLine)] = orderLine.Notes
 
 				// assign system to the item only  if system(techn. unit) is set
 				if orderLine.System != nil {
@@ -432,12 +435,13 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 				result.Query += fmt.Sprintf(`MERGE (itm%[1]v)-[:IS_BASED_ON]->(ci%[1]v) `, idxLine)
 			} else {
 				//update existing order lines
-				result.Query += fmt.Sprintf(`WITH o, ccg MATCH (o)-[ol%[1]v:HAS_ORDER_LINE]->(itm%[1]v:Item{uid: $itemUID%[1]v}) SET ol%[1]v.price = $price%[1]v, ol%[1]v.currency = $currency%[1]v, ol%[1]v.lastUpdateTime = datetime(), itm%[1]v.serialNumber = $serialNumber%[1]v WITH o, ccg, itm%[1]v `, idxLine)
+				result.Query += fmt.Sprintf(`WITH o, ccg MATCH (o)-[ol%[1]v:HAS_ORDER_LINE]->(itm%[1]v:Item{uid: $itemUID%[1]v}) SET ol%[1]v.price = $price%[1]v, ol%[1]v.currency = $currency%[1]v, ol%[1]v.lastUpdateTime = datetime(), itm%[1]v.serialNumber = $serialNumber%[1]v, ol%[1]v.notes = $notes%[1]v WITH o, ccg, itm%[1]v `, idxLine)
 				result.Parameters[fmt.Sprintf("price%v", idxLine)] = orderLine.Price
 				result.Parameters[fmt.Sprintf("currency%v", idxLine)] = orderLine.Currency
 				result.Parameters[fmt.Sprintf("itemUID%v", idxLine)] = orderLine.UID
 				result.Parameters[fmt.Sprintf("itemName%v", idxLine)] = orderLine.Name
 				result.Parameters[fmt.Sprintf("serialNumber%v", idxLine)] = orderLine.SerialNumber
+				result.Parameters[fmt.Sprintf("notes%v", idxLine)] = orderLine.Notes
 
 				if orderLine.System != nil {
 					//delete existing system
