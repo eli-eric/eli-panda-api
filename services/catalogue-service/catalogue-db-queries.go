@@ -11,15 +11,12 @@ import (
 )
 
 // Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, skip int, limit int) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(category:CatalogueCategory)
-	with category
-	optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category) 
-	with category, case when parent is not null then apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code else category.code end as categoryPath
-	where $categoryPath = '' or (categoryPath = $categoryPath or categoryPath = '/' + $categoryPath)
+	result.Query = `MATCH(category:CatalogueCategory)	
+	where $categoryUid = '' or category.uid = $categoryUid
 	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-	with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
+	with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
 	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
 	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
 	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
@@ -27,7 +24,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat,categoryPath, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
+	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR
@@ -41,7 +38,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
 	categoryName: cat.name,
-	categoryPath: max(categoryPath),
+	categoryUid: cat.uid,
 	supplier: case when supp is not null then { uid: supp.uid, name: supp.name } else null end,
 	manufacturerUrl: itm.manufacturerUrl,	
 	details: case when count(prop) > 0 then collect(DISTINCT { 
@@ -64,28 +61,25 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryPath string, sk
 	result.Parameters["searchText"] = strings.TrimSpace(strings.ToLower(search))
 	result.Parameters["skip"] = skip
 	result.Parameters["limit"] = limit
-	result.Parameters["categoryPath"] = categoryPath
+	result.Parameters["categoryUid"] = categoryUid
 
 	return result
 }
 
-func CatalogueItemsFiltersTotalCountQuery(search string, categoryPath string) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(category:CatalogueCategory)
-	with category
-	optional match(parent)-[:HAS_SUBCATEGORY*1..15]->(category) 
-	with category, apoc.text.join(reverse(collect(parent.code)),"/") + "/" + category.code as categoryPath
-	where $categoryPath = '' or (categoryPath = $categoryPath or categoryPath = '/' + $categoryPath)
+	result.Query = `MATCH(category:CatalogueCategory)	
+	where $categoryUid = '' or category.uid = $categoryUid
 	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-	with categoryPath, collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
+	with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
 	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
+	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid			
 	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
 	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat,categoryPath, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm,cat, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR 
@@ -99,7 +93,7 @@ func CatalogueItemsFiltersTotalCountQuery(search string, categoryPath string) (r
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchText"] = strings.ToLower(search)
-	result.Parameters["categoryPath"] = categoryPath
+	result.Parameters["categoryUid"] = categoryUid
 
 	return result
 }

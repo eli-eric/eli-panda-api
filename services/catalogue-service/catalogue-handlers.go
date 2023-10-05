@@ -59,13 +59,13 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 
 		//get query path param
 		searchParam := c.QueryParams().Get("search")
-		categoryPathParam := c.QueryParams().Get("categoryPath")
+		categoryUidParam := c.QueryParams().Get("categoryUID")
 
 		pagination := new(helpers.Pagination)
 		if err := c.Bind(pagination); err == nil {
 
 			// get catalogue items
-			items, err := h.catalogueService.GetCatalogueItems(searchParam, categoryPathParam, pagination.PageSize, pagination.Page)
+			items, err := h.catalogueService.GetCatalogueItems(searchParam, categoryUidParam, pagination.PageSize, pagination.Page)
 
 			if err == nil {
 				return c.JSON(http.StatusOK, items)
