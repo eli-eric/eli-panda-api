@@ -1,0 +1,2 @@
+MERGE (r:Role{ uid:'7d877c08-f2f4-45d8-9b37-2a8952fa4528', name: 'Room Cards View', code: 'room-cards-view' });
+MERGE (r:Role{ uid:'f4020d78-25c6-4518-959e-a1cd76a45b82', name: 'Room Cards Edit', code: 'room-cards-edit' });
