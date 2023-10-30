@@ -36,9 +36,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 	uid: itm.uid,
 	name: itm.name,
 	catalogueNumber: itm.catalogueNumber,
-	description: itm.description,
-	categoryName: cat.name,
-	categoryUid: cat.uid,
+	description: itm.description,	
+	category: { uid: cat.uid, name: cat.name},
 	supplier: case when supp is not null then { uid: supp.uid, name: supp.name } else null end,
 	manufacturerUrl: itm.manufacturerUrl,	
 	details: case when count(prop) > 0 then collect(DISTINCT { 
