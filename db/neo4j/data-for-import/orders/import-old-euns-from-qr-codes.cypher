@@ -16,7 +16,7 @@ CALL {
   WITH line, f, o, catItem, case when o.uid is null then apoc.create.uuid() else o.uid end as oUid
   SET o.uid = oUid, o.deleted = false, o.imported_qr_code = true, o.lastUpdateTime = datetime("2023-01-01"), o.lastUpdatedBy = "admin"
   WITH line, f, catItem, case when catItem.uid is null then apoc.create.uuid() else catItem.uid end as catItemUid
-  SET catItem.uid = catItemUid, catItem.deleted = false, catItem.imported_qr_code = true, catItem.lastUpdateTime = datetime(), catItem.lastUpdatedBy = "admin"
+  SET catItem.name = line.name, catItem.uid = catItemUid, catItem.deleted = false, catItem.imported_qr_code = true, catItem.lastUpdateTime = datetime(), catItem.lastUpdatedBy = "admin"
 } IN TRANSACTIONS OF 500 ROWS;
 
 //dodat is delivered
