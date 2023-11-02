@@ -11,7 +11,7 @@ type CatalogueItem struct {
 
 	Description *string `json:"description,omitempty" neo4j:"prop,description"`
 
-	CategoryPath string `json:"categoryPath,omitempty" neo4j:"ignore"`
+	CategoryUid string `json:"categoryUID,omitempty" neo4j:"ignore"`
 
 	Category models.Codebook `json:"category,omitempty" neo4j:"rel,CatalogueCategory,BELONGS_TO_CATEGORY,uid,cc"`
 
@@ -41,9 +41,7 @@ type CatalogueItemSimple struct {
 
 	Description string `json:"description,omitempty"`
 
-	CategoryPath string `json:"categoryPath,omitempty"`
-
-	CategoryName string `json:"categoryName,omitempty"`
+	Category models.Codebook `json:"category,omitempty"`
 
 	Supplier *models.Codebook `json:"supplier,omitempty"`
 
