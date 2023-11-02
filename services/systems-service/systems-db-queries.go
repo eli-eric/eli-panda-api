@@ -54,7 +54,7 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 	where (toLower(n.code) contains $searchText or toLower(n.name) contains $searchText) 
 	optional match (parent)-[:HAS_SUBLOCATION*1..50]->(n) 
 	with n, collect(parent.name) as parentNames
-	return {uid: n.code, name: n.code + " - " +  n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} as result
+	return {uid: n.uid, name: n.code + " - " +  n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} as result
 	order by result.name 
 	limit $limit`
 	result.ReturnAlias = "result"
