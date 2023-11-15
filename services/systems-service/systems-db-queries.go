@@ -273,10 +273,10 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 
 	if onlyTechnologicalUnits {
 		result.Query = `
-	MATCH (n:System{isTechnologicalUnit: true, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
-	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->(:System{isTechnologicalUnit: true, deleted: false})
+	MATCH (n:System{systemLevel: 'TECHNOLOGY_UNIT', deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE f.code = $facilityCode AND NOT (n)-[:HAS_SUBSYSTEM]->(:System{systemLevel: 'TECHNOLOGY_UNIT', deleted: false})
 	WITH n
-	OPTIONAL MATCH (parent{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(n{isTechnologicalUnit: true, deleted: false})
+	OPTIONAL MATCH (parent{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(n{systemLevel: 'TECHNOLOGY_UNIT', deleted: false})
 	WITH n, collect(parent.name) AS parentNames
 	WITH {uid: n.uid, name: n.name + " < " + apoc.text.join((parentNames), " < ")} AS result
 	WHERE toLower(result.name) CONTAINS $searchText
