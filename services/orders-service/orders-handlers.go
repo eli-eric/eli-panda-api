@@ -265,8 +265,9 @@ func (h *OrdersHandlers) GetOrdersForCatalogueItem() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		catalogueItemUid := c.Param("catalogueItemUid")
+		facilityCode := c.Get("facilityCode").(string)
 
-		orders, err := h.ordersService.GetOrdersForCatalogueItem(catalogueItemUid)
+		orders, err := h.ordersService.GetOrdersForCatalogueItem(catalogueItemUid, facilityCode)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, orders)

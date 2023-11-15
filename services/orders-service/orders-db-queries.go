@@ -694,10 +694,12 @@ func GetOrderUidByOrderNumberQuery(orderNumber string) (result helpers.DatabaseQ
 }
 
 // db query to get all orders for a given catalogue item by catalogue item uid
-func GetOrdersForCatalogueItemQuery(catalogueItemUID string) (result helpers.DatabaseQuery) {
+func GetOrdersForCatalogueItemQuery(catalogueItemUID string, facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Query = `
-	MATCH (o)-[:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci{uid: $catalogueItemUID}) 
+	MATCH(f:Facility{code: $facilityCode})
+	WITH f
+	MATCH (f)<-[:BELONGS_TO_FACILITY]-(o)-[:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci{uid: $catalogueItemUID}) 
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
@@ -722,6 +724,7 @@ func GetOrdersForCatalogueItemQuery(catalogueItemUID string) (result helpers.Dat
 	result.ReturnAlias = "orders"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["catalogueItemUID"] = catalogueItemUID
+	result.Parameters["facilityCode"] = facilityCode
 
 	return result
 }
