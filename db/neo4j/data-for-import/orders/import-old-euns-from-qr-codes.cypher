@@ -1,5 +1,4 @@
-:auto 
-LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/qr_codes_import.csv' AS line
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/qr_codes_import_2.csv' AS line
   WITH line where line.import = "y" and line.orderId is not null
 CALL {
   WITH line
