@@ -47,6 +47,10 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 	//if there is a user in DB lets check the password
 	if err == nil {
 
+		if !authUser.IsEnabled {
+			return authUser, errors.New("Unauthorized")
+		}
+
 		verifErr := bcrypt.CompareHashAndPassword([]byte(authUser.PasswordHash), []byte(password))
 		//empty passwordHash -> omitempty json -> not sent to client
 		authUser.PasswordHash = ""
