@@ -674,7 +674,7 @@ func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.Da
 	return result
 }
 
-func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
+func CatalogueCategoriesTreeQuery(search string) (result helpers.DatabaseQuery) {
 
 	//get catalogue categories as tree
 	result.Query = `
@@ -682,6 +682,7 @@ func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
 	WHERE NOT (parentCat)<-[:HAS_SUBCATEGORY]-()
 	WITH parentCat
 	OPTIONAL MATCH path = (parentCat)-[:HAS_SUBCATEGORY*1..50]->(children)
+	WHERE toLower(parentCat.name) contains $search or toLower(children.name) contains $search
 	WITH collect(path) AS paths
 	CALL apoc.convert.toTree(paths, true, {
 	  nodes: {CatalogueCategory: ['uid', 'name']}
@@ -690,6 +691,8 @@ func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
 	RETURN value as tree;`
 
 	result.ReturnAlias = "tree"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = strings.ToLower(search)
 
 	return result
 }

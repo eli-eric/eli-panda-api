@@ -24,7 +24,7 @@ type CodebookService struct {
 
 type ICodebookService interface {
 	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error)
-	GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error)
+	GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	GetListOfEditableCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
@@ -99,12 +99,25 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 	return codebookResponse, err
 }
 
-func (svc *CodebookService) GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error) {
+func (svc *CodebookService) GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error) {
 
 	switch codebookCode {
 
 	case "CATALOGUE_CATEGORY":
-		treeData, err = svc.catalogueService.GetCatalogueCategoriesCodebookTree()
+		{
+			searchString := ""
+
+			if columnFilter != nil {
+				for _, filter := range *columnFilter {
+					if filter.Id == "name" {
+						searchString = filter.Value.(string)
+					}
+				}
+			}
+
+			treeData, err = svc.catalogueService.GetCatalogueCategoriesCodebookTree(searchString)
+		}
+
 	}
 
 	return treeData, err

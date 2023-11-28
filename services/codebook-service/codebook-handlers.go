@@ -76,8 +76,14 @@ func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 		//get query path param
 		codebookCode := c.Param("codebookCode")
 		facilityCode := c.Get("facilityCode").(string)
+		columnFilter := c.QueryParams().Get("columnFilter")
 
-		codebookTree, err := h.codebookService.GetCodebookTree(codebookCode, facilityCode)
+		filterObject := new([]helpers.ColumnFilter)
+		if columnFilter != "" {
+			json.Unmarshal([]byte(columnFilter), filterObject)
+		}
+
+		codebookTree, err := h.codebookService.GetCodebookTree(codebookCode, facilityCode, filterObject)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, codebookTree)
