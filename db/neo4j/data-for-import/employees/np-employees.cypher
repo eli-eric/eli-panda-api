@@ -13,5 +13,6 @@ empl.fullName = lastName + " " + firstName,
 empl.lastUpdateBy = "admin",
 empl.phone = line.phone,
 empl.npGroup = line.group,
-empl.position = line.position
+empl.position = line.position,
+empl.isProcurementer = case when line.group = "Procurement" then true else null end
 MERGE(empl)-[:AFFILIATED_WITH_FACILITY]->(f)
