@@ -19,7 +19,4 @@ const ROLE_ORDERS_DELIVERY_EDIT string = "orders-delivery-edit"
 const ROLE_SUPPLIER_VIEW string = "supplier-view"
 const ROLE_SUPPLIER_EDIT string = "supplier-edit"
 
-const ROLE_MANUFACTURER_VIEW string = "manufacturer-view"
-const ROLE_MANUFACTURER_EDIT string = "manufacturer-edit"
-
 const ROLE_CODEBOOKS_ADMIN string = "codebooks-admin"
