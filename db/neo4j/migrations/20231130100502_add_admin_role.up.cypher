@@ -1,0 +1,1 @@
+MERGE (r:Role{ uid:'367901d5-f9f3-4354-913c-ab3685a20c9c', name: 'Admin', code: 'admin' });
