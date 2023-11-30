@@ -23,7 +23,7 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error)
+	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error)
 	GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	GetListOfEditableCodebooks() (codebookList []models.CodebookType)
@@ -43,7 +43,7 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error) {
 
 	codebookList := make([]models.Codebook, 0)
 	codebookMetadata := codebooksMap[codebookCode]
@@ -80,7 +80,7 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 		case "SYSTEM":
 			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode, filter)
 		case "EMPLOYEE":
-			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode, filter, isAdmin)
 		case "CATALOGUE_CATEGORY":
 			codebookList, err = svc.catalogueService.GetCatalogueCategoriesCodebook(searchString, limit)
 		case "MANUFACTURER":
