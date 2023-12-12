@@ -634,7 +634,7 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 		result.Query = `
 		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.printEUN = true
 	WITH o, itm, ci
-	OPTIONAL MATCH (ci)-[:HAS_SUPPLIER]->(supplier)
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(supplier)
 	WITH o, itm, ci, supplier
 	RETURN DISTINCT {
 		eun: itm.eun,
@@ -649,7 +649,7 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 		result.Query = `	
 	MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.eun IN $euns
 	WITH o, itm, ci
-	OPTIONAL MATCH (ci)-[:HAS_SUPPLIER]->(supplier)
+	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(supplier)
 	WITH o, itm, ci, supplier
 	RETURN DISTINCT {
 		eun: itm.eun,
