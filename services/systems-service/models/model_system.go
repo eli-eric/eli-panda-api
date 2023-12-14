@@ -14,6 +14,7 @@ type System struct {
 	SystemType    *models.Codebook       `json:"systemType,omitempty" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,uid,systemType"`
 	SystemCode    *string                `json:"systemCode,omitempty" neo4j:"prop,systemCode"`
 	SystemAlias   *string                `json:"systemAlias,omitempty" neo4j:"prop,systemAlias"`
+	SystemLevel   *string                `json:"systemLevel,omitempty" neo4j:"prop,systemLevel"`
 	Owner         *models.Codebook       `json:"owner,omitempty" neo4j:"rel,Employee,HAS_OWNER,uid,owner"`
 	Responsible   *models.Codebook       `json:"responsible,omitempty" neo4j:"rel,Employee,HAS_RESPONSIBLE,uid,responsible"`
 	Importance    *models.Codebook       `json:"importance,omitempty" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,uid,importance"`
