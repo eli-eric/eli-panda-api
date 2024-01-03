@@ -36,4 +36,6 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.PUT("/v1/catalogue/item/:uid", m.Authorization(h.UpdateCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
 	//delete catalogue item
 	e.DELETE("/v1/catalogue/item/:uid", m.Authorization(h.DeleteCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
+	//get catalogue item statistics
+	e.GET("/v1/catalogue/item/:uid/statistics", m.Authorization(h.GetCatalogueItemStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
 }
