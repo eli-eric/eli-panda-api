@@ -374,6 +374,7 @@ func (h *CatalogueHandlers) GetCatalogueItemStatistics() echo.HandlerFunc {
 		statistics, err := h.catalogueService.GetCatalogueItemStatistics(uid)
 
 		if err == nil {
+			helpers.ProcessArrayResult[models.CatalogueStatistics](&statistics, err)
 			return c.JSON(http.StatusOK, statistics)
 		} else {
 			log.Error().Msg(err.Error())
@@ -390,6 +391,7 @@ func (h *CatalogueHandlers) CatalogueItemsOverallStatistics() echo.HandlerFunc {
 		statistics, err := h.catalogueService.CatalogueItemsOverallStatistics()
 
 		if err == nil {
+			helpers.ProcessArrayResult[models.CatalogueStatistics](&statistics, err)
 			return c.JSON(http.StatusOK, statistics)
 		} else {
 			log.Error().Msg(err.Error())
