@@ -39,6 +39,7 @@ type ICatalogueService interface {
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
+	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
 }
 
 // Create new security service instance
@@ -408,6 +409,16 @@ func (svc *CatalogueService) GetCatalogueItemStatistics(uid string) (result []mo
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := CatalogueItemStatisticsQuery(uid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueStatistics](session, query)
+
+	return result, err
+}
+
+func (svc *CatalogueService) CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueItemsOverallStatisticsQuery()
 	result, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueStatistics](session, query)
 
 	return result, err
