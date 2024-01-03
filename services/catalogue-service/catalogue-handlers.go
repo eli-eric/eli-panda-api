@@ -29,6 +29,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc
 	UpdateCatalogueItem() echo.HandlerFunc
 	DeleteCatalogueItem() echo.HandlerFunc
+	GetCatalogueItemStatistics() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -356,6 +357,25 @@ func (h *CatalogueHandlers) DeleteCatalogueItem() echo.HandlerFunc {
 			if err.Error() == helpers.ERR_DELETE_RELATED_ITEMS.Error() {
 				return echo.NewHTTPError(http.StatusConflict, err.Error())
 			}
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueItemStatistics() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		statistics, err := h.catalogueService.GetCatalogueItemStatistics(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, statistics)
+		} else {
+			log.Error().Msg(err.Error())
 		}
 
 		return echo.ErrInternalServerError
