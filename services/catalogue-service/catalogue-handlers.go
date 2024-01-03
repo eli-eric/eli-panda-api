@@ -30,6 +30,7 @@ type ICatalogueHandlers interface {
 	UpdateCatalogueItem() echo.HandlerFunc
 	DeleteCatalogueItem() echo.HandlerFunc
 	GetCatalogueItemStatistics() echo.HandlerFunc
+	CatalogueItemsOverallStatistics() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -371,6 +372,22 @@ func (h *CatalogueHandlers) GetCatalogueItemStatistics() echo.HandlerFunc {
 		uid := c.Param("uid")
 
 		statistics, err := h.catalogueService.GetCatalogueItemStatistics(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, statistics)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) CatalogueItemsOverallStatistics() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		statistics, err := h.catalogueService.CatalogueItemsOverallStatistics()
 
 		if err == nil {
 			return c.JSON(http.StatusOK, statistics)

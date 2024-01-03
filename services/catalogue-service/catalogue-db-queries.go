@@ -727,3 +727,32 @@ func CatalogueItemStatisticsQuery(uid string) (result helpers.DatabaseQuery) {
 
 	return result
 }
+
+func CatalogueItemsOverallStatisticsQuery() (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH (ci)<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o)-[:BELONGS_TO_FACILITY]->(f)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(usg)
+	WITH
+	f.name AS facility,
+	COALESCE(COUNT(itm), 0) AS facilityCount,
+	SUM(CASE WHEN usg.code = "spare-part" THEN 1 ELSE 0 END) AS sparePartsCount,
+	SUM(CASE WHEN usg.code = "in-system-part" THEN 1 ELSE 0 END) AS inSystemPartsCount,
+	SUM(CASE WHEN usg.code = "experimental-loan-pool-part" THEN 1 ELSE 0 END) AS experimentalLoanPoolPartsCount,
+	SUM(CASE WHEN usg.code = "test-and-measurement-equipment" THEN 1 ELSE 0 END) AS testAndMeasurementPartsCount,
+	SUM(CASE WHEN usg.code = "stock-item" THEN 1 ELSE 0 END) AS stockItemsCount,
+	SUM(CASE WHEN usg.code = "other" OR usg IS NULL THEN 1 ELSE 0 END) AS othersCount
+	RETURN{
+		facilityName: facility, 
+		total: facilityCount,
+		sparePartsCount: sparePartsCount,
+		inSystemPartsCount: inSystemPartsCount,
+		experimentalLoanPoolPartsCount: experimentalLoanPoolPartsCount,
+		testAndMeasurementPartsCount: testAndMeasurementPartsCount, 
+		stockItemsCount: stockItemsCount,
+		othersCount: othersCount} as result;`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
