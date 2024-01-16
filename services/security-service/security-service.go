@@ -25,7 +25,7 @@ type ISecurityService interface {
 	GetUsersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetUsersAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	ChangeUserPassword(userName string, userUID string, passwords *models.ChangePasswordRequest) (err error)
-	GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
+	GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (result []codebookModels.Codebook, err error)
 	GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
@@ -46,6 +46,10 @@ func (svc *SecurityService) AuthenticateByUsernameAndPassword(username string, p
 
 	//if there is a user in DB lets check the password
 	if err == nil {
+
+		if !authUser.IsEnabled {
+			return authUser, errors.New("Unauthorized")
+		}
 
 		verifErr := bcrypt.CompareHashAndPassword([]byte(authUser.PasswordHash), []byte(password))
 		//empty passwordHash -> omitempty json -> not sent to client
@@ -121,10 +125,23 @@ func (svc *SecurityService) ChangeUserPassword(userName string, userUID string, 
 	return err
 }
 
-func (svc *SecurityService) GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+func (svc *SecurityService) GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetEmployeesAutocompleteCodebookQuery(searchText, limit, facilityCode)
+	getAllEmployees := false
+
+	if isAdmin {
+		if filter != nil {
+			for _, f := range *filter {
+				if f.Key == "all" && f.Value == "true" {
+					getAllEmployees = true
+					break
+				}
+			}
+		}
+	}
+
+	query := GetEmployeesAutocompleteCodebookQuery(searchText, limit, facilityCode, getAllEmployees)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
@@ -134,7 +151,7 @@ func (svc *SecurityService) GetEmployeesAutocompleteCodebook(searchText string, 
 func (svc *SecurityService) GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetEmployeesAutocompleteCodebookQuery("", 100, facilityCode, EMPLOYEE_FLAG_PROCUREMENTER)
+	query := GetEmployeesAutocompleteCodebookQuery("", 100, facilityCode, false, EMPLOYEE_FLAG_PROCUREMENTER)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err

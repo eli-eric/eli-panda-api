@@ -33,11 +33,13 @@ type ICatalogueService interface {
 	GetCatalogueCategoriesRecursiveByParentUID(parentUID string) (categories []models.CatalogueCategoryTreeItem, err error)
 	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
-	GetCatalogueCategoriesCodebookTree() (result []codebookModels.CodebookTreeItem, err error)
+	GetCatalogueCategoriesCodebookTree(search string) (result []codebookModels.CodebookTreeItem, err error)
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
 	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
+	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
+	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
 }
 
 // Create new security service instance
@@ -369,11 +371,11 @@ func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (er
 	return err
 }
 
-func (svc *CatalogueService) GetCatalogueCategoriesCodebookTree() (result []codebookModels.CodebookTreeItem, err error) {
+func (svc *CatalogueService) GetCatalogueCategoriesCodebookTree(search string) (result []codebookModels.CodebookTreeItem, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := CatalogueCategoriesTreeQuery()
+	query := CatalogueCategoriesTreeQuery(search)
 	categoriesTreeResult, err := helpers.GetNeo4jArrayOfNodes[codebookModels.CodebookTreeItemCatalogueCategory](session, query)
 
 	if categoriesTreeResult != nil {
@@ -400,4 +402,24 @@ func (svc *CatalogueService) convertCatalogueCategoriesTreeToCodebookTree(catego
 	}
 
 	return result
+}
+
+func (svc *CatalogueService) GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueItemStatisticsQuery(uid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueStatistics](session, query)
+
+	return result, err
+}
+
+func (svc *CatalogueService) CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueItemsOverallStatisticsQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueStatistics](session, query)
+
+	return result, err
 }

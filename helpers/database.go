@@ -424,6 +424,11 @@ type Filter struct {
 	Value any    `json:"value"`
 }
 
+type ColumnFilter struct {
+	Id    string `json:"id"`
+	Value any    `json:"value"`
+}
+
 const DB_LOG_CREATE string = "CREATE"
 const DB_LOG_UPDATE string = "UPDATE"
 const DB_LOG_DELETE string = "DELETE"

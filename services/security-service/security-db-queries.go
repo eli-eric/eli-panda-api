@@ -62,21 +62,35 @@ func ChangeUserPasswordQuery(userUID string, newPasswordHash string) (result hel
 	return result
 }
 
-func GetEmployeesAutocompleteCodebookQuery(searchText string, limit int, facilityCode string, flags ...string) (result helpers.DatabaseQuery) {
+func GetEmployeesAutocompleteCodebookQuery(searchText string, limit int, facilityCode string, getAllEmployees bool, flags ...string) (result helpers.DatabaseQuery) {
 
-	result.Query = `
-	MATCH(f:Facility{code:$facilityCode})
-	WITH f
-	MATCH(r:Employee)-[:AFFILIATED_WITH_FACILITY]->(f)
-	where (apoc.text.clean(r.lastName) contains apoc.text.clean($searchText) or apoc.text.clean(r.firstName) contains apoc.text.clean($searchText)) `
+	if getAllEmployees {
+		result.Query = `
+		MATCH(r:Employee)-[:AFFILIATED_WITH_FACILITY]->(f)
+		where (apoc.text.clean(r.lastName) contains apoc.text.clean($searchText) or apoc.text.clean(r.firstName) contains apoc.text.clean($searchText)) `
+
+	} else {
+		result.Query = `
+		MATCH(f:Facility{code:$facilityCode})
+		WITH f
+		MATCH(r:Employee)-[:AFFILIATED_WITH_FACILITY]->(f)
+		where (apoc.text.clean(r.lastName) contains apoc.text.clean($searchText) or apoc.text.clean(r.firstName) contains apoc.text.clean($searchText)) `
+	}
 
 	for _, flag := range flags {
 		result.Query += ` AND r.` + flag + ` = true `
 	}
 
-	result.Query += `
-	RETURN {uid: r.uid,name: r.lastName + " " + r.firstName} as result 
-	ORDER BY result.name limit $limit`
+	if getAllEmployees {
+		result.Query += `
+		RETURN {uid: r.uid,name: r.lastName + " " + r.firstName + " (" + f.name + ")" } as result 
+		ORDER BY f.name, result.name limit $limit`
+	} else {
+		result.Query += `
+		RETURN {uid: r.uid,name: r.lastName + " " + r.firstName} as result 
+		ORDER BY result.name limit $limit`
+	}
+
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["searchText"] = searchText

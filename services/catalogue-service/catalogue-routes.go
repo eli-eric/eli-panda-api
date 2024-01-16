@@ -11,12 +11,14 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	// categories route/s - return categories by parent path
 	e.GET("/v1/catalogue/categories/*", m.Authorization(h.GetCataloguecategoriesByParentPath(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.GET("/v1/catalogue/categories", m.Authorization(h.GetCataloguecategoriesByParentPath(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+
+	e.POST("/v1/catalogue/category", m.Authorization(h.CreateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.GET("/v1/catalogue/category/:uid", m.Authorization(h.GetCatalogueCategoryWithDetailsByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.PUT("/v1/catalogue/category/:uid", m.Authorization(h.UpdateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.DELETE("/v1/catalogue/category/:uid", m.Authorization(h.DeleteCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+
 	e.GET("/v1/catalogue/category/:uid/properties", m.Authorization(h.GetCatalogueCategoryPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
-	e.PUT("/v1/catalogue/category/:uid", m.Authorization(h.UpdateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
-	e.POST("/v1/catalogue/category", m.Authorization(h.CreateCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
-	e.DELETE("/v1/catalogue/category/:uid", m.Authorization(h.DeleteCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.POST("/v1/catalogue/category/:uid/copy", m.Authorization(h.CopyCatalogueCategoryRecursive(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	//fake image get - get only eli logo img for now
@@ -34,4 +36,8 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.PUT("/v1/catalogue/item/:uid", m.Authorization(h.UpdateCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
 	//delete catalogue item
 	e.DELETE("/v1/catalogue/item/:uid", m.Authorization(h.DeleteCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
+	//get catalogue item statistics
+	e.GET("/v1/catalogue/item/:uid/statistics", m.Authorization(h.GetCatalogueItemStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
+	//get catalogue items overall statistics
+	e.GET("/v1/catalogue/items/statistics", m.Authorization(h.CatalogueItemsOverallStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
 }

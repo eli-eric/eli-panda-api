@@ -345,14 +345,65 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/catalogue/item/18fc7b6e-3353-4711-9a15-0dc83cb3547c",
+							"raw": "{{baseUrl}}/catalogue/item/926f1adc-d8ec-442d-9b95-11a1bf0a60d7",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"catalogue",
 								"item",
-								"18fc7b6e-3353-4711-9a15-0dc83cb3547c"
+								"926f1adc-d8ec-442d-9b95-11a1bf0a60d7"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get catalogue item statistics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e93cafc4-56f3-4843-96d9-a820f2572dd7",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/catalogue/item/926f1adc-d8ec-442d-9b95-11a1bf0a60d7/statistics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"catalogue",
+								"item",
+								"926f1adc-d8ec-442d-9b95-11a1bf0a60d7",
+								"statistics"
 							]
 						}
 					},
@@ -1390,7 +1441,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/codebook/EMPLOYEE",
+							"raw": "{{baseUrl}}/codebook/EMPLOYEE?limit=10000&filter=[{\"key\": \"all\", \"value\": \"true\"}]",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -1400,15 +1451,19 @@
 							],
 							"query": [
 								{
-									"key": "limit",
-									"value": "10",
-									"disabled": true
-								},
-								{
 									"key": "searchText",
 									"value": "Legát",
 									"type": "text",
 									"disabled": true
+								},
+								{
+									"key": "limit",
+									"value": "10000"
+								},
+								{
+									"key": "filter",
+									"value": "[{\"key\": \"all\", \"value\": \"true\"}]",
+									"type": "text"
 								}
 							]
 						}

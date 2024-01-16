@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/codebook-service/models"
+	"panda/apigateway/shared"
 	"strconv"
 	"strings"
 
@@ -31,6 +32,16 @@ func NewCodebookHandlers(codebookService ICodebookService) ICodebookHandlers {
 	return &CodebookHandlers{codebookService: codebookService}
 }
 
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -44,7 +55,8 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		roles := c.Get("userRoles").([]string)
 
 		//has the user role CODEBOOKS_ADMIN ?
-		isCodebooksAdmin := strings.ContainsAny(strings.Join(roles, ","), "codebooks-admin")
+		isCodebooksAdmin := contains(roles, shared.ROLE_CODEBOOKS_ADMIN)
+		isAdmin := contains(roles, shared.ROLE_ADMIN)
 
 		filterObject := new([]helpers.Filter)
 		if filter != "" {
@@ -60,7 +72,7 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 			limit = autocompleteMaxLimit
 		}
 
-		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject)
+		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject, isAdmin)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, codebookResponse)
@@ -76,8 +88,14 @@ func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 		//get query path param
 		codebookCode := c.Param("codebookCode")
 		facilityCode := c.Get("facilityCode").(string)
+		columnFilter := c.QueryParams().Get("columnFilter")
 
-		codebookTree, err := h.codebookService.GetCodebookTree(codebookCode, facilityCode)
+		filterObject := new([]helpers.ColumnFilter)
+		if columnFilter != "" {
+			json.Unmarshal([]byte(columnFilter), filterObject)
+		}
+
+		codebookTree, err := h.codebookService.GetCodebookTree(codebookCode, facilityCode, filterObject)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, codebookTree)

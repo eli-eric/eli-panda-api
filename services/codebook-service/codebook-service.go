@@ -23,8 +23,8 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error)
-	GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error)
+	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error)
+	GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	GetListOfEditableCodebooks() (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
@@ -43,7 +43,7 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter) (codebookResponse models.CodebookResponse, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error) {
 
 	codebookList := make([]models.Codebook, 0)
 	codebookMetadata := codebooksMap[codebookCode]
@@ -80,7 +80,7 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 		case "SYSTEM":
 			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode, filter)
 		case "EMPLOYEE":
-			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode)
+			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode, filter, isAdmin)
 		case "CATALOGUE_CATEGORY":
 			codebookList, err = svc.catalogueService.GetCatalogueCategoriesCodebook(searchString, limit)
 		case "MANUFACTURER":
@@ -99,12 +99,25 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 	return codebookResponse, err
 }
 
-func (svc *CodebookService) GetCodebookTree(codebookCode string, facilityCode string) (treeData []models.CodebookTreeItem, err error) {
+func (svc *CodebookService) GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error) {
 
 	switch codebookCode {
 
 	case "CATALOGUE_CATEGORY":
-		treeData, err = svc.catalogueService.GetCatalogueCategoriesCodebookTree()
+		{
+			searchString := ""
+
+			if columnFilter != nil {
+				for _, filter := range *columnFilter {
+					if filter.Id == "name" {
+						searchString = filter.Value.(string)
+					}
+				}
+			}
+
+			treeData, err = svc.catalogueService.GetCatalogueCategoriesCodebookTree(searchString)
+		}
+
 	}
 
 	return treeData, err
@@ -238,7 +251,6 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 		models.PROCUREMENTER_CODEBOOK,
 		models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
-		models.MANUFACTURER_AUTOCOMPLETE_CODEBOOK,
 	}
 }
 
@@ -281,6 +293,5 @@ var codebooksMap = map[string]models.CodebookType{
 	"USER_AUTOCOMPLETE_CODEBOOK": models.USER_AUTOCOMPLETE_CODEBOOK,
 	"SUPPLIER":                   models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 	"PROCUREMENTER":              models.PROCUREMENTER_CODEBOOK,
-	"MANUFACTURER":               models.MANUFACTURER_AUTOCOMPLETE_CODEBOOK,
 	"CATALOGUE_CATEGORY":         models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
 }

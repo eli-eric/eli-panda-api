@@ -674,7 +674,7 @@ func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.Da
 	return result
 }
 
-func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
+func CatalogueCategoriesTreeQuery(search string) (result helpers.DatabaseQuery) {
 
 	//get catalogue categories as tree
 	result.Query = `
@@ -682,6 +682,7 @@ func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
 	WHERE NOT (parentCat)<-[:HAS_SUBCATEGORY]-()
 	WITH parentCat
 	OPTIONAL MATCH path = (parentCat)-[:HAS_SUBCATEGORY*1..50]->(children)
+	WHERE toLower(parentCat.name) contains $search or toLower(children.name) contains $search
 	WITH collect(path) AS paths
 	CALL apoc.convert.toTree(paths, true, {
 	  nodes: {CatalogueCategory: ['uid', 'name']}
@@ -690,6 +691,68 @@ func CatalogueCategoriesTreeQuery() (result helpers.DatabaseQuery) {
 	RETURN value as tree;`
 
 	result.ReturnAlias = "tree"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = strings.ToLower(search)
+
+	return result
+}
+
+func CatalogueItemStatisticsQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH (ci:CatalogueItem{uid: $uid})<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o)-[:BELONGS_TO_FACILITY]->(f)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(usg)
+	WITH
+	f.name AS facility,
+	COALESCE(COUNT(itm), 0) AS facilityCount,
+	SUM(CASE WHEN usg.code = "spare-part" THEN 1 ELSE 0 END) AS sparePartsCount,
+	SUM(CASE WHEN usg.code = "in-system-part" THEN 1 ELSE 0 END) AS inSystemPartsCount,
+	SUM(CASE WHEN usg.code = "experimental-loan-pool-part" THEN 1 ELSE 0 END) AS experimentalLoanPoolPartsCount,
+	SUM(CASE WHEN usg.code = "test-and-measurement-equipment" THEN 1 ELSE 0 END) AS testAndMeasurementPartsCount,
+	SUM(CASE WHEN usg.code = "stock-item" THEN 1 ELSE 0 END) AS stockItemsCount,
+	SUM(CASE WHEN usg.code = "other" OR usg IS NULL THEN 1 ELSE 0 END) AS othersCount
+	RETURN{
+		facilityName: facility, 
+		total: facilityCount,
+		sparePartsCount: sparePartsCount,
+		inSystemPartsCount: inSystemPartsCount,
+		experimentalLoanPoolPartsCount: experimentalLoanPoolPartsCount,
+		testAndMeasurementPartsCount: testAndMeasurementPartsCount, 
+		stockItemsCount: stockItemsCount,
+		othersCount: othersCount} as result;`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
+func CatalogueItemsOverallStatisticsQuery() (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH (ci)<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o)-[:BELONGS_TO_FACILITY]->(f)
+	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(usg)
+	WITH
+	f.name AS facility,
+	COALESCE(COUNT(itm), 0) AS facilityCount,
+	SUM(CASE WHEN usg.code = "spare-part" THEN 1 ELSE 0 END) AS sparePartsCount,
+	SUM(CASE WHEN usg.code = "in-system-part" THEN 1 ELSE 0 END) AS inSystemPartsCount,
+	SUM(CASE WHEN usg.code = "experimental-loan-pool-part" THEN 1 ELSE 0 END) AS experimentalLoanPoolPartsCount,
+	SUM(CASE WHEN usg.code = "test-and-measurement-equipment" THEN 1 ELSE 0 END) AS testAndMeasurementPartsCount,
+	SUM(CASE WHEN usg.code = "stock-item" THEN 1 ELSE 0 END) AS stockItemsCount,
+	SUM(CASE WHEN usg.code = "other" OR usg IS NULL THEN 1 ELSE 0 END) AS othersCount
+	RETURN{
+		facilityName: facility, 
+		total: facilityCount,
+		sparePartsCount: sparePartsCount,
+		inSystemPartsCount: inSystemPartsCount,
+		experimentalLoanPoolPartsCount: experimentalLoanPoolPartsCount,
+		testAndMeasurementPartsCount: testAndMeasurementPartsCount, 
+		stockItemsCount: stockItemsCount,
+		othersCount: othersCount} as result;`
+
+	result.ReturnAlias = "result"
 
 	return result
 }
