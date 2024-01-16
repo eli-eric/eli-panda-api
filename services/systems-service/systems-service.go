@@ -221,9 +221,6 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	//beacause of the full text search we need to modify the search string
-	search = helpers.GetFullTextSearchString(search)
-
 	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
@@ -236,9 +233,6 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	//beacause of the full text search we need to modify the search string
-	search = helpers.GetFullTextSearchString(search)
 
 	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
