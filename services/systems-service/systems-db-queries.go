@@ -316,7 +316,14 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
 	} else {
 		result.Query = `
-		CALL db.index.fulltext.queryNodes('searchIndexSystems', $search) YIELD node AS sys WHERE sys:System AND sys.deleted = false WITH sys
+		CALL {
+			CALL db.index.fulltext.queryNodes('searchIndexSystems', $fulltextSearch) YIELD node AS sys WHERE sys:System AND sys.deleted = false return sys
+			UNION
+			MATCH (sys{deleted:false})-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem) 
+			WHERE toLower(physicalItem.eun) STARTS WITH $search OR toLower(catalogueItem.catalogueNumber) STARTS WITH $search OR toLower(catalogueItem.name) STARTS WITH $search
+			RETURN sys
+		}
+		WITH sys
 		MATCH(f:Facility{code: $facilityCode}) WITH f, sys
 		MATCH(sys)-[:BELONGS_TO_FACILITY]->(f)
 		WITH sys `
@@ -377,6 +384,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	result.ReturnAlias = "systems"
 
 	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
 	result.Parameters["facilityCode"] = facilityCode
@@ -413,7 +421,14 @@ func GetSystemsBySearchTextFullTextCountQuery(searchString string, facilityCode 
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
 	} else {
 		result.Query = `
-		CALL db.index.fulltext.queryNodes('searchIndexSystems', $search) YIELD node AS sys WHERE sys:System AND sys.deleted = false WITH sys
+		CALL {
+			CALL db.index.fulltext.queryNodes('searchIndexSystems', $fulltextSearch) YIELD node AS sys WHERE sys:System AND sys.deleted = false return sys
+			UNION
+			MATCH (sys{deleted:false})-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem) 
+			WHERE toLower(physicalItem.eun) STARTS WITH $search OR toLower(catalogueItem.catalogueNumber) STARTS WITH $search OR toLower(catalogueItem.name) STARTS WITH $search
+			RETURN sys
+		}
+		WITH sys
 		MATCH(f:Facility{code: $facilityCode}) WITH f, sys
 		MATCH(sys)-[:BELONGS_TO_FACILITY]->(f)
 		WITH sys `
@@ -432,6 +447,7 @@ func GetSystemsBySearchTextFullTextCountQuery(searchString string, facilityCode 
 	result.ReturnAlias = "count"
 
 	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
