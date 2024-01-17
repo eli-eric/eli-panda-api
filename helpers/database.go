@@ -398,6 +398,23 @@ func GetFullTextSearchString(searchString string) (result string) {
 	return result
 }
 
+func GetFilterValue[T any](filters *[]ColumnFilter, filterID string) (result *T) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(T)
+			return &value
+		}
+	}
+
+	return nil
+
+}
+
 type PaginationResult[T any] struct {
 	TotalCount int64 `json:"totalCount"`
 	Data       []T   `json:"data"`

@@ -308,12 +308,14 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 	return result
 }
 
-func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
 
-	if searchString == "" {
+	if searchString == "" && (filering == nil || len(*filering) == 0) {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
+	} else if searchString == "" && filering != nil {
+		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
 	} else {
 		result.Query = `
 		CALL {
@@ -329,17 +331,32 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 		WITH sys `
 	}
 
+	//apply filters
+	// if filterVal := helpers.GetFilterValue[string](filering, "eun"); filterVal != nil {
+	// 	//result.Query += `WHERE toLower(physicalItem.eun) CONTAINS $filterEun `
+	// 	result.Parameters["filterEun"] = strings.ToLower(*filterVal)
+	// }
+
+	if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "systemType"); filterVal != nil {
+		result.Query += `MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st) WHERE st.uid = $filterSystemType `
+		result.Parameters["filterSystemType"] = (*filterVal)["uid"].(string)
+	} else {
+		result.Query += `OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st) `
+	}
+
 	result.Query += `	
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
-	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
-	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  	
+	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)	
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	`
+
+	result.Query += `
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
