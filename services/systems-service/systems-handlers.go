@@ -177,7 +177,11 @@ func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 		sortingObject := new([]helpers.Sorting)
 		json.Unmarshal([]byte(sorting), &sortingObject)
 
-		items, err := h.systemsService.GetSystemsWithSearchAndPagination(search, facilityCode, pagingObject, sortingObject)
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		items, err := h.systemsService.GetSystemsWithSearchAndPagination(search, facilityCode, pagingObject, sortingObject, filterObject)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
@@ -206,7 +210,11 @@ func (h *SystemsHandlers) GetSystemsForRelationship() echo.HandlerFunc {
 		systemFromUid := c.QueryParam("systemFromUid")
 		relationTypeCode := c.QueryParam("relationTypeCode")
 
-		items, err := h.systemsService.GetSystemsForRelationship(search, facilityCode, pagingObject, sortingObject, systemFromUid, relationTypeCode)
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		items, err := h.systemsService.GetSystemsForRelationship(search, facilityCode, pagingObject, sortingObject, filterObject, systemFromUid, relationTypeCode)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)

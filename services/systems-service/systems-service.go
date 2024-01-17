@@ -32,8 +32,8 @@ type ISystemsService interface {
 	UpdateSystem(newSystem *models.System, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
-	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error)
-	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
+	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
+	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
 	DeleteSystemRelationship(uid int64, userUID string) (err error)
 	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
@@ -217,11 +217,11 @@ func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, lim
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.System], err error) {
+func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting, filering)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
 
@@ -230,11 +230,11 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error) {
+func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting)
+	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting, filering)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
 
