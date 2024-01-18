@@ -127,11 +127,6 @@ func CreateNewSystemQuery(newSystem *models.System, facilityCode string, userUID
 		result.Parameters["systemTypeUID"] = newSystem.SystemType.UID
 	}
 
-	if newSystem.Owner != nil && newSystem.Owner.UID != "" {
-		result.Query += `WITH s MATCH(owner:Employee{uid:$ownerUID}) MERGE(s)-[:HAS_OWNER]->(owner) `
-		result.Parameters["ownerUID"] = newSystem.Owner.UID
-	}
-
 	if newSystem.Responsible != nil && newSystem.Responsible.UID != "" {
 		result.Query += `WITH s MATCH(responsible:Employee{uid:$responsibleUID}) MERGE(s)-[:HAS_RESPONSIBLE]->(responsible) `
 		result.Parameters["responsibleUID"] = newSystem.Responsible.UID
@@ -332,26 +327,133 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	}
 
 	//apply filters
-	// if filterVal := helpers.GetFilterValue[string](filering, "eun"); filterVal != nil {
-	// 	//result.Query += `WHERE toLower(physicalItem.eun) CONTAINS $filterEun `
-	// 	result.Parameters["filterEun"] = strings.ToLower(*filterVal)
-	// }
 
+	//system name
+	if filterVal := helpers.GetFilterValue[string](filering, "name"); filterVal != nil {
+		result.Query += ` WHERE toLower(sys.name) CONTAINS $filterName `
+		result.Parameters["filterName"] = strings.ToLower(*filterVal)
+	}
+
+	//system description
+	if filterVal := helpers.GetFilterValue[string](filering, "description"); filterVal != nil {
+		result.Query += ` WITH sys WHERE toLower(sys.description) CONTAINS $filterDescription `
+		result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
+	}
+
+	//system level
+	if filterVal := helpers.GetFilterValue[string](filering, "systemLevel"); filterVal != nil {
+		result.Query += ` WITH sys WHERE sys.systemLevel = $filterSystemLevel `
+		result.Parameters["filterSystemLevel"] = strings.ToLower(*filterVal)
+	}
+
+	//system code
+	if filterVal := helpers.GetFilterValue[string](filering, "systemCode"); filterVal != nil {
+		result.Query += ` WITH sys WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
+		result.Parameters["filterSystemCode"] = strings.ToLower(*filterVal)
+	}
+
+	//system alias
+	if filterVal := helpers.GetFilterValue[string](filering, "systemAlias"); filterVal != nil {
+		result.Query += ` WITH sys WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
+		result.Parameters["filterSystemAlias"] = strings.ToLower(*filterVal)
+	}
+
+	//system type
 	if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "systemType"); filterVal != nil {
-		result.Query += `MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st) WHERE st.uid = $filterSystemType `
+		result.Query += ` MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st) WHERE st.uid = $filterSystemType `
 		result.Parameters["filterSystemType"] = (*filterVal)["uid"].(string)
 	} else {
 		result.Query += `OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st) `
 	}
 
-	result.Query += `	
-	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
-	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  	
-	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)	
-	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
-	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
-	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
-	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	//system location
+	if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "location"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_LOCATION]->(loc) WHERE loc.uid = $filterLocation `
+		result.Parameters["filterLocation"] = (*filterVal)["uid"].(string)
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc) `
+	}
+
+	//system zone
+	if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "zone"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_ZONE]->(zone) WHERE zone.uid = $filterZone `
+		result.Parameters["filterZone"] = (*filterVal)["uid"].(string)
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone) `
+	}
+
+	//system responsible
+	if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "responsible"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible) WHERE responsible.uid = $filterResponsible `
+		result.Parameters["filterResponsible"] = (*filterVal)["uid"].(string)
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible) `
+	}
+
+	//system importance
+	if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "importance"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_IMPORTANCE]->(imp) WHERE imp.uid = $filterImportance `
+		result.Parameters["filterImportance"] = (*filterVal)["uid"].(string)
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp) `
+	}
+
+	//physical item filters
+	//we have to get all physical items filter values first and then apply them
+	itemUsageFilter := helpers.GetFilterValue[map[string]interface{}](filering, "itemUsage")
+	eunFilter := helpers.GetFilterValue[string](filering, "eun")
+	serialNumberFilter := helpers.GetFilterValue[string](filering, "serialNumber")
+	catalogueNumberFilter := helpers.GetFilterValue[string](filering, "catalogueNumber")
+	catalogueNameFilter := helpers.GetFilterValue[string](filering, "catalogueName")
+	catalogueCategoryFilter := helpers.GetFilterValue[map[string]interface{}](filering, "category")
+	supplierFilter := helpers.GetFilterValue[map[string]interface{}](filering, "supplier")
+
+	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || catalogueCategoryFilter != nil || supplierFilter != nil {
+		result.Query += ` MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
+
+		if itemUsageFilter != nil {
+			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid = $filterItemUsage `
+			result.Parameters["filterItemUsage"] = (*itemUsageFilter)["uid"].(string)
+		} else {
+			result.Query += ` OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) `
+		}
+
+		if eunFilter != nil {
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st `
+			result.Query += ` WHERE toLower(physicalItem.eun) CONTAINS $filterEUN `
+			result.Parameters["filterEUN"] = strings.ToLower(*eunFilter)
+		}
+
+		if serialNumberFilter != nil {
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st `
+			result.Query += ` WHERE toLower(physicalItem.serialNumber) CONTAINS $filterSerialNumber `
+			result.Parameters["filterSerialNumber"] = strings.ToLower(*serialNumberFilter)
+		}
+
+		if catalogueNumberFilter != nil {
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st `
+			result.Query += ` WHERE toLower(catalogueItem.catalogueNumber) CONTAINS $filterCatalogueNumber `
+			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*catalogueNumberFilter)
+		}
+
+		if catalogueNameFilter != nil {
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st `
+			result.Query += ` WHERE toLower(catalogueItem.name) CONTAINS $filterCatalogueName `
+			result.Parameters["filterCatalogueName"] = strings.ToLower(*catalogueNameFilter)
+		}
+
+		if catalogueCategoryFilter != nil {
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st `
+			result.Query += ` WHERE ciCategory.uid = $filterCatalogueCategory `
+			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter)["uid"].(string)
+		}
+
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 
+		OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) `
+	}
+
+	result.Query += `		
 	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
 	`
@@ -369,9 +471,8 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
-	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
-	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,	
+	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
 	lastUpdateBy: sys.lastUpdateBy,
@@ -454,8 +555,7 @@ func GetSystemsBySearchTextFullTextCountQuery(searchString string, facilityCode 
 	result.Query += `	
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
-	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)		
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 		
@@ -483,7 +583,6 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
@@ -503,7 +602,6 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
@@ -541,7 +639,6 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_OWNER]->(own)
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
@@ -560,7 +657,6 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	owner: case when own is not null then {uid: own.uid, name: own.lastName + " " + own.firstName} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
