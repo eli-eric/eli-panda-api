@@ -418,6 +418,13 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 			result.Query += ` OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) `
 		}
 
+		if supplierFilter != nil {
+			result.Query += ` MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) WHERE supplier.uid = $filterSupplier `
+			result.Parameters["filterSupplier"] = (*supplierFilter)["uid"].(string)
+		} else {
+			result.Query += ` OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		}
+
 		if eunFilter != nil {
 			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st `
 			result.Query += ` WHERE toLower(physicalItem.eun) CONTAINS $filterEUN `
@@ -450,7 +457,8 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 
 	} else {
 		result.Query += ` OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 
-		OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) `
+		OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+		OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
 	}
 
 	result.Query += `		
@@ -487,7 +495,8 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 			uid: catalogueItem.uid,
 			name: catalogueItem.name,
 			catalogueNumber: catalogueItem.catalogueNumber,
-			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end,
+			supplier: case when supplier is not null then {uid: supplier.uid, name: supplier.name} else null end
 			} else null end	
 	} else null end,
 	statistics: {subsystemsCount: count(subsys)}
