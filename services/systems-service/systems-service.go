@@ -223,7 +223,7 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 
 	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting, filering)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
-	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode, filering))
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 
@@ -236,7 +236,7 @@ func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode
 
 	query := GetSystemsBySearchTextFullTextQuery(search, facilityCode, pagination, sorting, filering)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
-	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode))
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsBySearchTextFullTextCountQuery(search, facilityCode, filering))
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 
