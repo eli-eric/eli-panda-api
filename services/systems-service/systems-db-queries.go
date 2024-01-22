@@ -401,6 +401,10 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp) `
 	}
 
+	// if filterVal := helpers.GetFilterValue[map[string]interface{}](filering, "price"); filterVal != nil {
+
+	// }
+
 	//physical item filters
 	//we have to get all physical items filter values first and then apply them
 	itemUsageFilter := helpers.GetFilterValue[map[string]interface{}](filering, "itemUsage")
