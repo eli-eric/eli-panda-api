@@ -303,9 +303,12 @@ func GetSystemsForAutocomplete(search string, limit int, facilityCode string, on
 	return result
 }
 
-func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
+	result.Parameters["search"] = strings.ToLower(searchString)
+	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
+	result.Parameters["facilityCode"] = facilityCode
 
 	if searchString == "" && (filering == nil || len(*filering) == 0) {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
@@ -342,7 +345,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 
 	//system level
 	if filterVal := helpers.GetFilterValue[string](filering, "systemLevel"); filterVal != nil {
-		result.Query += ` WITH sys WHERE sys.systemLevel = $filterSystemLevel `
+		result.Query += ` WITH sys WHERE toLower(sys.systemLevel) = $filterSystemLevel `
 		result.Parameters["filterSystemLevel"] = strings.ToLower(*filterVal)
 	}
 
@@ -461,12 +464,38 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 		OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
 	}
 
-	result.Query += `		
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
-	`
+	return result
+}
+
+func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
+
+	if sorting == nil || len(*sorting) == 0 {
+		return `ORDER BY systems.lastUpdateTime DESC `
+	}
+
+	var result string = ` ORDER BY `
+
+	for i, sort := range *sorting {
+		if i > 0 {
+			result += ", "
+		}
+		result += "systems." + sort.ID
+		if sort.DESC {
+			result += " DESC "
+		}
+	}
+
+	return result
+}
+
+func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+
+	result = GetSystemsSearchFilterQueryOnly(searchString, facilityCode, filering)
 
 	result.Query += `
+	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -510,66 +539,17 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 `
 	result.ReturnAlias = "systems"
 
-	result.Parameters["search"] = strings.ToLower(searchString)
-	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
-	result.Parameters["facilityCode"] = facilityCode
 
 	return result
 }
 
-func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
+func GetSystemsBySearchTextFullTextCountQuery(searchString string, facilityCode string, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
-	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY systems.lastUpdateTime DESC `
-	}
+	result = GetSystemsSearchFilterQueryOnly(searchString, facilityCode, filering)
 
-	var result string = ` ORDER BY `
-
-	for i, sort := range *sorting {
-		if i > 0 {
-			result += ", "
-		}
-		result += "systems." + sort.ID
-		if sort.DESC {
-			result += " DESC "
-		}
-	}
-
-	return result
-}
-
-func GetSystemsBySearchTextFullTextCountQuery(searchString string, facilityCode string) (result helpers.DatabaseQuery) {
-
-	result.Parameters = make(map[string]interface{})
-
-	if searchString == "" {
-		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
-	} else {
-		result.Query = `
-		CALL {
-			CALL db.index.fulltext.queryNodes('searchIndexSystems', $fulltextSearch) YIELD node AS sys WHERE sys:System AND sys.deleted = false return sys
-			UNION
-			MATCH (sys{deleted:false})-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem) 
-			WHERE toLower(physicalItem.eun) STARTS WITH $search OR toLower(catalogueItem.catalogueNumber) STARTS WITH $search OR toLower(catalogueItem.name) STARTS WITH $search
-			RETURN sys
-		}
-		WITH sys
-		MATCH(f:Facility{code: $facilityCode}) WITH f, sys
-		MATCH(sys)-[:BELONGS_TO_FACILITY]->(f)
-		WITH sys `
-	}
-
-	result.Query += `	
-	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
-	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
-	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)		
-	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
-	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
-		
-    return count(sys) as count
-`
+	result.Query += ` RETURN COUNT(sys) as count `
 	result.ReturnAlias = "count"
 
 	result.Parameters["search"] = strings.ToLower(searchString)
