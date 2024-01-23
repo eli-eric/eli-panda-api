@@ -415,6 +415,129 @@ func GetFilterValue[T any](filters *[]ColumnFilter, filterID string) (result *T)
 
 }
 
+func GetFilterValueString(filters *[]ColumnFilter, filterID string) (result *string) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(string)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueInt(filters *[]ColumnFilter, filterID string) (result *int) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(int)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueBool(filters *[]ColumnFilter, filterID string) (result *bool) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(bool)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueFloat64(filters *[]ColumnFilter, filterID string) (result *float64) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(float64)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueTime(filters *[]ColumnFilter, filterID string) (result *time.Time) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(time.Time)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueCodebook(filters *[]ColumnFilter, filterID string) (result *models.Codebook) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(map[string]interface{})
+			uid := value["uid"].(string)
+			name := value["name"].(string)
+			return &models.Codebook{UID: uid, Name: name}
+		}
+	}
+
+	return nil
+}
+
+type RangeFloat64 struct {
+	From float64
+	To   float64
+}
+
+func GetFilterValueRangeFloat64(filters *[]ColumnFilter, filterID string) (result *RangeFloat64) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.([]interface{})
+			if len(value) == 2 {
+				from := value[0].(float64)
+				to := value[1].(float64)
+				return &RangeFloat64{From: from, To: to}
+			}
+		}
+	}
+
+	return nil
+}
+
 type PaginationResult[T any] struct {
 	TotalCount int64 `json:"totalCount"`
 	Data       []T   `json:"data"`
