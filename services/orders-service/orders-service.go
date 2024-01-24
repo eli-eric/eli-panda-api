@@ -27,6 +27,7 @@ type IOrdersService interface {
 	SetItemPrintEUN(eun string, printEUN bool) (err error)
 	GetOrderUidByOrderNumber(orderNumber string) (result string, err error)
 	GetOrdersForCatalogueItem(catalogueItemUid string, facilityCode string) (result []models.OrderListItem, err error)
+	GetMinAndMaxOrderLinePrice(facilityCode string) (result models.OrderLineMinMax, err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -167,6 +168,15 @@ func (svc *OrdersService) GetOrdersForCatalogueItem(catalogueItemUid string, fac
 	result, err = helpers.GetNeo4jArrayOfNodes[models.OrderListItem](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *OrdersService) GetMinAndMaxOrderLinePrice(facilityCode string) (result models.OrderLineMinMax, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetMinAndMaxOrderLinePriceQuery(facilityCode)
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderLineMinMax](session, query)
 
 	return result, err
 }
