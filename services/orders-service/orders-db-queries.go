@@ -733,7 +733,7 @@ func GetOrdersForCatalogueItemQuery(catalogueItemUID string, facilityCode string
 func GetMinAndMaxOrderLinePriceQuery(facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Query = `
-	MATCH (f:Facility{code: $facilityCode})<-[:BELONGS_TO_FACILITY]-(o)-[ol:HAS_ORDER_LINE]->(physicalItem)<-[:CONTAINS_ITEM]-(sys)
+	MATCH (f:Facility{code: $facilityCode})<-[:BELONGS_TO_FACILITY]-(o{deleted: false})-[ol:HAS_ORDER_LINE]->(physicalItem)<-[:CONTAINS_ITEM]-(sys{deleted:false})
 	where ol.price is not null and ol.currency is not NULL and ol.currency <> ""
 	with ol.price as price
 	return {min: toInteger(min(price)), max: toInteger(max(price))} as result`

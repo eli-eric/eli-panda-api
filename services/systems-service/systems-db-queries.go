@@ -531,7 +531,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
 		price: case when ol is not null then ol.price else null end,
-		currency: physicalItem.currency,
+		currency: ol.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
 		catalogueItem: case when catalogueItem is not null then {
 			uid: catalogueItem.uid,
