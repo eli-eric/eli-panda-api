@@ -27,6 +27,7 @@ type IOrdersHandlers interface {
 	SetItemPrintEUN() echo.HandlerFunc
 	GetOrderUidByOrderNumber() echo.HandlerFunc
 	GetOrdersForCatalogueItem() echo.HandlerFunc
+	GetMinAndMaxOrderLinePrice() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -254,7 +255,7 @@ func (h *OrdersHandlers) GetOrderUidByOrderNumber() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, orderUid)
 		} else {
 			log.Error().Msg(err.Error())
-			return echo.ErrNotFound
+			return echo.ErrInternalServerError
 		}
 
 	}
@@ -273,7 +274,25 @@ func (h *OrdersHandlers) GetOrdersForCatalogueItem() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, orders)
 		} else {
 			log.Error().Msg(err.Error())
-			return echo.ErrNotFound
+			return echo.ErrInternalServerError
+		}
+
+	}
+}
+
+func (h *OrdersHandlers) GetMinAndMaxOrderLinePrice() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+
+		minAndMax, err := h.ordersService.GetMinAndMaxOrderLinePrice(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, minAndMax)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
 		}
 
 	}

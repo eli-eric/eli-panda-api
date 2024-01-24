@@ -30,4 +30,6 @@ func MapOrdersRoutes(e *echo.Echo, h IOrdersHandlers, jwtMiddleware echo.Middlew
 	e.GET("/v1/order-uid-by-order-number/:orderNumber", h.GetOrderUidByOrderNumber())
 
 	e.GET("/v1/catalogue/:catalogueItemUid/orders", m.Authorization(h.GetOrdersForCatalogueItem(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
+
+	e.GET("/v1/orders/order-lines/min-max-prices", m.Authorization(h.GetMinAndMaxOrderLinePrice(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 }

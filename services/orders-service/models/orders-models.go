@@ -68,3 +68,8 @@ type OrderLineDelivery struct {
 	SerialNumber *string `json:"serialNumber"`
 	EUN          *string `json:"eun"`
 }
+
+type OrderLineMinMax struct {
+	Min int `json:"min"`
+	Max int `json:"max"`
+}
