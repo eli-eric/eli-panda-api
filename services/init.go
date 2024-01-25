@@ -4,6 +4,7 @@ import (
 	"panda/apigateway/config"
 	catalogueService "panda/apigateway/services/catalogue-service"
 	codebookService "panda/apigateway/services/codebook-service"
+	cronservice "panda/apigateway/services/cron-service"
 	ordersService "panda/apigateway/services/orders-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
@@ -43,4 +44,10 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
 	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
 	log.Info().Msg("Codebook  service initialized successfully.")
+
+	// cron service
+	cronSvc := cronservice.NewCronService(settings, neo4jDriver)
+	cronHandlers := cronservice.NewCronHandlers(cronSvc)
+	cronservice.MapCronRoutes(e, cronHandlers, jwtMiddleware)
+	log.Info().Msg("Cron      service initialized successfully.")
 }
