@@ -331,6 +331,12 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//apply filters
 
+	//parentSystem
+	if filterVal := helpers.GetFilterValueCodebook(filering, "parentSystem"); filterVal != nil {
+		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys `
+		result.Parameters["filterParentSystemUID"] = (*filterVal).UID
+	}
+
 	//system name
 	if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
 		result.Query += ` WHERE toLower(sys.name) CONTAINS $filterName `
