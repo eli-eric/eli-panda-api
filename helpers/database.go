@@ -567,6 +567,7 @@ type Filter struct {
 type ColumnFilter struct {
 	Id    string `json:"id"`
 	Value any    `json:"value"`
+	Type  string `json:"type"`
 }
 
 const DB_LOG_CREATE string = "CREATE"

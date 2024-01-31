@@ -45,7 +45,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			uid: prop.uid,
 			name: prop.name, 
 			listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-			type: { uid: propType.uid, name: propType.name },
+			type: { uid: propType.uid, name: propType.name, code: propType.code},
 			unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 			},
 			propertyGroup: groupName, 
@@ -177,7 +177,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 						uid: prop.uid,
 						name: prop.name, 
 						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-						type: { uid: propType.uid, name: propType.name },
+						type: { uid: propType.uid, name: propType.name, code: propType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: groupName, 
@@ -204,7 +204,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		uid: property.uid, 
 		name: property.name,
 		defaultValue: property.defaultValue, 
-		type: {uid: propertyType.uid, name: propertyType.name}, 
+		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 
 		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
 		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
@@ -233,7 +233,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						name: property.name, 
 						defaultValue: property.defaultValue,
 						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
-						type: { uid: propertyType.uid, name: propertyType.name },
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: group.name, 
@@ -252,7 +252,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						name: property.name, 
 						defaultValue: property.defaultValue,
 						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
-						type: { uid: propertyType.uid, name: propertyType.name },
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: group.name, 
