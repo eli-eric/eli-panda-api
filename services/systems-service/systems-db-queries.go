@@ -475,6 +475,37 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
 		}
 
+		for i, filter := range *filering {
+			if filter.Type == "" {
+				continue
+			}
+
+			if filter.Type == "text" {
+				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
+				}
+			} else if filter.Type == "list" {
+				if filterPropvalue := helpers.GetFilterValueCodebook(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE toLower(pv.value) = $propFilterVal%v `, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(filterPropvalue.UID)
+				}
+			}
+			// } else if filter.Type == "number" {
+			// 	if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+			// 		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
+			// 		result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE pv.value >= $propFilterValFrom%v AND pv.value <= $propFilterValTo%v `, i, i, i)
+			// 		result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+			// 		result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.From
+			// 		result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.To
+			// 	}
+			// }
+		}
+
 	} else {
 		result.Query += ` 
 		OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 

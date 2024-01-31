@@ -423,7 +423,7 @@ func GetFilterValueString(filters *[]ColumnFilter, filterID string) (result *str
 
 	for _, f := range *filters {
 		if f.Id == filterID {
-			value := f.Value.(string)
+			value := strings.TrimSpace(f.Value.(string))
 			return &value
 		}
 	}
