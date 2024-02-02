@@ -350,9 +350,9 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	}
 
 	//system level
-	if filterVal := helpers.GetFilterValueString(filering, "systemLevel"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemLevel) = $filterSystemLevel `
-		result.Parameters["filterSystemLevel"] = strings.ToLower(*filterVal)
+	if filterVal := helpers.GetFilterValueListString(filering, "systemLevel"); filterVal != nil {
+		result.Query += ` WITH sys WHERE sys.systemLevel IN $filterSystemLevel `
+		result.Parameters["filterSystemLevel"] = filterVal
 	}
 
 	//system code
@@ -409,7 +409,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//physical item filters
 	//we have to get all physical items filter values first and then apply them
-	itemUsageFilter := helpers.GetFilterValueCodebook(filering, "itemUsage")
+	itemUsageFilter := helpers.GetFilterValueListString(filering, "itemUsage")
 	eunFilter := helpers.GetFilterValueString(filering, "eun")
 	serialNumberFilter := helpers.GetFilterValueString(filering, "serialNumber")
 	catalogueNumberFilter := helpers.GetFilterValueString(filering, "catalogueNumber")
@@ -422,8 +422,8 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		result.Query += ` MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
 
 		if itemUsageFilter != nil {
-			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid = $filterItemUsage `
-			result.Parameters["filterItemUsage"] = (*itemUsageFilter).UID
+			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid IN $filterItemUsage `
+			result.Parameters["filterItemUsage"] = itemUsageFilter
 		} else {
 			result.Query += ` OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) `
 		}
