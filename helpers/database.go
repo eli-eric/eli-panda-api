@@ -398,6 +398,183 @@ func GetFullTextSearchString(searchString string) (result string) {
 	return result
 }
 
+func GetFilterValue[T any](filters *[]ColumnFilter, filterID string) (result *T) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(T)
+			return &value
+		}
+	}
+
+	return nil
+
+}
+
+func GetFilterValueString(filters *[]ColumnFilter, filterID string) (result *string) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := strings.TrimSpace(f.Value.(string))
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueInt(filters *[]ColumnFilter, filterID string) (result *int) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(int)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueBool(filters *[]ColumnFilter, filterID string) (result *bool) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(bool)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueFloat64(filters *[]ColumnFilter, filterID string) (result *float64) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(float64)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueTime(filters *[]ColumnFilter, filterID string) (result *time.Time) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(time.Time)
+			return &value
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueCodebook(filters *[]ColumnFilter, filterID string) (result *models.Codebook) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(map[string]interface{})
+			uid := value["uid"].(string)
+			name := value["name"].(string)
+			return &models.Codebook{UID: uid, Name: name}
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueListString(filters *[]ColumnFilter, filterID string) (result *[]string) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.([]interface{})
+			var result []string
+			for _, v := range value {
+				result = append(result, v.(string))
+			}
+			return &result
+		}
+	}
+
+	return nil
+}
+
+func GetFilterValueRangeFloat64(filters *[]ColumnFilter, filterID string) (result *RangeFloat64Nullable) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(map[string]interface{})
+			if len(value) == 2 {
+				// check if the given interface if nullable
+				minValue := value["min"]
+				maxValue := value["max"]
+				var result = RangeFloat64Nullable{}
+
+				if minValue != nil {
+					min := minValue.(float64)
+					result.Min = &min
+				}
+
+				if maxValue != nil {
+					max := maxValue.(float64)
+					result.Max = &max
+				}
+
+				if result.Min != nil && result.Max != nil && *result.Min > *result.Max {
+					result.Min, result.Max = nil, nil
+				}
+
+				return &result
+			}
+		}
+	}
+
+	return nil
+}
+
+type RangeFloat64Nullable struct {
+	Min *float64 `json:"min"`
+	Max *float64 `json:"max"`
+}
+
 type PaginationResult[T any] struct {
 	TotalCount int64 `json:"totalCount"`
 	Data       []T   `json:"data"`
@@ -427,6 +604,7 @@ type Filter struct {
 type ColumnFilter struct {
 	Id    string `json:"id"`
 	Value any    `json:"value"`
+	Type  string `json:"type"`
 }
 
 const DB_LOG_CREATE string = "CREATE"

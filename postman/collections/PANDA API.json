@@ -410,6 +410,56 @@
 					"response": []
 				},
 				{
+					"name": "Get catalogue items overall statistics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "400c8332-4fe7-48e5-98e1-5072ff3204e6",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "b683a9fa-3ebb-4abf-acc6-7aff7d427a03",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/catalogue/items/statistics",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"catalogue",
+								"items",
+								"statistics"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Insert new catalogue item",
 					"event": [
 						{
@@ -1893,13 +1943,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/a7dbd6d6-ecf7-419b-9cde-9a55e1639c83",
+							"raw": "{{baseUrl}}/system/ef37cdb5-6e5e-4e71-91ce-1c62390c69d6",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
-								"a7dbd6d6-ecf7-419b-9cde-9a55e1639c83"
+								"ef37cdb5-6e5e-4e71-91ce-1c62390c69d6"
 							]
 						}
 					},
@@ -2183,6 +2233,63 @@
 							"path": [
 								"orders",
 								"eun-for-print"
+							],
+							"query": [
+								{
+									"key": "euns",
+									"value": "[\"21804\", \"22303\", \"22301\"]",
+									"disabled": true
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Min Max Prices",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "c0213834-b5b7-4587-b48e-5d38a425f9c0",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/orders/order-lines/min-max-prices",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"orders",
+								"order-lines",
+								"min-max-prices"
 							],
 							"query": [
 								{
