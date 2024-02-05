@@ -29,7 +29,7 @@ type CatalogueItemDetail struct {
 
 	PropertyGroup string `json:"propertyGroup,omitempty"`
 
-	Value *string `json:"value,omitempty"`
+	Value any `json:"value,omitempty"`
 }
 
 type CatalogueItemSimple struct {
