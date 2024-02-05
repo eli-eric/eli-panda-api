@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"encoding/json"
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -565,7 +566,7 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	}
 
 	for idxProp, prop := range item.Details {
-		if prop.Value != nil && *prop.Value != "" {
+		if prop.Value != nil && prop.Value != "" {
 
 			propIdx := fmt.Sprintf("prop%d", idxProp)
 			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
@@ -573,7 +574,18 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
 
 			result.Parameters[propUidIdx] = prop.Property.UID
-			result.Parameters[propValueIdx] = prop.Value
+			// check prop.Value type, if its map[string]interface{} then marshal it to json string
+			if prop.Property.Type.Code == "range" {
+				jsonValue, err := json.Marshal(prop.Value)
+				if err == nil {
+					result.Parameters[propValueIdx] = string(jsonValue)
+				} else {
+					// this will throw error in the query
+					result.Parameters[propValueIdx] = prop.Value
+				}
+			} else {
+				result.Parameters[propValueIdx] = prop.Value
+			}
 
 			result.Query += fmt.Sprintf(`
 			WITH item
@@ -609,7 +621,7 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	helpers.AutoResolveObjectToUpdateQuery(&result, *item, *oldItem, "item")
 
 	for idxProp, prop := range item.Details {
-		if prop.Value != nil && *prop.Value != "" {
+		if prop.Value != nil && prop.Value != "" {
 
 			propIdx := fmt.Sprintf("prop%d", idxProp)
 			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
@@ -617,7 +629,18 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
 
 			result.Parameters[propUidIdx] = prop.Property.UID
-			result.Parameters[propValueIdx] = prop.Value
+			// check prop.Value type, if its map[string]interface{} then marshal it to json string
+			if prop.Property.Type.Code == "range" {
+				jsonValue, err := json.Marshal(prop.Value)
+				if err == nil {
+					result.Parameters[propValueIdx] = string(jsonValue)
+				} else {
+					// this will throw error in the query
+					result.Parameters[propValueIdx] = prop.Value
+				}
+			} else {
+				result.Parameters[propValueIdx] = prop.Value
+			}
 
 			result.Query += fmt.Sprintf(`
 			WITH item
