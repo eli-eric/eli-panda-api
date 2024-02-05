@@ -1,0 +1,1 @@
+MERGE (pt:CatalogueCategoryPropertyType{ uid:'186d278b-5712-433e-a426-b6a7c8c6177c', name: 'Range', code: 'range' });
