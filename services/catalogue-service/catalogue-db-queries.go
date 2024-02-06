@@ -79,14 +79,14 @@ func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string) (re
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
+	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
 	ORDER BY itm.name
 	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR 
-	toLower(itm.description) CONTAINS $searchText or 
-	toLower(supp.name) CONTAINS $searchText or 
-	itm.catalogueNumber CONTAINS $searchText or
-	toLower(value) CONTAINS $searchText)
+	(toLower(itm.name) CONTAINS $searchText OR
+	 toLower(itm.description) CONTAINS $searchText or 
+	 toLower(supp.name) CONTAINS $searchText or 
+	 toLower(itm.catalogueNumber) CONTAINS $searchText or
+	 toLower(value) CONTAINS $searchText)
 	RETURN count(distinct itm.uid) as itemsCount`
 
 	result.ReturnAlias = "itemsCount"
