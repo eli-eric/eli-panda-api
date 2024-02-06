@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"encoding/json"
 	"errors"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
@@ -116,9 +117,20 @@ func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (resul
 			for _, property := range allProperties {
 				//check if we have this property in the result
 				found := false
-				for _, detail := range result.Details {
+				for i, detail := range result.Details {
 					if detail.Property.UID == property.Property.UID {
 						found = true
+
+						if property.Property.Type.Code == "range" {
+							var rangeValue helpers.RangeFloat64Nullable
+							stringData := (detail.Value).(string)
+							errJson := json.Unmarshal([]byte(stringData), &rangeValue)
+							if errJson == nil {
+								result.Details[i].Value = rangeValue
+							}
+
+						}
+
 						break
 					}
 				}
