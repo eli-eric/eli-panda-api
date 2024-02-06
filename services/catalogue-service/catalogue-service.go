@@ -86,6 +86,20 @@ func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string
 	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItemSimple](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryUid))
 
+	// we have to process the result and set the value for the range type
+	for i, item := range items {
+		for idt, detail := range item.Details {
+			if detail.Property.Type.Code == "range" {
+				var rangeValue helpers.RangeFloat64Nullable
+				stringData := (detail.Value).(string)
+				errJson := json.Unmarshal([]byte(stringData), &rangeValue)
+				if errJson == nil {
+					items[i].Details[idt].Value = rangeValue
+				}
+			}
+		}
+	}
+
 	result = helpers.GetPaginationResult(items, totalCount, err)
 
 	return result, err
