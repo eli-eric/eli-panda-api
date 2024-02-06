@@ -117,7 +117,7 @@ func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (resul
 			for _, property := range allProperties {
 				//check if we have this property in the result
 				found := false
-				for _, detail := range result.Details {
+				for i, detail := range result.Details {
 					if detail.Property.UID == property.Property.UID {
 						found = true
 
@@ -126,7 +126,7 @@ func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (resul
 							stringData := (detail.Value).(string)
 							errJson := json.Unmarshal([]byte(stringData), &rangeValue)
 							if errJson == nil {
-								detail.Value = rangeValue
+								result.Details[i].Value = rangeValue
 							}
 
 						}
