@@ -11,28 +11,41 @@ import (
 	"github.com/google/uuid"
 )
 
-// Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(category:CatalogueCategory)	
-	where $categoryUid = '' or category.uid = $categoryUid
-	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-	with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
+	if categoryUid == "" {
+		result.Query = `MATCH(cat:CatalogueCategory)<-[:BELONGS_TO_CATEGORY]-(itm:CatalogueItem) `
+	} else {
+		result.Query = `
+		MATCH(category:CatalogueCategory)	
+		where $categoryUid = '' or category.uid = $categoryUid
+		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
+		with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
+		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
+		where cat.uid in subCategoryUids or cat.uid = itmCategoryUid  `
+	}
+	result.Query += `	
 	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
 	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
 	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
-	ORDER BY itm.name
+	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit	
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR
 	 toLower(itm.description) CONTAINS $searchText or 
 	 toLower(supp.name) CONTAINS $searchText or 
 	 toLower(itm.catalogueNumber) CONTAINS $searchText or
-	 toLower(value) CONTAINS $searchText)
+	 toLower(value) CONTAINS $searchText)	`
+
+	return result
+}
+
+// Get catalogue items with pagination and filters
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int) (result helpers.DatabaseQuery) {
+
+	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid)
+	result.Query += `
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
@@ -52,6 +65,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			propertyGroup: groupName, 
 			value: value}) else null end
 	} as items
+	ORDER BY items.name
 	SKIP $skip
 	LIMIT $limit`
 
@@ -68,25 +82,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 
 func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(category:CatalogueCategory)	
-	where $categoryUid = '' or category.uid = $categoryUid
-	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-	with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid			
-	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
-	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
-	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
-	ORDER BY itm.name
-	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR
-	 toLower(itm.description) CONTAINS $searchText or 
-	 toLower(supp.name) CONTAINS $searchText or 
-	 toLower(itm.catalogueNumber) CONTAINS $searchText or
-	 toLower(value) CONTAINS $searchText)
+	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid)
+	result.Query += `
 	RETURN count(distinct itm.uid) as itemsCount`
 
 	result.ReturnAlias = "itemsCount"
