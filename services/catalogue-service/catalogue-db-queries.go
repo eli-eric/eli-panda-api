@@ -11,7 +11,20 @@ import (
 	"github.com/google/uuid"
 )
 
-func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter, skip, limit int) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["searchText"] = strings.TrimSpace(strings.ToLower(search))
+	result.Parameters["skip"] = skip
+	result.Parameters["limit"] = limit
+	result.Parameters["categoryUid"] = categoryUid
+
+	// category filter
+	filterCategory := helpers.GetFilterValueCodebook(filering, "category")
+	if filterCategory != nil {
+		categoryUid = filterCategory.UID
+		result.Parameters["categoryUid"] = categoryUid
+	}
 
 	if categoryUid == "" {
 		result.Query = `MATCH(cat:CatalogueCategory)<-[:BELONGS_TO_CATEGORY]-(itm:CatalogueItem) `
@@ -38,13 +51,88 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string) (resul
 	 toLower(itm.catalogueNumber) CONTAINS $searchText or
 	 toLower(value) CONTAINS $searchText)	`
 
+	if filering != nil && len(*filering) > 0 {
+
+		//catalogue name
+		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+			result.Query += ` WHERE toLower(itm.name) CONTAINS $filterName `
+			result.Parameters["filterName"] = strings.ToLower(*filterVal)
+		}
+
+		//catalogue number
+		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+			result.Query += ` WHERE toLower(itm.catalogueNumber) CONTAINS $filterCatalogueNumber `
+			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
+		}
+
+		//supplier
+		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+			result.Query += ` WHERE toLower(supp.name) CONTAINS $filterSupplier `
+			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
+		}
+
+		//manufacturerUrl
+		if filterVal := helpers.GetFilterValueString(filering, "manufacturerUrl"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+			result.Query += ` WHERE toLower(itm.manufacturerUrl) CONTAINS $filterManufacturerUrl `
+			result.Parameters["filterManufacturerUrl"] = strings.ToLower(*filterVal)
+		}
+
+		//description
+		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+			result.Query += ` WHERE toLower(itm.description) CONTAINS $filterDescription `
+			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
+		}
+
+		for i, filter := range *filering {
+			if filter.Type == "" {
+				continue
+			}
+
+			if filter.Type == "text" {
+				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
+				}
+			} else if filter.Type == "list" {
+				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE pv.value IN $propFilterVal%v `, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
+				}
+			} else if filter.Type == "number" {
+				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+
+					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
+				}
+			}
+		}
+
+	}
+
 	return result
 }
 
 // Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
-	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid)
+	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
 	result.Query += `
 	RETURN {
 	uid: itm.uid,
@@ -71,26 +159,16 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 
 	result.ReturnAlias = "items"
 
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = strings.TrimSpace(strings.ToLower(search))
-	result.Parameters["skip"] = skip
-	result.Parameters["limit"] = limit
-	result.Parameters["categoryUid"] = categoryUid
-
 	return result
 }
 
-func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
-	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid)
+	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, 0, 0)
 	result.Query += `
 	RETURN count(distinct itm.uid) as itemsCount`
 
 	result.ReturnAlias = "itemsCount"
-
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = strings.ToLower(search)
-	result.Parameters["categoryUid"] = categoryUid
 
 	return result
 }
