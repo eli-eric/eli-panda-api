@@ -102,6 +102,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
 				}
@@ -109,6 +110,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE pv.value IN $propFilterVal%v `, i, i)
+
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
 				}
@@ -116,9 +118,24 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
-					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
+				}
+			} else if filter.Type == "range" {
+				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, propType, supp, prop, groupName, value, unit `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%[1]v})<-[pv]-(itm)
+					WITH itm, cat, propType, supp, prop, groupName, value, unit, apoc.convert.fromJsonMap(pv.value) as jsonValue						  
+					WHERE (toFloat(jsonValue.min) <= $propFilterValFrom%[1]v - $propFilterValTo%[1]v) 
+					AND (toFloat(jsonValue.max) >= $propFilterValFrom%[1]v + $propFilterValTo%[1]v) `, i)
+
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					if filterPropvalue.Max == nil {
+						filterPropvalue.Max = &plusMinusZero
+					}
 					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
 				}
 			}
@@ -129,10 +146,13 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 	return result
 }
 
+var plusMinusZero float64 = 0
+
 // Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
+
 	result.Query += `
 	RETURN {
 	uid: itm.uid,
@@ -152,8 +172,29 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			},
 			propertyGroup: groupName, 
 			value: value}) else null end
-	} as items
-	ORDER BY items.name
+	} as items `
+
+	if sorting != nil && len(*sorting) > 0 {
+		result.Query += " ORDER BY "
+	}
+	for ids, sort := range *sorting {
+
+		sortName := sort.ID
+		// handle special cases
+		if sortName == "partNumber" {
+			sortName = "catalogueNumber"
+		} else if sortName == "categoryName" {
+			sortName = "category.name"
+		}
+
+		if ids == len(*sorting)-1 {
+			result.Query += fmt.Sprintf(" items.%s %s ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+		} else {
+			result.Query += fmt.Sprintf(" items.%s %s, ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+		}
+	}
+
+	result.Query += `
 	SKIP $skip
 	LIMIT $limit`
 

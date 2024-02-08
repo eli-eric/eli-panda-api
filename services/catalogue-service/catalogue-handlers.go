@@ -71,8 +71,12 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 			filter := c.QueryParam("columnFilter")
 			json.Unmarshal([]byte(filter), &filterObject)
 
+			sortingObject := new([]helpers.Sorting)
+			sorting := c.QueryParam("sorting")
+			json.Unmarshal([]byte(sorting), &sortingObject)
+
 			// get catalogue items
-			items, err := h.catalogueService.GetCatalogueItems(searchParam, categoryUidParam, pagination.PageSize, pagination.Page, filterObject)
+			items, err := h.catalogueService.GetCatalogueItems(searchParam, categoryUidParam, pagination.PageSize, pagination.Page, filterObject, sortingObject)
 
 			if err == nil {
 				return c.JSON(http.StatusOK, items)

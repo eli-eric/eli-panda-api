@@ -19,7 +19,7 @@ type CatalogueService struct {
 
 type ICatalogueService interface {
 	GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
-	GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.CatalogueItemSimple], err error)
+	GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.CatalogueItemSimple], err error)
 	GetCatalogueItemWithDetailsByUid(uid string) (catalogueItem models.CatalogueItem, err error)
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
 	GetCatalogueCategoryWithDetailsForCopyByUid(uid string) (result models.CatalogueCategory, err error)
@@ -77,12 +77,12 @@ func (svc *CatalogueService) GetCatalogueCategoriesRecursiveByParentUID(parentUI
 	return categories, err
 }
 
-func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.CatalogueItemSimple], err error) {
+func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.CatalogueItemSimple], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
-	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize, filering)
+	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize, filering, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItemSimple](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryUid, filering))
 
