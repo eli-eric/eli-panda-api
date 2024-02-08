@@ -149,9 +149,10 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 var plusMinusZero float64 = 0
 
 // Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
+
 	result.Query += `
 	RETURN {
 	uid: itm.uid,
@@ -171,8 +172,29 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			},
 			propertyGroup: groupName, 
 			value: value}) else null end
-	} as items
-	ORDER BY items.name
+	} as items `
+
+	if sorting != nil && len(*sorting) > 0 {
+		result.Query += " ORDER BY "
+	}
+	for ids, sort := range *sorting {
+
+		sortName := sort.ID
+		// handle special cases
+		if sortName == "partNumber" {
+			sortName = "catalogueNumber"
+		} else if sortName == "categoryName" {
+			sortName = "category.name"
+		}
+
+		if ids == len(*sorting)-1 {
+			result.Query += fmt.Sprintf(" items.%s %s ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+		} else {
+			result.Query += fmt.Sprintf(" items.%s %s, ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+		}
+	}
+
+	result.Query += `
 	SKIP $skip
 	LIMIT $limit`
 

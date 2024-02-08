@@ -591,6 +591,13 @@ type Sorting struct {
 	DESC bool
 }
 
+func GetSortingDirectionString(desc bool) (result string) {
+	if desc {
+		return "DESC"
+	}
+	return "ASC"
+}
+
 type Filter struct {
 	Key   string `json:"key"`
 	Value any    `json:"value"`
