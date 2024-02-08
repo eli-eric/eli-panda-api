@@ -542,28 +542,23 @@ func GetFilterValueRangeFloat64(filters *[]ColumnFilter, filterID string) (resul
 	for _, f := range *filters {
 		if f.Id == filterID {
 			value := f.Value.(map[string]interface{})
-			if len(value) == 2 {
-				// check if the given interface if nullable
-				minValue := value["min"]
-				maxValue := value["max"]
-				var result = RangeFloat64Nullable{}
 
-				if minValue != nil {
-					min := minValue.(float64)
-					result.Min = &min
-				}
+			minValue := value["min"]
+			maxValue := value["max"]
+			var result = RangeFloat64Nullable{}
 
-				if maxValue != nil {
-					max := maxValue.(float64)
-					result.Max = &max
-				}
-
-				if result.Min != nil && result.Max != nil && *result.Min > *result.Max {
-					result.Min, result.Max = nil, nil
-				}
-
-				return &result
+			if minValue != nil {
+				min := minValue.(float64)
+				result.Min = &min
 			}
+
+			if maxValue != nil {
+				max := maxValue.(float64)
+				result.Max = &max
+			}
+
+			return &result
+
 		}
 	}
 
