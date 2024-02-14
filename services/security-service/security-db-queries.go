@@ -2,11 +2,12 @@ package securityService
 
 import (
 	"panda/apigateway/helpers"
+	"strings"
 )
 
 func UserWithRolesAndFailityQuery(username string) (result helpers.DatabaseQuery) {
 
-	result.Query = `match(u:User{username: $userName})-[:HAS_ROLE]->(r:Role) 
+	result.Query = `match(u:User)-[:HAS_ROLE]->(r:Role) WHERE toLower(u.username) = $userName
 	optional match(u)-[:BELONGS_TO_FACILITY]->(f)
 	return {
 		uid: u.uid,
@@ -22,7 +23,7 @@ func UserWithRolesAndFailityQuery(username string) (result helpers.DatabaseQuery
 	result.ReturnAlias = "userInfo"
 
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["userName"] = username
+	result.Parameters["userName"] = strings.ToLower(username)
 
 	return result
 }
