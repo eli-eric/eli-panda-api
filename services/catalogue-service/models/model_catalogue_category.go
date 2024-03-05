@@ -16,6 +16,8 @@ type CatalogueCategory struct {
 	ParentUID string `json:"parentUID,omitempty"`
 
 	Groups []CatalogueCategoryPropertyGroup `json:"groups"`
+
+	SystemType *models.Codebook `json:"systemType,omitempty"`
 }
 
 type CatalogueCategoryPropertyGroup struct {
