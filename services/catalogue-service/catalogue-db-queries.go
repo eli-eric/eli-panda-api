@@ -314,19 +314,20 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	result.Query = `MATCH(category:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
 	WITH category, group,property
-	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)	
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH category, group,property, propertyType, unit order by id(property)
-	WITH category, group, collect({
+	WITH category,systemType, group,property, propertyType, unit order by id(property)
+	WITH category, group, systemType, collect({
 		uid: property.uid, 
 		name: property.name,
 		defaultValue: property.defaultValue, 
-		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 
+		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 		
 		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
 		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
-	WITH category, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
-	WITH category, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
+	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
+	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
+	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
@@ -341,7 +342,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 
 	result.Query = `MATCH(category)-[:HAS_SUBCATEGORY*1..50]->(childs:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
-	WITH category, group,property
+	WITH category, group,property	
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	WITH group,property, propertyType, unit order by property.name
@@ -389,14 +390,15 @@ func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.Databa
 	MATCH(category:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
 	WITH category, group,property
+	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(parent)-[:HAS_SUBCATEGORY]->(category)
-	WITH category, group,property, parent, propertyType, unit order by id(property)
-	WITH category,parent, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
-	WITH category,parent, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
-	WITH category,parent, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image } as category
+	WITH category,systemType, group,property, parent, propertyType, unit order by id(property)
+	WITH category,parent,systemType, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
+	WITH category,parent,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
+	WITH category,parent,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
+	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
@@ -414,8 +416,18 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 	result.Parameters["code"] = category.Code
 
 	result.Query = `
-	MERGE(category:CatalogueCategory{uid:$uid})
-	SET category.name = $name, category.code = $code
+	MERGE(category:CatalogueCategory{uid:$uid})`
+
+	if category.SystemType != nil && category.SystemType.UID != "" {
+		result.Parameters["systemTypeUID"] = category.SystemType.UID
+		result.Query += ` WITH category
+		MATCH(systemType:SystemType{uid: $systemTypeUID})
+		MERGE(category)-[:HAS_SYSTEM_TYPE]->(systemType)
+		WITH category
+		`
+	}
+
+	result.Query += `SET category.name = $name, category.code = $code
 	`
 	if category.Image != "" {
 		result.Query += ", category.image = $image "
