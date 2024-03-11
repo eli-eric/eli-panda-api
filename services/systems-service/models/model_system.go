@@ -23,6 +23,8 @@ type System struct {
 	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty" neo4j:"ignore"`
 	HasSubsystems bool                   `json:"hasSubsystems" neo4j:"ignore"`
 	Statistics    *SystemStatistics      `json:"statistics,omitempty" neo4j:"ignore"`
+	SparesOut     int                    `json:"sparesOut" neo4j:"ignore"`
+	SparesIn      int                    `json:"sparesIn" neo4j:"ignore"`
 }
 
 type PhysicalItem struct {

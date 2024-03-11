@@ -545,13 +545,16 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	result.Query += `
 	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
-
+	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
+    OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
 	hasSubsystems: case when subsys is not null then true else false end,
+	sparesIn: count(distinct spareIN),
+	sparesOut: count(distinct spareOUT),
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
@@ -628,12 +631,16 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
+    OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
 	hasSubsystems: case when subsys is not null then true else false end,
+	sparesIn: count(distinct spareIN),
+	sparesOut: count(distinct spareOUT),
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
