@@ -330,6 +330,9 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 
 		if err := c.Bind(catalogueItem); err == nil {
 
+			uid := c.Param("uid")
+			catalogueItem.Uid = uid
+
 			userUID := c.Get("userUID").(string)
 			// create catalogue item
 			err := h.catalogueService.UpdateCatalogueItem(catalogueItem, userUID)
