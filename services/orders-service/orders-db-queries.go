@@ -212,7 +212,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		catalogueNumber: ci.catalogueNumber, 
 		catalogueUid: ci.uid, 		
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
-		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.code,name: loc.name} ELSE NULL END,
+		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
 	RETURN DISTINCT {  
 	uid: o.uid,
@@ -457,7 +457,7 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 						//delete existing location
 						result.Query += fmt.Sprintf(`OPTIONAL MATCH()<-[oldLocation%[1]v:HAS_LOCATION]-(sys%[1]v) DELETE oldLocation%[1]v WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
 						//then create new one
-						result.Query += fmt.Sprintf(`MATCH(loc%[1]v:Location{code: $locationUID%[1]v}) MERGE(sys%[1]v)-[:HAS_LOCATION]->(loc%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
+						result.Query += fmt.Sprintf(`MATCH(loc%[1]v:Location{uid: $locationUID%[1]v}) MERGE(sys%[1]v)-[:HAS_LOCATION]->(loc%[1]v) WITH o, ccg, itm%[1]v, sys%[1]v  `, idxLine)
 
 						result.Parameters[fmt.Sprintf("locationUID%v", idxLine)] = orderLine.Location.UID
 					} else {
