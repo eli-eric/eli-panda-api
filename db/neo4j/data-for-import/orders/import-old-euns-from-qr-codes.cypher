@@ -1,4 +1,4 @@
-:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/import_euns.csv' AS line
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/S19_128E.csv' AS line
   WITH line where tolower(line.import) = "y" and line.orderId is not null
 CALL {
   WITH line
