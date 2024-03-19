@@ -419,7 +419,20 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
 
 	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || catalogueCategoryFilter != nil || supplierFilter != nil { // || priceFilter != nil {
-		result.Query += ` MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
+
+		if catalogueCategoryFilter != nil {
+			result.Query += ` 
+			MATCH(catMain:CatalogueCategory{uid:$filterCatalogueCategory})
+			WITH sys, catMain, imp, responsible, loc, zone, st
+			OPTIONAL MATCH(catMain)-[:HAS_SUBCATEGORY*1..20]->(subCats)
+			WITH  sys, catMain.uid as catMainUid, collect(subCats.uid) as subCatUids, imp, responsible, loc, zone, st
+			MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
+			WHERE ciCategory.uid = catMainUid OR ciCategory.uid in subCatUids `
+			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
+		} else {
+			result.Query += ` 		
+			MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
+		}
 
 		if itemUsageFilter != nil {
 			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid IN $filterItemUsage `
@@ -467,12 +480,6 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 			result.Query += ` WHERE toLower(catalogueItem.name) CONTAINS $filterCatalogueName `
 			result.Parameters["filterCatalogueName"] = strings.ToLower(*catalogueNameFilter)
-		}
-
-		if catalogueCategoryFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-			result.Query += ` WHERE ciCategory.uid = $filterCatalogueCategory `
-			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
 		}
 
 		for i, filter := range *filering {
