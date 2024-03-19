@@ -1,4 +1,4 @@
-name: Compose up TEST REST API on push
+name: Compose up PRODUCTION REST API on push
 
 on:
   push:
