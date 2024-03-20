@@ -116,3 +116,20 @@ func GetTeamsAutocompleteCodebookQuery(searchText string, limit int, facilityCod
 	result.Parameters["limit"] = limit
 	return result
 }
+
+func GetContactPersonRolesAutocompleteCodebookQuery(searchText string, limit int, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH(f:Facility{code:$facilityCode})
+	WITH f
+	MATCH(r:ContactPersonRole)-[:BELONGS_TO_FACILITY]->(f)
+	where apoc.text.clean(r.name) contains apoc.text.clean($searchText)
+	RETURN {uid: r.uid,name: r.name} as result
+	ORDER BY result.name limit $limit`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+
+	result.Parameters["searchText"] = searchText
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["limit"] = limit
+	return result
+}

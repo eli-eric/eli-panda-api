@@ -53,3 +53,4 @@ var USER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "USER", Type: "
 var SUPPLIER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SUPPLIER", Type: "AUTOCOMPLETE", NodeLabel: "Supplier", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN}
 var CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "CATALOGUE_CATEGORY", Type: "AUTOCOMPLETE"}
 var TEAM_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "TEAM", Type: "AUTOCOMPLETE", NodeLabel: "Team", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, FacilityRelation: "BELONGS_TO_FACILITY"}
+var CONTACT_PERSON_ROLE_CODEBOOK CodebookType = CodebookType{Code: "CONTACT_PERSON_ROLE", Type: "AUTOCOMPLETE", NodeLabel: "ContactPersonRole", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, FacilityRelation: "BELONGS_TO_FACILITY"}

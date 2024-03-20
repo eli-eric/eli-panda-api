@@ -28,6 +28,7 @@ type ISecurityService interface {
 	GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (result []codebookModels.Codebook, err error)
 	GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetTeamsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
+	GetContactPersonRolesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -109,6 +110,15 @@ func (svc *SecurityService) GetTeamsAutocompleteCodebook(searchText string, limi
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := GetTeamsAutocompleteCodebookQuery(searchText, limit, facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	return result, err
+}
+
+func (svc *SecurityService) GetContactPersonRolesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetContactPersonRolesAutocompleteCodebookQuery(searchText, limit, facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
