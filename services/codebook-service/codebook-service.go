@@ -85,6 +85,8 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.catalogueService.GetCatalogueCategoriesCodebook(searchString, limit)
 		case "MANUFACTURER":
 			codebookList, err = svc.catalogueService.GetManufacturersCodebook(searchString, limit)
+		case "TEAM":
+			codebookList, err = svc.securityService.GetTeamsAutocompleteCodebook(searchString, limit, facilityCode)
 		}
 
 		if err == nil {
@@ -136,16 +138,25 @@ func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode 
 
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
-				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name }) 
+				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name })  `
+
+				if codebookDefinition.FacilityRelation != "" {
+					dbquery.Query += `WITH n
+					MATCH (f:Facility {code: $facilityCode})
+					CREATE (n)-[:` + codebookDefinition.FacilityRelation + `]->(f)  `
+				}
+
+				dbquery.Query += `
 					WITH n
 					MATCH (u:User {uid: $userUID})
 					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
 				RETURN { uid: n.uid, name: n.name } as codebook`
 
 				dbquery.Parameters = map[string]interface{}{
-					"uid":     uuid.New().String(),
-					"name":    codebook.Name,
-					"userUID": userUID,
+					"uid":          uuid.New().String(),
+					"name":         codebook.Name,
+					"userUID":      userUID,
+					"facilityCode": facilityCode,
 				}
 				dbquery.ReturnAlias = "codebook"
 
@@ -251,6 +262,7 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 		models.PROCUREMENTER_CODEBOOK,
 		models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
+		models.TEAM_AUTOCOMPLETE_CODEBOOK,
 	}
 }
 
@@ -294,4 +306,5 @@ var codebooksMap = map[string]models.CodebookType{
 	"SUPPLIER":                   models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 	"PROCUREMENTER":              models.PROCUREMENTER_CODEBOOK,
 	"CATALOGUE_CATEGORY":         models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
+	"TEAM":                       models.TEAM_AUTOCOMPLETE_CODEBOOK,
 }

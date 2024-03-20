@@ -23,10 +23,11 @@ type CodebookTreeItemCatalogueCategory struct {
 }
 
 type CodebookType struct {
-	Code      string `json:"code"`
-	Type      string `json:"type"`
-	RoleEdit  string `json:"roleEdit,omitempty"`
-	NodeLabel string `json:"-"`
+	Code             string `json:"code"`
+	Type             string `json:"type"`
+	RoleEdit         string `json:"roleEdit,omitempty"`
+	NodeLabel        string `json:"-"`
+	FacilityRelation string `json:"-"`
 }
 
 type CodebookResponse struct {
@@ -51,3 +52,4 @@ var SYSTEM_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM", Typ
 var USER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "USER", Type: "AUTOCOMPLETE"}
 var SUPPLIER_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "SUPPLIER", Type: "AUTOCOMPLETE", NodeLabel: "Supplier", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN}
 var CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "CATALOGUE_CATEGORY", Type: "AUTOCOMPLETE"}
+var TEAM_AUTOCOMPLETE_CODEBOOK CodebookType = CodebookType{Code: "TEAM", Type: "AUTOCOMPLETE", NodeLabel: "Team", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, FacilityRelation: "BELONGS_TO_FACILITY"}
