@@ -26,7 +26,7 @@ type ICodebookService interface {
 	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error)
 	GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
-	GetListOfEditableCodebooks() (codebookList []models.CodebookType)
+	GetListOfEditableCodebooks(userRoles []string) (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 	UpdateCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 	DeleteCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebookUID string) (err error)
@@ -269,12 +269,12 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 	}
 }
 
-func (svc *CodebookService) GetListOfEditableCodebooks() (codebookList []models.CodebookType) {
+func (svc *CodebookService) GetListOfEditableCodebooks(userRoles []string) (codebookList []models.CodebookType) {
 
 	result := []models.CodebookType{}
 
 	for _, cb := range svc.GetListOfCodebooks() {
-		if cb.RoleEdit != "" {
+		if cb.RoleEdit != "" && checkUserRoles(userRoles, cb.RoleEdit) {
 			result = append(result, cb)
 		}
 	}
