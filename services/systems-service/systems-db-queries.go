@@ -309,11 +309,29 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
 	result.Parameters["facilityCode"] = facilityCode
+	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filering, "category")
 
 	if searchString == "" && (filering == nil || len(*filering) == 0) {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
-	} else if searchString == "" && filering != nil {
-		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
+	} else if filering != nil {
+		// explicitlly set search string to empty string if we have filters
+		searchString = ""
+
+		if catalogueCategoryFilter != nil {
+			result.Query = `
+		MATCH(cat:CatalogueCategory{uid:$filterCatalogueCategory})-[:HAS_SUBCATEGORY*1..20]->(subs)
+		WITH collect(subs.uid) + cat.uid as catUids
+		MATCH (f{code: $facilityCode})<-[:BELONGS_TO_FACILITY]-(sys:System)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
+		WHERE ciCategory.uid in catUids
+		WITH sys, catalogueItem, ciCategory, physicalItem
+		`
+			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
+		} else {
+			result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
+			result.Query += `
+			OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) WITH sys, physicalItem, catalogueItem, ciCategory
+			`
+		}
 	} else {
 		result.Query = `
 		CALL {
@@ -414,24 +432,10 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	serialNumberFilter := helpers.GetFilterValueString(filering, "serialNumber")
 	catalogueNumberFilter := helpers.GetFilterValueString(filering, "catalogueNumber")
 	catalogueNameFilter := helpers.GetFilterValueString(filering, "catalogueName")
-	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filering, "category")
 	supplierFilter := helpers.GetFilterValueCodebook(filering, "supplier")
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
 
-	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || catalogueCategoryFilter != nil || supplierFilter != nil { // || priceFilter != nil {
-
-		if catalogueCategoryFilter != nil {
-			result.Query += ` 
-			MATCH(cat:CatalogueCategory{uid:$filterCatalogueCategory})-[:HAS_SUBCATEGORY*1..20]->(subs)
-			WITH sys, collect(subs.uid) + cat.uid as catUids, imp, responsible, loc, zone, st
-			MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
-			WHERE ciCategory.uid in catUids 
-			`
-			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
-		} else {
-			result.Query += ` 		
-			MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
-		}
+	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil { // || priceFilter != nil {
 
 		if itemUsageFilter != nil {
 			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid IN $filterItemUsage `
@@ -513,11 +517,18 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		}
 
 	} else {
-		result.Query += ` 
-		OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 
-		OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
-		OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
-		OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		if catalogueCategoryFilter != nil {
+			result.Query += ` 
+			OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
+			OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+			OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		} else {
+			result.Query += ` 
+			OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 		
+			OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
+			OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+			OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		}
 	}
 
 	return result
