@@ -319,7 +319,8 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 		if catalogueCategoryFilter != nil {
 			result.Query = `
-		MATCH(cat:CatalogueCategory{uid:$filterCatalogueCategory})-[:HAS_SUBCATEGORY*1..20]->(subs)
+		MATCH(cat:CatalogueCategory{uid:$filterCatalogueCategory})
+		OPTIONAL MATCH(cat)-[:HAS_SUBCATEGORY*1..20]->(subs)
 		WITH collect(subs.uid) + cat.uid as catUids
 		MATCH (f{code: $facilityCode})<-[:BELONGS_TO_FACILITY]-(sys:System)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
 		WHERE ciCategory.uid in catUids
