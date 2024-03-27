@@ -309,11 +309,30 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
 	result.Parameters["facilityCode"] = facilityCode
+	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filering, "category")
 
 	if searchString == "" && (filering == nil || len(*filering) == 0) {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
-	} else if searchString == "" && filering != nil {
-		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
+	} else if filering != nil {
+		// explicitlly set search string to empty string if we have filters
+		searchString = ""
+
+		if catalogueCategoryFilter != nil {
+			result.Query = `
+		MATCH(cat:CatalogueCategory{uid:$filterCatalogueCategory})
+		OPTIONAL MATCH(cat)-[:HAS_SUBCATEGORY*1..20]->(subs)
+		WITH collect(subs.uid) + cat.uid as catUids
+		MATCH (f{code: $facilityCode})<-[:BELONGS_TO_FACILITY]-(sys:System)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
+		WHERE ciCategory.uid in catUids
+		WITH sys, catalogueItem, ciCategory, physicalItem
+		`
+			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
+		} else {
+			result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
+			result.Query += `
+			OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) WITH sys, physicalItem, catalogueItem, ciCategory
+			`
+		}
 	} else {
 		result.Query = `
 		CALL {
@@ -333,7 +352,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//parentSystem
 	if filterVal := helpers.GetFilterValueCodebook(filering, "parentSystem"); filterVal != nil {
-		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys `
+		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys, physicalItem, catalogueItem, ciCategory `
 		result.Parameters["filterParentSystemUID"] = (*filterVal).UID
 	}
 
@@ -345,25 +364,25 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//system description
 	if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.description) CONTAINS $filterDescription `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.description) CONTAINS $filterDescription `
 		result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
 	}
 
 	//system level
 	if filterVal := helpers.GetFilterValueListString(filering, "systemLevel"); filterVal != nil {
-		result.Query += ` WITH sys WHERE sys.systemLevel IN $filterSystemLevel `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE sys.systemLevel IN $filterSystemLevel `
 		result.Parameters["filterSystemLevel"] = filterVal
 	}
 
 	//system code
 	if filterVal := helpers.GetFilterValueString(filering, "systemCode"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
 		result.Parameters["filterSystemCode"] = strings.ToLower(*filterVal)
 	}
 
 	//system alias
 	if filterVal := helpers.GetFilterValueString(filering, "systemAlias"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
 		result.Parameters["filterSystemAlias"] = strings.ToLower(*filterVal)
 	}
 
@@ -414,12 +433,10 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	serialNumberFilter := helpers.GetFilterValueString(filering, "serialNumber")
 	catalogueNumberFilter := helpers.GetFilterValueString(filering, "catalogueNumber")
 	catalogueNameFilter := helpers.GetFilterValueString(filering, "catalogueName")
-	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filering, "category")
 	supplierFilter := helpers.GetFilterValueCodebook(filering, "supplier")
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
 
-	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || catalogueCategoryFilter != nil || supplierFilter != nil { // || priceFilter != nil {
-		result.Query += ` MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
+	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil { // || priceFilter != nil {
 
 		if itemUsageFilter != nil {
 			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid IN $filterItemUsage `
@@ -469,12 +486,6 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			result.Parameters["filterCatalogueName"] = strings.ToLower(*catalogueNameFilter)
 		}
 
-		if catalogueCategoryFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-			result.Query += ` WHERE ciCategory.uid = $filterCatalogueCategory `
-			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
-		}
-
 		for i, filter := range *filering {
 			if filter.Type == "" {
 				continue
@@ -507,11 +518,18 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		}
 
 	} else {
-		result.Query += ` 
-		OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 
-		OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
-		OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
-		OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		if catalogueCategoryFilter != nil {
+			result.Query += ` 
+			OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
+			OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+			OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		} else {
+			result.Query += ` 
+			OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 		
+			OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
+			OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+			OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		}
 	}
 
 	return result
