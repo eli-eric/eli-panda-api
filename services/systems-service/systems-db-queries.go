@@ -351,7 +351,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//parentSystem
 	if filterVal := helpers.GetFilterValueCodebook(filering, "parentSystem"); filterVal != nil {
-		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys `
+		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys, physicalItem, catalogueItem, ciCategory `
 		result.Parameters["filterParentSystemUID"] = (*filterVal).UID
 	}
 
@@ -363,25 +363,25 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//system description
 	if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.description) CONTAINS $filterDescription `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.description) CONTAINS $filterDescription `
 		result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
 	}
 
 	//system level
 	if filterVal := helpers.GetFilterValueListString(filering, "systemLevel"); filterVal != nil {
-		result.Query += ` WITH sys WHERE sys.systemLevel IN $filterSystemLevel `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE sys.systemLevel IN $filterSystemLevel `
 		result.Parameters["filterSystemLevel"] = filterVal
 	}
 
 	//system code
 	if filterVal := helpers.GetFilterValueString(filering, "systemCode"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
 		result.Parameters["filterSystemCode"] = strings.ToLower(*filterVal)
 	}
 
 	//system alias
 	if filterVal := helpers.GetFilterValueString(filering, "systemAlias"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
 		result.Parameters["filterSystemAlias"] = strings.ToLower(*filterVal)
 	}
 
