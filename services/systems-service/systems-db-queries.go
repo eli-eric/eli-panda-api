@@ -435,7 +435,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	supplierFilter := helpers.GetFilterValueCodebook(filering, "supplier")
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
 
-	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil { // || priceFilter != nil {
+	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil { // || priceFilter != nil {
 
 		if itemUsageFilter != nil {
 			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid IN $filterItemUsage `
