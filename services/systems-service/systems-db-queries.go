@@ -538,7 +538,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY systems.lastUpdateTime DESC `
+		return `ORDER BY systems.hasSubsystems desc, systems.systemLevel, systems.lastUpdateTime DESC `
 	}
 
 	var result string = ` ORDER BY `
@@ -686,7 +686,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end,
 		statistics: {subsystemsCount: count(subsys)}
 		} AS systems
-	ORDER BY systems.name
+	ORDER BY systems.hasSubsystems desc, systems.systemLevel, systems.name
 	LIMIT 1000
 `
 	result.ReturnAlias = "systems"
