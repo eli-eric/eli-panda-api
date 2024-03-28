@@ -113,13 +113,14 @@ func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		editable := c.QueryParams().Get("editable")
+		userRoles := c.Get("userRoles").([]string)
 		onlyEditable := false
 		if editable == "true" {
 			onlyEditable = true
 		}
 
 		if onlyEditable {
-			codebookList := h.codebookService.GetListOfEditableCodebooks()
+			codebookList := h.codebookService.GetListOfEditableCodebooks(userRoles)
 			return c.JSON(http.StatusOK, codebookList)
 		} else {
 			codebookList := h.codebookService.GetListOfCodebooks()

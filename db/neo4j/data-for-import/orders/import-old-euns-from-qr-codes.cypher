@@ -1,5 +1,5 @@
-:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/qr_codes_import_2.csv' AS line
-  WITH line where line.import = "y" and line.orderId is not null
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/S19_128E.csv' AS line
+  WITH line where tolower(line.import) = "y" and line.orderId is not null
 CALL {
   WITH line
   MATCH(f:Facility{code: "B"})     
@@ -11,11 +11,33 @@ CALL {
   MERGE(o)-[ol:HAS_ORDER_LINE]->(itm)
   MERGE(itm)-[:IS_BASED_ON]->(catItem) 
   WITH line, f, o,ol, itm, catItem, case when line.serialNumber <> "" then line.serialNumber else itm.serialNumber end as itmSerialNumber, case when itm.uid is null then apoc.create.uuid() else itm.uid end as itmUid
-  SET ol.isDelivered = true, itm.name = line.name, itm.serialNumber = itmSerialNumber, itm.deleted = false, itm.uid = itmUid, itm.imported_qr_code = true, itm.parentSystemImportUid = line.systemGuid, itm.supplierImport = line.manufacturer, itm.lastUpdateTime = datetime(), itm.lastUpdatedBy = "admin"
-  WITH line, f, o, catItem, case when o.uid is null then apoc.create.uuid() else o.uid end as oUid
-  SET o.uid = oUid, o.deleted = false, o.imported_qr_code = true, o.lastUpdateTime = datetime("2023-01-01"), o.lastUpdatedBy = "admin"
+  SET 
+    ol.isDelivered = true,
+    itm.name = case when catItem.name = "" or catItem.name is null then line.name else catItem.name end, 
+    itm.serialNumber = itmSerialNumber,
+    itm.deleted = false, 
+    itm.uid = itmUid, 
+    itm.imported_qr_code = true,
+    itm.parentSystemImportUid = line.systemGuid, 
+    itm.supplierImport = line.manufacturer, 
+    itm.lastUpdateTime = datetime(), 
+    itm.lastUpdatedBy = "admin"
+  WITH line, f, o, catItem, case when o.uid is null then apoc.create.uuid() else o.uid end as oUid, case when o.name is null then "Order " + line.orderId else o.name end as oName
+  SET 
+  o.uid = oUid, 
+  o.deleted = false, 
+  o.name = oName,
+  o.imported_qr_code = true, 
+  o.lastUpdateTime = datetime("2023-01-01"), 
+  o.lastUpdatedBy = "admin"
   WITH line, f, catItem, case when catItem.uid is null then apoc.create.uuid() else catItem.uid end as catItemUid
-  SET catItem.name = line.name, catItem.uid = catItemUid, catItem.deleted = false, catItem.imported_qr_code = true, catItem.lastUpdateTime = datetime(), catItem.lastUpdatedBy = "admin"
+  SET 
+  catItem.name = case when catItem.name = "" or catItem.name is null then line.name else catItem.name end,
+  catItem.uid = catItemUid, 
+  catItem.deleted = false, 
+  catItem.imported_qr_code = true, 
+  catItem.lastUpdateTime = datetime(), 
+  catItem.lastUpdatedBy = "admin"
 } IN TRANSACTIONS OF 500 ROWS;
 
 //dodat is delivered
@@ -27,7 +49,12 @@ MERGE(ci)-[:BELONGS_TO_CATEGORY]->(cat);
 MATCH(itm:Item) where not ()-[:CONTAINS_ITEM]->(itm) and itm.parentSystemImportUid is not null and itm.parentSystemImportUid <> " "
 WITH itm
 MATCH(parentSystem:System{uid: itm.parentSystemImportUid})
-MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(s:System{uid: apoc.create.uuid(), name: itm.name, deleted: false, imported_qr_code: true })-[:CONTAINS_ITEM]->(itm)
+MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(s:System)-[:CONTAINS_ITEM]->(itm)
+SET 
+s.uid = case when s.uid is null then apoc.create.uuid() else s.uid end,
+s.name = itm.name,
+s.deleted = false,
+s.imported_qr_code = true 
 WITH s
 MATCH(f:Facility{code: "B"})
 MERGE(s)-[:BELONGS_TO_FACILITY]->(f);

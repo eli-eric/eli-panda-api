@@ -26,7 +26,7 @@ type ICodebookService interface {
 	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error)
 	GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
-	GetListOfEditableCodebooks() (codebookList []models.CodebookType)
+	GetListOfEditableCodebooks(userRoles []string) (codebookList []models.CodebookType)
 	CreateNewCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 	UpdateCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebook *models.Codebook) (result models.Codebook, err error)
 	DeleteCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebookUID string) (err error)
@@ -85,6 +85,10 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.catalogueService.GetCatalogueCategoriesCodebook(searchString, limit)
 		case "MANUFACTURER":
 			codebookList, err = svc.catalogueService.GetManufacturersCodebook(searchString, limit)
+		case "TEAM":
+			codebookList, err = svc.securityService.GetTeamsAutocompleteCodebook(searchString, limit, facilityCode)
+		case "CONTACT_PERSON_ROLE":
+			codebookList, err = svc.securityService.GetContactPersonRolesAutocompleteCodebook(searchString, limit, facilityCode)
 		}
 
 		if err == nil {
@@ -136,16 +140,25 @@ func (svc *CodebookService) CreateNewCodebook(codebookCode string, facilityCode 
 
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
-				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name }) 
+				CREATE (n:` + codebookDefinition.NodeLabel + ` {uid: $uid, name: $name })  `
+
+				if codebookDefinition.FacilityRelation != "" {
+					dbquery.Query += `WITH n
+					MATCH (f:Facility {code: $facilityCode})
+					CREATE (n)-[:` + codebookDefinition.FacilityRelation + `]->(f)  `
+				}
+
+				dbquery.Query += `
 					WITH n
 					MATCH (u:User {uid: $userUID})
 					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
 				RETURN { uid: n.uid, name: n.name } as codebook`
 
 				dbquery.Parameters = map[string]interface{}{
-					"uid":     uuid.New().String(),
-					"name":    codebook.Name,
-					"userUID": userUID,
+					"uid":          uuid.New().String(),
+					"name":         codebook.Name,
+					"userUID":      userUID,
+					"facilityCode": facilityCode,
 				}
 				dbquery.ReturnAlias = "codebook"
 
@@ -251,15 +264,17 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 		models.PROCUREMENTER_CODEBOOK,
 		models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
+		models.TEAM_AUTOCOMPLETE_CODEBOOK,
+		models.CONTACT_PERSON_ROLE_CODEBOOK,
 	}
 }
 
-func (svc *CodebookService) GetListOfEditableCodebooks() (codebookList []models.CodebookType) {
+func (svc *CodebookService) GetListOfEditableCodebooks(userRoles []string) (codebookList []models.CodebookType) {
 
 	result := []models.CodebookType{}
 
 	for _, cb := range svc.GetListOfCodebooks() {
-		if cb.RoleEdit != "" {
+		if cb.RoleEdit != "" && checkUserRoles(userRoles, cb.RoleEdit) {
 			result = append(result, cb)
 		}
 	}
@@ -294,4 +309,6 @@ var codebooksMap = map[string]models.CodebookType{
 	"SUPPLIER":                   models.SUPPLIER_AUTOCOMPLETE_CODEBOOK,
 	"PROCUREMENTER":              models.PROCUREMENTER_CODEBOOK,
 	"CATALOGUE_CATEGORY":         models.CATALOGUE_CATEGORY_AUTOCOMPLETE_CODEBOOK,
+	"TEAM":                       models.TEAM_AUTOCOMPLETE_CODEBOOK,
+	"CONTACT_PERSON_ROLE":        models.CONTACT_PERSON_ROLE_CODEBOOK,
 }

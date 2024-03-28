@@ -1,0 +1,24 @@
+name: Compose up PRODUCTION REST API on push
+
+on:
+  push:
+    branches:
+      - "production"
+
+jobs:
+  use-secret:
+    runs-on: self-hosted
+    steps:
+      - name: Show secret stats
+        run: |
+          echo "${{ secrets.API_JWT_SECRET }}" | echo "${{ secrets.NEO4J_PASSWORD }}" | wc
+  compose-up:
+    runs-on: self-hosted
+    needs: use-secret
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          docker compose -f docker-compose.yml up -d --build
+        env:
+          API_JWT_SECRET: "${{ secrets.API_JWT_SECRET }}"
+          NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"

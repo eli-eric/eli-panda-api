@@ -29,7 +29,6 @@ func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService 
 	if c == nil {
 		log.Error().Msgf("Cron service initialization failed: %s", "Cron service is nil")
 	}
-	defer c.Stop()
 
 	return &CronService{neo4jDriver: driver, jwtSecret: settings.JwtSecret, scheduler: c}
 }

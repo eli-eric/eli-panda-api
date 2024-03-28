@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"encoding/json"
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -10,28 +11,152 @@ import (
 	"github.com/google/uuid"
 )
 
-// Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter, skip, limit int) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(category:CatalogueCategory)	
-	where $categoryUid = '' or category.uid = $categoryUid
-	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-	with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid		
-	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
-	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
-	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
-	ORDER BY itm.name
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["searchText"] = strings.TrimSpace(strings.ToLower(search))
+	result.Parameters["skip"] = skip
+	result.Parameters["limit"] = limit
+	result.Parameters["categoryUid"] = categoryUid
+
+	// category filter
+	filterCategory := helpers.GetFilterValueCodebook(filering, "category")
+	if filterCategory != nil {
+		categoryUid = filterCategory.UID
+		result.Parameters["categoryUid"] = categoryUid
+	}
+
+	if categoryUid == "" {
+		result.Query = `MATCH(cat:CatalogueCategory)<-[:BELONGS_TO_CATEGORY]-(itm:CatalogueItem) `
+	} else {
+		result.Query = `
+		MATCH(category:CatalogueCategory)	
+		where $categoryUid = '' or category.uid = $categoryUid
+		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
+		with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
+		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
+		where cat.uid in subCategoryUids or cat.uid = itmCategoryUid  `
+	}
+	result.Query += `	
+	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)		
+	OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop)
+	WITH itm,cat, supp	
 	WHERE $searchText = '' or 
 	(toLower(itm.name) CONTAINS $searchText OR
 	 toLower(itm.description) CONTAINS $searchText or 
 	 toLower(supp.name) CONTAINS $searchText or 
 	 toLower(itm.catalogueNumber) CONTAINS $searchText or
-	 toLower(value) CONTAINS $searchText)
+	 toLower(toString(pv.value)) CONTAINS $searchText)	`
+
+	if filering != nil && len(*filering) > 0 {
+
+		//catalogue name
+		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WHERE toLower(itm.name) CONTAINS $filterName `
+			result.Parameters["filterName"] = strings.ToLower(*filterVal)
+		}
+
+		//catalogue number
+		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WHERE toLower(itm.catalogueNumber) CONTAINS $filterCatalogueNumber `
+			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
+		}
+
+		//supplier
+		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WHERE toLower(supp.name) CONTAINS $filterSupplier `
+			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
+		}
+
+		//manufacturerUrl
+		if filterVal := helpers.GetFilterValueString(filering, "manufacturerUrl"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WHERE toLower(itm.manufacturerUrl) CONTAINS $filterManufacturerUrl `
+			result.Parameters["filterManufacturerUrl"] = strings.ToLower(*filterVal)
+		}
+
+		//description
+		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WHERE toLower(itm.description) CONTAINS $filterDescription `
+			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
+		}
+
+		for i, filter := range *filering {
+			if filter.Type == "" {
+				continue
+			}
+
+			if filter.Type == "text" {
+				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, supp  OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
+				}
+			} else if filter.Type == "list" {
+				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, supp OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE pv.value IN $propFilterVal%v `, i, i)
+
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
+				}
+			} else if filter.Type == "number" {
+				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, supp  OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
+
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
+				}
+			} else if filter.Type == "range" {
+				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH itm, cat, supp OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%[1]v})<-[pv]-(itm)
+					WITH itm, cat, supp, apoc.convert.fromJsonMap(pv.value) as jsonValue						  
+					WHERE (toFloat(jsonValue.min) <= $propFilterValFrom%[1]v - $propFilterValTo%[1]v) 
+					AND (toFloat(jsonValue.max) >= $propFilterValFrom%[1]v + $propFilterValTo%[1]v) `, i)
+
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					if filterPropvalue.Max == nil {
+						filterPropvalue.Max = &plusMinusZero
+					}
+					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
+				}
+			}
+		}
+
+	}
+
+	return result
+}
+
+var plusMinusZero float64 = 0
+
+// Get catalogue items with pagination and filters
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+
+	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
+
+	result.Query += `
+	WITH itm, cat, supp
+    OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)	
+    OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
+	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
+	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
+	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
@@ -45,54 +170,49 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			uid: prop.uid,
 			name: prop.name, 
 			listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-			type: { uid: propType.uid, name: propType.name },
+			type: { uid: propType.uid, name: propType.name, code: propType.code},
 			unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 			},
 			propertyGroup: groupName, 
 			value: value}) else null end
-	} as items
+	} as items `
+
+	if sorting != nil && len(*sorting) > 0 {
+		result.Query += " ORDER BY "
+	}
+	for ids, sort := range *sorting {
+
+		sortName := sort.ID
+		// handle special cases
+		if sortName == "partNumber" {
+			sortName = "catalogueNumber"
+		} else if sortName == "categoryName" {
+			sortName = "category.name"
+		}
+
+		if ids == len(*sorting)-1 {
+			result.Query += fmt.Sprintf(" items.%s %s ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+		} else {
+			result.Query += fmt.Sprintf(" items.%s %s, ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+		}
+	}
+
+	result.Query += `
 	SKIP $skip
 	LIMIT $limit`
 
 	result.ReturnAlias = "items"
 
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = strings.TrimSpace(strings.ToLower(search))
-	result.Parameters["skip"] = skip
-	result.Parameters["limit"] = limit
-	result.Parameters["categoryUid"] = categoryUid
-
 	return result
 }
 
-func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(category:CatalogueCategory)	
-	where $categoryUid = '' or category.uid = $categoryUid
-	optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-	with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-	match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-	where cat.uid in subCategoryUids or cat.uid = itmCategoryUid			
-	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)
-	OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
-	OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType.code as propTypeCode, supp, prop.name as propName, group.name as groupName, toString(propVal.value) as value, unit.name as unit
-	ORDER BY itm.name
-	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR 
-	toLower(itm.description) CONTAINS $searchText or 
-	toLower(supp.name) CONTAINS $searchText or 
-	itm.catalogueNumber CONTAINS $searchText or
-	toLower(value) CONTAINS $searchText)
+	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, 0, 0)
+	result.Query += `
 	RETURN count(distinct itm.uid) as itemsCount`
 
 	result.ReturnAlias = "itemsCount"
-
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["searchText"] = strings.ToLower(search)
-	result.Parameters["categoryUid"] = categoryUid
 
 	return result
 }
@@ -177,7 +297,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 						uid: prop.uid,
 						name: prop.name, 
 						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-						type: { uid: propType.uid, name: propType.name },
+						type: { uid: propType.uid, name: propType.name, code: propType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: groupName, 
@@ -197,19 +317,20 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	result.Query = `MATCH(category:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
 	WITH category, group,property
-	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)	
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH category, group,property, propertyType, unit order by id(property)
-	WITH category, group, collect({
+	WITH category,systemType, group,property, propertyType, unit order by id(property)
+	WITH category, group, systemType, collect({
 		uid: property.uid, 
 		name: property.name,
 		defaultValue: property.defaultValue, 
-		type: {uid: propertyType.uid, name: propertyType.name}, 
+		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 		
 		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
 		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
-	WITH category, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
-	WITH category, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups } as category
+	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
+	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
+	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
@@ -224,7 +345,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 
 	result.Query = `MATCH(category)-[:HAS_SUBCATEGORY*1..50]->(childs:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
-	WITH category, group,property
+	WITH category, group,property	
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	WITH group,property, propertyType, unit order by property.name
@@ -233,7 +354,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						name: property.name, 
 						defaultValue: property.defaultValue,
 						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
-						type: { uid: propertyType.uid, name: propertyType.name },
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: group.name, 
@@ -252,7 +373,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						name: property.name, 
 						defaultValue: property.defaultValue,
 						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
-						type: { uid: propertyType.uid, name: propertyType.name },
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: group.name, 
@@ -272,14 +393,15 @@ func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.Databa
 	MATCH(category:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
 	WITH category, group,property
+	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(parent)-[:HAS_SUBCATEGORY]->(category)
-	WITH category, group,property, parent, propertyType, unit order by id(property)
-	WITH category,parent, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
-	WITH category,parent, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
-	WITH category,parent, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image } as category
+	WITH category,systemType, group,property, parent, propertyType, unit order by id(property)
+	WITH category,parent,systemType, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
+	WITH category,parent,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
+	WITH category,parent,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
+	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
@@ -297,8 +419,18 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 	result.Parameters["code"] = category.Code
 
 	result.Query = `
-	MERGE(category:CatalogueCategory{uid:$uid})
-	SET category.name = $name, category.code = $code
+	MERGE(category:CatalogueCategory{uid:$uid})`
+
+	if category.SystemType != nil && category.SystemType.UID != "" {
+		result.Parameters["systemTypeUID"] = category.SystemType.UID
+		result.Query += ` WITH category
+		MATCH(systemType:SystemType{uid: $systemTypeUID})
+		MERGE(category)-[:HAS_SYSTEM_TYPE]->(systemType)
+		WITH category
+		`
+	}
+
+	result.Query += `SET category.name = $name, category.code = $code
 	`
 	if category.Image != "" {
 		result.Query += ", category.image = $image "
@@ -565,7 +697,7 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	}
 
 	for idxProp, prop := range item.Details {
-		if prop.Value != nil && *prop.Value != "" {
+		if prop.Value != nil && prop.Value != "" {
 
 			propIdx := fmt.Sprintf("prop%d", idxProp)
 			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
@@ -573,7 +705,18 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
 
 			result.Parameters[propUidIdx] = prop.Property.UID
-			result.Parameters[propValueIdx] = prop.Value
+			// check prop.Value type, if its map[string]interface{} then marshal it to json string
+			if prop.Property.Type.Code == "range" {
+				jsonValue, err := json.Marshal(prop.Value)
+				if err == nil {
+					result.Parameters[propValueIdx] = string(jsonValue)
+				} else {
+					// this will throw error in the query
+					result.Parameters[propValueIdx] = prop.Value
+				}
+			} else {
+				result.Parameters[propValueIdx] = prop.Value
+			}
 
 			result.Query += fmt.Sprintf(`
 			WITH item
@@ -609,7 +752,7 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	helpers.AutoResolveObjectToUpdateQuery(&result, *item, *oldItem, "item")
 
 	for idxProp, prop := range item.Details {
-		if prop.Value != nil && *prop.Value != "" {
+		if prop.Value != nil && prop.Value != "" {
 
 			propIdx := fmt.Sprintf("prop%d", idxProp)
 			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
@@ -617,7 +760,18 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
 
 			result.Parameters[propUidIdx] = prop.Property.UID
-			result.Parameters[propValueIdx] = prop.Value
+			// check prop.Value type, if its map[string]interface{} then marshal it to json string
+			if prop.Property.Type.Code == "range" {
+				jsonValue, err := json.Marshal(prop.Value)
+				if err == nil {
+					result.Parameters[propValueIdx] = string(jsonValue)
+				} else {
+					// this will throw error in the query
+					result.Parameters[propValueIdx] = prop.Value
+				}
+			} else {
+				result.Parameters[propValueIdx] = prop.Value
+			}
 
 			result.Query += fmt.Sprintf(`
 			WITH item

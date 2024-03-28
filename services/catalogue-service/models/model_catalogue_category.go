@@ -16,6 +16,8 @@ type CatalogueCategory struct {
 	ParentUID string `json:"parentUID,omitempty"`
 
 	Groups []CatalogueCategoryPropertyGroup `json:"groups"`
+
+	SystemType *models.Codebook `json:"systemType,omitempty"`
 }
 
 type CatalogueCategoryPropertyGroup struct {
@@ -35,9 +37,15 @@ type CatalogueCategoryProperty struct {
 
 	DefaultValue string `json:"defaultValue,omitempty"`
 
-	Type models.Codebook `json:"type,omitempty"`
+	Type CatalogueCategoryPropertyType `json:"type,omitempty"`
 
 	Unit *models.Codebook `json:"unit,omitempty"`
+}
+
+type CatalogueCategoryPropertyType struct {
+	UID  string `json:"uid,omitempty"`
+	Name string `json:"name,omitempty"`
+	Code string `json:"code,omitempty"`
 }
 
 type CatalogueCategoryTreeItem struct {

@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"encoding/json"
 	"errors"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
@@ -18,7 +19,7 @@ type CatalogueService struct {
 
 type ICatalogueService interface {
 	GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
-	GetCatalogueItems(search string, categoryUid string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItemSimple], err error)
+	GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.CatalogueItemSimple], err error)
 	GetCatalogueItemWithDetailsByUid(uid string) (catalogueItem models.CatalogueItem, err error)
 	GetCatalogueCategoryWithDetailsByUid(uid string) (catalogueItem models.CatalogueCategory, err error)
 	GetCatalogueCategoryWithDetailsForCopyByUid(uid string) (result models.CatalogueCategory, err error)
@@ -76,14 +77,28 @@ func (svc *CatalogueService) GetCatalogueCategoriesRecursiveByParentUID(parentUI
 	return categories, err
 }
 
-func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string, pageSize int, page int) (result helpers.PaginationResult[models.CatalogueItemSimple], err error) {
+func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.CatalogueItemSimple], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//get all categories by parent path
-	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize)
+	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize, filering, sorting)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItemSimple](session, query)
-	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryUid))
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryUid, filering))
+
+	// we have to process the result and set the value for the range type
+	for i, item := range items {
+		for idt, detail := range item.Details {
+			if detail.Property.Type.Code == "range" {
+				var rangeValue helpers.RangeFloat64Nullable
+				stringData := (detail.Value).(string)
+				errJson := json.Unmarshal([]byte(stringData), &rangeValue)
+				if errJson == nil {
+					items[i].Details[idt].Value = rangeValue
+				}
+			}
+		}
+	}
 
 	result = helpers.GetPaginationResult(items, totalCount, err)
 
@@ -116,9 +131,20 @@ func (svc *CatalogueService) GetCatalogueItemWithDetailsByUid(uid string) (resul
 			for _, property := range allProperties {
 				//check if we have this property in the result
 				found := false
-				for _, detail := range result.Details {
+				for i, detail := range result.Details {
 					if detail.Property.UID == property.Property.UID {
 						found = true
+
+						if property.Property.Type.Code == "range" {
+							var rangeValue helpers.RangeFloat64Nullable
+							stringData := (detail.Value).(string)
+							errJson := json.Unmarshal([]byte(stringData), &rangeValue)
+							if errJson == nil {
+								result.Details[i].Value = rangeValue
+							}
+
+						}
+
 						break
 					}
 				}

@@ -423,7 +423,7 @@ func GetFilterValueString(filters *[]ColumnFilter, filterID string) (result *str
 
 	for _, f := range *filters {
 		if f.Id == filterID {
-			value := f.Value.(string)
+			value := strings.TrimSpace(f.Value.(string))
 			return &value
 		}
 	}
@@ -513,12 +513,7 @@ func GetFilterValueCodebook(filters *[]ColumnFilter, filterID string) (result *m
 	return nil
 }
 
-type RangeFloat64 struct {
-	From float64
-	To   float64
-}
-
-func GetFilterValueRangeFloat64(filters *[]ColumnFilter, filterID string) (result *RangeFloat64) {
+func GetFilterValueListString(filters *[]ColumnFilter, filterID string) (result *[]string) {
 
 	if filters == nil {
 		return nil
@@ -527,15 +522,52 @@ func GetFilterValueRangeFloat64(filters *[]ColumnFilter, filterID string) (resul
 	for _, f := range *filters {
 		if f.Id == filterID {
 			value := f.Value.([]interface{})
-			if len(value) == 2 {
-				from := value[0].(float64)
-				to := value[1].(float64)
-				return &RangeFloat64{From: from, To: to}
+			var result []string
+			for _, v := range value {
+				result = append(result, v.(string))
 			}
+			return &result
 		}
 	}
 
 	return nil
+}
+
+func GetFilterValueRangeFloat64(filters *[]ColumnFilter, filterID string) (result *RangeFloat64Nullable) {
+
+	if filters == nil {
+		return nil
+	}
+
+	for _, f := range *filters {
+		if f.Id == filterID {
+			value := f.Value.(map[string]interface{})
+
+			minValue := value["min"]
+			maxValue := value["max"]
+			var result = RangeFloat64Nullable{}
+
+			if minValue != nil {
+				min := minValue.(float64)
+				result.Min = &min
+			}
+
+			if maxValue != nil {
+				max := maxValue.(float64)
+				result.Max = &max
+			}
+
+			return &result
+
+		}
+	}
+
+	return nil
+}
+
+type RangeFloat64Nullable struct {
+	Min *float64 `json:"min"`
+	Max *float64 `json:"max"`
 }
 
 type PaginationResult[T any] struct {
@@ -559,6 +591,13 @@ type Sorting struct {
 	DESC bool
 }
 
+func GetSortingDirectionString(desc bool) (result string) {
+	if desc {
+		return "DESC"
+	}
+	return "ASC"
+}
+
 type Filter struct {
 	Key   string `json:"key"`
 	Value any    `json:"value"`
@@ -567,6 +606,7 @@ type Filter struct {
 type ColumnFilter struct {
 	Id    string `json:"id"`
 	Value any    `json:"value"`
+	Type  string `json:"type"`
 }
 
 const DB_LOG_CREATE string = "CREATE"

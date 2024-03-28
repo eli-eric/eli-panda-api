@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"encoding/json"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -66,8 +67,16 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 		pagination := new(helpers.Pagination)
 		if err := c.Bind(pagination); err == nil {
 
+			filterObject := new([]helpers.ColumnFilter)
+			filter := c.QueryParam("columnFilter")
+			json.Unmarshal([]byte(filter), &filterObject)
+
+			sortingObject := new([]helpers.Sorting)
+			sorting := c.QueryParam("sorting")
+			json.Unmarshal([]byte(sorting), &sortingObject)
+
 			// get catalogue items
-			items, err := h.catalogueService.GetCatalogueItems(searchParam, categoryUidParam, pagination.PageSize, pagination.Page)
+			items, err := h.catalogueService.GetCatalogueItems(searchParam, categoryUidParam, pagination.PageSize, pagination.Page, filterObject, sortingObject)
 
 			if err == nil {
 				return c.JSON(http.StatusOK, items)
@@ -320,6 +329,9 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 		catalogueItem := new(models.CatalogueItem)
 
 		if err := c.Bind(catalogueItem); err == nil {
+
+			uid := c.Param("uid")
+			catalogueItem.Uid = uid
 
 			userUID := c.Get("userUID").(string)
 			// create catalogue item

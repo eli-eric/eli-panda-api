@@ -309,11 +309,30 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	result.Parameters["search"] = strings.ToLower(searchString)
 	result.Parameters["fulltextSearch"] = strings.ToLower(helpers.GetFullTextSearchString(searchString))
 	result.Parameters["facilityCode"] = facilityCode
+	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filering, "category")
 
 	if searchString == "" && (filering == nil || len(*filering) == 0) {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
-	} else if searchString == "" && filering != nil {
-		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
+	} else if filering != nil {
+		// explicitlly set search string to empty string if we have filters
+		searchString = ""
+
+		if catalogueCategoryFilter != nil {
+			result.Query = `
+		MATCH(cat:CatalogueCategory{uid:$filterCatalogueCategory})
+		OPTIONAL MATCH(cat)-[:HAS_SUBCATEGORY*1..20]->(subs)
+		WITH collect(subs.uid) + cat.uid as catUids
+		MATCH (f{code: $facilityCode})<-[:BELONGS_TO_FACILITY]-(sys:System)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
+		WHERE ciCategory.uid in catUids
+		WITH sys, catalogueItem, ciCategory, physicalItem
+		`
+			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
+		} else {
+			result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WITH sys "
+			result.Query += `
+			OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) WITH sys, physicalItem, catalogueItem, ciCategory
+			`
+		}
 	} else {
 		result.Query = `
 		CALL {
@@ -331,6 +350,12 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//apply filters
 
+	//parentSystem
+	if filterVal := helpers.GetFilterValueCodebook(filering, "parentSystem"); filterVal != nil {
+		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys, physicalItem, catalogueItem, ciCategory `
+		result.Parameters["filterParentSystemUID"] = (*filterVal).UID
+	}
+
 	//system name
 	if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
 		result.Query += ` WHERE toLower(sys.name) CONTAINS $filterName `
@@ -339,25 +364,25 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//system description
 	if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.description) CONTAINS $filterDescription `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.description) CONTAINS $filterDescription `
 		result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
 	}
 
 	//system level
-	if filterVal := helpers.GetFilterValueString(filering, "systemLevel"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemLevel) = $filterSystemLevel `
-		result.Parameters["filterSystemLevel"] = strings.ToLower(*filterVal)
+	if filterVal := helpers.GetFilterValueListString(filering, "systemLevel"); filterVal != nil {
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE sys.systemLevel IN $filterSystemLevel `
+		result.Parameters["filterSystemLevel"] = filterVal
 	}
 
 	//system code
 	if filterVal := helpers.GetFilterValueString(filering, "systemCode"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
 		result.Parameters["filterSystemCode"] = strings.ToLower(*filterVal)
 	}
 
 	//system alias
 	if filterVal := helpers.GetFilterValueString(filering, "systemAlias"); filterVal != nil {
-		result.Query += ` WITH sys WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
 		result.Parameters["filterSystemAlias"] = strings.ToLower(*filterVal)
 	}
 
@@ -403,21 +428,19 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//physical item filters
 	//we have to get all physical items filter values first and then apply them
-	itemUsageFilter := helpers.GetFilterValueCodebook(filering, "itemUsage")
+	itemUsageFilter := helpers.GetFilterValueListString(filering, "itemUsage")
 	eunFilter := helpers.GetFilterValueString(filering, "eun")
 	serialNumberFilter := helpers.GetFilterValueString(filering, "serialNumber")
 	catalogueNumberFilter := helpers.GetFilterValueString(filering, "catalogueNumber")
 	catalogueNameFilter := helpers.GetFilterValueString(filering, "catalogueName")
-	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filering, "category")
 	supplierFilter := helpers.GetFilterValueCodebook(filering, "supplier")
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
 
-	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || catalogueCategoryFilter != nil || supplierFilter != nil || priceFilter != nil {
-		result.Query += ` MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) `
+	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil { // || priceFilter != nil {
 
 		if itemUsageFilter != nil {
-			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid = $filterItemUsage `
-			result.Parameters["filterItemUsage"] = (*itemUsageFilter).UID
+			result.Query += ` MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) WHERE itemUsage.uid IN $filterItemUsage `
+			result.Parameters["filterItemUsage"] = itemUsageFilter
 		} else {
 			result.Query += ` OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) `
 		}
@@ -431,9 +454,9 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 		if priceFilter != nil {
 			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier `
-			result.Query += ` MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() WHERE ol.price >= $filterPriceFrom AND ol.price <= $filterPriceTo `
-			result.Parameters["filterPriceFrom"] = (*priceFilter).From
-			result.Parameters["filterPriceTo"] = (*priceFilter).To
+			result.Query += ` MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
+			result.Parameters["filterPriceFrom"] = priceFilter.Min
+			result.Parameters["filterPriceTo"] = priceFilter.Max
 		} else {
 			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier `
 			result.Query += ` OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() `
@@ -463,18 +486,50 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			result.Parameters["filterCatalogueName"] = strings.ToLower(*catalogueNameFilter)
 		}
 
-		if catalogueCategoryFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-			result.Query += ` WHERE ciCategory.uid = $filterCatalogueCategory `
-			result.Parameters["filterCatalogueCategory"] = (*catalogueCategoryFilter).UID
+		for i, filter := range *filering {
+			if filter.Type == "" {
+				continue
+			}
+
+			if filter.Type == "text" {
+				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
+				}
+			} else if filter.Type == "list" {
+				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE pv.value IN $propFilterVal%v `, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
+				}
+			} else if filter.Type == "number" {
+				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+
+					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
+				}
+			}
 		}
 
 	} else {
-		result.Query += ` 
-		OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 
-		OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
-		OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
-		OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		if catalogueCategoryFilter != nil {
+			result.Query += ` 
+			OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
+			OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+			OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		} else {
+			result.Query += ` 
+			OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory) 		
+			OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-()
+			OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage) 
+			OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier) `
+		}
 	}
 
 	return result
@@ -483,7 +538,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY systems.lastUpdateTime DESC `
+		return `ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.lastUpdateTime DESC `
 	}
 
 	var result string = ` ORDER BY `
@@ -506,18 +561,22 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	result = GetSystemsSearchFilterQueryOnly(searchString, facilityCode, filering)
 
 	result.Query += `
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
-
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
+    OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
 	hasSubsystems: case when subsys is not null then true else false end,
+	sparesIn: count(distinct spareIN),
+	sparesOut: count(distinct spareOUT),
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -589,17 +648,22 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
+    OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
 	hasSubsystems: case when subsys is not null then true else false end,
+	sparesIn: count(distinct spareIN),
+	sparesOut: count(distinct spareOUT),
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -624,7 +688,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end,
 		statistics: {subsystemsCount: count(subsys)}
 		} AS systems
-	ORDER BY systems.name
+	ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.name
 	LIMIT 1000
 `
 	result.ReturnAlias = "systems"
@@ -645,8 +709,8 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -689,7 +753,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (parents)-[rParent:HAS_SUBSYSTEM]->(sys)	
+	MATCH (parents{deleted: false})-[rParent:HAS_SUBSYSTEM]->(sys)	
 	return distinct {
 		direction: "to",
 		foreignSystemName: parents.name,
@@ -698,7 +762,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 		} as relationships
 	UNION
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (sys)-[rSubsys:HAS_SUBSYSTEM]->(subsys)	
+	MATCH (sys)-[rSubsys:HAS_SUBSYSTEM]->(subsys{deleted: false})	
 	return distinct {
 		direction: "from",
 		foreignSystemName: subsys.name,
@@ -707,7 +771,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 		} as relationships
 	UNION
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (parents)-[rParent:IS_SPARE_FOR]->(sys)	
+	MATCH (parents{deleted: false})-[rParent:IS_SPARE_FOR]->(sys)	
 	return distinct {
 		direction: "to",
 		foreignSystemName: parents.name,
@@ -716,7 +780,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 		} as relationships
 	UNION
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (sys)-[rSubsys:IS_SPARE_FOR]->(subsys)	
+	MATCH (sys)-[rSubsys:IS_SPARE_FOR]->(subsys{deleted: false})	
 	return distinct {
 		direction: "from",
 		foreignSystemName: subsys.name,
