@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 networks:
   panda-net-dev:
@@ -18,6 +18,8 @@ services:
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=${NEO4J_PASSWORD}
       - NEO4J_SCHEMA=bolt://
+      - API_INTEGRATION_B_OKBASE_GET_EMPLOYEES_URL=https://elieric.okbase.cz/okbase/service/rest/sestava/run
+      - API_INTEGRATION_B_OKBASE_API_KEY=${API_INTEGRATION_B_OKBASE_API_KEY}
     build:
       context: ./
       dockerfile: Dockerfile.devenv
@@ -26,5 +28,5 @@ services:
     networks:
       - panda-net-dev
     ports:
-      - '127.0.0.1:50200:50200'
+      - "127.0.0.1:50200:50200"
     platform: linux/amd64
