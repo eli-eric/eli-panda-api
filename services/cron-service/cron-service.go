@@ -44,16 +44,19 @@ func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
 
 	// schedule a job every day at 02:00
 	//_, err := c.AddFunc("0 2 * * *", func() {
-	_, err := c.AddFunc("@every 10s", func() {
+	//_, err := c.AddFunc("@every 10s", func() {
+	_, err := c.AddFunc("0 2 * * *", func() {
 		log.Info().Msgf("Cron service started: %s", "SyncEliBeamlinesEmployees")
-		err := SyncEliBeamlinesEmployees(driver, settings)
-		if err != nil {
-			log.Error().Msgf("Cron service error: %s", err.Error())
+		errs := SyncEliBeamlinesEmployees(driver, settings)
+
+		for _, err := range errs {
+			log.Error().Msgf("Cron service SyncEliBeamlinesEmployees error: %s", err.Error())
 		}
+
 	})
 
 	if err != nil {
-		log.Error().Msgf("Cron service initialization failed: %s", err.Error())
+		log.Error().Msgf("Cron service SyncEliBeamlinesEmployees initialization failed: %s", err.Error())
 		return nil
 	}
 
@@ -90,11 +93,8 @@ func (svc *CronService) GetCronJobHistory() (cronJobHistory []models.CronJobHist
 	return cronJobHistory, err
 }
 
-func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Config) (err error) {
-	//session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	// query := SyncEliBeamlinesEmployeesQuery()
-	// _, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Config) (errs []error) {
+	session, _ := helpers.NewNeo4jSession(*neo4jDriver)
 
 	// call the API to get the employees - POST method and result is JSON
 
@@ -102,13 +102,27 @@ func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Confi
 	apiKey := settings.ApiIntegrationBeamlinesOKBaseApiKey
 
 	// get the employees
-	GetEmployeesFromApi(url, apiKey)
+	employees := GetEmployeesFromApi(url, apiKey)
+	succesCount := 0
+	// save the employees to the database
+	for _, employee := range employees.Rows {
+		// merge the employee to the database
+		query := SyncEliBeamlinesEmployeeQuery(employee, "B")
+		err := helpers.WriteNeo4jAndReturnNothing(session, query)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			succesCount++
+		}
+	}
 
-	return err
+	log.Info().Msgf("SyncEliBeamlinesEmployees finished: %v employees saved. Errors: %v", succesCount, len(errs))
+
+	return errs
 }
 
 // use http post to get the employees from the API
-func GetEmployeesFromApi(url, apiKey string) {
+func GetEmployeesFromApi(url, apiKey string) models.SyncEliBeamlinesEmployeesResponse {
 
 	// JSON body
 	body := []byte(`{
@@ -135,15 +149,16 @@ func GetEmployeesFromApi(url, apiKey string) {
 		log.Error().Msgf("Error while getting employees from API: %s", err.Error())
 	} else {
 
-		var data map[string]interface{}
+		var data models.SyncEliBeamlinesEmployeesResponse
 		err := json.NewDecoder(resp.Body).Decode(&data)
 
 		if err != nil {
 			log.Error().Msgf("Error while getting employees from API: %s", err.Error())
 		}
-		log.Info().Msgf("Response from API: %v", data)
+		return data
 	}
 
 	defer resp.Body.Close()
 
+	return models.SyncEliBeamlinesEmployeesResponse{}
 }
