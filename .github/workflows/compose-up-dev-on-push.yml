@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Show secret stats
         run: |
-          echo "${{ secrets.API_JWT_SECRET }}" | echo "${{ secrets.NEO4J_PASSWORD }}" | wc
+          echo "${{ secrets.API_JWT_SECRET }}" | echo "${{ secrets.NEO4J_PASSWORD }}" | echo "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}" | wc
   compose-up:
     runs-on: self-hosted
     needs: use-secret
@@ -22,3 +22,4 @@ jobs:
         env:
           API_JWT_SECRET: "${{ secrets.API_JWT_SECRET }}"
           NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"
+          API_INTEGRATION_B_OKBASE_API_KEY: "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}"

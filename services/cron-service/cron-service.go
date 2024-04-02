@@ -1,6 +1,9 @@
 package cronservice
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/cron-service/models"
@@ -25,7 +28,7 @@ type ICronService interface {
 func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService {
 
 	// Schedule a job for Sync eli-bm employees
-	c := createScheduler(driver)
+	c := createScheduler(driver, settings)
 	if c == nil {
 		log.Error().Msgf("Cron service initialization failed: %s", "Cron service is nil")
 	}
@@ -33,23 +36,27 @@ func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService 
 	return &CronService{neo4jDriver: driver, jwtSecret: settings.JwtSecret, scheduler: c}
 }
 
-func createScheduler(driver *neo4j.Driver) *cron.Cron {
+func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
 	c := cron.New()
 	if c == nil {
 		return nil
 	}
 
 	// schedule a job every day at 02:00
+	//_, err := c.AddFunc("0 2 * * *", func() {
+	//_, err := c.AddFunc("@every 10s", func() {
 	_, err := c.AddFunc("0 2 * * *", func() {
 		log.Info().Msgf("Cron service started: %s", "SyncEliBeamlinesEmployees")
-		err := SyncEliBeamlinesEmployees(driver)
-		if err != nil {
-			log.Error().Msgf("Cron service error: %s", err.Error())
+		errs := SyncEliBeamlinesEmployees(driver, settings)
+
+		for _, err := range errs {
+			log.Error().Msgf("Cron service SyncEliBeamlinesEmployees error: %s", err.Error())
 		}
+
 	})
 
 	if err != nil {
-		log.Error().Msgf("Cron service initialization failed: %s", err.Error())
+		log.Error().Msgf("Cron service SyncEliBeamlinesEmployees initialization failed: %s", err.Error())
 		return nil
 	}
 
@@ -81,16 +88,77 @@ func (svc *CronService) GetCronJobHistory() (cronJobHistory []models.CronJobHist
 	query := GetCronJobHistoryQuery()
 	cronJobHistory, err = helpers.GetNeo4jArrayOfNodes[models.CronJobHistory](session, query)
 
-	helpers.ProcessArrayResult[models.CronJobHistory](&cronJobHistory, err)
+	helpers.ProcessArrayResult(&cronJobHistory, err)
 
 	return cronJobHistory, err
 }
 
-func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver) (err error) {
-	//session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Config) (errs []error) {
+	session, _ := helpers.NewNeo4jSession(*neo4jDriver)
 
-	// query := SyncEliBeamlinesEmployeesQuery()
-	// _, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	// call the API to get the employees - POST method and result is JSON
 
-	return err
+	url := settings.ApiIntegrationBeamlinesOKBaseUrl
+	apiKey := settings.ApiIntegrationBeamlinesOKBaseApiKey
+
+	// get the employees
+	employees := GetEmployeesFromApi(url, apiKey)
+	succesCount := 0
+	// save the employees to the database
+	for _, employee := range employees.Rows {
+		// merge the employee to the database
+		query := SyncEliBeamlinesEmployeeQuery(employee, "B")
+		err := helpers.WriteNeo4jAndReturnNothing(session, query)
+		if err != nil {
+			errs = append(errs, err)
+		} else {
+			succesCount++
+		}
+	}
+
+	log.Info().Msgf("SyncEliBeamlinesEmployees finished: %v employees saved. Errors: %v", succesCount, len(errs))
+
+	return errs
+}
+
+// use http post to get the employees from the API
+func GetEmployeesFromApi(url, apiKey string) models.SyncEliBeamlinesEmployeesResponse {
+
+	// JSON body
+	body := []byte(`{
+		"kod": "EXT_WS_LDAP",
+		"uzivatelska": true,
+		"export": false   
+	}`)
+
+	contentType := "application/json"
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+
+	if err != nil {
+		log.Error().Msgf("Error while getting employees from API: %s", err.Error())
+	}
+
+	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("x-api-key", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	if err != nil {
+		log.Error().Msgf("Error while getting employees from API: %s", err.Error())
+	} else {
+
+		var data models.SyncEliBeamlinesEmployeesResponse
+		err := json.NewDecoder(resp.Body).Decode(&data)
+
+		if err != nil {
+			log.Error().Msgf("Error while getting employees from API: %s", err.Error())
+		}
+		return data
+	}
+
+	defer resp.Body.Close()
+
+	return models.SyncEliBeamlinesEmployeesResponse{}
 }

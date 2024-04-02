@@ -1,4 +1,4 @@
-version: '3.9'
+version: "3.9"
 
 networks:
   panda-dev-net:
@@ -27,6 +27,8 @@ services:
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=elipanda2022
       - NEO4J_SCHEMA=bolt://
+      - API_INTEGRATION_B_OKBASE_GET_EMPLOYEES_URL=https://elieric.okbase.cz/okbase/service/rest/sestava/run
+      - API_INTEGRATION_B_OKBASE_API_KEY=${API_INTEGRATION_B_OKBASE_API_KEY}
     build:
       context: ./
       dockerfile: Dockerfile
@@ -35,7 +37,7 @@ services:
     networks:
       - panda-dev-net
     ports:
-      - '50000:50000'
+      - "50000:50000"
     platform: linux/amd64
   panda-dev-neo4j:
     container_name: panda-dev-neo4j
@@ -54,14 +56,14 @@ services:
       - NEO4J_dbms_security_procedures_allowlist=apoc.*
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
     volumes:
-      - './db/neo4j/dev-instance/data:/data'
-      - './db/neo4j/dev-instance/logs:/logs'
-      - './db/neo4j/dev-instance/plugins:/plugins'
-      - './db/neo4j/dev-instance/conf:/conf'
-      - './db/neo4j/dev-instance/import:/var/lib/neo4j/import'
+      - "./db/neo4j/dev-instance/data:/data"
+      - "./db/neo4j/dev-instance/logs:/logs"
+      - "./db/neo4j/dev-instance/plugins:/plugins"
+      - "./db/neo4j/dev-instance/conf:/conf"
+      - "./db/neo4j/dev-instance/import:/var/lib/neo4j/import"
     networks:
       - panda-dev-net
     ports:
-      - '7470:7474'
-      - '7680:7687'
+      - "7470:7474"
+      - "7680:7687"
     platform: linux/amd64
