@@ -538,7 +538,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY systems.lastUpdateTime DESC `
+		return `ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.lastUpdateTime DESC `
 	}
 
 	var result string = ` ORDER BY `
@@ -576,6 +576,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -662,6 +663,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -686,7 +688,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end,
 		statistics: {subsystemsCount: count(subsys)}
 		} AS systems
-	ORDER BY systems.name
+	ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.name
 	LIMIT 1000
 `
 	result.ReturnAlias = "systems"
