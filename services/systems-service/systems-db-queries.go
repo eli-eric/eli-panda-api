@@ -538,7 +538,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY systems.lastUpdateTime DESC `
+		return `ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.lastUpdateTime DESC `
 	}
 
 	var result string = ` ORDER BY `
@@ -561,8 +561,8 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	result = GetSystemsSearchFilterQueryOnly(searchString, facilityCode, filering)
 
 	result.Query += `
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	RETURN DISTINCT {  
@@ -576,6 +576,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -647,8 +648,8 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	RETURN DISTINCT {  
@@ -662,6 +663,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -686,7 +688,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end,
 		statistics: {subsystemsCount: count(subsys)}
 		} AS systems
-	ORDER BY systems.name
+	ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.name
 	LIMIT 1000
 `
 	result.ReturnAlias = "systems"
@@ -707,8 +709,8 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents)-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -751,7 +753,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (parents)-[rParent:HAS_SUBSYSTEM]->(sys)	
+	MATCH (parents{deleted: false})-[rParent:HAS_SUBSYSTEM]->(sys)	
 	return distinct {
 		direction: "to",
 		foreignSystemName: parents.name,
@@ -760,7 +762,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 		} as relationships
 	UNION
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (sys)-[rSubsys:HAS_SUBSYSTEM]->(subsys)	
+	MATCH (sys)-[rSubsys:HAS_SUBSYSTEM]->(subsys{deleted: false})	
 	return distinct {
 		direction: "from",
 		foreignSystemName: subsys.name,
@@ -769,7 +771,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 		} as relationships
 	UNION
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (parents)-[rParent:IS_SPARE_FOR]->(sys)	
+	MATCH (parents{deleted: false})-[rParent:IS_SPARE_FOR]->(sys)	
 	return distinct {
 		direction: "to",
 		foreignSystemName: parents.name,
@@ -778,7 +780,7 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 		} as relationships
 	UNION
 	MATCH(sys:System{uid: $uid, deleted: false})
-	MATCH (sys)-[rSubsys:IS_SPARE_FOR]->(subsys)	
+	MATCH (sys)-[rSubsys:IS_SPARE_FOR]->(subsys{deleted: false})	
 	return distinct {
 		direction: "from",
 		foreignSystemName: subsys.name,
