@@ -7,6 +7,8 @@ import (
 	"panda/apigateway/services/systems-service/models"
 	systemsModels "panda/apigateway/services/systems-service/models"
 
+	//"strings"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -278,3 +280,19 @@ func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.S
 
 	return relId, err
 }
+
+// func parseSystemCodeMask(systemCodeMask, zoneCode, zoneName, locationCode, locationName, facilityCode, facilityName string) (result string) {
+// 	if systemCodeMask == "" {
+// 		result = ""
+// 	} else {
+// 		result = systemCodeMask
+// 		result = strings.ReplaceAll(result, "{ZC}", zoneCode)
+// 		result = strings.ReplaceAll(result, "{ZN}", zoneName)
+// 		result = strings.ReplaceAll(result, "{LC}", locationCode)
+// 		result = strings.ReplaceAll(result, "{LN}", locationName)
+// 		result = strings.ReplaceAll(result, "{FC}", facilityCode)
+// 		result = strings.ReplaceAll(result, "{FN}", facilityName)
+
+// 	}
+// 	return result
+// }
