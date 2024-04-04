@@ -40,4 +40,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// create new system relationship
 	e.POST("/v1/system/relationship/:uid", m.Authorization(h.CreateNewSystemRelationship(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	e.GET("/v1/system/systemCode", m.Authorization(h.GetSystemCode(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 }

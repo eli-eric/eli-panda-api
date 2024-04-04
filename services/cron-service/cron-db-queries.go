@@ -82,7 +82,6 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 	empl.fullName = $fullName,
 	empl.phone1 = $phone1,
 	empl.phone2 = $phone2,
-	empl.phoneNumber = apoc.text.join($phoneNumbers, ","),	
 	empl.superiorNumber = $superiorNumber,
 	empl.superiorName = $superiorName,
 	empl.jobPosition = $jobPosition,
@@ -110,15 +109,6 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 	result.Parameters["workplaceName"] = employee.PRACOVISTE
 	result.Parameters["jobPositionCode"] = employee.PRACOVNI_MISTO_KOD
 	result.Parameters["facilityCode"] = facilityCode
-
-	phoneNumbers := []string{}
-	if employee.PHONE4 != "" {
-		phoneNumbers = append(phoneNumbers, employee.PHONE4)
-	}
-	if employee.PHONE5 != "" {
-		phoneNumbers = append(phoneNumbers, employee.PHONE5)
-	}
-	result.Parameters["phoneNumbers"] = phoneNumbers
 
 	fullName := employee.PRIJMENI + " " + employee.JMENO
 	result.Parameters["fullName"] = fullName
