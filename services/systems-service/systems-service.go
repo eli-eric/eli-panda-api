@@ -39,6 +39,7 @@ type ISystemsService interface {
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
 	DeleteSystemRelationship(uid int64, userUID string) (err error)
 	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
+	GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error)
 }
 
 // Create new security service instance
@@ -279,6 +280,18 @@ func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.S
 	}
 
 	return relId, err
+}
+
+func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error) {
+
+	//session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	// query := GetSystemCodeQuery(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode)
+	// result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
+
+	result = "test code"
+
+	return result, err
 }
 
 // func parseSystemCodeMask(systemCodeMask, zoneCode, zoneName, locationCode, locationName, facilityCode, facilityName string) (result string) {

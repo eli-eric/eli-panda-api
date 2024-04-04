@@ -6,6 +6,7 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/systems-service/models"
 	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -28,6 +29,7 @@ type ISystemsHandlers interface {
 	GetSystemRelationships() echo.HandlerFunc
 	DeleteSystemRelationship() echo.HandlerFunc
 	CreateNewSystemRelationship() echo.HandlerFunc
+	GetSystemCode() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -292,5 +294,28 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) GetSystemCode() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+		zoneUID := c.QueryParam("zoneUID")
+		locationUID := c.QueryParam("locationUID")
+		parentUID := c.QueryParam("parentUID")
+		systemTypeUID := c.QueryParam("systemTypeUID")
+
+		code, err := h.systemsService.GetSystemCode(systemTypeUID, zoneUID, locationUID, parentUID, facilityCode)
+
+		if err == nil {
+			return c.String(http.StatusOK, code)
+		} else if strings.Contains(err.Error(), "missing") {
+			return c.String(http.StatusBadRequest, err.Error())
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }
