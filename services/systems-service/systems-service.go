@@ -1,11 +1,16 @@
 package systemsService
 
 import (
+	"errors"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
 	systemsModels "panda/apigateway/services/systems-service/models"
+	"strconv"
+	"strings"
+
+	//"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -37,6 +42,7 @@ type ISystemsService interface {
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
 	DeleteSystemRelationship(uid int64, userUID string) (err error)
 	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
+	GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error)
 }
 
 // Create new security service instance
@@ -278,3 +284,116 @@ func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.S
 
 	return relId, err
 }
+
+func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	if systemTypeUid == "" {
+		err = errors.New("missing system type")
+		return "", err
+	}
+
+	mask, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSystemTypeMask(systemTypeUid, facilityCode))
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	if !strings.Contains(mask, SYSTEM_CODE_GENERATE_SERIAL_PREFIX) {
+		err = errors.New("missing serial number information")
+		return "", err
+	}
+
+	systemTypeCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSystemTypeCode(systemTypeUid))
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_SYSTEM_TYPE_CODE, systemTypeCode)
+
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_CODE) || strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_NAME) {
+		if zoneUID == "" {
+			err = errors.New("missing zone")
+			return "", err
+		} else {
+			zoneCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetZoneCode(zoneUID))
+			if err != nil {
+				log.Error().Msg(err.Error())
+				return "", err
+			}
+			zoneName, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetZoneName(zoneUID))
+			if err != nil {
+				log.Error().Msg(err.Error())
+				return "", err
+			}
+
+			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_ZONE_CODE, zoneCode)
+			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_ZONE_NAME, zoneName)
+		}
+	}
+
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_LOCATION_CODE) || strings.Contains(mask, SYSTEM_CODE_GENERATE_LOCATION_NAME) {
+		if locationUID == "" {
+			err = errors.New("missing location")
+			return "", err
+		} else {
+			locationCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetLocationCode(locationUID))
+			if err != nil {
+				log.Error().Msg(err.Error())
+				return "", err
+			}
+			locationName, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetLocationName(locationUID))
+			if err != nil {
+				log.Error().Msg(err.Error())
+				return "", err
+			}
+
+			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_LOCATION_CODE, locationCode)
+			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_LOCATION_NAME, locationName)
+		}
+	}
+
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_FACILITY_CODE) {
+		if facilityCode == "" {
+			err = errors.New("missing facility")
+			return "", err
+		} else {
+			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_FACILITY_CODE, facilityCode)
+		}
+	}
+
+	// now take the mask and split it by serial info number which starts with {serial( - could be for example {serial(3)}
+
+	serialPrefix := SYSTEM_CODE_GENERATE_SERIAL_PREFIX
+	serialPrefixIndex := strings.Index(mask, serialPrefix)
+	maskWithoutSerial := mask[:serialPrefixIndex]
+	serialNumberLengthString := mask[serialPrefixIndex+len(serialPrefix):]
+	serialNumberLengthString = serialNumberLengthString[:len(serialNumberLengthString)-2]
+	serialNumberLength, err := strconv.ParseInt(serialNumberLengthString, 10, 64)
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	result, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, GetNewSystemCode(maskWithoutSerial, int(serialNumberLength), facilityCode))
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return "", err
+	}
+
+	return result, err
+}
+
+const SYSTEM_CODE_GENERATE_ZONE_CODE = "{ZC}"
+const SYSTEM_CODE_GENERATE_ZONE_NAME = "{ZN}"
+const SYSTEM_CODE_GENERATE_LOCATION_CODE = "{LC}"
+const SYSTEM_CODE_GENERATE_LOCATION_NAME = "{LN}"
+const SYSTEM_CODE_GENERATE_FACILITY_CODE = "{FC}"
+const SYSTEM_CODE_GENERATE_SYSTEM_TYPE_CODE = "{STC}"
+const SYSTEM_CODE_GENERATE_SERIAL_PREFIX = "{serial("

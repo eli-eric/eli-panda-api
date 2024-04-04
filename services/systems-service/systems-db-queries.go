@@ -849,3 +849,108 @@ func DeleteSystemRelationshipQuery(uid int64, userUID string) (result helpers.Da
 
 	return result
 }
+
+func GetSystemTypeMask(systemTypeUID, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (st:SystemType{uid: $systemTypeUID}) `
+
+	if facilityCode == "B" {
+		result.Query += ` RETURN st.maskB as mask `
+	} else if facilityCode == "A" {
+		result.Query += ` RETURN st.maskA as mask `
+	} else if facilityCode == "N" {
+		result.Query += ` RETURN st.maskN as mask `
+	} else {
+		result.Query += ` RETURN "" `
+	}
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeUID"] = systemTypeUID
+
+	result.ReturnAlias = "mask"
+
+	return result
+}
+
+func GetSystemTypeCode(systemTypeUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (st:SystemType{uid: $systemTypeUID}) RETURN st.code as code`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeUID"] = systemTypeUID
+
+	result.ReturnAlias = "code"
+
+	return result
+}
+
+func GetZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH (z:Zone{uid: $zoneUID}) 
+	WITH z
+	OPTIONAL MATCH (pz)-[:HAS_SUBZONE]->(z)
+	WITH CASE WHEN pz IS NOT NULL THEN pz.code ELSE z.code END as code
+	RETURN code as code `
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["zoneUID"] = zoneUID
+
+	result.ReturnAlias = "code"
+
+	return result
+}
+
+func GetLocationCode(locationUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (l:Location{uid: $locationUID}) RETURN l.code as code`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["locationUID"] = locationUID
+
+	result.ReturnAlias = "code"
+
+	return result
+}
+
+func GetZoneName(zoneUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (z:Zone{uid: $zoneUID}) RETURN z.name as name`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["zoneUID"] = zoneUID
+
+	result.ReturnAlias = "name"
+
+	return result
+}
+
+func GetLocationName(locationUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (l:Location{uid: $locationUID}) RETURN l.name as name`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["locationUID"] = locationUID
+
+	result.ReturnAlias = "name"
+
+	return result
+}
+
+func GetNewSystemCode(systemCodePrefix string, serialNumberLength int, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	OPTIONAL MATCH(st:System)-[:BELONGS_TO_FACILITY]->(f{code: $facilityCode}) WHERE st.systemCode STARTS WITH $systemCodePrefix
+	WITH st ORDER BY st.systemCode DESC LIMIT 1
+	WITH CASE WHEN st IS NOT NULL THEN toInteger(split(st.systemCode, $systemCodePrefix)[1]) + 1 ELSE 1 END as serialNumber
+	RETURN $systemCodePrefix +  apoc.text.lpad(toString(serialNumber), $serialNumberLength, "0") as newCode;`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemCodePrefix"] = systemCodePrefix
+	result.Parameters["serialNumberLength"] = serialNumberLength
+	result.Parameters["facilityCode"] = facilityCode
+
+	result.ReturnAlias = "newCode"
+
+	return result
+}
