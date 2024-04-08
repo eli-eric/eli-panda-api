@@ -115,3 +115,16 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 
 	return result
 }
+
+func SetSystemTypesQuery() (result helpers.DatabaseQuery) {
+
+	result.Query = `match (s:System)-[:CONTAINS_ITEM]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cc:CatalogueCategory)-[:HAS_SYSTEM_TYPE]->(st)
+	with st, s where NOT (s)-[:HAS_SYSTEM_TYPE]->()
+	MERGE(s)-[:HAS_SYSTEM_TYPE]->(st)
+	return distinct count(s) as result;`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+
+	return result
+}
