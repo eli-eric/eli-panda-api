@@ -42,21 +42,34 @@ func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
 		return nil
 	}
 
-	// schedule a job every day at 02:00
-	//_, err := c.AddFunc("0 2 * * *", func() {
-	//_, err := c.AddFunc("@every 10s", func() {
 	_, err := c.AddFunc("0 2 * * *", func() {
-		log.Info().Msgf("Cron service started: %s", "SyncEliBeamlinesEmployees")
+		log.Info().Msgf("Cron service started: %v", "SyncEliBeamlinesEmployees")
 		errs := SyncEliBeamlinesEmployees(driver, settings)
 
 		for _, err := range errs {
-			log.Error().Msgf("Cron service SyncEliBeamlinesEmployees error: %s", err.Error())
+			log.Error().Msgf("Cron service SyncEliBeamlinesEmployees error: %v", err.Error())
 		}
 
 	})
 
 	if err != nil {
-		log.Error().Msgf("Cron service SyncEliBeamlinesEmployees initialization failed: %s", err.Error())
+		log.Error().Msgf("Cron service SyncEliBeamlinesEmployees initialization failed: %v", err.Error())
+		return nil
+	}
+
+	_, err = c.AddFunc("@every 10s", func() {
+		log.Info().Msgf("Cron service %v started", "SetAllSystemTypes")
+		err := SetAllSystemTypes(driver, settings)
+
+		if err != nil {
+			log.Error().Msgf("Cron service SetAllSystemTypes error: %v", err.Error())
+		} else {
+			log.Info().Msgf("Cron service SetAllSystemTypes finished")
+		}
+	})
+
+	if err != nil {
+		log.Error().Msgf("Cron service SetAllSystemTypes initialization failed: %v", err.Error())
 		return nil
 	}
 
@@ -161,4 +174,13 @@ func GetEmployeesFromApi(url, apiKey string) models.SyncEliBeamlinesEmployeesRes
 	defer resp.Body.Close()
 
 	return models.SyncEliBeamlinesEmployeesResponse{}
+}
+
+func SetAllSystemTypes(neo4jDriver *neo4j.Driver, settings *config.Config) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, SetSystemTypesQuery())
+
+	return err
 }
