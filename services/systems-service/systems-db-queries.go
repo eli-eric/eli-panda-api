@@ -313,7 +313,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	if searchString == "" && (filering == nil || len(*filering) == 0) {
 		result.Query = "MATCH(f:Facility{code: $facilityCode}) WITH f MATCH(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f) WHERE NOT ()-[:HAS_SUBSYSTEM]->(sys) WITH sys "
-	} else if filering != nil {
+	} else if filering != nil && len(*filering) > 0 {
 		// explicitlly set search string to empty string if we have filters
 		searchString = ""
 
