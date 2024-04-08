@@ -7,6 +7,7 @@ import (
 type Codebook struct {
 	UID            string `json:"uid"`
 	Name           string `json:"name"`
+	Code           string `json:"code,omitempty"`
 	AdditionalData string `json:"additionalData,omitempty"`
 }
 
