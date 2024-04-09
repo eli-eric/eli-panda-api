@@ -58,13 +58,12 @@ func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
 	}
 
 	_, err = c.AddFunc("@every 10s", func() {
-		log.Info().Msgf("Cron service %v started", "SetAllSystemTypes")
+
 		err := SetAllSystemTypes(driver, settings)
 
+		// log only if there is an error
 		if err != nil {
 			log.Error().Msgf("Cron service SetAllSystemTypes error: %v", err.Error())
-		} else {
-			log.Info().Msgf("Cron service SetAllSystemTypes finished")
 		}
 	})
 
