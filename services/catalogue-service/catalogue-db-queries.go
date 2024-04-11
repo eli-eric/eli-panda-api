@@ -697,14 +697,22 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	}
 
 	for idxProp, prop := range item.Details {
+
+		propIdx := fmt.Sprintf("prop%d", idxProp)
+		propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+		propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+		propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
+		result.Parameters[propUidIdx] = prop.Property.UID
+
+		result.Query += fmt.Sprintf(`
+		WITH item
+		MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
+		MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
+		SET %[1]s.value = $%[3]s
+		`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+
 		if prop.Value != nil && prop.Value != "" {
 
-			propIdx := fmt.Sprintf("prop%d", idxProp)
-			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
-			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
-			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
-
-			result.Parameters[propUidIdx] = prop.Property.UID
 			// check prop.Value type, if its map[string]interface{} then marshal it to json string
 			if prop.Property.Type.Code == "range" {
 				jsonValue, err := json.Marshal(prop.Value)
@@ -717,13 +725,8 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 			} else {
 				result.Parameters[propValueIdx] = prop.Value
 			}
-
-			result.Query += fmt.Sprintf(`
-			WITH item
-			MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
-			MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
-			SET %[1]s.value = $%[3]s
-			`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+		} else {
+			result.Parameters[propValueIdx] = ""
 		}
 	}
 
@@ -752,14 +755,22 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	helpers.AutoResolveObjectToUpdateQuery(&result, *item, *oldItem, "item")
 
 	for idxProp, prop := range item.Details {
+
+		propIdx := fmt.Sprintf("prop%d", idxProp)
+		propUidIdx := fmt.Sprintf("propUID%d", idxProp)
+		propValueIdx := fmt.Sprintf("propValue%d", idxProp)
+		propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
+		result.Parameters[propUidIdx] = prop.Property.UID
+
+		result.Query += fmt.Sprintf(`
+		WITH item
+		MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
+		MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
+		SET %[1]s.value = $%[3]s
+		`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+
 		if prop.Value != nil && prop.Value != "" {
 
-			propIdx := fmt.Sprintf("prop%d", idxProp)
-			propUidIdx := fmt.Sprintf("propUID%d", idxProp)
-			propValueIdx := fmt.Sprintf("propValue%d", idxProp)
-			propValueRelIdx := fmt.Sprintf("propValueRel%d", idxProp)
-
-			result.Parameters[propUidIdx] = prop.Property.UID
 			// check prop.Value type, if its map[string]interface{} then marshal it to json string
 			if prop.Property.Type.Code == "range" {
 				jsonValue, err := json.Marshal(prop.Value)
@@ -772,13 +783,8 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 			} else {
 				result.Parameters[propValueIdx] = prop.Value
 			}
-
-			result.Query += fmt.Sprintf(`
-			WITH item
-			MATCH(%[4]s:CatalogueCategoryProperty{uid: $%[2]s})
-			MERGE(item)-[%[1]s:HAS_CATALOGUE_PROPERTY]->(%[4]s)
-			SET %[1]s.value = $%[3]s
-			`, propValueRelIdx, propUidIdx, propValueIdx, propIdx)
+		} else {
+			result.Parameters[propValueIdx] = ""
 		}
 	}
 
