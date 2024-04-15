@@ -1,0 +1,77 @@
+package filesservice
+
+import (
+	"panda/apigateway/services/files-service/models"
+
+	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
+)
+
+type FilesHandlers struct {
+	filesService IFilesService
+}
+
+type IFilesHandlers interface {
+	GetFileLinksByParentUid() echo.HandlerFunc
+	CreateFileLink() echo.HandlerFunc
+	UpdateFileLink() echo.HandlerFunc
+	DeleteFileLink() echo.HandlerFunc
+}
+
+// NewFilesHandlers Files handlers constructor
+func NewFilesHandlers(filesSvc IFilesService) IFilesHandlers {
+	return &FilesHandlers{filesService: filesSvc}
+}
+
+func (h *FilesHandlers) GetFileLinksByParentUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		parentUid := c.Param("parentUid")
+		links, err := h.filesService.GetFileLinksByParentUid(parentUid)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting file links by parent UID")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, links)
+	}
+}
+
+func (h *FilesHandlers) CreateFileLink() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		parentUid := c.Param("parentUid")
+		fileLink := models.FileLink{}
+		if err := c.Bind(&fileLink); err != nil {
+			log.Error().Err(err).Msg("Error binding file link")
+			return echo.ErrBadRequest
+		}
+
+		err, result := h.filesService.CreateFileLink(parentUid, fileLink)
+
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating file link")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
+	}
+}
+
+func (h *FilesHandlers) UpdateFileLink() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		return nil
+	}
+}
+
+func (h *FilesHandlers) DeleteFileLink() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		return nil
+	}
+}
