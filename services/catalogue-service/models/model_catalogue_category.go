@@ -17,6 +17,8 @@ type CatalogueCategory struct {
 
 	Groups []CatalogueCategoryPropertyGroup `json:"groups"`
 
+	PhysicalItemProperties []CatalogueCategoryProperty `json:"physicalItemProperties"`
+
 	SystemType *models.Codebook `json:"systemType,omitempty"`
 }
 
