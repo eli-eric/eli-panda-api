@@ -13,8 +13,8 @@ type FilesService struct {
 
 type IFilesService interface {
 	GetFileLinksByParentUid(parentUid string) (result []models.FileLink, err error)
-	CreateFileLink(parentUid string, fileLink models.FileLink) (err error, result models.FileLink)
-	UpdateFileLink(fileLink models.FileLink) (err error)
+	CreateFileLink(parentUid string, fileLink models.FileLink) (result models.FileLink, err error)
+	UpdateFileLink(fileLink models.FileLink) (result models.FileLink, err error)
 	DeleteFileLink(uid string) (err error)
 }
 
@@ -34,20 +34,32 @@ func (svc *FilesService) GetFileLinksByParentUid(parentUid string) (result []mod
 	return result, err
 }
 
-func (svc *FilesService) CreateFileLink(parentUid string, fileLink models.FileLink) (err error, result models.FileLink) {
+func (svc *FilesService) CreateFileLink(parentUid string, fileLink models.FileLink) (result models.FileLink, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := CreateFileLinkQuery(parentUid, fileLink)
-	fileLink, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.FileLink](session, query)
+	result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.FileLink](session, query)
 
-	return err, fileLink
+	return result, err
 }
 
-func (svc *FilesService) UpdateFileLink(fileLink models.FileLink) (err error) {
-	return err
+func (svc *FilesService) UpdateFileLink(fileLink models.FileLink) (result models.FileLink, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := UpdateFileLinkQuery(fileLink)
+	result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.FileLink](session, query)
+
+	return result, err
 }
 
 func (svc *FilesService) DeleteFileLink(uid string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := DeleteFileLinkQuery(uid)
+	err = helpers.WriteNeo4jAndReturnNothing(session, query)
+
 	return err
 }
