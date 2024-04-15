@@ -49,14 +49,14 @@ func (h *FilesHandlers) CreateFileLink() echo.HandlerFunc {
 			return echo.ErrBadRequest
 		}
 
-		err, result := h.filesService.CreateFileLink(parentUid, fileLink)
+		result, err := h.filesService.CreateFileLink(parentUid, fileLink)
 
 		if err != nil {
 			log.Error().Err(err).Msg("Error creating file link")
 			return echo.ErrInternalServerError
 		}
 
-		return c.JSON(200, result)
+		return c.JSON(201, result)
 	}
 }
 
@@ -64,7 +64,22 @@ func (h *FilesHandlers) UpdateFileLink() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
 
-		return nil
+		uid := c.Param("uid")
+		fileLink := models.FileLink{}
+		if err := c.Bind(&fileLink); err != nil {
+			log.Error().Err(err).Msg("Error binding file link")
+			return echo.ErrBadRequest
+		}
+
+		fileLink.UID = uid
+		result, err := h.filesService.UpdateFileLink(fileLink)
+
+		if err != nil {
+			log.Error().Err(err).Msg("Error updating file link")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
 	}
 }
 
@@ -72,6 +87,13 @@ func (h *FilesHandlers) DeleteFileLink() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
 
-		return nil
+		uid := c.Param("uid")
+		err := h.filesService.DeleteFileLink(uid)
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting file link")
+			return echo.ErrInternalServerError
+		}
+
+		return c.NoContent(204)
 	}
 }
