@@ -699,7 +699,7 @@ func GetOrdersForCatalogueItemQuery(catalogueItemUID string, facilityCode string
 	result.Query = `
 	MATCH(f:Facility{code: $facilityCode})
 	WITH f
-	MATCH (f)<-[:BELONGS_TO_FACILITY]-(o)-[:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci{uid: $catalogueItemUID}) 
+	MATCH (f)<-[:BELONGS_TO_FACILITY]-(o{deleted: false})-[:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci{uid: $catalogueItemUID}) 
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
