@@ -324,14 +324,14 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	OPTIONAL MATCH(physicalItemProperty)-[:IS_PROPERTY_TYPE]->(propertyTypePhysical)
 	OPTIONAL MATCH(physicalItemProperty)-[:HAS_UNIT]->(unitPhysical)
 	WITH category,systemType, group, property, propertyType, physicalItemProperty, propertyTypePhysical, unitPhysical, unit order by id(property)
-	WITH category, group, systemType, physicalItemProperty, {
+	WITH category, group, systemType, CASE WHEN physicalItemProperty IS NULL THEN NULL ELSE {
 		uid: physicalItemProperty.uid,
 		name: physicalItemProperty.name,
 		defaultValue: physicalItemProperty.defaultValue,
 		type: { uid: propertyTypePhysical.uid, name: propertyTypePhysical.name, code: propertyTypePhysical.code},
 		unit: case when unitPhysical is not null then { uid: unitPhysical.uid, name: unitPhysical.name } else null end,
 		listOfValues: apoc.text.split(case when physicalItemProperty.listOfValues = "" then null else  physicalItemProperty.listOfValues END, ";")
-	} as physicalItemProperties,	
+	} END as physicalItemProperties,	
 	collect({
 		uid: property.uid, 
 		name: property.name,
