@@ -30,6 +30,7 @@ type ISystemsHandlers interface {
 	DeleteSystemRelationship() echo.HandlerFunc
 	CreateNewSystemRelationship() echo.HandlerFunc
 	GetSystemCode() echo.HandlerFunc
+	GetPhysicalItemProperties() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -313,6 +314,23 @@ func (h *SystemsHandlers) GetSystemCode() echo.HandlerFunc {
 			return c.String(http.StatusOK, code)
 		} else if strings.Contains(err.Error(), "missing") {
 			return c.String(http.StatusBadRequest, err.Error())
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *SystemsHandlers) GetPhysicalItemProperties() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		properties, err := h.systemsService.GetPhysicalItemProperties(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, properties)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError

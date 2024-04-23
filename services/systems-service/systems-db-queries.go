@@ -954,3 +954,52 @@ func GetNewSystemCode(systemCodePrefix string, serialNumberLength int, facilityC
 
 	return result
 }
+
+func GetPhysicalItemPropertiesQuery(physicalItemUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(itm:Item{uid: $physicalItemUID})-[:IS_BASED_ON]->(ci)-[:BELONGS_TO_CATEGORY]->(cat)
+	WITH itm, cat
+	OPTIONAL MATCH(parentCategories)-[:HAS_SUBCATEGORY*1..20]->(cat)
+	WITH itm, collect(parentCategories.uid) + cat.uid as categoryUids
+	OPTIONAL MATCH (cat)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(prop) WHERE cat.uid in categoryUids
+	WITH itm, prop
+	OPTIONAL MATCH (prop)-[:IS_PROPERTY_TYPE]->(ptype)
+	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(punit)
+	OPTIONAL MATCH (itm)-[pv:HAS_PHYSICAL_ITEM_PROPERTY]->(prop)
+	RETURN DISTINCT {
+						value: CASE WHEN pv IS NOT NULL THEN pv.value ELSE null END,
+						property: {
+						uid: prop.uid,					
+						name: prop.name,
+						listOfValues: apoc.text.split(case when prop.listOfValues = "" then null else  prop.listOfValues END, ";"),
+						defaultValue: prop.defaultValue,
+						type: CASE WHEN ptype IS NOT NULL THEN {name: ptype.name, uid: ptype.uid} ELSE null END,
+						unit: CASE WHEN punit IS NOT NULL THEN {name: punit.name, uid: punit.uid} ELSE null END					
+						}
+					} as properties;`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["physicalItemUID"] = physicalItemUID
+
+	result.ReturnAlias = "properties"
+
+	return result
+}
+
+func UpdatePhysicalItemDetailsQuery(physicalItemUID string, details []models.PhysicalItemDetail, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["physicalItemUID"] = physicalItemUID
+	result.Parameters["lastUpdateBy"] = userUID
+
+	result.Query = `
+	MATCH (pi:PhysicalItem{uid: $physicalItemUID})-[:IS_BASED_ON]->(ci:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
+	OPTIONAL MATCH (pi)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (ci)-[:HAS_SUPPLIER]->(supplier)
+	`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
