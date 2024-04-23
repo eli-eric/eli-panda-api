@@ -42,4 +42,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.POST("/v1/system/relationship/:uid", m.Authorization(h.CreateNewSystemRelationship(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/system/systemCode", m.Authorization(h.GetSystemCode(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	e.GET("/v1/physical-item/:uid/properties", m.Authorization(h.GetPhysicalItemProperties(), shared.ROLE_SYSTEMS_VIEW, shared.ROLE_CATALOGUE_VIEW, shared.ROLE_ORDERS_VIEW), jwtMiddleware)
 }
