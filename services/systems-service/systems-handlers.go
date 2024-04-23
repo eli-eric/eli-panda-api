@@ -31,6 +31,7 @@ type ISystemsHandlers interface {
 	CreateNewSystemRelationship() echo.HandlerFunc
 	GetSystemCode() echo.HandlerFunc
 	GetPhysicalItemProperties() echo.HandlerFunc
+	UpdatePhysicalItemProperties() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -335,5 +336,32 @@ func (h *SystemsHandlers) GetPhysicalItemProperties() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+		userUid := c.Get("userUID").(string)
+
+		properties := new([]models.PhysicalItemDetail)
+
+		if err := c.Bind(properties); err == nil {
+
+			err := h.systemsService.UpdatePhysicalItemProperties(uid, *properties, userUid)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, properties)
+			}
+
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
 	}
 }

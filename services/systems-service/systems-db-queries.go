@@ -994,10 +994,28 @@ func UpdatePhysicalItemDetailsQuery(physicalItemUID string, details []models.Phy
 	result.Parameters["lastUpdateBy"] = userUID
 
 	result.Query = `
-	MATCH (pi:PhysicalItem{uid: $physicalItemUID})-[:IS_BASED_ON]->(ci:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
-	OPTIONAL MATCH (pi)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (ci)-[:HAS_SUPPLIER]->(supplier)
+	MATCH (itm:Item{uid: $physicalItemUID})
 	`
+
+	for i, detail := range details {
+
+		propIdxUid := fmt.Sprintf("propUID%v", i)
+		propValIdx := fmt.Sprintf("propVal%v", i)
+
+		result.Parameters[propIdxUid] = detail.Property.UID
+		result.Parameters[propValIdx] = detail.Value
+
+		result.Query += `
+		WITH itm
+		MATCH (prop{uid: $` + propIdxUid + `})
+		MERGE (itm)-[pv:HAS_PHYSICAL_ITEM_PROPERTY]->(prop)
+		SET pv.value = $` + propValIdx
+	}
+
+	result.Query += `
+	WITH itm
+	CREATE(itm)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u{uid: $lastUpdateBy})
+	RETURN true as result`
 
 	result.ReturnAlias = "result"
 
