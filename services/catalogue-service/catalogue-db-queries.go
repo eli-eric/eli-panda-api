@@ -389,6 +389,44 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						},
 						propertyGroup: group.name, 
 						value: null} else null end as properties
+						return properties
+						UNION	
+	MATCH(category:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(property)
+	WITH category, property 
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH property, propertyType, unit order by property.name
+	WITH case when count(property) > 0 then { 
+					property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: null, 
+						value: null} else null end as properties
+						return properties
+						UNION	
+	MATCH(category)-[:HAS_SUBCATEGORY*1..50]->(childs:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(property)
+	WITH category, property 
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH property, propertyType, unit order by property.name
+	WITH case when count(property) > 0 then { 
+					property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: null, 
+						value: null} else null end as properties
 						return properties;`
 
 	result.ReturnAlias = "properties"
