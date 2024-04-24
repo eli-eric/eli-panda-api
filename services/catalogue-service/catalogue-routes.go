@@ -19,6 +19,8 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 
 	e.GET("/v1/catalogue/category/:uid/properties", m.Authorization(h.GetCatalogueCategoryPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
+	e.GET("/v1/catalogue/category/:uid/physical-item-properties", m.Authorization(h.GetCatalogueCategoryPhysicalItemPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+
 	e.POST("/v1/catalogue/category/:uid/copy", m.Authorization(h.CopyCatalogueCategoryRecursive(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	//fake image get - get only eli logo img for now

@@ -604,9 +604,10 @@ type Filter struct {
 }
 
 type ColumnFilter struct {
-	Id    string `json:"id"`
-	Value any    `json:"value"`
-	Type  string `json:"type"`
+	Id       string `json:"id"`
+	Value    any    `json:"value"`
+	Type     string `json:"type"`
+	PropType string `json:"propType"` // could be "CATAOGUE_ITEM" or "PHYISICAL_ITEM"
 }
 
 const DB_LOG_CREATE string = "CREATE"

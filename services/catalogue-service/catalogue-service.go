@@ -37,6 +37,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoriesCodebookTree(search string) (result []codebookModels.CodebookTreeItem, err error)
 	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
 	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
+	GetCatalogueCategoryPhysicalItemPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
@@ -362,6 +363,18 @@ func (svc *CatalogueService) GetCatalogueCategoryPropertiesByUid(uid string, ite
 			}
 		}
 	}
+
+	helpers.ProcessArrayResult(&properties, err)
+
+	return properties, err
+}
+
+func (svc *CatalogueService) GetCatalogueCategoryPhysicalItemPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := CatalogueCategoryPhysicalItemPropertiesQuery(uid)
+	properties, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueItemDetail](session, query)
 
 	helpers.ProcessArrayResult(&properties, err)
 
