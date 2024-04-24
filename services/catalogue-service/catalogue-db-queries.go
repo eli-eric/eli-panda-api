@@ -389,8 +389,18 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						},
 						propertyGroup: group.name, 
 						value: null} else null end as properties
-						return properties
-						UNION	
+						return properties;`
+
+	result.ReturnAlias = "properties"
+	result.Parameters = make(map[string]interface{}, 1)
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
+func CatalogueCategoryPhysicalItemPropertiesQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
 	MATCH(category:CatalogueCategory{uid:$uid})
 	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(property)
 	WITH category, property 
