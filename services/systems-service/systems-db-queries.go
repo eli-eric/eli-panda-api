@@ -494,21 +494,21 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			if filter.Type == "text" {
 				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE toLower(pv.value) contains $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
 				}
 			} else if filter.Type == "list" {
 				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE pv.value IN $propFilterVal%v `, i, i)
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE pv.value IN $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
 				}
 			} else if filter.Type == "number" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, itemTypeByPropType[filter.PropType], i, i, i, i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 
 					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
@@ -533,6 +533,12 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	}
 
 	return result
+}
+
+// this map is used to map filter prop type to type of item that has this prop related to in the query/func "GetSystemsSearchFilterQueryOnly"
+var itemTypeByPropType = map[string]string{
+	"CATALOGUE_ITEM": "catalogueItem",
+	"PHYSICAL_ITEM":  "physicalItem",
 }
 
 func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
