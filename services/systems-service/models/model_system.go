@@ -68,6 +68,7 @@ type SystemRelationshipRequest struct {
 }
 
 type SystemHistory struct {
+	Uid         string               `json:"uid"`
 	ChangedAt   time.Time            `json:"changedAt"`
 	ChangedBy   string               `json:"changedBy"`
 	HistoryType string               `json:"historyType"`

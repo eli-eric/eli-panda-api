@@ -1035,35 +1035,35 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:WAS_UPDATED_BY]->(usr)
-		RETURN {changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL"} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL"} as history
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:IS_ORIGINATED_FROM]->(s2)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)<-[upd:IS_ORIGINATED_FROM]-(s2)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
 		}
 		RETURN history
 		ORDER BY history.changedAt DESC;
