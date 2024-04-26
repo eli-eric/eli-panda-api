@@ -1956,6 +1956,53 @@
 					"response": []
 				},
 				{
+					"name": "System history",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "bbb44263-581d-4726-be73-9f9db5e3a1b2",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/2436fce9-5b31-4cf8-80be-563b71db5a60/history",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"2436fce9-5b31-4cf8-80be-563b71db5a60",
+								"history"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Delete System",
 					"event": [
 						{
@@ -2051,6 +2098,109 @@
 									"key": "search",
 									"value": "l1"
 								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get physical item properties",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "882ce2f4-738c-426d-bfc5-d0655cd0670a",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/physical-item/7e8c5796-7f7f-40c4-883c-f372c4f18c70/properties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"physical-item",
+								"7e8c5796-7f7f-40c4-883c-f372c4f18c70",
+								"properties"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update physical item properties",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "89c7f2be-af05-4178-9e87-8078a135ff64",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"property\": {\n            \"uid\": \"7d1872b0-ff68-414c-9c8e-14d49e821664\",\n            \"name\": \"IP address\",\n            \"type\": {\n                \"uid\": \"be2d4bd1-602b-42e6-a0ee-7e24324b75bb\",\n                \"name\": \"text\"\n            }\n        },\n        \"value\": null\n    },\n    {\n        \"property\": {\n            \"uid\": \"abe78571-50b1-4f4d-8a74-54fd7a819967\",\n            \"name\": \"MAC address\",\n            \"type\": {\n                \"uid\": \"be2d4bd1-602b-42e6-a0ee-7e24324b75bb\",\n                \"name\": \"text\"\n            }\n        },\n        \"value\": \"mac :)\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/physical-item/7e8c5796-7f7f-40c4-883c-f372c4f18c70/properties",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"physical-item",
+								"7e8c5796-7f7f-40c4-883c-f372c4f18c70",
+								"properties"
 							]
 						}
 					},
