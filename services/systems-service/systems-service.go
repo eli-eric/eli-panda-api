@@ -43,6 +43,8 @@ type ISystemsService interface {
 	DeleteSystemRelationship(uid int64, userUID string) (err error)
 	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
 	GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error)
+	GetPhysicalItemProperties(physicalItemUid string) (result []models.PhysicalItemDetail, err error)
+	UpdatePhysicalItemProperties(physicalItemUid string, details []models.PhysicalItemDetail, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -397,3 +399,24 @@ const SYSTEM_CODE_GENERATE_LOCATION_NAME = "{LN}"
 const SYSTEM_CODE_GENERATE_FACILITY_CODE = "{FC}"
 const SYSTEM_CODE_GENERATE_SYSTEM_TYPE_CODE = "{STC}"
 const SYSTEM_CODE_GENERATE_SERIAL_PREFIX = "{serial("
+
+func (svc *SystemsService) GetPhysicalItemProperties(physicalItemUid string) (result []models.PhysicalItemDetail, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetPhysicalItemPropertiesQuery(physicalItemUid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.PhysicalItemDetail](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) UpdatePhysicalItemProperties(physicalItemUid string, details []models.PhysicalItemDetail, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, UpdatePhysicalItemDetailsQuery(physicalItemUid, details, userUID))
+
+	return err
+}

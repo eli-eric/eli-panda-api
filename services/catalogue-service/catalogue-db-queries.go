@@ -320,17 +320,28 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
 	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)	
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
-	WITH category,systemType, group,property, propertyType, unit order by id(property)
-	WITH category, group, systemType, collect({
+	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(physicalItemProperty)
+	OPTIONAL MATCH(physicalItemProperty)-[:IS_PROPERTY_TYPE]->(propertyTypePhysical)
+	OPTIONAL MATCH(physicalItemProperty)-[:HAS_UNIT]->(unitPhysical)
+	WITH category,systemType, group, property, propertyType, physicalItemProperty, propertyTypePhysical, unitPhysical, unit order by id(property)
+	WITH category, group, systemType, CASE WHEN physicalItemProperty IS NULL THEN NULL ELSE {
+		uid: physicalItemProperty.uid,
+		name: physicalItemProperty.name,
+		defaultValue: physicalItemProperty.defaultValue,
+		type: { uid: propertyTypePhysical.uid, name: propertyTypePhysical.name, code: propertyTypePhysical.code},
+		unit: case when unitPhysical is not null then { uid: unitPhysical.uid, name: unitPhysical.name } else null end,
+		listOfValues: apoc.text.split(case when physicalItemProperty.listOfValues = "" then null else  physicalItemProperty.listOfValues END, ";")
+	} END as physicalItemProperties,	
+	collect({
 		uid: property.uid, 
 		name: property.name,
 		defaultValue: property.defaultValue, 
 		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 		
 		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
 		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
-	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
-	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
+	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups, physicalItemProperties
+	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups,  physicalItemProperties
+	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, physicalItemProperties: collect(physicalItemProperties), systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
@@ -377,6 +388,54 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
 						propertyGroup: group.name, 
+						value: null} else null end as properties
+						return properties;`
+
+	result.ReturnAlias = "properties"
+	result.Parameters = make(map[string]interface{}, 1)
+	result.Parameters["uid"] = uid
+
+	return result
+}
+
+func CatalogueCategoryPhysicalItemPropertiesQuery(uid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(category:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(property)
+	WITH category, property 
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH property, propertyType, unit order by property.name
+	WITH case when count(property) > 0 then { 
+					property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: null, 
+						value: null} else null end as properties
+						return properties
+						UNION	
+	MATCH(category)-[:HAS_SUBCATEGORY*1..50]->(childs:CatalogueCategory{uid:$uid})
+	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(property)
+	WITH category, property 
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
+	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
+	WITH property, propertyType, unit order by property.name
+	WITH case when count(property) > 0 then { 
+					property:{
+						uid: property.uid,
+						name: property.name, 
+						defaultValue: property.defaultValue,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
+						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
+						},
+						propertyGroup: null, 
 						value: null} else null end as properties
 						return properties;`
 
@@ -515,6 +574,32 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 		}
 	}
 
+	// merge all physical item properties
+	if category.PhysicalItemProperties != nil {
+		for idp, property := range category.PhysicalItemProperties {
+			propertyUID := property.UID
+			if propertyUID == "" {
+				propertyUID = uuid.NewString()
+			}
+			idPropString := "PIP_" + strconv.Itoa(idp)
+			result.Parameters["prop_name_"+idPropString] = property.Name
+			result.Parameters["prop_defaultValue_"+idPropString] = property.DefaultValue
+			result.Parameters["prop_listOfValues_"+idPropString] = strings.Join(property.ListOfValues, ";")
+
+			result.Query += fmt.Sprintf("MERGE(prop_%s:CatalogueCategoryProperty{uid: '%s'}) SET prop_%s.name=$prop_name_%s, prop_%s.defaultValue=$prop_defaultValue_%s, prop_%s.listOfValues=$prop_listOfValues_%s MERGE(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(prop_%s) ", idPropString, propertyUID, idPropString, idPropString, idPropString, idPropString, idPropString, idPropString, idPropString)
+
+			result.Query += fmt.Sprintf("WITH prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:IS_PROPERTY_TYPE]->() DELETE r_prop_%[1]v WITH prop_%[1]v, category ", idPropString)
+
+			result.Query += fmt.Sprintf("MATCH(type%s:CatalogueCategoryPropertyType{uid:'%s'}) MERGE(prop_%s)-[:IS_PROPERTY_TYPE]->(type%s) ", idPropString, property.Type.UID, idPropString, idPropString)
+
+			result.Query += fmt.Sprintf("WITH prop_%[1]v, category OPTIONAL MATCH(prop_%[1]v)-[r_prop_%[1]v:HAS_UNIT]->() DELETE r_prop_%[1]v WITH prop_%[1]v, category ", idPropString)
+			if property.Unit != nil && property.Unit.UID != "" {
+				result.Query += fmt.Sprintf("MERGE(unit%s:Unit{uid:'%s'}) MERGE(prop_%s)-[:HAS_UNIT]->(unit%s) ", idPropString, property.Unit.UID, idPropString, idPropString)
+			}
+		}
+
+	}
+
 	//only if updating existing item
 	if categoryOld != nil {
 		result.Query += "WITH category "
@@ -576,6 +661,14 @@ func getCatalogueCategoryDeletedItems(category *models.CatalogueCategory, catego
 		}
 	}
 
+	// check for deleted physical item properties
+	for _, oldProperty := range categoryOld.PhysicalItemProperties {
+		existsProperty := existsPhysicalItemPropertyByUid(category, oldProperty.UID)
+		if !existsProperty {
+			deletedPropsUids = append(deletedPropsUids, oldProperty.UID)
+		}
+	}
+
 	return deletedGroupsUids, deletedPropsUids
 }
 
@@ -594,6 +687,18 @@ func existsGroupByUid(category *models.CatalogueCategory, uid string) (result *m
 func existsPropertyByUid(category *models.CatalogueCategoryPropertyGroup, uid string) (result bool) {
 
 	for _, property := range category.Properties {
+		if property.UID == uid {
+			result = true
+			break
+		}
+	}
+
+	return result
+}
+
+func existsPhysicalItemPropertyByUid(category *models.CatalogueCategory, uid string) (result bool) {
+
+	for _, property := range category.PhysicalItemProperties {
 		if property.UID == uid {
 			result = true
 			break

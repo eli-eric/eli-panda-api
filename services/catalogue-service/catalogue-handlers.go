@@ -28,6 +28,7 @@ type ICatalogueHandlers interface {
 	CopyCatalogueCategoryRecursive() echo.HandlerFunc
 	CreateNewCatalogueItem() echo.HandlerFunc
 	GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc
+	GetCatalogueCategoryPhysicalItemPropertiesByUid() echo.HandlerFunc
 	UpdateCatalogueItem() echo.HandlerFunc
 	DeleteCatalogueItem() echo.HandlerFunc
 	GetCatalogueItemStatistics() echo.HandlerFunc
@@ -310,6 +311,25 @@ func (h *CatalogueHandlers) GetCatalogueCategoryPropertiesByUid() echo.HandlerFu
 
 		// get catalogue item
 		properties, err := h.catalogueService.GetCatalogueCategoryPropertiesByUid(uid, &itemUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, properties)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *CatalogueHandlers) GetCatalogueCategoryPhysicalItemPropertiesByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		properties, err := h.catalogueService.GetCatalogueCategoryPhysicalItemPropertiesByUid(uid)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, properties)

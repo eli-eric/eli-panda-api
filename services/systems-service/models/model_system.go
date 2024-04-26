@@ -37,6 +37,12 @@ type PhysicalItem struct {
 	CatalogueItem catalogueModels.CatalogueItem `json:"catalogueItem"`
 }
 
+type PhysicalItemDetail struct {
+	Property catalogueModels.CatalogueCategoryProperty `json:"property,omitempty"`
+
+	Value any `json:"value"`
+}
+
 type SystemSimpleResponse struct {
 	UID  string `json:"uid"`
 	Name string `json:"name"`
