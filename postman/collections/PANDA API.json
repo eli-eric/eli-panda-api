@@ -3036,6 +3036,129 @@
 			"id": "d846bb33-0a62-471a-bc94-432f4367932d"
 		},
 		{
+			"name": "Cron",
+			"item": [
+				{
+					"name": "Get history",
+					"id": "dafdef19-734d-4786-887e-6488d3806596",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cron/history",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cron",
+								"history"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Start new job",
+					"id": "931c0101-9ac8-45d4-97af-23cac40954d6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cron/start?jobType=ORDERS&jobName=Sync prices EUR",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cron",
+								"start"
+							],
+							"query": [
+								{
+									"key": "jobType",
+									"value": "ORDERS"
+								},
+								{
+									"key": "jobName",
+									"value": "Sync prices EUR"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "End job",
+					"id": "c0f297d1-5022-467a-a6a7-305913baf4fd",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/cron/end/b57b97b8-0de4-4a56-ad10-89e831d3be28?jobStatus=SUCCESS&jobMessage=Job was successful.",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"cron",
+								"end",
+								"b57b97b8-0de4-4a56-ad10-89e831d3be28"
+							],
+							"query": [
+								{
+									"key": "jobStatus",
+									"value": "SUCCESS"
+								},
+								{
+									"key": "jobMessage",
+									"value": "Job was successful."
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "2aeaee19-76b8-42a1-9961-e2a047a3f55e"
+		},
+		{
 			"name": "Test anything",
 			"id": "dbe50e86-c5a0-4a5b-96c8-ea97c50ad10c",
 			"protocolProfileBehavior": {
