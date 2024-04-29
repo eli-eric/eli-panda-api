@@ -76,6 +76,7 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 }
 
 func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
+
 	resultMap, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(query.Query, query.Parameters)
 		if err != nil {
@@ -128,6 +129,25 @@ func WriteNeo4jAndReturnNothing(session neo4j.Session, query DatabaseQuery) (err
 		_, err := tx.Run(query.Query, query.Parameters)
 
 		return nil, err
+	})
+
+	return err
+}
+
+// write transaction with multiple queries
+func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries []DatabaseQuery) (err error) {
+
+	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		for _, query := range queries {
+			_, err := tx.Run(query.Query, query.Parameters)
+
+			if err != nil {
+				tx.Rollback()
+				return nil, err
+			}
+		}
+
+		return nil, nil
 	})
 
 	return err
