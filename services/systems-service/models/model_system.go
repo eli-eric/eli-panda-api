@@ -3,6 +3,7 @@ package models
 import (
 	catalogueModels "panda/apigateway/services/catalogue-service/models"
 	"panda/apigateway/services/codebook-service/models"
+	"time"
 )
 
 type System struct {
@@ -37,6 +38,12 @@ type PhysicalItem struct {
 	CatalogueItem catalogueModels.CatalogueItem `json:"catalogueItem"`
 }
 
+type PhysicalItemDetail struct {
+	Property catalogueModels.CatalogueCategoryProperty `json:"property,omitempty"`
+
+	Value any `json:"value,omitempty"`
+}
+
 type SystemSimpleResponse struct {
 	UID  string `json:"uid"`
 	Name string `json:"name"`
@@ -58,4 +65,19 @@ type SystemRelationshipRequest struct {
 	RelationTypeCode string `json:"relationTypeCode"`
 	SystemFromUID    string `json:"systemFromUid"`
 	SystemToUID      string `json:"systemToUid"`
+}
+
+type SystemHistory struct {
+	Uid         string               `json:"uid"`
+	ChangedAt   time.Time            `json:"changedAt"`
+	ChangedBy   string               `json:"changedBy"`
+	HistoryType string               `json:"historyType"`
+	Action      string               `json:"action"`
+	Detail      *SystemHistoryDetail `json:"detail"`
+}
+
+type SystemHistoryDetail struct {
+	SystemUid  string `json:"systemUid"`
+	SystemName string `json:"systemName"`
+	Direction  string `json:"direction"`
 }

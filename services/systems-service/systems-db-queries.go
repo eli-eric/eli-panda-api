@@ -494,21 +494,21 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			if filter.Type == "text" {
 				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE toLower(pv.value) contains $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
 				}
 			} else if filter.Type == "list" {
 				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE pv.value IN $propFilterVal%v `, i, i)
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE pv.value IN $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
 				}
 			} else if filter.Type == "number" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
 					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
-					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(catalogueItem) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, itemTypeByPropType[filter.PropType], i, i, i, i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 
 					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
@@ -533,6 +533,12 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	}
 
 	return result
+}
+
+// this map is used to map filter prop type to type of item that has this prop related to in the query/func "GetSystemsSearchFilterQueryOnly"
+var itemTypeByPropType = map[string]string{
+	"CATALOGUE_ITEM": "catalogueItem",
+	"PHYSICAL_ITEM":  "physicalItem",
 }
 
 func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
@@ -951,6 +957,115 @@ func GetNewSystemCode(systemCodePrefix string, serialNumberLength int, facilityC
 	result.Parameters["facilityCode"] = facilityCode
 
 	result.ReturnAlias = "newCode"
+
+	return result
+}
+
+func GetPhysicalItemPropertiesQuery(physicalItemUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(itm:Item{uid: $physicalItemUID})-[:IS_BASED_ON]->(ci)-[:BELONGS_TO_CATEGORY]->(cat)
+	WITH itm, cat
+	OPTIONAL MATCH(parentCategories)-[:HAS_SUBCATEGORY*1..20]->(cat)
+	WITH itm, collect(parentCategories.uid) + cat.uid as categoryUids
+	OPTIONAL MATCH (cat)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(prop) WHERE cat.uid in categoryUids
+	WITH itm, prop
+	OPTIONAL MATCH (prop)-[:IS_PROPERTY_TYPE]->(ptype)
+	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(punit)
+	OPTIONAL MATCH (itm)-[pv:HAS_PHYSICAL_ITEM_PROPERTY]->(prop)
+	RETURN DISTINCT CASE WHEN prop IS NOT NULL THEN {
+						value: CASE WHEN pv IS NOT NULL THEN pv.value ELSE null END,
+						property: {
+						uid: prop.uid,					
+						name: prop.name,
+						listOfValues: apoc.text.split(case when prop.listOfValues = "" then null else  prop.listOfValues END, ";"),
+						defaultValue: prop.defaultValue,
+						type: CASE WHEN ptype IS NOT NULL THEN {name: ptype.name, uid: ptype.uid} ELSE null END,
+						unit: CASE WHEN punit IS NOT NULL THEN {name: punit.name, uid: punit.uid} ELSE null END					
+						}
+					} ELSE NULL END as properties;`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["physicalItemUID"] = physicalItemUID
+
+	result.ReturnAlias = "properties"
+
+	return result
+}
+
+func UpdatePhysicalItemDetailsQuery(physicalItemUID string, details []models.PhysicalItemDetail, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["physicalItemUID"] = physicalItemUID
+	result.Parameters["lastUpdateBy"] = userUID
+
+	result.Query = `
+	MATCH (itm:Item{uid: $physicalItemUID})
+	`
+
+	for i, detail := range details {
+
+		propIdxUid := fmt.Sprintf("propUID%v", i)
+		propValIdx := fmt.Sprintf("propVal%v", i)
+
+		result.Parameters[propIdxUid] = detail.Property.UID
+		result.Parameters[propValIdx] = detail.Value
+
+		result.Query += `
+		WITH itm
+		MATCH (prop{uid: $` + propIdxUid + `})
+		MERGE (itm)-[pv:HAS_PHYSICAL_ITEM_PROPERTY]->(prop)
+		SET pv.value = $` + propValIdx
+	}
+
+	result.Query += `
+	WITH itm
+	CREATE(itm)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u{uid: $lastUpdateBy})
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	CALL { 
+		MATCH(s:System{uid: $systemUID})
+		WITH s
+		MATCH(s)-[upd:WAS_UPDATED_BY]->(usr)
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL", action: upd.action} as history
+		UNION		
+		MATCH(s:System{uid: $systemUID})
+		WITH s
+		MATCH(s)<-[upd:IS_ORIGINATED_FROM]-(physicalItem)<-[:CONTAINS_ITEM]-(s2)
+		WITH s,upd,s2
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
+		UNION
+		MATCH(s:System{uid: $systemUID})
+		WITH s
+		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2)
+		WITH s,upd,s2
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
+		UNION
+		MATCH(s:System{uid: $systemUID})
+		WITH s
+		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2)
+		WITH s,upd,s2
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
+		}
+		RETURN history
+		ORDER BY history.changedAt DESC;
+	`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+
+	result.ReturnAlias = "history"
 
 	return result
 }
