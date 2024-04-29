@@ -973,7 +973,7 @@ func GetPhysicalItemPropertiesQuery(physicalItemUID string) (result helpers.Data
 	OPTIONAL MATCH (prop)-[:IS_PROPERTY_TYPE]->(ptype)
 	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(punit)
 	OPTIONAL MATCH (itm)-[pv:HAS_PHYSICAL_ITEM_PROPERTY]->(prop)
-	RETURN DISTINCT {
+	RETURN DISTINCT CASE WHEN prop IS NOT NULL THEN {
 						value: CASE WHEN pv IS NOT NULL THEN pv.value ELSE null END,
 						property: {
 						uid: prop.uid,					
@@ -983,7 +983,7 @@ func GetPhysicalItemPropertiesQuery(physicalItemUID string) (result helpers.Data
 						type: CASE WHEN ptype IS NOT NULL THEN {name: ptype.name, uid: ptype.uid} ELSE null END,
 						unit: CASE WHEN punit IS NOT NULL THEN {name: punit.name, uid: punit.uid} ELSE null END					
 						}
-					} as properties;`
+					} ELSE NULL END as properties;`
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["physicalItemUID"] = physicalItemUID

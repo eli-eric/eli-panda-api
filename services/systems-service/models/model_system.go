@@ -41,7 +41,7 @@ type PhysicalItem struct {
 type PhysicalItemDetail struct {
 	Property catalogueModels.CatalogueCategoryProperty `json:"property,omitempty"`
 
-	Value any `json:"valuehttps://eli-eric.atlassian.net/issues/ELIPANDA-282?filter=10044"`
+	Value any `json:"value,omitempty"`
 }
 
 type SystemSimpleResponse struct {
