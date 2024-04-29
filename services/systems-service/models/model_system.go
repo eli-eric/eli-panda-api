@@ -72,6 +72,7 @@ type SystemHistory struct {
 	ChangedAt   time.Time            `json:"changedAt"`
 	ChangedBy   string               `json:"changedBy"`
 	HistoryType string               `json:"historyType"`
+	Action      string               `json:"action"`
 	Detail      *SystemHistoryDetail `json:"detail"`
 }
 

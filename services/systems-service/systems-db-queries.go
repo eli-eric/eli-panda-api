@@ -1035,7 +1035,7 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:WAS_UPDATED_BY]->(usr)
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL"} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL", action: upd.action} as history
 		UNION		
 		MATCH(s:System{uid: $systemUID})
 		WITH s
