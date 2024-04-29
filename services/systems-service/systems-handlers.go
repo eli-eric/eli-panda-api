@@ -32,6 +32,7 @@ type ISystemsHandlers interface {
 	GetSystemCode() echo.HandlerFunc
 	GetPhysicalItemProperties() echo.HandlerFunc
 	UpdatePhysicalItemProperties() echo.HandlerFunc
+	GetSystemHistory() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -363,5 +364,22 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) GetSystemHistory() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		history, err := h.systemsService.GetSystemHistory(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, history)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }

@@ -45,6 +45,7 @@ type ISystemsService interface {
 	GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error)
 	GetPhysicalItemProperties(physicalItemUid string) (result []models.PhysicalItemDetail, err error)
 	UpdatePhysicalItemProperties(physicalItemUid string, details []models.PhysicalItemDetail, userUID string) (err error)
+	GetSystemHistory(uid string) (result []models.SystemHistory, err error)
 }
 
 // Create new security service instance
@@ -419,4 +420,16 @@ func (svc *SystemsService) UpdatePhysicalItemProperties(physicalItemUid string, 
 	err = helpers.WriteNeo4jAndReturnNothing(session, UpdatePhysicalItemDetailsQuery(physicalItemUid, details, userUID))
 
 	return err
+}
+
+func (svc *SystemsService) GetSystemHistory(uid string) (result []models.SystemHistory, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemHistoryQuery(uid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemHistory](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
 }
