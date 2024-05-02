@@ -85,10 +85,23 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityC
 func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := InsertNewOrderQuery(order, facilityCode, userUID)
-	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	queries := []helpers.DatabaseQuery{}
+	generalQuery, newUid := InsertNewOrderQuery(order, facilityCode, userUID)
+	queries = append(queries, generalQuery)
 
-	return uid, err
+	if order.OrderLines != nil && len(order.OrderLines) > 0 {
+		for _, orderLine := range order.OrderLines {
+			orderLineQuery := InsertNewOrderOrderLineQuery(newUid, &orderLine, facilityCode, userUID)
+			queries = append(queries, orderLineQuery)
+		}
+	}
+
+	deliveryStatusQuery := UpdateOrderDeliveryStatusQuery(newUid, facilityCode)
+	queries = append(queries, deliveryStatusQuery)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
+
+	return newUid, err
 }
 
 func (svc *OrdersService) DeleteOrder(orderUid string, userUID string) (err error) {
@@ -107,7 +120,25 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 		oldOrder, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, GetOrderWithOrderLinesByUidQuery(order.UID, facilityCode))
 
 		if err == nil {
-			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateOrderQuery(order, &oldOrder, facilityCode, userUID))
+			queries := []helpers.DatabaseQuery{}
+			genralUpdateQuery := UpdateOrderQuery(order, &oldOrder, facilityCode, userUID)
+			queries = append(queries, genralUpdateQuery)
+
+			if order.OrderLines != nil && len(order.OrderLines) > 0 {
+
+				for _, orderLine := range order.OrderLines {
+					orderLineQuery := UpdateOrderLineQuery(order.UID, &orderLine, facilityCode, userUID)
+					queries = append(queries, orderLineQuery)
+				}
+			}
+
+			deleteOrderLinesQuery := DeleteOrderLinesQuery(order, &oldOrder, facilityCode, userUID)
+			queries = append(queries, deleteOrderLinesQuery)
+
+			deliveryStatusQuery := UpdateOrderDeliveryStatusQuery(order.UID, facilityCode)
+			queries = append(queries, deliveryStatusQuery)
+
+			err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
 		}
 
 		if err != nil {
