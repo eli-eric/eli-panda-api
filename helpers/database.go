@@ -142,7 +142,7 @@ func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries []
 			_, err := tx.Run(query.Query, query.Parameters)
 
 			if err != nil {
-				tx.Rollback()
+				log.Info().Msg(err.Error())
 				return nil, err
 			}
 		}
