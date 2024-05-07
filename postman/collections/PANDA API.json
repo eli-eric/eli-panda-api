@@ -2104,6 +2104,106 @@
 					"response": []
 				},
 				{
+					"name": "Get system type groups",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "ff059050-7b9a-4c30-a967-89b1608d20f9",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-groups",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get system types by group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "80d4e540-d979-4313-9e55-98729e472957",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-group/:uid/system-types",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-group",
+								":uid",
+								"system-types"
+							],
+							"variable": [
+								{
+									"key": "uid",
+									"value": "d9107f91-bb98-4445-a43b-3b741df4d2f6"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Get physical item properties",
 					"event": [
 						{
