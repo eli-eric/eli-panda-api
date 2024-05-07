@@ -81,3 +81,10 @@ type SystemHistoryDetail struct {
 	SystemName string `json:"systemName"`
 	Direction  string `json:"direction"`
 }
+
+type SystemType struct {
+	UID  string `json:"uid"`
+	Name string `json:"name"`
+	Code string `json:"code"`
+	Mask string `json:"mask"`
+}
