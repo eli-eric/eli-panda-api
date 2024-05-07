@@ -1069,3 +1069,36 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 
 	return result
 }
+
+func GetSystemTypeGroupsQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(f:Facility{code: $facilityCode}) MATCH(n:SystemTypeGroup)-[:BELONGS_TO_FACILITY]->(f)
+					RETURN { name: n.name, uid: n.uid } as result ORDER BY result.name`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func GetSystemTypesBySystemTypeGroupQuery(systemTypeGroupUid, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid})-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)
+	RETURN 
+	{ name: st.name, 
+	  uid: st.uid, 
+	  code: st.code,
+	  mask: case when $facilityCode = "B" then st.maskB WHEN $facilityCode = "A" THEN st.maskA WHEN $facilityCode = "N" THEN st.maskN END 
+	  } as result ORDER BY result.name`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func DeleteSystemTypeGroupQuery(systemTypeGroupUid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid}) DETACH DELETE n`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
+	result.ReturnAlias = "result"
+	return result
+}

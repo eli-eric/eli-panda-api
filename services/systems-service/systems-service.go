@@ -46,6 +46,8 @@ type ISystemsService interface {
 	GetPhysicalItemProperties(physicalItemUid string) (result []models.PhysicalItemDetail, err error)
 	UpdatePhysicalItemProperties(physicalItemUid string, details []models.PhysicalItemDetail, userUID string) (err error)
 	GetSystemHistory(uid string) (result []models.SystemHistory, err error)
+	GetSystemTypeGroups(facilityCode string) (result []codebookModels.Codebook, err error)
+	GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, facilityCode string) (result []models.SystemType, err error)
 }
 
 // Create new security service instance
@@ -428,6 +430,28 @@ func (svc *SystemsService) GetSystemHistory(uid string) (result []models.SystemH
 
 	query := GetSystemHistoryQuery(uid)
 	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemHistory](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemTypeGroups(facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemTypeGroupsQuery(facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, facilityCode string) (result []models.SystemType, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemTypesBySystemTypeGroupQuery(systemTypeGroupUid, facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemType](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
 
