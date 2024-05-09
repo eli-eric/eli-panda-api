@@ -35,6 +35,7 @@ type ISystemsHandlers interface {
 	GetSystemHistory() echo.HandlerFunc
 	GetSystemTypeGroups() echo.HandlerFunc
 	GetSystemTypesBySystemTypeGroup() echo.HandlerFunc
+	DeleteSystemTypeGroup() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -418,5 +419,30 @@ func (h *SystemsHandlers) GetSystemTypesBySystemTypeGroup() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+func (h *SystemsHandlers) DeleteSystemTypeGroup() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		err, realtedNodes := h.systemsService.DeleteSystemTypeGroup(uid)
+
+		if len(realtedNodes) > 0 {
+			relatedItemsRespponse := helpers.ConflictErrorResponse{
+				ErrorMessage: "Cannot delete this item because it is related to other items",
+				RelatedNodes: realtedNodes,
+			}
+			return c.JSON(http.StatusConflict, relatedItemsRespponse)
+		}
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
 	}
 }

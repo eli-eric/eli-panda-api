@@ -630,6 +630,16 @@ type ColumnFilter struct {
 	PropType string `json:"propType"` // could be "CATAOGUE_ITEM" or "PHYISICAL_ITEM"
 }
 
+type RelatedNodeLabelAmount struct {
+	Label string `json:"label"`
+	Count int    `json:"count"`
+}
+
+type ConflictErrorResponse struct {
+	ErrorMessage string                   `json:"errorMessage"`
+	RelatedNodes []RelatedNodeLabelAmount `json:"relatedNodes,omitempty"`
+}
+
 const DB_LOG_CREATE string = "CREATE"
 const DB_LOG_UPDATE string = "UPDATE"
 const DB_LOG_DELETE string = "DELETE"

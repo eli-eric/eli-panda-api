@@ -1,0 +1,2 @@
+MERGE (r:Role{ uid:'cd7af1bc-00c1-4b12-91f3-4e9473627b4e', name: 'System types view', code: 'system-types-view' });
+MERGE (r:Role{ uid:'f662087d-0cb0-49ac-809d-5daa2773c2f3', name: 'System types edit', code: 'system-types-edit' });

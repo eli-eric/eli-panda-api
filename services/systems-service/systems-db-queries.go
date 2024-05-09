@@ -1096,7 +1096,18 @@ func GetSystemTypesBySystemTypeGroupQuery(systemTypeGroupUid, facilityCode strin
 }
 
 func DeleteSystemTypeGroupQuery(systemTypeGroupUid string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid}) DETACH DELETE n`
+	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid}) DETACH DELETE n RETURN true as result`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
+	result.ReturnAlias = "result"
+	return result
+}
+
+func GetSystemTypeGroupRelatedNodeLabelsCountQuery(systemTypeGroupUid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(grp:SystemTypeGroup{uid: $systemTypeGroupUid})
+	WITH grp
+	MATCH(grp)-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)<-[:HAS_SYSTEM_TYPE]-(n)
+	RETURN { label: labels(n)[0], count: count(n) } as result;`
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
 	result.ReturnAlias = "result"

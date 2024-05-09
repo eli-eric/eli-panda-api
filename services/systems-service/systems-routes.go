@@ -52,4 +52,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.GET("/v1/system/system-type-groups", m.Authorization(h.GetSystemTypeGroups(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	e.GET("/v1/system/system-type-group/:uid/system-types", m.Authorization(h.GetSystemTypesBySystemTypeGroup(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	e.DELETE("/v1/system/system-type-group/:uid", m.Authorization(h.DeleteSystemTypeGroup(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }

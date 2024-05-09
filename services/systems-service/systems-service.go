@@ -48,6 +48,7 @@ type ISystemsService interface {
 	GetSystemHistory(uid string) (result []models.SystemHistory, err error)
 	GetSystemTypeGroups(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, facilityCode string) (result []models.SystemType, err error)
+	DeleteSystemTypeGroup(systemTypeGroupUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount)
 }
 
 // Create new security service instance
@@ -456,4 +457,22 @@ func (svc *SystemsService) GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, f
 	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
+}
+
+func (svc *SystemsService) DeleteSystemTypeGroup(systemTypeGroupUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	relatedLabels, err := helpers.GetNeo4jArrayOfNodes[helpers.RelatedNodeLabelAmount](session, GetSystemTypeGroupRelatedNodeLabelsCountQuery(systemTypeGroupUid))
+
+	if err != nil {
+		return err, relatedLabels
+	}
+
+	if len(relatedLabels) > 0 {
+		return helpers.ERR_DELETE_RELATED_ITEMS, relatedLabels
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, DeleteSystemTypeGroupQuery(systemTypeGroupUid))
+
+	return err, relatedLabels
 }
