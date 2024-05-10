@@ -51,7 +51,18 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.GET("/v1/system/system-type-groups", m.Authorization(h.GetSystemTypeGroups(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
+	e.POST("/v1/system/system-type-group", m.Authorization(h.CreateSystemTypeGroup(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
+
+	e.PUT("/v1/system/system-type-group/:uid", m.Authorization(h.UpdateSystemTypeGroup(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
+
+	e.DELETE("/v1/system/system-type-group/:uid", m.Authorization(h.DeleteSystemTypeGroup(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
+
 	e.GET("/v1/system/system-type-group/:uid/system-types", m.Authorization(h.GetSystemTypesBySystemTypeGroup(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
-	e.DELETE("/v1/system/system-type-group/:uid", m.Authorization(h.DeleteSystemTypeGroup(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/system/system-type-group/:uid/system-type", m.Authorization(h.CreateSystemType(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
+
+	e.PUT("/v1/system/system-type-group/:grpUid/system-type/:uid", m.Authorization(h.UpdateSystemType(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
+
+	e.DELETE("/v1/system/system-type/:uid", m.Authorization(h.DeleteSystemType(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
+
 }
