@@ -2161,7 +2161,8 @@
 									"    pm.response.to.have.status(200);",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -2196,7 +2197,342 @@
 							"variable": [
 								{
 									"key": "uid",
-									"value": "d9107f91-bb98-4445-a43b-3b741df4d2f6"
+									"value": "4a9fe182-30ed-4661-a50e-4e80de7856eb"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete system type group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "9c2c41df-881b-4bb6-a966-13448811e458",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-group/:uid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-group",
+								":uid"
+							],
+							"variable": [
+								{
+									"key": "uid",
+									"value": "8943ceb3-1c2b-4176-8243-bf4252f2b48e"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create system type group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "f90998ff-4924-4bd4-b6fe-cdd5cc6d5f15",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"New group 2\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-group",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-group"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Create system type",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "38ba5bd2-bbd3-4150-8285-af7a4ef27e3b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Petzl\",\n    \"code\": \"pz\",\n    \"mask\": \"{STC}-serial()\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-group/4a9fe182-30ed-4661-a50e-4e80de7856eb/system-type",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-group",
+								"4a9fe182-30ed-4661-a50e-4e80de7856eb",
+								"system-type"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update system type",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "081aa71c-f5e8-4e00-81b2-3963c9d75bc3",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Beal co.\",\n    \"code\": \"bl\",\n    \"mask\": \"{STC}-serial()\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-group/4a9fe182-30ed-4661-a50e-4e80de7856eb/system-type/254bc8bc-48df-4add-a638-df9f9bfaa485",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-group",
+								"4a9fe182-30ed-4661-a50e-4e80de7856eb",
+								"system-type",
+								"254bc8bc-48df-4add-a638-df9f9bfaa485"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update system type group",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "34c074ef-28a4-447f-8a6b-d0614687b983",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Ropes\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type-group/4a9fe182-30ed-4661-a50e-4e80de7856eb",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type-group",
+								"4a9fe182-30ed-4661-a50e-4e80de7856eb"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete system type",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "1ee04bbb-ac0f-48aa-9faf-c909e519ed7b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/system/system-type/:uid",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-type",
+								":uid"
+							],
+							"variable": [
+								{
+									"key": "uid",
+									"value": "d62620b2-3143-4f5d-8346-5542c222185a"
 								}
 							]
 						}
