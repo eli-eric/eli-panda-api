@@ -48,6 +48,7 @@ comming soon :)
 
 Success - 201 Created - Return created object
 Failure - 400 Invalid request - Return details about the failure
+Conflict - 409 - Return conflict message as a plain string
 Async fire and forget operation - 202 Accepted - Optionally return url for polling status
 
 ### Update
@@ -56,6 +57,7 @@ Success - 200 Ok - Return the updated object
 Success - 204 NoContent
 Failure - 404 NotFound - The targeted entity identifier does not exist
 Failure - 400 Invalid request - Return details about the failure
+Conflict - 409 - Return conflict message as a plain string
 Async fire and forget operation - 202 Accepted - Optionally return url for polling status
 
 ### Patch
@@ -63,6 +65,7 @@ Async fire and forget operation - 202 Accepted - Optionally return url for polli
 Success - 200 Ok - Return the patched object
 Success - 204 NoContent
 Failure - 404 NotFound - The targeted entity identifier does not exist
+Conflict - 409 - Return conflict message as a plain string
 Failure - 400 Invalid request - Return details about the failure
 Async fire and forget operation - 202 Accepted - Optionally return url for polling status
 
@@ -70,6 +73,7 @@ Async fire and forget operation - 202 Accepted - Optionally return url for polli
 
 Success - 200 Ok - No content
 Success - 200 Ok - When element attempting to be deleted does not exist
+Conflict - 409 - Return conflict message as a plain string
 Async fire and forget operation - 202 Accepted - Optionally return url for polling status
 
 ### Get

@@ -6,6 +6,10 @@ const ROLE_BASICS_VIEW string = "basics"
 const ROLE_SYSTEMS_VIEW string = "systems-view"
 const ROLE_SYSTEMS_EDIT string = "systems-edit"
 
+// System types
+const ROLE_SYSTEM_TYPES_VIEW string = "system-types-view"
+const ROLE_SYSTEM_TYPES_EDIT string = "system-types-edit"
+
 // Catalogue
 const ROLE_CATALOGUE_VIEW string = "catalogue-view"
 const ROLE_CATALOGUE_EDIT string = "catalogue-edit"

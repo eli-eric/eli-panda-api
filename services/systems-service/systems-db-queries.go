@@ -3,6 +3,7 @@ package systemsService
 import (
 	"fmt"
 	"panda/apigateway/helpers"
+	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
 	"strings"
 
@@ -1066,6 +1067,170 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 	result.Parameters["systemUID"] = systemUID
 
 	result.ReturnAlias = "history"
+
+	return result
+}
+
+func GetSystemTypeGroupsQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(f:Facility{code: $facilityCode}) MATCH(n:SystemTypeGroup)-[:BELONGS_TO_FACILITY]->(f)
+					RETURN { name: n.name, uid: n.uid } as result ORDER BY result.name`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func GetSystemTypesBySystemTypeGroupQuery(systemTypeGroupUid, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid})-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)
+	RETURN 
+	{ name: st.name, 
+	  uid: st.uid, 
+	  code: st.code,
+	  mask: case when $facilityCode = "B" then st.maskB WHEN $facilityCode = "A" THEN st.maskA WHEN $facilityCode = "N" THEN st.maskN END 
+	  } as result ORDER BY result.name`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func DeleteSystemTypeGroupQuery(systemTypeGroupUid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid}) DETACH DELETE n RETURN true as result`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
+	result.ReturnAlias = "result"
+	return result
+}
+
+func GetSystemTypeGroupRelatedNodeLabelsCountQuery(systemTypeGroupUid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(grp:SystemTypeGroup{uid: $systemTypeGroupUid})
+	WITH grp
+	MATCH(grp)-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)<-[:HAS_SYSTEM_TYPE]-(n)
+	RETURN { label: labels(n)[0], count: count(n) } as result;`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeGroupUid"] = systemTypeGroupUid
+	result.ReturnAlias = "result"
+	return result
+}
+
+func DeleteSystemTypeQuery(systemTypeUid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(n:SystemType{uid: $systemTypeUid}) DETACH DELETE n RETURN true as result`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeUid"] = systemTypeUid
+	result.ReturnAlias = "result"
+	return result
+}
+
+func GetSystemTypeRelatedNodeLabelsCountQuery(systemTypeUid string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(st:SystemType{uid: $systemTypeUid})
+	WITH st
+	MATCH(st)<-[:HAS_SYSTEM_TYPE]-(n)
+	RETURN { label: labels(n)[0], count: count(n) } as result;`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemTypeUid"] = systemTypeUid
+	result.ReturnAlias = "result"
+	return result
+}
+
+func CreateSystemTypeGroupQuery(systemTypeGroup *codebookModels.Codebook, facilityCode, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["userUID"] = userUID
+	result.Parameters["name"] = systemTypeGroup.Name
+	systemTypeGroup.UID = uuid.NewString()
+	result.Parameters["uid"] = systemTypeGroup.UID
+
+	result.Query = `MATCH(f:Facility{code: $facilityCode}) MATCH(u:User{uid: $userUID})
+	CREATE(n:SystemTypeGroup{uid: $uid, name: $name})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(n)-[:WAS_UPDATED_BY{ at: datetime(), action: "CREATE" }]->(u)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func UpdateSystemTypeGroupQuery(systemTypeGroup *codebookModels.Codebook, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["name"] = systemTypeGroup.Name
+	result.Parameters["uid"] = systemTypeGroup.UID
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(n:SystemTypeGroup{uid: $uid})	
+	SET n.name = $name
+	CREATE(n)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func CreateSystemTypeQuery(systemType *models.SystemType, facilityCode, userUID, systemTypeGroupUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["userUID"] = userUID
+	result.Parameters["name"] = systemType.Name
+	result.Parameters["code"] = systemType.Code
+	systemType.UID = uuid.NewString()
+	result.Parameters["uid"] = systemType.UID
+	result.Parameters["mask"] = systemType.Mask
+	result.Parameters["systemTypeGroupUID"] = systemTypeGroupUID
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	CREATE(st:SystemType{uid: $uid, name: $name, code: $code }) `
+
+	if facilityCode == helpers.FACILITY_CODE_ALPS {
+		result.Query += ` SET st.maskA = $mask `
+	} else if facilityCode == helpers.FACILITY_CODE_BEAMLINES {
+		result.Query += ` SET st.maskB = $mask `
+	} else if facilityCode == helpers.FACILITY_CODE_NP {
+		result.Query += ` SET st.maskN = $mask `
+	}
+
+	result.Query += ` CREATE(st)-[:WAS_UPDATED_BY{ at: datetime(), action: "CREATE" }]->(u)
+	WITH st
+	MATCH(grp:SystemTypeGroup{uid: $systemTypeGroupUID})
+	CREATE(grp)-[:CONTAINS_SYSTEM_TYPE]->(st)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func UpdateSystemTypeQuery(systemType *models.SystemType, facilityCode, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["userUID"] = userUID
+	result.Parameters["name"] = systemType.Name
+	result.Parameters["code"] = systemType.Code
+	result.Parameters["uid"] = systemType.UID
+	result.Parameters["mask"] = systemType.Mask
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(st:SystemType{uid: $uid }) SET st.name = $name, st.code = $code, `
+
+	if facilityCode == helpers.FACILITY_CODE_ALPS {
+		result.Query += ` st.maskA = $mask `
+	} else if facilityCode == helpers.FACILITY_CODE_BEAMLINES {
+		result.Query += ` st.maskB = $mask `
+	} else if facilityCode == helpers.FACILITY_CODE_NP {
+		result.Query += ` st.maskN = $mask `
+	}
+
+	result.Query += `WITH st, u CREATE(st)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
 
 	return result
 }
