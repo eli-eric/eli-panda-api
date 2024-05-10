@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"panda/apigateway/helpers"
+	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
 	"strconv"
 	"strings"
@@ -35,6 +36,12 @@ type ISystemsHandlers interface {
 	GetSystemHistory() echo.HandlerFunc
 	GetSystemTypeGroups() echo.HandlerFunc
 	GetSystemTypesBySystemTypeGroup() echo.HandlerFunc
+	DeleteSystemTypeGroup() echo.HandlerFunc
+	DeleteSystemType() echo.HandlerFunc
+	CreateSystemTypeGroup() echo.HandlerFunc
+	UpdateSystemTypeGroup() echo.HandlerFunc
+	CreateSystemType() echo.HandlerFunc
+	UpdateSystemType() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -418,5 +425,170 @@ func (h *SystemsHandlers) GetSystemTypesBySystemTypeGroup() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+func (h *SystemsHandlers) DeleteSystemTypeGroup() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		err, realtedNodes := h.systemsService.DeleteSystemTypeGroup(uid)
+
+		if len(realtedNodes) > 0 {
+			relatedItemsRespponse := helpers.ConflictErrorResponse{
+				ErrorMessage: "Cannot delete this item because it is related to other items",
+				RelatedNodes: realtedNodes,
+			}
+			return c.JSON(http.StatusConflict, relatedItemsRespponse)
+		}
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *SystemsHandlers) DeleteSystemType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		err, realtedNodes := h.systemsService.DeleteSystemType(uid)
+
+		if len(realtedNodes) > 0 {
+			relatedItemsRespponse := helpers.ConflictErrorResponse{
+				ErrorMessage: "Cannot delete this item because it is related to other items",
+				RelatedNodes: realtedNodes,
+			}
+			return c.JSON(http.StatusConflict, relatedItemsRespponse)
+		}
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+func (h *SystemsHandlers) CreateSystemTypeGroup() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		systemTypeGroup := new(codebookModels.Codebook)
+
+		if err := c.Bind(systemTypeGroup); err == nil {
+
+			facilityCode := c.Get("facilityCode").(string)
+			userUID := c.Get("userUID").(string)
+
+			err := h.systemsService.CreateSystemTypeGroup(systemTypeGroup, facilityCode, userUID)
+
+			if err == nil {
+				return c.JSON(http.StatusCreated, systemTypeGroup)
+			}
+
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) UpdateSystemTypeGroup() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		systemTypeGroup := new(codebookModels.Codebook)
+
+		if err := c.Bind(systemTypeGroup); err == nil {
+
+			userUID := c.Get("userUID").(string)
+			systemTypeGroup.UID = c.Param("uid")
+
+			err := h.systemsService.UpdateSystemTypeGroup(systemTypeGroup, userUID)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, systemTypeGroup)
+			}
+
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) CreateSystemType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		systemType := new(models.SystemType)
+
+		if err := c.Bind(systemType); err == nil {
+
+			facilityCode := c.Get("facilityCode").(string)
+			userUID := c.Get("userUID").(string)
+			systemTypeGroupUid := c.Param("uid")
+
+			err := h.systemsService.CreateSystemType(systemType, facilityCode, userUID, systemTypeGroupUid)
+
+			if err == nil {
+				return c.JSON(http.StatusCreated, systemType)
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) UpdateSystemType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		systemType := new(models.SystemType)
+
+		if err := c.Bind(systemType); err == nil {
+
+			facilityCode := c.Get("facilityCode").(string)
+			userUID := c.Get("userUID").(string)
+			systemType.UID = c.Param("uid")
+
+			err := h.systemsService.UpdateSystemType(systemType, facilityCode, userUID)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, systemType)
+			}
+
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrBadRequest
 	}
 }

@@ -48,6 +48,12 @@ type ISystemsService interface {
 	GetSystemHistory(uid string) (result []models.SystemHistory, err error)
 	GetSystemTypeGroups(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, facilityCode string) (result []models.SystemType, err error)
+	DeleteSystemTypeGroup(systemTypeGroupUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount)
+	DeleteSystemType(systemTypeUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount)
+	CreateSystemTypeGroup(systemTypeGroup *codebookModels.Codebook, facilityCode, userUID string) (err error)
+	UpdateSystemTypeGroup(systemTypeGroup *codebookModels.Codebook, userUID string) (err error)
+	CreateSystemType(systemType *models.SystemType, facilityCode, userUID, systemTypeGroupUID string) (err error)
+	UpdateSystemType(systemType *models.SystemType, facilityCode, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -456,4 +462,72 @@ func (svc *SystemsService) GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, f
 	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
+}
+
+func (svc *SystemsService) DeleteSystemTypeGroup(systemTypeGroupUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	relatedLabels, err := helpers.GetNeo4jArrayOfNodes[helpers.RelatedNodeLabelAmount](session, GetSystemTypeGroupRelatedNodeLabelsCountQuery(systemTypeGroupUid))
+
+	if err != nil {
+		return err, relatedLabels
+	}
+
+	if len(relatedLabels) > 0 {
+		return helpers.ERR_DELETE_RELATED_ITEMS, relatedLabels
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, DeleteSystemTypeGroupQuery(systemTypeGroupUid))
+
+	return err, relatedLabels
+}
+
+func (svc *SystemsService) DeleteSystemType(systemTypeUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	relatedLabels, err := helpers.GetNeo4jArrayOfNodes[helpers.RelatedNodeLabelAmount](session, GetSystemTypeRelatedNodeLabelsCountQuery(systemTypeUid))
+
+	if err != nil {
+		return err, relatedLabels
+	}
+
+	if len(relatedLabels) > 0 {
+		return helpers.ERR_DELETE_RELATED_ITEMS, relatedLabels
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, DeleteSystemTypeQuery(systemTypeUid))
+
+	return err, relatedLabels
+}
+
+func (svc *SystemsService) CreateSystemTypeGroup(systemTypeGroup *codebookModels.Codebook, facilityCode, userUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, CreateSystemTypeGroupQuery(systemTypeGroup, facilityCode, userUID))
+
+	return err
+}
+
+func (svc *SystemsService) UpdateSystemTypeGroup(systemTypeGroup *codebookModels.Codebook, userUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, UpdateSystemTypeGroupQuery(systemTypeGroup, userUID))
+
+	return err
+}
+
+func (svc *SystemsService) CreateSystemType(systemType *models.SystemType, facilityCode, userUID, systemTypeGroupUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, CreateSystemTypeQuery(systemType, facilityCode, userUID, systemTypeGroupUID))
+
+	return err
+}
+
+func (svc *SystemsService) UpdateSystemType(systemType *models.SystemType, facilityCode, userUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, UpdateSystemTypeQuery(systemType, facilityCode, userUID))
+
+	return err
 }
