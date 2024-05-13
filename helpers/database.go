@@ -630,11 +630,25 @@ type ColumnFilter struct {
 	PropType string `json:"propType"` // could be "CATAOGUE_ITEM" or "PHYISICAL_ITEM"
 }
 
+type RelatedNodeLabelAmount struct {
+	Label string `json:"label"`
+	Count int    `json:"count"`
+}
+
+type ConflictErrorResponse struct {
+	ErrorMessage string                   `json:"errorMessage"`
+	RelatedNodes []RelatedNodeLabelAmount `json:"relatedNodes,omitempty"`
+}
+
 const DB_LOG_CREATE string = "CREATE"
 const DB_LOG_UPDATE string = "UPDATE"
 const DB_LOG_DELETE string = "DELETE"
 
 const CATALOGUE_CATEGORY_GENERAL_UID string = "97598f04-948f-4da5-95b6-b2a44e0076db"
+
+const FACILITY_CODE_BEAMLINES = "B"
+const FACILITY_CODE_ALPS = "A"
+const FACILITY_CODE_NP = "N"
 
 var ERR_INVALID_INPUT = errors.New("INVALID_INPUT")
 var ERR_UNAUTHORIZED = errors.New("UNAUTHORIZED")
