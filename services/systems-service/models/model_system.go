@@ -26,6 +26,7 @@ type System struct {
 	Statistics    *SystemStatistics      `json:"statistics,omitempty" neo4j:"ignore"`
 	SparesOut     int                    `json:"sparesOut" neo4j:"ignore"`
 	SparesIn      int                    `json:"sparesIn" neo4j:"ignore"`
+	History       *[]SystemHistory       `json:"history,omitempty" neo4j:"ignore"`
 }
 
 type PhysicalItem struct {
@@ -87,4 +88,9 @@ type SystemType struct {
 	Name string `json:"name"`
 	Code string `json:"code"`
 	Mask string `json:"mask"`
+}
+
+type SystemWithAllDetails struct {
+	System
+	ParentSystem SystemSimpleResponse `json:"parentSystem"`
 }

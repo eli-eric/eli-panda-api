@@ -757,6 +757,14 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	return result
 }
 
+func GetSystemByEun(eun string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(sys:System)-[:CONTAINS_ITEM]->(physicalItem{eun: $eun}) RETURN sys`
+	result.ReturnAlias = "sys"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["eun"] = strings.Trim(eun, " ")
+	return result
+}
+
 func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(sys:System{uid: $uid, deleted: false})
