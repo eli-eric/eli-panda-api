@@ -65,4 +65,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.DELETE("/v1/system/system-type/:uid", m.Authorization(h.DeleteSystemType(), shared.ROLE_SYSTEM_TYPES_EDIT), jwtMiddleware)
 
+	e.GET("/v1/system/by-eun/:eun", m.Authorization(h.GetSystemByEun(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
 }

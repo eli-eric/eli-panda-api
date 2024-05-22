@@ -757,9 +757,48 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	return result
 }
 
-func GetSystemByEun(eun string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(sys:System)-[:CONTAINS_ITEM]->(physicalItem{eun: $eun}) RETURN sys`
-	result.ReturnAlias = "sys"
+func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (ciCategory)<-[:BELONGS_TO_CATEGORY]-(catalogueItem:CatalogueItem)<-[:IS_BASED_ON]-(physicalItem:Item)<-[:CONTAINS_ITEM]-(sys:System) WHERE toLower(physicalItem.eun) = toLower($eun)
+	WITH sys, catalogueItem, physicalItem, ciCategory
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)	
+	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	RETURN DISTINCT {  
+	uid: sys.uid,
+	description: sys.description,
+	name: sys.name,
+	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	systemCode: sys.systemCode,	
+	systemLevel: sys.systemLevel,
+	isTechnologicalUnit: sys.isTechnologicalUnit,
+	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
+	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
+	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
+	subsystems: case when subsys is not null then collect({uid: subsys.uid, name: subsys.name}) else null end,
+	physicalItem: case when physicalItem is not null then {
+		uid: physicalItem.uid, 
+		eun: physicalItem.eun, 
+		serialNumber: physicalItem.serialNumber,
+		price: physicalItem.price,
+		currency: physicalItem.currency,
+		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
+		catalogueItem: case when catalogueItem is not null then {
+			uid: catalogueItem.uid,
+			name: catalogueItem.name,
+			catalogueNumber: catalogueItem.catalogueNumber,
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+		} else null end	
+	} else null end,
+	statistics: {subsystemsCount: count(subsys)}} AS system;`
+	result.ReturnAlias = "system"
+
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["eun"] = strings.Trim(eun, " ")
 	return result
