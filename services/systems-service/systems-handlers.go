@@ -42,6 +42,7 @@ type ISystemsHandlers interface {
 	UpdateSystemTypeGroup() echo.HandlerFunc
 	CreateSystemType() echo.HandlerFunc
 	UpdateSystemType() echo.HandlerFunc
+	GetSystemByEun() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -590,5 +591,22 @@ func (h *SystemsHandlers) UpdateSystemType() echo.HandlerFunc {
 		}
 
 		return echo.ErrBadRequest
+	}
+}
+
+func (h *SystemsHandlers) GetSystemByEun() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		eun := c.Param("eun")
+
+		system, err := h.systemsService.GetSystemByEun(eun)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, system)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }
