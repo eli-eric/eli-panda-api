@@ -55,6 +55,7 @@ type ISystemsService interface {
 	CreateSystemType(systemType *models.SystemType, facilityCode, userUID, systemTypeGroupUID string) (err error)
 	UpdateSystemType(systemType *models.SystemType, facilityCode, userUID string) (err error)
 	GetSystemByEun(eun string) (result models.System, err error)
+	GetSystemAttributesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -537,6 +538,17 @@ func (svc *SystemsService) GetSystemByEun(eun string) (result models.System, err
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, GetSystemByEunQuery(eun))
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemAttributesCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemAttributesCodebookQuery(facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
 }

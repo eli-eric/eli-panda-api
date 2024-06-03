@@ -427,6 +427,14 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp) `
 	}
 
+	//system attribute
+	if filterVal := helpers.GetFilterValueCodebook(filering, "systemAttribute"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr) WHERE sysAttr.uid = $filterSystemAttribute `
+		result.Parameters["filterSystemAttribute"] = (*filterVal).UID
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr) `
+	}
+
 	//physical item filters
 	//we have to get all physical items filter values first and then apply them
 	itemUsageFilter := helpers.GetFilterValueListString(filering, "itemUsage")
@@ -583,6 +591,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
@@ -659,6 +668,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr)
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
@@ -679,6 +689,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
 	lastUpdateBy: sys.lastUpdateBy,
+	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
 	physicalItem: case when physicalItem is not null then {
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
@@ -718,6 +729,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr)
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -734,6 +746,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
 	lastUpdateBy: sys.lastUpdateBy,
+	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
 	physicalItem: case when physicalItem is not null then {
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
@@ -765,6 +778,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)	
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr)
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
@@ -775,6 +789,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
 	systemCode: sys.systemCode,	
 	systemLevel: sys.systemLevel,
+	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -1279,5 +1294,15 @@ func UpdateSystemTypeQuery(systemType *models.SystemType, facilityCode, userUID 
 
 	result.ReturnAlias = "result"
 
+	return result
+}
+
+func GetSystemAttributesCodebookQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(f:Facility{code: $facilityCode}) 
+					MATCH(attr:SystemAttribute)-[:BELONGS_TO_FACILITY]->(f)
+					RETURN { name: attr.name, uid: attr.uid } as result ORDER BY result.name`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
