@@ -1989,14 +1989,14 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/by-eun/B24040005",
+							"raw": "{{baseUrl}}/system/by-eun/B23070010",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
 								"by-eun",
-								"B24040005"
+								"B23070010"
 							]
 						}
 					},
@@ -2187,6 +2187,70 @@
 								{
 									"key": "search",
 									"value": "l1"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Export systems to CSV",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "e7b750e6-03b5-4786-aacd-f9683c448257",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/systems/export-to-csv?pagination=%7B%22page%22%3A1%2C%22pageSize%22%3A50%7D&search=&columnFilter=%5B%7B%22id%22%3A%22name%22%2C%22value%22%3A%22mirr%22%2C%22name%22%3A%22name%22%7D%2C%7B%22id%22%3A%22eun%22%2C%22value%22%3A%22220%22%2C%22name%22%3A%22eun%22%7D%5D&sorting=%5B%7B%22id%22%3A%22name%22%2C%22desc%22%3Afalse%7D%5D",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"systems",
+								"export-to-csv"
+							],
+							"query": [
+								{
+									"key": "pagination",
+									"value": "%7B%22page%22%3A1%2C%22pageSize%22%3A50%7D"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "columnFilter",
+									"value": "%5B%7B%22id%22%3A%22name%22%2C%22value%22%3A%22mirr%22%2C%22name%22%3A%22name%22%7D%2C%7B%22id%22%3A%22eun%22%2C%22value%22%3A%22220%22%2C%22name%22%3A%22eun%22%7D%5D"
+								},
+								{
+									"key": "sorting",
+									"value": "%5B%7B%22id%22%3A%22name%22%2C%22desc%22%3Afalse%7D%5D"
 								}
 							]
 						}
