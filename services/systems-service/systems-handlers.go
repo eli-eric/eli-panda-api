@@ -640,6 +640,9 @@ func (h *SystemsHandlers) GetSystemAsCsv() echo.HandlerFunc {
 			c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=systems.csv")
 
 			writer := csv.NewWriter(c.Response())
+			writer.UseCRLF = true
+			writer.Comma = ';'
+
 			defer writer.Flush()
 
 			// write header
