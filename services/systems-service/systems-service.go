@@ -54,6 +54,7 @@ type ISystemsService interface {
 	UpdateSystemTypeGroup(systemTypeGroup *codebookModels.Codebook, userUID string) (err error)
 	CreateSystemType(systemType *models.SystemType, facilityCode, userUID, systemTypeGroupUID string) (err error)
 	UpdateSystemType(systemType *models.SystemType, facilityCode, userUID string) (err error)
+	GetSystemByEun(eun string) (result models.System, err error)
 }
 
 // Create new security service instance
@@ -530,4 +531,12 @@ func (svc *SystemsService) UpdateSystemType(systemType *models.SystemType, facil
 	err = helpers.WriteNeo4jAndReturnNothing(session, UpdateSystemTypeQuery(systemType, facilityCode, userUID))
 
 	return err
+}
+
+func (svc *SystemsService) GetSystemByEun(eun string) (result models.System, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, GetSystemByEunQuery(eun))
+
+	return result, err
 }
