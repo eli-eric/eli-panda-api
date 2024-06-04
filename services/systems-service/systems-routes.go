@@ -69,4 +69,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.GET("/v1/systems/export-to-csv", m.Authorization(h.GetSystemAsCsv(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
+	e.GET("/v1/physical-items/euns", m.Authorization(h.GetEuns(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
 }

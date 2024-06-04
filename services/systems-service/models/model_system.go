@@ -95,3 +95,7 @@ type SystemWithAllDetails struct {
 	System
 	ParentSystem SystemSimpleResponse `json:"parentSystem"`
 }
+
+type EUN struct {
+	EUN string `json:"eun"`
+}

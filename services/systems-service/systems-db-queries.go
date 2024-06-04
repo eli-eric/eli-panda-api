@@ -1306,3 +1306,14 @@ func GetSystemAttributesCodebookQuery(facilityCode string) (result helpers.Datab
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func GetEunsQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `match(itm:Item)<-[:CONTAINS_ITEM]-(s)-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+	where itm.eun is not null and itm.eun <> ""
+	return { eun: itm.eun } as result
+	order by result.eun desc`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}

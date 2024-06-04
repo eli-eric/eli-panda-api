@@ -45,6 +45,7 @@ type ISystemsHandlers interface {
 	UpdateSystemType() echo.HandlerFunc
 	GetSystemByEun() echo.HandlerFunc
 	GetSystemAsCsv() echo.HandlerFunc
+	GetEuns() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -654,6 +655,23 @@ func (h *SystemsHandlers) GetSystemAsCsv() echo.HandlerFunc {
 
 			return nil
 
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+
+		euns, err := h.systemsService.GetEuns(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, euns)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
