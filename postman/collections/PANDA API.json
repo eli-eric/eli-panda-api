@@ -1989,20 +1989,109 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/by-eun/B23070010",
+							"raw": "{{baseUrl}}/system/by-eun/VT006778",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
 								"by-eun",
-								"B23070010"
+								"VT006778"
 							]
 						}
 					},
 					"response": [
 						{
 							"id": "53a85f7d-73b4-4ab0-9c3f-d2dbf68852c1",
+							"name": "B24040005",
+							"originalRequest": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/system/by-eun/B24040005",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"system",
+										"by-eun",
+										"B24040005"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=UTF-8"
+								},
+								{
+									"key": "Vary",
+									"value": "Origin"
+								},
+								{
+									"key": "Date",
+									"value": "Wed, 22 May 2024 12:34:03 GMT"
+								},
+								{
+									"key": "Content-Length",
+									"value": "1043"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"uid\": \"5374e057-5a19-43cf-89ef-39d366e1b29c\",\n    \"name\": \"Borosilicate ISO-F DN63\",\n    \"parentPath\": [\n        {\n            \"uid\": \"9091a989-e2cf-4373-981e-963fdd8c7b34\",\n            \"name\": \"COMPONENTS\"\n        }\n    ],\n    \"systemType\": {\n        \"uid\": \"f546d0ff-b95b-4af9-b889-604c9be23b08\",\n        \"name\": \"Crystal\"\n    },\n    \"systemAlias\": \"\",\n    \"systemLevel\": \"SUBSYSTEMS_AND_PARTS\",\n    \"responsible\": {\n        \"uid\": \"fc17a3ce-5083-456f-be7a-dc0f9b2e3ab0\",\n        \"name\": \"Švácha Jiří\"\n    },\n    \"zone\": {\n        \"uid\": \"7ffee816-081c-489d-89fe-a2f6ff605d47\",\n        \"name\": \"L1 ALLEGRA IRT (image relay from OPA4 to OPA5) and FSYNC IRT\"\n    },\n    \"location\": {\n        \"uid\": \"L.02.08\",\n        \"name\": \"E2 experimental hall\"\n    },\n    \"physicalItem\": {\n        \"uid\": \"1034e06a-e5cf-4198-b0f5-b4566a934a43\",\n        \"itemUsage\": {\n            \"uid\": \"a2aae89a-5cbe-4042-a726-44012b158226\",\n            \"name\": \"In System Part\"\n        },\n        \"eun\": \"B24040005\",\n        \"catalogueItem\": {\n            \"uid\": \"1d21232e-84df-4aac-aa95-5f58cb31a7f8\",\n            \"name\": \"Borosilicate ISO-F DN63\",\n            \"catalogueNumber\": \"VPISOF63B-E\",\n            \"category\": {\n                \"uid\": \"97598f04-948f-4da5-95b6-b2a44e0076db\",\n                \"name\": \"General (unsorted)\"\n            }\n        }\n    },\n    \"hasSubsystems\": false,\n    \"statistics\": {\n        \"subsystemsCount\": 0,\n        \"sparePartsCount\": 0\n    },\n    \"sparesOut\": 0,\n    \"sparesIn\": 0\n}"
+						}
+					]
+				},
+				{
+					"name": "Get EUNs",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"id": "c2cda375-6fdb-4d85-98f7-f75b63e7a91b",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/physical-items/euns",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"physical-items",
+								"euns"
+							]
+						}
+					},
+					"response": [
+						{
+							"id": "78c8569b-1f46-4f98-af6b-21495d8b126f",
 							"name": "B24040005",
 							"originalRequest": {
 								"method": "GET",
@@ -2227,7 +2316,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/systems/export-to-csv?pagination=%7B%22page%22%3A1%2C%22pageSize%22%3A50%7D&search=&columnFilter=%5B%7B%22id%22%3A%22name%22%2C%22value%22%3A%22mirr%22%2C%22name%22%3A%22name%22%7D%2C%7B%22id%22%3A%22eun%22%2C%22value%22%3A%22220%22%2C%22name%22%3A%22eun%22%7D%5D&sorting=%5B%7B%22id%22%3A%22name%22%2C%22desc%22%3Afalse%7D%5D",
+							"raw": "{{baseUrl}}/systems/export-to-csv?search=&columnFilter=%5B%7B%22id%22%3A%22name%22%2C%22value%22%3A%22mirr%22%2C%22name%22%3A%22name%22%7D%2C%7B%22id%22%3A%22eun%22%2C%22value%22%3A%22220%22%2C%22name%22%3A%22eun%22%7D%5D&sorting=%5B%7B%22id%22%3A%22name%22%2C%22desc%22%3Afalse%7D%5D",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -2238,7 +2327,8 @@
 							"query": [
 								{
 									"key": "pagination",
-									"value": "%7B%22page%22%3A1%2C%22pageSize%22%3A50%7D"
+									"value": "%7B%22page%22%3A1%2C%22pageSize%22%3A50%7D",
+									"disabled": true
 								},
 								{
 									"key": "search",
