@@ -1,6 +1,7 @@
 package systemsService
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"net/http"
 	"panda/apigateway/helpers"
@@ -43,6 +44,8 @@ type ISystemsHandlers interface {
 	CreateSystemType() echo.HandlerFunc
 	UpdateSystemType() echo.HandlerFunc
 	GetSystemByEun() echo.HandlerFunc
+	GetSystemAsCsv() echo.HandlerFunc
+	GetEuns() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -604,6 +607,71 @@ func (h *SystemsHandlers) GetSystemByEun() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, system)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *SystemsHandlers) GetSystemAsCsv() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		sorting := c.QueryParam("sorting")
+		search := c.QueryParam("search")
+		facilityCode := c.Get("facilityCode").(string)
+
+		pagingObject := new(helpers.Pagination)
+		pagingObject.Page = 1
+		pagingObject.PageSize = 100000
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		items, err := h.systemsService.GetSystemsWithSearchAndPagination(search, facilityCode, pagingObject, sortingObject, filterObject)
+
+		if err == nil {
+
+			c.Response().Header().Set(echo.HeaderContentType, "text/csv")
+			c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=systems.csv")
+
+			writer := csv.NewWriter(c.Response())
+			writer.UseCRLF = true
+			writer.Comma = ';'
+
+			defer writer.Flush()
+
+			// write header
+			writer.Write([]string{"UID", "Name"})
+
+			for _, item := range items.Data {
+				writer.Write([]string{item.UID, item.Name})
+			}
+
+			return nil
+
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+
+		euns, err := h.systemsService.GetEuns(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, euns)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError

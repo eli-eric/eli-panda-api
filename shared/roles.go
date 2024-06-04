@@ -29,3 +29,5 @@ const ROLE_ADMIN string = "admin"
 
 const ROLE_ROOM_CARDS_VIEW string = "room-cards-view"
 const ROLE_ROOM_CARDS_EDIT string = "room-cards-edit"
+
+const SYSTEM_ATTRIBUTE_EDIT string = "system-attribute-edit"

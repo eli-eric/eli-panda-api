@@ -1,0 +1,1 @@
+MERGE (r:Role{ uid:'fb69beb5-71fd-4beb-a880-6df6b610ef14', name: 'System attributes edit', code: 'system-attribute-edit' });
