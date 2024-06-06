@@ -79,11 +79,19 @@ func DeleteFileLinkQuery(uid string) (result helpers.DatabaseQuery) {
 	return result
 }
 
-func SetMiniImageUrlToNodeQuery(uid string, imageUrl string) (result helpers.DatabaseQuery) {
+func SetMiniImageUrlToNodeQuery(uid string, imageUrl string, forceAll bool) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH(n{uid: $uid})
-					SET n.miniImageUrl = $imageUrl
-					RETURN n`
+	SET n.miniImageUrl = $imageUrl
+	WITH n
+	OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)
+	WITH n,ci,sys, case when ci.miniImageUrl is not null then ci.miniImageUrl else $imageUrl end as CIminiImageUrl, case when sys.miniImageUrl is not null then sys.miniImageUrl else $imageUrl end as SYSminiImageUrl 
+	SET ci.miniImageUrl = CIminiImageUrl , sys.miniImageUrl = SYSminiImageUrl 
+	WITH n
+	OPTIONAL MATCH (n)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)
+	WITH n,sys, case when sys.miniImageUrl is not null then sys.miniImageUrl else $imageUrl end as SYSminiImageUrl
+	SET sys.miniImageUrl = SYSminiImageUrl
+	RETURN n.name, n.miniImageUrl`
 
 	result.Parameters = map[string]interface{}{}
 	result.Parameters["uid"] = uid

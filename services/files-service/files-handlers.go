@@ -2,6 +2,7 @@ package filesservice
 
 import (
 	"panda/apigateway/services/files-service/models"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -104,6 +105,7 @@ func (h *FilesHandlers) SetMiniImageUrlToNode() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		uid := c.Param("uid")
+		forceAll := c.QueryParam("forceAll")
 
 		link := models.FileLink{}
 		if err := c.Bind(&link); err != nil {
@@ -113,7 +115,7 @@ func (h *FilesHandlers) SetMiniImageUrlToNode() echo.HandlerFunc {
 
 		link.UID = uid
 
-		err := h.filesService.SetMiniImageUrlToNode(link.UID, link.Url)
+		err := h.filesService.SetMiniImageUrlToNode(link.UID, link.Url, strings.ToLower(forceAll) == "true")
 
 		if err != nil {
 			log.Error().Err(err).Msg("Error setting mini image URL to node")
