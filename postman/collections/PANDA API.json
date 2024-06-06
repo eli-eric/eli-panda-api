@@ -59,21 +59,14 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/catalogue/categories/:parentPath",
+							"raw": "{{baseUrl}}/catalogue/categories/optics",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"catalogue",
 								"categories",
-								":parentPath"
-							],
-							"variable": [
-								{
-									"key": "parentPath",
-									"value": "vacuum-technology/vacuum-pumps",
-									"description": "(Required) Parent category path"
-								}
+								"optics"
 							]
 						},
 						"description": "Get catalogue categories by parent path"
@@ -3902,6 +3895,61 @@
 				}
 			],
 			"id": "2aeaee19-76b8-42a1-9961-e2a047a3f55e"
+		},
+		{
+			"name": "Files",
+			"item": [
+				{
+					"name": "Set node mini image url",
+					"id": "6a887097-5b81-499b-b4ef-145cf84c4494",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n \"url\": \"https://www.iconpacks.net/icons/2/free-rocket-icon-3432-thumb.png\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/files/node/:uid/mini-image-url",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"files",
+								"node",
+								":uid",
+								"mini-image-url"
+							],
+							"variable": [
+								{
+									"key": "uid",
+									"value": "5dba6755-93dc-4b9d-84d2-213e3c2e0f83"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"id": "6cbc7c83-1c41-4e98-ba2e-f02a642c15b2"
 		},
 		{
 			"name": "Test anything",
