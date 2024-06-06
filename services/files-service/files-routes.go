@@ -13,4 +13,5 @@ func MapFilesRoutes(e *echo.Echo, h IFilesHandlers, jwtMiddleware echo.Middlewar
 	e.POST("/v1/files/link/:parentUid", m.Authorization(h.CreateFileLink(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_ORDERS_EDIT, shared.ROLE_ROOM_CARDS_EDIT), jwtMiddleware)
 	e.PUT("/v1/files/link/:uid", m.Authorization(h.UpdateFileLink(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_ORDERS_EDIT, shared.ROLE_ROOM_CARDS_EDIT), jwtMiddleware)
 	e.DELETE("/v1/files/link/:uid", m.Authorization(h.DeleteFileLink(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_ORDERS_EDIT, shared.ROLE_ROOM_CARDS_EDIT), jwtMiddleware)
+	e.POST("/v1/files/node/:uid/mini-image-url", m.Authorization(h.SetMiniImageUrlToNode(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 }

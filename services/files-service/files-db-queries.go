@@ -78,3 +78,18 @@ func DeleteFileLinkQuery(uid string) (result helpers.DatabaseQuery) {
 
 	return result
 }
+
+func SetMiniImageUrlToNodeQuery(uid string, imageUrl string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(n{uid: $uid})
+					SET n.miniImageUrl = $imageUrl
+					RETURN n`
+
+	result.Parameters = map[string]interface{}{}
+	result.Parameters["uid"] = uid
+	result.Parameters["imageUrl"] = imageUrl
+
+	result.ReturnAlias = "n"
+
+	return result
+}
