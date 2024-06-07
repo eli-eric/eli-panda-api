@@ -161,6 +161,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 	uid: itm.uid,
 	name: itm.name,
 	catalogueNumber: itm.catalogueNumber,
+	miniImageUrl: itm.miniImageUrl,
 	description: itm.description,	
 	category: { uid: cat.uid, name: cat.name},
 	supplier: case when supp is not null then { uid: supp.uid, name: supp.name } else null end,
@@ -224,7 +225,7 @@ func CatalogueCategoriesByParentPathQuery(parentPath string) (result helpers.Dat
 	optional match(parent)-[:HAS_SUBCATEGORY*1..50]->(category) 
 	with category, apoc.text.join(reverse(collect(parent.code)),"/") as parentPath
 	where parentPath = $parentPath
-	return {uid:category.uid,code:category.code, name:category.name,parentPath: parentPath} as categories order by id(category)`
+	return {uid:category.uid,code:category.code, name:category.name,parentPath: parentPath, miniImageUrl: category.miniImageUrl} as categories order by id(category)`
 
 	result.ReturnAlias = "categories"
 
@@ -292,6 +293,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	category: {uid: cat.uid, name: cat.name},
 	supplier: case when supp is not null then {uid: supp.uid, name: supp.name} else null end,
 	manufacturerUrl: itm.manufacturerUrl,	
+	miniImageUrl: itm.miniImageUrl,
 	details: case when count(prop) > 0 then collect(DISTINCT { 
 					property:{
 						uid: prop.uid,
@@ -341,7 +343,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups, physicalItemProperties
 	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups,  physicalItemProperties
-	WITH { uid: category.uid, name: category.name, code: category.code, groups: groups, physicalItemProperties: collect(physicalItemProperties), systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
+	WITH { uid: category.uid, name: category.name, code: category.code, miniImageUrl: category.miniImageUrl, groups: groups, physicalItemProperties: collect(physicalItemProperties), systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
@@ -460,7 +462,7 @@ func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.Databa
 	WITH category,parent,systemType, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category,parent,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
 	WITH category,parent,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
-	WITH { uid: "", name: category.name, code: category.code, groups: groups, parentUID: parent.uid, image: category.image, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
+	WITH { uid: "", name: category.name, code: category.code,miniImageUrl: category.miniImageUrl, groups: groups, parentUID: parent.uid, image: category.image, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
 	result.ReturnAlias = "category"
