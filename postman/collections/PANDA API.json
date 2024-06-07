@@ -1932,13 +1932,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/ef37cdb5-6e5e-4e71-91ce-1c62390c69d6",
+							"raw": "{{baseUrl}}/system/5dba6755-93dc-4b9d-84d2-213e3c2e0f83",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
-								"ef37cdb5-6e5e-4e71-91ce-1c62390c69d6"
+								"5dba6755-93dc-4b9d-84d2-213e3c2e0f83"
 							]
 						}
 					},
@@ -3913,7 +3913,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n \"url\": \"catalogue/254c1037-cbc3-4c1f-8b9a-8609f2946c63/image-small/5lRkRV5tzHQnBV3T2Bnwp\"\n}",
+							"raw": "{\n \"url\": [\"catalogue/254c1037-cbc3-4c1f-8b9a-8609f2946c63/image-small/5lRkRV5tzHQnBV3T2Bnwp\", \"jirka\"]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -3934,7 +3934,7 @@
 							"variable": [
 								{
 									"key": "uid",
-									"value": "5dba6755-93dc-4b9d-84d2-213e3c2e0f83"
+									"value": "a7dbd6d6-ecf7-419b-9cde-9a55e1639c83"
 								}
 							]
 						}
