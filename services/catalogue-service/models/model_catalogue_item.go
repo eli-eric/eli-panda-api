@@ -23,7 +23,7 @@ type CatalogueItem struct {
 
 	Details []CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
 
-	MiniImageUrl *string `json:"miniImageUrl" neo4j:"ignore"`
+	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type CatalogueItemDetail struct {
@@ -53,7 +53,7 @@ type CatalogueItemSimple struct {
 
 	Details []CatalogueItemDetail `json:"details,omitempty"`
 
-	MiniImageUrl *string `json:"miniImageUrl" neo4j:"ignore"`
+	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type CatalogueItemDetailSimple struct {

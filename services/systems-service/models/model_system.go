@@ -28,7 +28,7 @@ type System struct {
 	SparesIn        int                    `json:"sparesIn" neo4j:"ignore"`
 	History         *[]SystemHistory       `json:"history,omitempty" neo4j:"ignore"`
 	SystemAttribute *models.Codebook       `json:"systemAttribute,omitempty" neo4j:"rel,SystemAttribute,HAS_SYSTEM_ATTRIBUTE,uid,systemAttribute"`
-	MiniImageUrl    *string                `json:"miniImageUrl" neo4j:"ignore"`
+	MiniImageUrl    *[]string              `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type PhysicalItem struct {
