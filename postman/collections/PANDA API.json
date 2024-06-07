@@ -275,7 +275,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/catalogue/items?page=1&pageSize=10&search=CKF00040",
+							"raw": "{{baseUrl}}/catalogue/items?page=1&pageSize=10",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -291,10 +291,6 @@
 								{
 									"key": "pageSize",
 									"value": "10"
-								},
-								{
-									"key": "search",
-									"value": "CKF00040"
 								}
 							]
 						}
@@ -1842,13 +1838,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/system/d06a074f-c78a-4cd3-9006-5a0c3259e8b6/subsystems",
+							"raw": "{{baseUrl}}/system/a7dbd6d6-ecf7-419b-9cde-9a55e1639c83/subsystems",
 							"host": [
 								"{{baseUrl}}"
 							],
 							"path": [
 								"system",
-								"d06a074f-c78a-4cd3-9006-5a0c3259e8b6",
+								"a7dbd6d6-ecf7-419b-9cde-9a55e1639c83",
 								"subsystems"
 							]
 						}
@@ -2254,7 +2250,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10}&search=l1",
+							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10000}",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -2264,11 +2260,7 @@
 							"query": [
 								{
 									"key": "pagination",
-									"value": "{\"page\" : 1 , \"pageSize\": 10}"
-								},
-								{
-									"key": "search",
-									"value": "l1"
+									"value": "{\"page\" : 1 , \"pageSize\": 10000}"
 								}
 							]
 						}
@@ -3903,6 +3895,7 @@
 					"name": "Set node mini image url",
 					"id": "6a887097-5b81-499b-b4ef-145cf84c4494",
 					"protocolProfileBehavior": {
+						"disabledSystemHeaders": {},
 						"disableBodyPruning": true
 					},
 					"request": {
@@ -3920,7 +3913,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n \"url\": \"https://www.iconpacks.net/icons/2/free-rocket-icon-3432-thumb.png\"\n}",
+							"raw": "{\n \"url\": \"catalogue/254c1037-cbc3-4c1f-8b9a-8609f2946c63/image-small/5lRkRV5tzHQnBV3T2Bnwp\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
