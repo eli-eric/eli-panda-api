@@ -21,7 +21,7 @@ type CatalogueCategory struct {
 
 	SystemType *models.Codebook `json:"systemType,omitempty"`
 
-	MiniImageUrl *string `json:"miniImageUrl" neo4j:"ignore"`
+	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type CatalogueCategoryPropertyGroup struct {
