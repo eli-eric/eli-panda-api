@@ -2924,6 +2924,60 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Import subsystems",
+					"id": "158fe01f-deba-40f0-bff6-d7a734845d84",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "postman-cloud:///1ef298b2-4697-4a20-902c-e28ec1c942d0"
+								}
+							],
+							"options": {
+								"raw": {
+									"language": "text"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/system/:uid/import-subsystems",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								":uid",
+								"import-subsystems"
+							],
+							"variable": [
+								{
+									"key": "uid",
+									"value": "789"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "2177a51e-329d-4129-840e-fb949f9ae468"
