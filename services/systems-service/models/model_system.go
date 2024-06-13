@@ -100,3 +100,12 @@ type SystemWithAllDetails struct {
 type EUN struct {
 	EUN string `json:"eun"`
 }
+
+type SystemImportData struct {
+	SystemCode   string `json:"systemCode"`
+	SystemName   string `json:"name"`
+	SystemType   string `json:"systemType"`
+	ZoneCode     string `json:"zoneCode"`
+	LocationCode string `json:"locationCode"`
+	SystemLevel  string `json:"systemLevel"`
+}

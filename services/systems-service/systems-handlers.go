@@ -3,7 +3,9 @@ package systemsService
 import (
 	"encoding/csv"
 	"encoding/json"
+	"io"
 	"net/http"
+	"os"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
@@ -11,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"github.com/xuri/excelize/v2"
 
 	"github.com/labstack/echo/v4"
 )
@@ -46,6 +49,7 @@ type ISystemsHandlers interface {
 	GetSystemByEun() echo.HandlerFunc
 	GetSystemAsCsv() echo.HandlerFunc
 	GetEuns() echo.HandlerFunc
+	ImportSubsystems() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -676,5 +680,92 @@ func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// ImportSubsystems import subsystems from csv as text in body
+func (h *SystemsHandlers) ImportSubsystems() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// get user UID
+		//userUID := c.Get("userUID").(string)
+
+		// get parent UID
+		//parentUID := c.Param("uid")
+
+		// Get the uploaded file
+		file, err := c.FormFile("file")
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Failed to get uploaded file"})
+		}
+
+		// Open the uploaded file
+		src, err := file.Open()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to open uploaded file"})
+		}
+		defer src.Close()
+
+		// Create a temporary file to save the uploaded content
+		dst, err := os.CreateTemp("", "uploaded-*.xlsx")
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create temp file"})
+		}
+		defer dst.Close()
+
+		// Copy the uploaded file content to the temporary file
+		if _, err = io.Copy(dst, src); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to save uploaded file"})
+		}
+
+		// Open the saved file with excelize
+		excelFile, err := excelize.OpenFile(dst.Name())
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to open excel file"})
+		}
+
+		// Get the first sheet name
+		sheetName := excelFile.GetSheetName(0)
+
+		// Get all the rows in the first sheet
+		rows, err := excelFile.GetRows(sheetName)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to get rows from excel file"})
+		}
+
+		// Assume the first row is the header and map to struct fields
+		if len(rows) < 2 {
+			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Excel file must have at least two rows (header and data)"})
+		}
+
+		header := rows[0]
+		var systems []models.SystemImportData
+		for _, row := range rows[1:] {
+			if len(row) < len(header) {
+				continue // skip incomplete rows
+			}
+			system := models.SystemImportData{}
+			for i, cell := range row {
+				switch header[i] {
+				case "SystemCode":
+					system.SystemCode = cell
+				case "SystemName":
+					system.SystemName = cell
+				case "SystemType":
+					system.SystemType = cell
+				case "ZoneCode":
+					system.ZoneCode = cell
+				case "LocationCode":
+					system.LocationCode = cell
+				case "SystemLevel":
+					system.SystemLevel = cell
+				}
+			}
+			systems = append(systems, system)
+		}
+
+		// Return the data as JSON
+		return c.JSON(http.StatusOK, systems)
 	}
 }

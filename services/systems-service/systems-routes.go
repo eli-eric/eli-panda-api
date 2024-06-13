@@ -71,4 +71,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.GET("/v1/physical-items/euns", m.Authorization(h.GetEuns(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
+	e.POST("/v1/system/:uid/import-subsystems", m.Authorization(h.ImportSubsystems(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
 }
