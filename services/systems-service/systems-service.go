@@ -29,7 +29,7 @@ type ISystemsService interface {
 	GetItemUsagesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
-	GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
+	GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
@@ -123,11 +123,11 @@ func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, li
 	return result, err
 }
 
-func (svc *SystemsService) GetZonesCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetZonesCodebookQuery(facilityCode)
+	query := GetZonesCodebookQuery(facilityCode, searchString)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err

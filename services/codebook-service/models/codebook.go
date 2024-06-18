@@ -36,7 +36,7 @@ type CodebookResponse struct {
 	Data     []Codebook   `json:"data"`
 }
 
-var ZONE_CODEBOOK CodebookType = CodebookType{Code: "ZONE", Type: "SIMPLE"}
+var ZONE_CODEBOOK CodebookType = CodebookType{Code: "ZONE", Type: "AUTOCOMPLETE"}
 var UNIT_CODEBOOK CodebookType = CodebookType{Code: "UNIT", Type: "SIMPLE", NodeLabel: "Unit", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN}
 var CATALOGUE_PROPERTY_TYPE_CODEBOOK CodebookType = CodebookType{Code: "CATALOGUE_PROPERTY_TYPE", Type: "SIMPLE"}
 var SYSTEM_TYPE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM_TYPE", Type: "SIMPLE"}
