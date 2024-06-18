@@ -52,7 +52,7 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 
 		switch codebookCode {
 		case "ZONE":
-			codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode)
+			codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode, searchString)
 		case "UNIT":
 			codebookList, err = svc.catalogueService.GetUnitsCodebook()
 		case "CATALOGUE_PROPERTY_TYPE":
