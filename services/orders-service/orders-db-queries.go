@@ -503,14 +503,7 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 
 		if orderLine.System != nil {
 			//delete existing system
-			result.Query += `OPTIONAL MATCH(oldSystem)-[:CONTAINS_ITEM]->(itm) DETACH DELETE oldSystem WITH o, ccg, itm `
-			//then create new one
-			result.Query += `MATCH(parentSystem:System{uid: $systemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS' })-[:CONTAINS_ITEM]->(itm) WITH o,ccg, itm, sys `
-			result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) CREATE(sys)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o, ccg, itm, sys `
-			result.Query += `MATCH(f:Facility{code: $facilityCode})  MERGE(sys)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm, sys `
-
-			result.Parameters["systemUID"] = orderLine.System.UID
-			result.Parameters["newSystemUID"] = uuid.New().String()
+			result.Query += `OPTIONAL MATCH(sys)-[:CONTAINS_ITEM]->(itm) WITH o, ccg, itm, sys `
 
 			if orderLine.Location != nil && orderLine.Location.UID != "" {
 				//delete existing location
@@ -523,10 +516,6 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 				//delete existing location
 				result.Query += `OPTIONAL MATCH()<-[oldLocation:HAS_LOCATION]-(sys) DELETE oldLocation WITH o, ccg, itm, sys  `
 			}
-		} else {
-			//only delete existing system
-			result.Query += `OPTIONAL MATCH(oldSystem)-[:CONTAINS_ITEM]->(itm) DETACH DELETE oldSystem WITH o, ccg, itm `
-
 		}
 
 		// assign item usage to the item only  if item usage is set
