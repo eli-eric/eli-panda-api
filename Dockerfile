@@ -11,6 +11,9 @@ RUN go mod download && go mod verify
 
 COPY . .
 
+RUN swag init -g swagger_prod.go 
+RUN cp -r ./docs/swagger.yaml ./open-api-specification/panda-api.yaml
+
 RUN go build -v -o panda-api -ldflags "-s -w"
 
 ## Deploy
