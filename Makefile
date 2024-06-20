@@ -1,8 +1,12 @@
 # Main go commands
-run:
-	go run server.go
+swagger:
+	swag init -g server.go
+	cp -r ./docs/swagger.yaml ./open-api-specification/panda-api.yaml
 
-build:
+run: swagger
+	go run server.go	
+
+build: swagger
 	go build -v -ldflags "-s -w"
 
 install:

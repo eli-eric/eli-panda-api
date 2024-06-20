@@ -19,8 +19,27 @@ import (
 
 	_ "github.com/golang-migrate/migrate/v4/database/neo4j"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+
+	_ "panda/apigateway/docs"
+
+	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
+// @title PANDA REST API - localhost
+// @version 1.0
+// @description This is the REST API to the PANDA database. \n This is the only place to access data from the PANDA database.
+
+// @contact.name Jiří Švácha
+// @contact.email jiri.svacha@eli-beams.eu
+
+// @schemes http
+// @host localhost:50000
+// @BasePath /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT token. <br> How to obtain: https://eli-eric.atlassian.net/wiki/spaces/CS/pages/948797504/How+to+get+PANDA+API+Token <br> Add word Bearer before the token here.
 func main() {
 
 	//set locale to europe/prague
@@ -46,6 +65,8 @@ func main() {
 	//Swagger documentation served from open-api-specification
 	swaggerGroup := e.Group("")
 	swaggerGroup.Use(middlewares.StaticMiddleware())
+
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	//CORS middleware to allow cross origin access
 	e.Use(middlewares.CORSMiddleware())
