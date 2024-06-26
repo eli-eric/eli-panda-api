@@ -429,13 +429,13 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp) `
 	}
 
-	//system attribute
-	if filterVal := helpers.GetFilterValueCodebook(filering, "systemAttribute"); filterVal != nil {
-		result.Query += ` MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr) WHERE sysAttr.uid = $filterSystemAttribute `
-		result.Parameters["filterSystemAttribute"] = (*filterVal).UID
-	} else {
-		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr) `
-	}
+	//system attribute - TODO: has to be on SystemType
+	// if filterVal := helpers.GetFilterValueCodebook(filering, "systemAttribute"); filterVal != nil {
+	// 	result.Query += ` MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr) WHERE sysAttr.uid = $filterSystemAttribute `
+	// 	result.Parameters["filterSystemAttribute"] = (*filterVal).UID
+	// } else {
+	// 	result.Query += ` OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr) `
+	// }
 
 	//physical item filters
 	//we have to get all physical items filter values first and then apply them
@@ -469,30 +469,30 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			result.Parameters["filterPriceFrom"] = priceFilter.Min
 			result.Parameters["filterPriceTo"] = priceFilter.Max
 		} else {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, sysAttr `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier `
 			result.Query += ` OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() `
 		}
 
 		if eunFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, sysAttr `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 			result.Query += ` WHERE toLower(physicalItem.eun) CONTAINS $filterEUN `
 			result.Parameters["filterEUN"] = strings.ToLower(*eunFilter)
 		}
 
 		if serialNumberFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, sysAttr `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 			result.Query += ` WHERE toLower(physicalItem.serialNumber) CONTAINS $filterSerialNumber `
 			result.Parameters["filterSerialNumber"] = strings.ToLower(*serialNumberFilter)
 		}
 
 		if catalogueNumberFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier , ol, sysAttr`
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier , ol`
 			result.Query += ` WHERE toLower(catalogueItem.catalogueNumber) CONTAINS $filterCatalogueNumber `
 			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*catalogueNumberFilter)
 		}
 
 		if catalogueNameFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, sysAttr `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 			result.Query += ` WHERE toLower(catalogueItem.name) CONTAINS $filterCatalogueName `
 			result.Parameters["filterCatalogueName"] = strings.ToLower(*catalogueNameFilter)
 		}
@@ -504,21 +504,21 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 			if filter.Type == "text" {
 				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, sysAttr `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE toLower(pv.value) contains $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
 				}
 			} else if filter.Type == "list" {
 				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, sysAttr `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE pv.value IN $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
 				}
 			} else if filter.Type == "number" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, sysAttr `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, itemTypeByPropType[filter.PropType], i, i, i, i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 
@@ -593,8 +593,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
-	miniImageUrl: split(sys.miniImageUrl, ";"),
-	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
+	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
@@ -671,7 +670,6 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
-	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr)
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
@@ -692,8 +690,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
-	lastUpdateBy: sys.lastUpdateBy,
-	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
+	lastUpdateBy: sys.lastUpdateBy,	
 	physicalItem: case when physicalItem is not null then {
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
@@ -732,8 +729,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
-	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
-	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})	
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -750,8 +746,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
-	lastUpdateBy: sys.lastUpdateBy,
-	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
+	lastUpdateBy: sys.lastUpdateBy,	
 	physicalItem: case when physicalItem is not null then {
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
@@ -782,8 +777,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
-	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)	
-	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_ATTRIBUTE]->(sysAttr)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)		
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
@@ -794,8 +788,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
 	systemCode: sys.systemCode,	
 	systemLevel: sys.systemLevel,
-	miniImageUrl: split(sys.miniImageUrl, ";"),
-	systemAttribute: case when sysAttr is not null then {uid: sysAttr.uid, name: sysAttr.name} else null end,
+	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
@@ -1149,12 +1142,15 @@ func GetSystemTypeGroupsQuery(facilityCode string) (result helpers.DatabaseQuery
 }
 
 func GetSystemTypesBySystemTypeGroupQuery(systemTypeGroupUid, facilityCode string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid})-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)
+	result.Query = `
+	MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid})-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)
+	OPTIONAL MATCH (st)-[:HAS_SYSTEM_ATTRIBUTE]->(attr:SystemAttribute)
 	RETURN 
 	{ name: st.name, 
 	  uid: st.uid, 
 	  code: st.code,
-	  mask: case when $facilityCode = "B" then st.maskB WHEN $facilityCode = "A" THEN st.maskA WHEN $facilityCode = "N" THEN st.maskN END 
+	  mask: case when $facilityCode = "B" then st.maskB WHEN $facilityCode = "A" THEN st.maskA WHEN $facilityCode = "N" THEN st.maskN END ,
+	  systemAttribute: case when attr is not null then { name: attr.name, uid: attr.uid } else null end
 	  } as result ORDER BY result.name`
 
 	result.ReturnAlias = "result"
@@ -1262,6 +1258,14 @@ func CreateSystemTypeQuery(systemType *models.SystemType, facilityCode, userUID,
 		result.Query += ` SET st.maskN = $mask `
 	}
 
+	if systemType.SystemAttribute != nil {
+		result.Query += ` WITH st, u		
+		MATCH(attr:SystemAttribute{uid: $attrUID})
+		CREATE(st)-[:HAS_SYSTEM_ATTRIBUTE]->(attr) `
+
+		result.Parameters["attrUID"] = systemType.SystemAttribute.UID
+	}
+
 	result.Query += ` CREATE(st)-[:WAS_UPDATED_BY{ at: datetime(), action: "CREATE" }]->(u)
 	WITH st
 	MATCH(grp:SystemTypeGroup{uid: $systemTypeGroupUID})
@@ -1293,6 +1297,21 @@ func UpdateSystemTypeQuery(systemType *models.SystemType, facilityCode, userUID 
 		result.Query += ` st.maskB = $mask `
 	} else if facilityCode == helpers.FACILITY_CODE_NP {
 		result.Query += ` st.maskN = $mask `
+	}
+
+	if systemType.SystemAttribute != nil {
+		result.Query += ` WITH st, u
+		OPTIONAL MATCH(st)-[r:HAS_SYSTEM_ATTRIBUTE]->(attr:SystemAttribute)
+		DELETE r
+		WITH st, u
+		MATCH(attr:SystemAttribute{uid: $attrUID})
+		CREATE(st)-[:HAS_SYSTEM_ATTRIBUTE]->(attr) `
+
+		result.Parameters["attrUID"] = systemType.SystemAttribute.UID
+	} else {
+		result.Query += ` WITH st, u
+		MATCH(st)-[r:HAS_SYSTEM_ATTRIBUTE]->(attr:SystemAttribute)
+		DELETE r `
 	}
 
 	result.Query += `WITH st, u CREATE(st)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
