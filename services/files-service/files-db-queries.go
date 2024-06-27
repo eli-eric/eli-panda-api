@@ -84,13 +84,20 @@ func SetMiniImageUrlToNodeQuery(uid string, imageUrls *[]string, forceAll bool) 
 	result.Query = `MATCH(n{uid: $uid})
 	SET n.miniImageUrl = $imageUrl
 	WITH n
-	OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)
-	WITH n,ci,sys, case when ci.miniImageUrl is not null then ci.miniImageUrl else $imageUrl end as CIminiImageUrl, case when sys.miniImageUrl is not null then sys.miniImageUrl else $imageUrl end as SYSminiImageUrl 
-	SET ci.miniImageUrl = CIminiImageUrl , sys.miniImageUrl = SYSminiImageUrl 
+	OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)	
+	SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl) 
+	WITH n, ci	
+	OPTIONAL MATCH (ci)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
 	WITH n
-	OPTIONAL MATCH (n)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)
-	WITH n,sys, case when sys.miniImageUrl is not null then sys.miniImageUrl else $imageUrl end as SYSminiImageUrl
-	SET sys.miniImageUrl = SYSminiImageUrl
+	OPTIONAL MATCH (n)-[:HAS_SUBCATEGORY*0..20]->(subs)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)
+	SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl) 	
+	WITH n, subs
+	OPTIONAL MATCH (subs)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
+	WITH n
+	OPTIONAL MATCH (n)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
 	RETURN n.name, n.miniImageUrl`
 
 	result.Parameters = map[string]interface{}{}
