@@ -1,8 +1,8 @@
 package models
 
 type FileLink struct {
-	UID  string   `json:"uid"`
-	Name string   `json:"name"`
-	Url  string   `json:"url"`
-	Tags []string `json:"tags"`
+	UID  string    `json:"uid,omitempty"`
+	Name string    `json:"name,omitempty"`
+	Url  *[]string `json:"url,omitempty"`
+	Tags []string  `json:"tags,omitempty"`
 }

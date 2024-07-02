@@ -20,6 +20,8 @@ type CatalogueCategory struct {
 	PhysicalItemProperties []CatalogueCategoryProperty `json:"physicalItemProperties"`
 
 	SystemType *models.Codebook `json:"systemType,omitempty"`
+
+	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type CatalogueCategoryPropertyGroup struct {

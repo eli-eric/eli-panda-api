@@ -22,6 +22,8 @@ type CatalogueItem struct {
 	ManufacturerUrl *string `json:"manufacturerUrl,omitempty" neo4j:"prop,manufacturerUrl"`
 
 	Details []CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
+
+	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type CatalogueItemDetail struct {
@@ -50,6 +52,8 @@ type CatalogueItemSimple struct {
 	ManufacturerUrl string `json:"manufacturerUrl,omitempty"`
 
 	Details []CatalogueItemDetail `json:"details,omitempty"`
+
+	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type CatalogueItemDetailSimple struct {
