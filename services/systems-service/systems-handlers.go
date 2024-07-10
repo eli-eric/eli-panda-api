@@ -46,6 +46,7 @@ type ISystemsHandlers interface {
 	GetSystemByEun() echo.HandlerFunc
 	GetSystemAsCsv() echo.HandlerFunc
 	GetEuns() echo.HandlerFunc
+	HtmxTest1() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -676,5 +677,20 @@ func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+func (h *SystemsHandlers) HtmxTest1() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		divInfo := `<button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+		hx-get="http://localhost:50000/v1/systems/htmx-test-1"
+		hx-target="#htmxDiv">Yes</button>
+		<button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+		hx-get="http://localhost:50000/v1/systems/htmx-test-2"
+		hx-target="#htmxDiv">No</button>`
+
+		return c.HTML(http.StatusOK, divInfo)
 	}
 }

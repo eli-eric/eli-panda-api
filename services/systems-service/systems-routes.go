@@ -71,4 +71,8 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.GET("/v1/physical-items/euns", m.Authorization(h.GetEuns(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
+	e.GET("/v1/systems/htmx-test-1", h.HtmxTest1())
+
+	e.GET("/v1/systems/htmx-test-2", m.Authorization(h.DeleteSystemType(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
+
 }
