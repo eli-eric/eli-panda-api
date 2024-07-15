@@ -51,11 +51,13 @@ func (h *SecurityHandlers) AuthenticateByUsernameAndPassword() echo.HandlerFunc 
 func (h *SecurityHandlers) GetUserByAzureIdToken() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		azureIdToken := c.Request().Header.Get("Authorization")
+		tenantId := c.QueryParam("tenantId")
+
 		if azureIdToken == "" {
 			return echo.ErrUnauthorized
 		}
 
-		user, err := h.securityService.GetUserByAzureIdToken(azureIdToken)
+		user, err := h.securityService.GetUserByAzureIdToken(azureIdToken, tenantId)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting user by azure id token")
 			return echo.ErrUnauthorized

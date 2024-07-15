@@ -33,7 +33,7 @@ type ISecurityService interface {
 	GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetTeamsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetContactPersonRolesAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
-	GetUserByAzureIdToken(azureIdToken string) (authUser models.UserAuthInfo, err error)
+	GetUserByAzureIdToken(azureIdToken string, tenantId string) (authUser models.UserAuthInfo, err error)
 }
 
 // Create new security service instance
@@ -182,12 +182,12 @@ func (svc *SecurityService) GetProcurementersCodebook(facilityCode string) (resu
 	return result, err
 }
 
-func (svc *SecurityService) GetUserByAzureIdToken(azureIdToken string) (authUser models.UserAuthInfo, err error) {
+func (svc *SecurityService) GetUserByAzureIdToken(azureIdToken string, tenantId string) (authUser models.UserAuthInfo, err error) {
 
 	// Open a new Session
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	jwksURL := "https://login.microsoftonline.com/80f0138f-bb28-48e8-b6e8-2b1118fca6d8/discovery/v2.0/keys"
+	jwksURL := fmt.Sprintf("https://login.microsoftonline.com/%v/discovery/v2.0/keys", tenantId)
 
 	jwks, err := getJWKs(jwksURL)
 	if err != nil {
