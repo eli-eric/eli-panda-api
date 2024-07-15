@@ -1,4 +1,32 @@
 basePath: /
+definitions:
+  models.UserAuthInfo:
+    properties:
+      accessToken:
+        type: string
+      email:
+        type: string
+      facility:
+        type: string
+      facilityCode:
+        type: string
+      firstName:
+        type: string
+      isEnabled:
+        type: boolean
+      lastName:
+        type: string
+      passwordHash:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
+      username:
+        type: string
+    type: object
 host: localhost:50000
 info:
   contact:
@@ -9,6 +37,30 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/getuserbyazureidtoken:
+    get:
+      description: Get user by azure id token
+      parameters:
+      - description: Tenant ID
+        in: query
+        name: tenantId
+        required: true
+        type: string
+      - description: Azure ID Token
+        in: query
+        name: azureIdToken
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserAuthInfo'
+        "401":
+          description: Unauthorized
+      summary: Get user by azure id token
+      tags:
+      - Security
   /v1/order/{uid}:
     delete:
       description: Delete an order by order UID

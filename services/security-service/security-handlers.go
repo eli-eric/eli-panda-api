@@ -48,9 +48,19 @@ func (h *SecurityHandlers) AuthenticateByUsernameAndPassword() echo.HandlerFunc 
 	}
 }
 
+// Get user by azure id token
+// GetUserByAzureADIdToken godoc
+// @Summary  Get user by azure id token
+// @Description  Get user by azure id token
+// @Tags Security
+// @Param tenantId query string true "Tenant ID"
+// @Param azureIdToken query string true "Azure ID Token"
+// @Success 200  {object} models.UserAuthInfo
+// @Failure 401 "Unauthorized"
+// @Router /v1/getuserbyazureidtoken [get]
 func (h *SecurityHandlers) GetUserByAzureIdToken() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		azureIdToken := c.Request().Header.Get("Authorization")
+		azureIdToken := c.QueryParam("azureIdToken")
 		tenantId := c.QueryParam("tenantId")
 
 		if azureIdToken == "" {

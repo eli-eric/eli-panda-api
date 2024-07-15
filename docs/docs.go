@@ -18,6 +18,42 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/getuserbyazureidtoken": {
+            "get": {
+                "description": "Get user by azure id token",
+                "tags": [
+                    "Security"
+                ],
+                "summary": "Get user by azure id token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "tenantId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Azure ID Token",
+                        "name": "azureIdToken",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserAuthInfo"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
         "/v1/order/{uid}": {
             "delete": {
                 "security": [
@@ -49,6 +85,49 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error"
                     }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.UserAuthInfo": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "facility": {
+                    "type": "string"
+                },
+                "facilityCode": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "isEnabled": {
+                    "type": "boolean"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "passwordHash": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         }
