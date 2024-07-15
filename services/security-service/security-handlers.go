@@ -5,6 +5,7 @@ import (
 	"panda/apigateway/services/security-service/models"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 )
 
 type SecurityHandlers struct {
@@ -14,6 +15,8 @@ type SecurityHandlers struct {
 type ISecurityHandlers interface {
 	AuthenticateByUsernameAndPassword() echo.HandlerFunc
 	//ChangeUserPassword() echo.HandlerFunc
+
+	GetUserByAzureIdToken() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -42,5 +45,22 @@ func (h *SecurityHandlers) AuthenticateByUsernameAndPassword() echo.HandlerFunc 
 		} else {
 			return echo.ErrUnauthorized
 		}
+	}
+}
+
+func (h *SecurityHandlers) GetUserByAzureIdToken() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		azureIdToken := c.Request().Header.Get("Authorization")
+		if azureIdToken == "" {
+			return echo.ErrUnauthorized
+		}
+
+		user, err := h.securityService.GetUserByAzureIdToken(azureIdToken)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting user by azure id token")
+			return echo.ErrUnauthorized
+		}
+
+		return c.JSON(http.StatusOK, user)
 	}
 }
