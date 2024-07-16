@@ -3141,6 +3141,62 @@
 					"response": []
 				},
 				{
+					"name": "Sync system location by euns",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 204\", function () {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "37047307-ca1a-4719-b4f7-4202ae13ab7d",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n    {\n        \"eun\": \"B24040059\",\n        \"location_uid\": \"c52a61bb-9ab6-4b08-aa77-6785ed44ed9c\"\n    },\n    {\n        \"eun\": \"B24070001\",\n        \"location_uid\": \"4442256a-471a-432b-8e8a-5eecc2d5fdf1\"\n    },\n    {\n        \"eun\": \"B24070002\",\n        \"location_uid\": \"977667fc-651e-4e65-b745-4c6aff996404\"\n    },\n    {\n        \"eun\": \"B24070003\",\n        \"location_uid\": \"141b2629-0f35-41e4-bf9f-7b07dc02998e\"\n    }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/systems/sync-locations-by-eun",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"systems",
+								"sync-locations-by-eun"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Import subsystems",
 					"id": "158fe01f-deba-40f0-bff6-d7a734845d84",
 					"protocolProfileBehavior": {
