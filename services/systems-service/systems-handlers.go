@@ -46,6 +46,7 @@ type ISystemsHandlers interface {
 	GetSystemByEun() echo.HandlerFunc
 	GetSystemAsCsv() echo.HandlerFunc
 	GetEuns() echo.HandlerFunc
+	SyncSystemLocationByEUNs() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -676,5 +677,42 @@ func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// Swagger documentation for SyncSystemLocationByEUNs
+// @Summary Sync system locations by EUNs
+// @Description Sync system locations by EUNs
+// @Tags Systems
+// @Accept json
+// @Security BearerAuth
+// @Param body body []models.EunLocation true "EUN with location UID"
+// @Success 204 "No content"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/sync-locations-by-eun [post]
+func (h *SystemsHandlers) SyncSystemLocationByEUNs() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		eunLocations := new([]models.EunLocation)
+
+		if err := c.Bind(eunLocations); err == nil {
+
+			userUID := c.Get("userUID").(string)
+
+			err := h.systemsService.SyncSystemLocationByEUNs(*eunLocations, userUID)
+
+			if err == nil {
+				return c.NoContent(http.StatusNoContent)
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
 	}
 }

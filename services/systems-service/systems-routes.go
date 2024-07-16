@@ -72,5 +72,5 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.GET("/v1/physical-items/euns", m.Authorization(h.GetEuns(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	// sync systems locations by eun
-	// POST /v1/systems/sync-locations-by-eun body: [{eun: string, location_uid: string}]
+	e.POST("/v1/systems/sync-locations-by-eun", m.Authorization(h.SyncSystemLocationByEUNs(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }

@@ -1342,3 +1342,27 @@ func GetEunsQuery(facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func SyncSystemLocationByEUNQuery(eun, locationUid, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["locationUid"] = locationUid
+	result.Parameters["eun"] = eun
+	result.Parameters["userUID"] = userUID
+
+	result.Query = `
+	MATCH(itm:Item{eun: $eun})<-[:CONTAINS_ITEM]-(s:System)
+	WITH s
+	OPTIONAL MATCH (s)-[lr:HAS_LOCATION]->(loc)
+	DELETE lr
+	WITH s
+	MATCH (l:Location{uid: $locationUid})
+	CREATE (s)-[:HAS_LOCATION]->(l)
+	WITH s
+	MATCH(u:User{uid: $userUID})
+	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}

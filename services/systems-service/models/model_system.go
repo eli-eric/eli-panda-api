@@ -100,3 +100,8 @@ type SystemWithAllDetails struct {
 type EUN struct {
 	EUN string `json:"eun"`
 }
+
+type EunLocation struct {
+	EUN         string `json:"eun"`
+	LocationUID string `json:"location_uid"`
+}

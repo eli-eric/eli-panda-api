@@ -57,6 +57,7 @@ type ISystemsService interface {
 	GetSystemByEun(eun string) (result models.System, err error)
 	GetSystemAttributesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetEuns(facilityCode string) (result []models.EUN, err error)
+	SyncSystemLocationByEUNs(euns []models.EunLocation, userUID string) (errs []error)
 }
 
 // Create new security service instance
@@ -563,4 +564,18 @@ func (svc *SystemsService) GetEuns(facilityCode string) (result []models.EUN, er
 	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
+}
+
+func (svc *SystemsService) SyncSystemLocationByEUNs(euns []models.EunLocation, userUID string) (errs []error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	for _, eun := range euns {
+		err := helpers.WriteNeo4jAndReturnNothing(session, SyncSystemLocationByEUNQuery(eun.EUN, eun.LocationUID, userUID))
+		if err != nil {
+			errs = append(errs, err)
+			log.Error().Msg(err.Error())
+		}
+	}
+
+	return errs
 }

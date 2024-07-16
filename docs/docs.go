@@ -87,9 +87,62 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/systems/sync-locations-by-eun": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sync system locations by EUNs",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Sync system locations by EUNs",
+                "parameters": [
+                    {
+                        "description": "EUN with location UID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EunLocation"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "models.EunLocation": {
+            "type": "object",
+            "properties": {
+                "eun": {
+                    "type": "string"
+                },
+                "location_uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.UserAuthInfo": {
             "type": "object",
             "properties": {

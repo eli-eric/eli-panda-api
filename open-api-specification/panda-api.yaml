@@ -1,5 +1,12 @@
 basePath: /
 definitions:
+  models.EunLocation:
+    properties:
+      eun:
+        type: string
+      location_uid:
+        type: string
+    type: object
   models.UserAuthInfo:
     properties:
       accessToken:
@@ -82,6 +89,32 @@ paths:
       summary: Delete an order
       tags:
       - Orders
+  /v1/systems/sync-locations-by-eun:
+    post:
+      consumes:
+      - application/json
+      description: Sync system locations by EUNs
+      parameters:
+      - description: EUN with location UID
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.EunLocation'
+          type: array
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Sync system locations by EUNs
+      tags:
+      - Systems
 schemes:
 - http
 securityDefinitions:
