@@ -1370,6 +1370,7 @@ func SyncSystemLocationByEUNQuery(eun, locationUid, userUID string) (result help
 func GetAllLocationsFlatQuery(facilityCode string) (result helpers.DatabaseQuery) {
 	result.Query = `MATCH(f:Facility{code: $facilityCode}) 
 					MATCH(loc:Location)-[:BELONGS_TO_FACILITY]->(f)
+					WHERE loc.code IS NOT NULL AND loc.code <> ""
 					RETURN {
 						name	: loc.name,
 						uid		: loc.uid,
