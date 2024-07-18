@@ -1,5 +1,16 @@
 basePath: /
 definitions:
+  models.Codebook:
+    properties:
+      additionalData:
+        type: string
+      code:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
   models.EunLocation:
     properties:
       eun:
@@ -89,6 +100,23 @@ paths:
       summary: Delete an order
       tags:
       - Orders
+  /v1/systems/locations-flat:
+    get:
+      description: Get all locations flat list
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Codebook'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get all locations flat list
+      tags:
+      - Systems
   /v1/systems/sync-locations-by-eun:
     post:
       consumes:

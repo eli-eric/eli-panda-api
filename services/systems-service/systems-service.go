@@ -58,6 +58,7 @@ type ISystemsService interface {
 	GetSystemAttributesCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetEuns(facilityCode string) (result []models.EUN, err error)
 	SyncSystemLocationByEUNs(euns []models.EunLocation, userUID string) (errs []error)
+	GetAllLocationsFlat(facilityCode string) (result []codebookModels.Codebook, err error)
 }
 
 // Create new security service instance
@@ -578,4 +579,15 @@ func (svc *SystemsService) SyncSystemLocationByEUNs(euns []models.EunLocation, u
 	}
 
 	return errs
+}
+
+func (svc *SystemsService) GetAllLocationsFlat(facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetAllLocationsFlatQuery(facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
 }

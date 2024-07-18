@@ -73,4 +73,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// sync systems locations by eun
 	e.POST("/v1/systems/sync-locations-by-eun", m.Authorization(h.SyncSystemLocationByEUNs(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	// get all locations flat list
+	e.GET("/v1/systems/locations-flat", m.Authorization(h.GetAllLocationsFlat(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 }

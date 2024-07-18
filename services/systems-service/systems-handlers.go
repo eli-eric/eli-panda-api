@@ -47,6 +47,7 @@ type ISystemsHandlers interface {
 	GetSystemAsCsv() echo.HandlerFunc
 	GetEuns() echo.HandlerFunc
 	SyncSystemLocationByEUNs() echo.HandlerFunc
+	GetAllLocationsFlat() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -714,5 +715,30 @@ func (h *SystemsHandlers) SyncSystemLocationByEUNs() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for GetAllLocationsFlat
+// @Summary Get all locations flat list
+// @Description Get all locations flat list
+// @Tags Systems
+// @Security BearerAuth
+// @Success 200 {array} codebookModels.Codebook
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/locations-flat [get]
+func (h *SystemsHandlers) GetAllLocationsFlat() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+
+		locations, err := h.systemsService.GetAllLocationsFlat(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, locations)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }

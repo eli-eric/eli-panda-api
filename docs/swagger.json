@@ -85,6 +85,34 @@
                 }
             }
         },
+        "/v1/systems/locations-flat": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all locations flat list",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get all locations flat list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Codebook"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/sync-locations-by-eun": {
             "post": {
                 "security": [
@@ -129,6 +157,23 @@
         }
     },
     "definitions": {
+        "models.Codebook": {
+            "type": "object",
+            "properties": {
+                "additionalData": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.EunLocation": {
             "type": "object",
             "properties": {
