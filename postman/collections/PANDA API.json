@@ -3031,6 +3031,53 @@
 					"response": []
 				},
 				{
+					"name": "Get all locations flat",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "14a0232b-62cd-435a-8b10-2ef86cf9ed1a",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/systems/locations-flat",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"systems",
+								"locations-flat"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update physical item properties",
 					"event": [
 						{
