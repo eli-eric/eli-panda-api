@@ -146,6 +146,8 @@ func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
+		} else if err == helpers.ERR_CONFLICT {
+			return echo.ErrConflict
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError

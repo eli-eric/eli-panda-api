@@ -35,6 +35,7 @@ type OrderDetail struct {
 	ProcurementResponsible *codebookModels.Codebook `json:"procurementResponsible" neo4j:"rel,Employee,HAS_PROCUREMENT_RESPONSIBLE,uid,procurementResponsible"`
 	OrderDate              time.Time                `json:"orderDate" neo4j:"prop,orderDate"`
 	OrderLines             []OrderLine              `json:"orderLines"`
+	LastUpdateTime         time.Time                `json:"lastUpdateTime"`
 }
 
 type OrderLine struct {
