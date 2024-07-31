@@ -288,6 +288,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
+	lastUpdateTime: itm.lastUpdateTime,
 	catalogueNumber: itm.catalogueNumber,
 	description: itm.description,
 	category: {uid: cat.uid, name: cat.name},
@@ -789,7 +790,8 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	CREATE(item:CatalogueItem{  uid: apoc.create.uuid(),
 								name: $name, 
 								catalogueNumber: $catalogueNumber,
-								description: $description,							
+								description: $description,	
+								lastUpdateTime: datetime(),						
 								manufacturerUrl: $manufacturerUrl })
 	CREATE(item)-[:BELONGS_TO_CATEGORY]->(cat)
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
@@ -855,6 +857,7 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	MATCH(u:User{uid: $userUID})
 	WITH u	
 	MATCH(item:CatalogueItem{uid: $uid})	
+	SET item.lastUpdateTime = datetime()
 	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
 	WITh item
 	`

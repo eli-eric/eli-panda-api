@@ -387,10 +387,17 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 
 	//get the original record from db to compare because of the delete
 	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(catalogueItem.Uid)
+
 	if err == nil {
-		//update category query
-		query := UpdateCatalogueItemQuery(catalogueItem, &originalItem, userUID)
-		_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+
+		if catalogueItem.LastUpdateTime != originalItem.LastUpdateTime {
+			err = helpers.ERR_CONFLICT
+		} else {
+
+			//update category query
+			query := UpdateCatalogueItemQuery(catalogueItem, &originalItem, userUID)
+			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+		}
 	}
 
 	return err

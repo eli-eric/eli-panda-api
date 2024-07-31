@@ -360,6 +360,9 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 			if err == nil {
 				//return c.NoContent(http.StatusNoContent)
 				return c.JSON(http.StatusOK, catalogueItem.Uid)
+			} else if err == helpers.ERR_CONFLICT {
+				log.Err(helpers.ERR_CONFLICT).Msg("Catalogue item was updated by another user")
+				return echo.ErrConflict
 			} else {
 				log.Error().Msg(err.Error())
 			}
