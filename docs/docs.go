@@ -19,6 +19,42 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/getuserbyazureidtoken": {
+            "get": {
+                "description": "Get user by azure id token",
+                "tags": [
+                    "Security"
+                ],
+                "summary": "Get user by azure id token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Tenant ID",
+                        "name": "tenantId",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Azure ID Token",
+                        "name": "azureIdToken",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserAuthInfo"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            }
+        },
         "/v1/order/{uid}": {
             "delete": {
                 "security": [
@@ -50,6 +86,147 @@ const docTemplate = `{
                     "500": {
                         "description": "Internal Server Error"
                     }
+                }
+            }
+        },
+        "/v1/systems/locations-flat": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all locations flat list",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get all locations flat list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Codebook"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/systems/sync-locations-by-eun": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sync system locations by EUNs",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Sync system locations by EUNs",
+                "parameters": [
+                    {
+                        "description": "EUN with location UID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EunLocation"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.Codebook": {
+            "type": "object",
+            "properties": {
+                "additionalData": {
+                    "type": "string"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EunLocation": {
+            "type": "object",
+            "properties": {
+                "eun": {
+                    "type": "string"
+                },
+                "location_uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserAuthInfo": {
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "facility": {
+                    "type": "string"
+                },
+                "facilityCode": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "isEnabled": {
+                    "type": "boolean"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "passwordHash": {
+                    "type": "string"
+                },
+                "roles": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
                 }
             }
         }

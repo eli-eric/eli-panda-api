@@ -31,4 +31,6 @@ func MapSecurityRoutes(e *echo.Echo, h ISecurityHandlers, jwtMiddleware echo.Mid
 
 		return c.JSON(200, userInfo)
 	}, jwtMiddleware)
+
+	e.GET("/v1/getuserbyazureidtoken", h.GetUserByAzureIdToken())
 }

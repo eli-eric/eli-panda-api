@@ -1,4 +1,50 @@
 basePath: /
+definitions:
+  models.Codebook:
+    properties:
+      additionalData:
+        type: string
+      code:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.EunLocation:
+    properties:
+      eun:
+        type: string
+      location_uid:
+        type: string
+    type: object
+  models.UserAuthInfo:
+    properties:
+      accessToken:
+        type: string
+      email:
+        type: string
+      facility:
+        type: string
+      facilityCode:
+        type: string
+      firstName:
+        type: string
+      isEnabled:
+        type: boolean
+      lastName:
+        type: string
+      passwordHash:
+        type: string
+      roles:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
+      username:
+        type: string
+    type: object
 host: localhost:50000
 info:
   contact:
@@ -9,6 +55,30 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/getuserbyazureidtoken:
+    get:
+      description: Get user by azure id token
+      parameters:
+      - description: Tenant ID
+        in: query
+        name: tenantId
+        required: true
+        type: string
+      - description: Azure ID Token
+        in: query
+        name: azureIdToken
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserAuthInfo'
+        "401":
+          description: Unauthorized
+      summary: Get user by azure id token
+      tags:
+      - Security
   /v1/order/{uid}:
     delete:
       description: Delete an order by order UID
@@ -30,6 +100,49 @@ paths:
       summary: Delete an order
       tags:
       - Orders
+  /v1/systems/locations-flat:
+    get:
+      description: Get all locations flat list
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Codebook'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get all locations flat list
+      tags:
+      - Systems
+  /v1/systems/sync-locations-by-eun:
+    post:
+      consumes:
+      - application/json
+      description: Sync system locations by EUNs
+      parameters:
+      - description: EUN with location UID
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.EunLocation'
+          type: array
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Sync system locations by EUNs
+      tags:
+      - Systems
 schemes:
 - http
 securityDefinitions:

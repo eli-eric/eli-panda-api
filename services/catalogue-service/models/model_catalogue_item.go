@@ -1,6 +1,9 @@
 package models
 
-import "panda/apigateway/services/codebook-service/models"
+import (
+	"panda/apigateway/services/codebook-service/models"
+	"time"
+)
 
 type CatalogueItem struct {
 	Uid string `json:"uid,omitempty" neo4j:"ignore"`
@@ -24,6 +27,8 @@ type CatalogueItem struct {
 	Details []CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
 
 	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
+
+	LastUpdateTime time.Time `json:"lastUpdateTime"`
 }
 
 type CatalogueItemDetail struct {

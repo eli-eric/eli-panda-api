@@ -12,3 +12,10 @@ type JwtCustomClaims struct {
 	FacilityCode string   `json:"facilityCode"`
 	jwt.StandardClaims
 }
+
+type JWTAzureAdClaims struct {
+	Email  string   `json:"email"`
+	Name   string   `json:"name"`
+	Groups []string `json:"groups"`
+	jwt.StandardClaims
+}

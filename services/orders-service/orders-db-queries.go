@@ -227,7 +227,8 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	requestor: CASE WHEN req IS NOT NULL THEN {uid: req.uid,name: req.lastName + " " + req.firstName} ELSE NULL END,
 	procurementResponsible: CASE WHEN proc IS NOT NULL THEN {uid: proc.uid,name: proc.lastName + " " + proc.firstName} ELSE NULL END,
 	orderDate: o.orderDate,
-	orderLines:  orderLines 
+	orderLines:  orderLines,
+	lastUpdateTime: o.lastUpdateTime
 } AS order 
 	`
 	result.ReturnAlias = "order"

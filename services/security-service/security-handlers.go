@@ -5,6 +5,7 @@ import (
 	"panda/apigateway/services/security-service/models"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 )
 
 type SecurityHandlers struct {
@@ -14,6 +15,8 @@ type SecurityHandlers struct {
 type ISecurityHandlers interface {
 	AuthenticateByUsernameAndPassword() echo.HandlerFunc
 	//ChangeUserPassword() echo.HandlerFunc
+
+	GetUserByAzureIdToken() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -42,5 +45,34 @@ func (h *SecurityHandlers) AuthenticateByUsernameAndPassword() echo.HandlerFunc 
 		} else {
 			return echo.ErrUnauthorized
 		}
+	}
+}
+
+// Get user by azure id token
+// GetUserByAzureADIdToken godoc
+// @Summary  Get user by azure id token
+// @Description  Get user by azure id token
+// @Tags Security
+// @Param tenantId query string true "Tenant ID"
+// @Param azureIdToken query string true "Azure ID Token"
+// @Success 200  {object} models.UserAuthInfo
+// @Failure 401 "Unauthorized"
+// @Router /v1/getuserbyazureidtoken [get]
+func (h *SecurityHandlers) GetUserByAzureIdToken() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		azureIdToken := c.QueryParam("azureIdToken")
+		tenantId := c.QueryParam("tenantId")
+
+		if azureIdToken == "" {
+			return echo.ErrUnauthorized
+		}
+
+		user, err := h.securityService.GetUserByAzureIdToken(azureIdToken, tenantId)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting user by azure id token")
+			return echo.ErrUnauthorized
+		}
+
+		return c.JSON(http.StatusOK, user)
 	}
 }

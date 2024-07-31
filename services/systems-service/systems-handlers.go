@@ -46,6 +46,8 @@ type ISystemsHandlers interface {
 	GetSystemByEun() echo.HandlerFunc
 	GetSystemAsCsv() echo.HandlerFunc
 	GetEuns() echo.HandlerFunc
+	SyncSystemLocationByEUNs() echo.HandlerFunc
+	GetAllLocationsFlat() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -672,6 +674,68 @@ func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, euns)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+// Swagger documentation for SyncSystemLocationByEUNs
+// @Summary Sync system locations by EUNs
+// @Description Sync system locations by EUNs
+// @Tags Systems
+// @Accept json
+// @Security BearerAuth
+// @Param body body []models.EunLocation true "EUN with location UID"
+// @Success 204 "No content"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/sync-locations-by-eun [post]
+func (h *SystemsHandlers) SyncSystemLocationByEUNs() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		eunLocations := new([]models.EunLocation)
+
+		if err := c.Bind(eunLocations); err == nil {
+
+			userUID := c.Get("userUID").(string)
+
+			err := h.systemsService.SyncSystemLocationByEUNs(*eunLocations, userUID)
+
+			if err == nil {
+				return c.NoContent(http.StatusNoContent)
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for GetAllLocationsFlat
+// @Summary Get all locations flat list
+// @Description Get all locations flat list
+// @Tags Systems
+// @Security BearerAuth
+// @Success 200 {array} codebookModels.Codebook
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/locations-flat [get]
+func (h *SystemsHandlers) GetAllLocationsFlat() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+
+		locations, err := h.systemsService.GetAllLocationsFlat(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, locations)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
