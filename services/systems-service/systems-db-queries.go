@@ -1045,7 +1045,7 @@ func GetPhysicalItemPropertiesQuery(physicalItemUID string) (result helpers.Data
 						type: CASE WHEN ptype IS NOT NULL THEN {name: ptype.name, uid: ptype.uid} ELSE null END,
 						unit: CASE WHEN punit IS NOT NULL THEN {name: punit.name, uid: punit.uid} ELSE null END					
 						}
-					} ELSE NULL END as properties;`
+					} ELSE NULL END as properties ORDER BY properties.property.name;`
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["physicalItemUID"] = physicalItemUID
