@@ -1,0 +1,718 @@
+openapi: 3.0.2
+info:
+  title: PANDA - REST API
+  description: This is the REST API to the PANDA database. This is the only place to access data from the PANDA database.
+  version: '1.0'
+  contact:
+    name: Jiří Švácha
+    email: jiri.svacha@eli-beams.eu
+  x-logo:
+    url: eli-logo-small.png
+servers:
+  - url: 'http://localhost:50000/v1'
+    description: Local DEV server.  
+  - url: 'https://panda-api.eli-laser.eu/v1'
+    description: Production server.
+tags:
+  - name: Security
+    description: Authentication
+  - name: Catalogue
+    description: Everything about catalogue
+components:
+  securitySchemes:
+    jwt:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: You can get the JWT if you successfully authenticate via /authenticate POST endpoint
+paths:
+  /authenticate:
+    post:
+      summary: Authenticate by username and password
+      operationId: authenticateByUsernameAndPassword
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Security
+
+  /catalogue/categories/*:
+    get:
+      summary: Get categories by parent path
+      operationId: getCatalogueCategoriesByParentPath
+      security:
+        - jwt: []
+      parameters:
+        - name: path
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/categories:
+    get:
+      summary: Get categories
+      operationId: getCatalogueCategories
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/category/{uid}/properties:
+    get:
+      summary: Get category properties by UID
+      operationId: getCatalogueCategoryPropertiesByUid
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/category/{uid}:
+    get:
+      summary: Get category details by UID
+      operationId: getCatalogueCategoryByUid
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+    put:
+      summary: Update category by UID
+      operationId: updateCatalogueCategory
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+    post:
+      summary: Create category
+      operationId: createCatalogueCategory
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+    delete:
+      summary: Delete category by UID
+      operationId: deleteCatalogueCategory
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/category/{uid}/copy:
+    post:
+      summary: Copy category recursively by UID
+      operationId: copyCatalogueCategoryRecursive
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/category/{uid}/image:
+    get:
+      summary: Get category image by UID
+      operationId: getCatalogueCategoryImageByUid
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/item/{uid}/image:
+    get:
+      summary: Get item image by UID
+      operationId: getCatalogueItemImage
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/items:
+    get:
+      summary: Get all catalogue items with details
+      operationId: getCatalogueItems
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+  /catalogue/item/{uid}:
+    get:
+      summary: Get item details by UID
+      operationId: getCatalogueItemByUid
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+    post:
+      summary: Create new catalogue item
+      operationId: createNewCatalogueItem
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+    put:
+      summary: Update catalogue item by UID
+      operationId: updateCatalogueItem
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+
+    delete:
+      summary: Delete catalogue item by UID
+      operationId: deleteCatalogueItem
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Catalogue
+    
+  /orders/statuses:
+    get:
+      summary: Get order statuses codebook
+      operationId: getOrderStatusesCodebook
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /orders:
+    get:
+      summary: Get orders with search and pagination
+      operationId: getOrdersWithSearchAndPagination
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  
+  /order:
+    post:
+      summary: Insert new order
+      operationId: insertNewOrder
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /order/{uid}:
+    get:
+      summary: Get order with order lines by UID
+      operationId: getOrderWithOrderLinesByUid
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+    delete:
+      summary: Delete order by UID
+      operationId: deleteOrder
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+    put:
+      summary: Update order by UID
+      operationId: updateOrder
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /order/{uid}/orderline/{itemUid}/delivery:
+    put:
+      summary: Update order line delivery by UID
+      operationId: updateOrderLineDelivery
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: itemUid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /orders/eun-for-print:
+    get:
+      summary: Get items for EUN print
+      operationId: getItemsForEunPrint
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /orders/eun-for-print/{eun}:
+    put:
+      summary: Set item print EUN
+      operationId: setItemPrintEUN
+      security:
+        - jwt: []
+      parameters:
+        - name: eun
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /order-uid-by-order-number/{orderNumber}:
+    get:
+      summary: Get order UID by order number
+      operationId: getOrderUidByOrderNumber
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /catalogue/{catalogueItemUid}/orders:
+    get:
+      summary: Get orders for catalogue item
+      operationId: getOrdersForCatalogueItem
+      security:
+        - jwt: []
+      parameters:
+        - name: catalogueItemUid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Orders
+
+  /systems:
+    get:
+      summary: Get systems with search and pagination
+      operationId: getSystemsWithSearchAndPagination
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /system/{parentUID}/subsystems:
+    get:
+      summary: Get subsystems by parent UID
+      operationId: getSubSystemsByParentUID
+      security:
+        - jwt: []
+      parameters:
+        - name: parentUID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /system/{uid}/image:
+    get:
+      summary: Get system image by UID
+      operationId: getSystemImageByUid
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /system:
+    post:
+      summary: Create new system
+      operationId: createNewSystem
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /system/{uid}:
+    get:
+      summary: Get system detail by UID
+      operationId: getSystemDetail
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+    put:
+      summary: Update system by UID
+      operationId: updateSystem
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+    delete:
+      summary: Delete system recursive by UID
+      operationId: deleteSystemRecursive
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /systems/for-relationship:
+    get:
+      summary: Get systems for relationship
+      operationId: getSystemsForRelationship
+      security:
+        - jwt: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /system/{parentUID}/subsystems/for-relationship:
+    get:
+      summary: Get subsystems by parent UID for relationship
+      operationId: getSubSystemsByParentUIDForRelationship
+      security:
+        - jwt: []
+      parameters:
+        - name: parentUID
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+  /system/{uid}/relationships:
+    get:
+      summary: Get system relationships by UID
+      operationId: getSystemRelationships
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+    delete:
+      summary: Delete system relationship
+      operationId: deleteSystemRelationship
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems
+
+    post:
+      summary: Create new system relationship
+      operationId: createNewSystemRelationship
+      security:
+        - jwt: []
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json: {}
+      tags:
+        - Systems

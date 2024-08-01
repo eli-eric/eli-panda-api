@@ -7,27 +7,27 @@ import (
 )
 
 type System struct {
-	UID             string                 `json:"uid" neo4j:"ignore"`
-	Name            string                 `json:"name" neo4j:"prop,name"`
-	ParentPath      []SystemSimpleResponse `json:"parentPath" neo4j:"ignore"`
-	ParentUID       *string                `json:"parentUid,omitempty" neo4j:"ignore"`
-	Description     *string                `json:"description,omitempty" neo4j:"prop,description"`
-	SystemType      *models.Codebook       `json:"systemType,omitempty" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,uid,systemType"`
-	SystemCode      *string                `json:"systemCode,omitempty" neo4j:"prop,systemCode"`
-	SystemAlias     *string                `json:"systemAlias,omitempty" neo4j:"prop,systemAlias"`
-	SystemLevel     *string                `json:"systemLevel,omitempty" neo4j:"prop,systemLevel"`
-	Owner           *models.Codebook       `json:"owner,omitempty" neo4j:"rel,Employee,HAS_OWNER,uid,owner"`
-	Responsible     *models.Codebook       `json:"responsible,omitempty" neo4j:"rel,Employee,HAS_RESPONSIBLE,uid,responsible"`
-	Importance      *models.Codebook       `json:"importance,omitempty" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,uid,importance"`
-	Zone            *models.Codebook       `json:"zone,omitempty" neo4j:"rel,Zone,HAS_ZONE,uid,zone"`
-	Location        *models.Codebook       `json:"location,omitempty" neo4j:"ignore"`
-	PhysicalItem    *PhysicalItem          `json:"physicalItem,omitempty" neo4j:"ignore"`
-	HasSubsystems   bool                   `json:"hasSubsystems" neo4j:"ignore"`
-	Statistics      *SystemStatistics      `json:"statistics,omitempty" neo4j:"ignore"`
-	SparesOut       int                    `json:"sparesOut" neo4j:"ignore"`
-	SparesIn        int                    `json:"sparesIn" neo4j:"ignore"`
-	History         *[]SystemHistory       `json:"history,omitempty" neo4j:"ignore"`
-	SystemAttribute *models.Codebook       `json:"systemAttribute,omitempty" neo4j:"rel,SystemAttribute,HAS_SYSTEM_ATTRIBUTE,uid,systemAttribute"`
+	UID           string                 `json:"uid" neo4j:"ignore"`
+	Name          string                 `json:"name" neo4j:"prop,name"`
+	ParentPath    []SystemSimpleResponse `json:"parentPath" neo4j:"ignore"`
+	ParentUID     *string                `json:"parentUid,omitempty" neo4j:"ignore"`
+	Description   *string                `json:"description,omitempty" neo4j:"prop,description"`
+	SystemType    *models.Codebook       `json:"systemType,omitempty" neo4j:"rel,SystemType,HAS_SYSTEM_TYPE,uid,systemType"`
+	SystemCode    *string                `json:"systemCode,omitempty" neo4j:"prop,systemCode"`
+	SystemAlias   *string                `json:"systemAlias,omitempty" neo4j:"prop,systemAlias"`
+	SystemLevel   *string                `json:"systemLevel,omitempty" neo4j:"prop,systemLevel"`
+	Owner         *models.Codebook       `json:"owner,omitempty" neo4j:"rel,Employee,HAS_OWNER,uid,owner"`
+	Responsible   *models.Codebook       `json:"responsible,omitempty" neo4j:"rel,Employee,HAS_RESPONSIBLE,uid,responsible"`
+	Importance    *models.Codebook       `json:"importance,omitempty" neo4j:"rel,SystemImportance,HAS_IMPORTANCE,uid,importance"`
+	Zone          *models.Codebook       `json:"zone,omitempty" neo4j:"rel,Zone,HAS_ZONE,uid,zone"`
+	Location      *models.Codebook       `json:"location,omitempty" neo4j:"ignore"`
+	PhysicalItem  *PhysicalItem          `json:"physicalItem,omitempty" neo4j:"ignore"`
+	HasSubsystems bool                   `json:"hasSubsystems" neo4j:"ignore"`
+	Statistics    *SystemStatistics      `json:"statistics,omitempty" neo4j:"ignore"`
+	SparesOut     int                    `json:"sparesOut" neo4j:"ignore"`
+	SparesIn      int                    `json:"sparesIn" neo4j:"ignore"`
+	History       *[]SystemHistory       `json:"history,omitempty" neo4j:"ignore"`
+	MiniImageUrl  *[]string              `json:"miniImageUrl" neo4j:"ignore"`
 }
 
 type PhysicalItem struct {
@@ -85,10 +85,11 @@ type SystemHistoryDetail struct {
 }
 
 type SystemType struct {
-	UID  string `json:"uid"`
-	Name string `json:"name"`
-	Code string `json:"code"`
-	Mask string `json:"mask"`
+	UID             string           `json:"uid"`
+	Name            string           `json:"name"`
+	Code            string           `json:"code"`
+	Mask            string           `json:"mask"`
+	SystemAttribute *models.Codebook `json:"systemAttribute,omitempty" neo4j:"rel,SystemAttribute,HAS_SYSTEM_ATTRIBUTE,uid,systemAttribute"`
 }
 
 type SystemWithAllDetails struct {
@@ -98,4 +99,9 @@ type SystemWithAllDetails struct {
 
 type EUN struct {
 	EUN string `json:"eun"`
+}
+
+type EunLocation struct {
+	EUN         string `json:"eun"`
+	LocationUID string `json:"location_uid"`
 }

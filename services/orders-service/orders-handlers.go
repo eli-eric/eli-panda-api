@@ -146,6 +146,8 @@ func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
+		} else if err == helpers.ERR_CONFLICT {
+			return echo.ErrConflict
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
@@ -154,6 +156,16 @@ func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 	}
 }
 
+// DeleteOrder godoc
+// @Summary Delete an order
+// @Description Delete an order by order UID
+// @Tags Orders
+// @Security BearerAuth
+// @Param uid path string true "Order UID"
+// @Success 204 "No Content"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order/{uid} [delete]
 func (h *OrdersHandlers) DeleteOrder() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

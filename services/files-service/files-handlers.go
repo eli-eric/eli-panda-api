@@ -2,6 +2,7 @@ package filesservice
 
 import (
 	"panda/apigateway/services/files-service/models"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -16,6 +17,7 @@ type IFilesHandlers interface {
 	CreateFileLink() echo.HandlerFunc
 	UpdateFileLink() echo.HandlerFunc
 	DeleteFileLink() echo.HandlerFunc
+	SetMiniImageUrlToNode() echo.HandlerFunc
 }
 
 // NewFilesHandlers Files handlers constructor
@@ -95,5 +97,31 @@ func (h *FilesHandlers) DeleteFileLink() echo.HandlerFunc {
 		}
 
 		return c.NoContent(204)
+	}
+}
+
+func (h *FilesHandlers) SetMiniImageUrlToNode() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+		forceAll := c.QueryParam("forceAll")
+
+		link := models.FileLink{}
+		if err := c.Bind(&link); err != nil {
+			log.Error().Err(err).Msg("Error binding file link")
+			return echo.ErrBadRequest
+		}
+
+		link.UID = uid
+
+		err := h.filesService.SetMiniImageUrlToNode(link.UID, link.Url, strings.ToLower(forceAll) == "true")
+
+		if err != nil {
+			log.Error().Err(err).Msg("Error setting mini image URL to node")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, link)
 	}
 }

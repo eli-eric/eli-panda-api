@@ -78,3 +78,42 @@ func DeleteFileLinkQuery(uid string) (result helpers.DatabaseQuery) {
 
 	return result
 }
+
+func SetMiniImageUrlToNodeQuery(uid string, imageUrls *[]string, forceAll bool) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH(n{uid: $uid})
+	SET n.miniImageUrl = $imageUrl
+	WITH n
+	OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)	
+	SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl) 
+	WITH n, ci	
+	OPTIONAL MATCH (ci)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
+	WITH n
+	OPTIONAL MATCH (n)-[:HAS_SUBCATEGORY*0..20]->(subs)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)
+	SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl) 	
+	WITH n, subs
+	OPTIONAL MATCH (subs)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
+	WITH n
+	OPTIONAL MATCH (n)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
+	RETURN n.name, n.miniImageUrl`
+
+	result.Parameters = map[string]interface{}{}
+	result.Parameters["uid"] = uid
+	// convert slice of strings to single string
+	var imageUrl *string
+	if imageUrls != nil {
+		joinedUrls := strings.Join(*imageUrls, ";")
+		imageUrl = &joinedUrls
+	} else {
+		imageUrl = nil
+	}
+
+	result.Parameters["imageUrl"] = imageUrl
+
+	result.ReturnAlias = "n"
+
+	return result
+}
