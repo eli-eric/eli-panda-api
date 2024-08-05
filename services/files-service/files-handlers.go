@@ -107,7 +107,7 @@ func (h *FilesHandlers) SetMiniImageUrlToNode() echo.HandlerFunc {
 		uid := c.Param("uid")
 		forceAll := c.QueryParam("forceAll")
 
-		link := models.FileLink{}
+		link := models.MiniImageLinks{}
 		if err := c.Bind(&link); err != nil {
 			log.Error().Err(err).Msg("Error binding file link")
 			return echo.ErrBadRequest
