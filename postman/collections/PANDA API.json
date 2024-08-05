@@ -2641,7 +2641,7 @@
 							"variable": [
 								{
 									"key": "uid",
-									"value": "4a9fe182-30ed-4661-a50e-4e80de7856eb"
+									"value": "d370a073-3cfa-41bc-a98c-65a66df430c6"
 								}
 							]
 						}
@@ -3182,6 +3182,62 @@
 							],
 							"path": [
 								"system"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "New system with new system code",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(201);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "2f95cd46-efe3-4721-84a6-ff1339f836a6",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{   \n    \"parentUID\": \"0361fb22-0e21-43ba-abf8-fbab069a329e\",   \n    \"systemTypeUid\": \"2b5ab14e-c157-475f-9efd-aacc62884e54\",    \n    \"zoneUid\": \"c0873468-d49f-45d8-b9ad-beb83d9c9772\"    \n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/system/system-code",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"system",
+								"system-code"
 							]
 						}
 					},
