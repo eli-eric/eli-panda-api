@@ -92,11 +92,11 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create new system code",
+                "description": "Create new system with new unique system code based on system type and zone",
                 "tags": [
                     "Systems"
                 ],
-                "summary": "Create new system code",
+                "summary": "Create new system with code",
                 "parameters": [
                     {
                         "description": "System code request model",
@@ -110,7 +110,10 @@
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created"
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.System"
+                        }
                     },
                     "400": {
                         "description": "Bad request - missing required fields"
@@ -249,6 +252,105 @@
         }
     },
     "definitions": {
+        "models.CatalogueCategoryProperty": {
+            "type": "object",
+            "properties": {
+                "defaultValue": {
+                    "type": "string"
+                },
+                "listOfValues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/models.CatalogueCategoryPropertyType"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "unit": {
+                    "$ref": "#/definitions/models.Codebook"
+                }
+            }
+        },
+        "models.CatalogueCategoryPropertyType": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CatalogueItem": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "category": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "categoryUID": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CatalogueItemDetail"
+                    }
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "manufacturerNumber": {
+                    "type": "string"
+                },
+                "manufacturerUrl": {
+                    "type": "string"
+                },
+                "miniImageUrl": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "supplier": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CatalogueItemDetail": {
+            "type": "object",
+            "properties": {
+                "property": {
+                    "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                },
+                "propertyGroup": {
+                    "type": "string"
+                },
+                "value": {}
+            }
+        },
         "models.Codebook": {
             "type": "object",
             "properties": {
@@ -277,6 +379,107 @@
                 }
             }
         },
+        "models.PhysicalItem": {
+            "type": "object",
+            "properties": {
+                "catalogueItem": {
+                    "$ref": "#/definitions/models.CatalogueItem"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "itemUsage": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "price": {},
+                "serialNumber": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.System": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "hasSubsystems": {
+                    "type": "boolean"
+                },
+                "history": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemHistory"
+                    }
+                },
+                "importance": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "location": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "miniImageUrl": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "owner": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "parentPath": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemSimpleResponse"
+                    }
+                },
+                "parentUid": {
+                    "type": "string"
+                },
+                "physicalItem": {
+                    "$ref": "#/definitions/models.PhysicalItem"
+                },
+                "responsible": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "sparesIn": {
+                    "type": "integer"
+                },
+                "sparesOut": {
+                    "type": "integer"
+                },
+                "statistics": {
+                    "$ref": "#/definitions/models.SystemStatistics"
+                },
+                "systemAlias": {
+                    "type": "string"
+                },
+                "systemCode": {
+                    "type": "string"
+                },
+                "systemLevel": {
+                    "type": "string"
+                },
+                "systemType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.Codebook"
+                }
+            }
+        },
         "models.SystemCodeRequest": {
             "type": "object",
             "properties": {
@@ -288,6 +491,65 @@
                 },
                 "zoneUid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemHistory": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "changedAt": {
+                    "type": "string"
+                },
+                "changedBy": {
+                    "type": "string"
+                },
+                "detail": {
+                    "$ref": "#/definitions/models.SystemHistoryDetail"
+                },
+                "historyType": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemHistoryDetail": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string"
+                },
+                "systemName": {
+                    "type": "string"
+                },
+                "systemUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemSimpleResponse": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemStatistics": {
+            "type": "object",
+            "properties": {
+                "sparePartsCount": {
+                    "type": "integer"
+                },
+                "subsystemsCount": {
+                    "type": "integer"
                 }
             }
         },

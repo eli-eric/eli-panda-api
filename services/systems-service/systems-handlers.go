@@ -794,12 +794,12 @@ func (h *SystemsHandlers) GetAllZones() echo.HandlerFunc {
 }
 
 // Swagger documentation for CreateNewSystemCode
-// @Summary Create new system code
-// @Description Create new system code
+// @Summary Create new system with code
+// @Description Create new system with new unique system code based on system type and zone
 // @Tags Systems
 // @Security BearerAuth
 // @Param body body models.SystemCodeRequest true "System code request model"
-// @Success 201 "Created" {object} models.System
+// @Success 201 {object} models.System
 // @Failure 400 "Bad request - missing required fields"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/system-code [post]

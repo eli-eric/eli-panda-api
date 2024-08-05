@@ -1,5 +1,70 @@
 basePath: /
 definitions:
+  models.CatalogueCategoryProperty:
+    properties:
+      defaultValue:
+        type: string
+      listOfValues:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      type:
+        $ref: '#/definitions/models.CatalogueCategoryPropertyType'
+      uid:
+        type: string
+      unit:
+        $ref: '#/definitions/models.Codebook'
+    type: object
+  models.CatalogueCategoryPropertyType:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.CatalogueItem:
+    properties:
+      catalogueNumber:
+        type: string
+      category:
+        $ref: '#/definitions/models.Codebook'
+      categoryUID:
+        type: string
+      description:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/models.CatalogueItemDetail'
+        type: array
+      lastUpdateTime:
+        type: string
+      manufacturerNumber:
+        type: string
+      manufacturerUrl:
+        type: string
+      miniImageUrl:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      supplier:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
+  models.CatalogueItemDetail:
+    properties:
+      property:
+        $ref: '#/definitions/models.CatalogueCategoryProperty'
+      propertyGroup:
+        type: string
+      value: {}
+    type: object
   models.Codebook:
     properties:
       additionalData:
@@ -18,6 +83,73 @@ definitions:
       location_uid:
         type: string
     type: object
+  models.PhysicalItem:
+    properties:
+      catalogueItem:
+        $ref: '#/definitions/models.CatalogueItem'
+      currency:
+        type: string
+      eun:
+        type: string
+      itemUsage:
+        $ref: '#/definitions/models.Codebook'
+      price: {}
+      serialNumber:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.System:
+    properties:
+      description:
+        type: string
+      hasSubsystems:
+        type: boolean
+      history:
+        items:
+          $ref: '#/definitions/models.SystemHistory'
+        type: array
+      importance:
+        $ref: '#/definitions/models.Codebook'
+      location:
+        $ref: '#/definitions/models.Codebook'
+      miniImageUrl:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      owner:
+        $ref: '#/definitions/models.Codebook'
+      parentPath:
+        items:
+          $ref: '#/definitions/models.SystemSimpleResponse'
+        type: array
+      parentUid:
+        type: string
+      physicalItem:
+        $ref: '#/definitions/models.PhysicalItem'
+      responsible:
+        $ref: '#/definitions/models.Codebook'
+      sparesIn:
+        type: integer
+      sparesOut:
+        type: integer
+      statistics:
+        $ref: '#/definitions/models.SystemStatistics'
+      systemAlias:
+        type: string
+      systemCode:
+        type: string
+      systemLevel:
+        type: string
+      systemType:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+      zone:
+        $ref: '#/definitions/models.Codebook'
+    type: object
   models.SystemCodeRequest:
     properties:
       parentUid:
@@ -26,6 +158,44 @@ definitions:
         type: string
       zoneUid:
         type: string
+    type: object
+  models.SystemHistory:
+    properties:
+      action:
+        type: string
+      changedAt:
+        type: string
+      changedBy:
+        type: string
+      detail:
+        $ref: '#/definitions/models.SystemHistoryDetail'
+      historyType:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SystemHistoryDetail:
+    properties:
+      direction:
+        type: string
+      systemName:
+        type: string
+      systemUid:
+        type: string
+    type: object
+  models.SystemSimpleResponse:
+    properties:
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SystemStatistics:
+    properties:
+      sparePartsCount:
+        type: integer
+      subsystemsCount:
+        type: integer
     type: object
   models.UserAuthInfo:
     properties:
@@ -111,7 +281,8 @@ paths:
       - Orders
   /v1/system/system-code:
     post:
-      description: Create new system code
+      description: Create new system with new unique system code based on system type
+        and zone
       parameters:
       - description: System code request model
         in: body
@@ -122,13 +293,15 @@ paths:
       responses:
         "201":
           description: Created
+          schema:
+            $ref: '#/definitions/models.System'
         "400":
           description: Bad request - missing required fields
         "500":
           description: Internal server error
       security:
       - BearerAuth: []
-      summary: Create new system code
+      summary: Create new system with code
       tags:
       - Systems
   /v1/systems/locations-flat:
