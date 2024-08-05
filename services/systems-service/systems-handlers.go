@@ -723,7 +723,7 @@ func (h *SystemsHandlers) SyncSystemLocationByEUNs() echo.HandlerFunc {
 // @Description Get all locations flat list
 // @Tags Systems
 // @Security BearerAuth
-// @Success 200 {array} codebookModels.Codebook
+// @Success 200 {array} models.Codebook
 // @Failure 500 "Internal server error"
 // @Router /v1/systems/locations-flat [get]
 func (h *SystemsHandlers) GetAllLocationsFlat() echo.HandlerFunc {
