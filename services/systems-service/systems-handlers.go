@@ -48,6 +48,9 @@ type ISystemsHandlers interface {
 	GetEuns() echo.HandlerFunc
 	SyncSystemLocationByEUNs() echo.HandlerFunc
 	GetAllLocationsFlat() echo.HandlerFunc
+	GetAllSystemTypes() echo.HandlerFunc
+	GetAllZones() echo.HandlerFunc
+	CreateNewSystemCode() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -740,5 +743,94 @@ func (h *SystemsHandlers) GetAllLocationsFlat() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// Swagger documentation for GetAllSystemTypes
+// @Summary Get all system types
+// @Description Get all system types
+// @Tags Systems
+// @Security BearerAuth
+// @Success 200 {array} models.Codebook
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/system-types [get]
+func (h *SystemsHandlers) GetAllSystemTypes() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		systemTypes, err := h.systemsService.GetAllSystemTypes()
+
+		if err == nil {
+			return c.JSON(http.StatusOK, systemTypes)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+// Swagger documentation for GetAllZones
+// @Summary Get all zones
+// @Description Get all zones
+// @Tags Systems
+// @Security BearerAuth
+// @Success 200 {array} models.Codebook
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/zones [get]
+func (h *SystemsHandlers) GetAllZones() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+		zones, err := h.systemsService.GetAllZones(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, zones)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+// Swagger documentation for CreateNewSystemCode
+// @Summary Create new system code
+// @Description Create new system code
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body models.SystemCodeRequest true "System code request model"
+// @Success 201 "Created" {object} models.System
+// @Failure 400 "Bad request - missing required fields"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-code [post]
+func (h *SystemsHandlers) CreateNewSystemCode() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		systemCode := new(models.SystemCodeRequest)
+
+		if err := c.Bind(systemCode); err == nil {
+
+			facilityCode := c.Get("facilityCode").(string)
+			userUID := c.Get("userUID").(string)
+
+			newSystem, err := h.systemsService.CreateNewSystemCode(systemCode.ParentUID, systemCode.SystemTypeUID, systemCode.ZoneUID, facilityCode, userUID)
+
+			if err == nil {
+				return c.JSON(http.StatusCreated, newSystem)
+			}
+
+			if strings.Contains(err.Error(), "missing") {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
 	}
 }

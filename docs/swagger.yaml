@@ -18,6 +18,15 @@ definitions:
       location_uid:
         type: string
     type: object
+  models.SystemCodeRequest:
+    properties:
+      parentUid:
+        type: string
+      systemTypeUid:
+        type: string
+      zoneUid:
+        type: string
+    type: object
   models.UserAuthInfo:
     properties:
       accessToken:
@@ -100,6 +109,28 @@ paths:
       summary: Delete an order
       tags:
       - Orders
+  /v1/system/system-code:
+    post:
+      description: Create new system code
+      parameters:
+      - description: System code request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemCodeRequest'
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Bad request - missing required fields
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create new system code
+      tags:
+      - Systems
   /v1/systems/locations-flat:
     get:
       description: Get all locations flat list
@@ -141,6 +172,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Sync system locations by EUNs
+      tags:
+      - Systems
+  /v1/systems/system-types:
+    get:
+      description: Get all system types
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Codebook'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get all system types
+      tags:
+      - Systems
+  /v1/systems/zones:
+    get:
+      description: Get all zones
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Codebook'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get all zones
       tags:
       - Systems
 schemes:

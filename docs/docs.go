@@ -88,6 +88,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/system-code": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create new system code",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create new system code",
+                "parameters": [
+                    {
+                        "description": "System code request model",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad request - missing required fields"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/locations-flat": {
             "get": {
                 "security": [
@@ -157,6 +193,62 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/systems/system-types": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all system types",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get all system types",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Codebook"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/systems/zones": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all zones",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get all zones",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Codebook"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -184,6 +276,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "location_uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemCodeRequest": {
+            "type": "object",
+            "properties": {
+                "parentUid": {
+                    "type": "string"
+                },
+                "systemTypeUid": {
+                    "type": "string"
+                },
+                "zoneUid": {
                     "type": "string"
                 }
             }
