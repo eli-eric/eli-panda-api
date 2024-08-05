@@ -105,3 +105,9 @@ type EunLocation struct {
 	EUN         string `json:"eun"`
 	LocationUID string `json:"location_uid"`
 }
+
+type SystemCodeRequest struct {
+	ParentUID     string `json:"parentUid"`
+	SystemTypeUID string `json:"systemTypeUid"`
+	ZoneUID       string `json:"zoneUid"`
+}

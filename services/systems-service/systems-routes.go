@@ -76,4 +76,13 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// get all locations flat list
 	e.GET("/v1/systems/locations-flat", m.Authorization(h.GetAllLocationsFlat(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	// get all system types
+	e.GET("/v1/systems/system-types", m.Authorization(h.GetAllSystemTypes(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	// get all zones
+	e.GET("/v1/systems/zones", m.Authorization(h.GetAllZones(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	// create new system with system code
+	e.POST("/v1/system/system-code", m.Authorization(h.CreateNewSystemCode(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }

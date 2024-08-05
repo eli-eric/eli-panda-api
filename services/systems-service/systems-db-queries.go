@@ -1381,3 +1381,58 @@ func GetAllLocationsFlatQuery(facilityCode string) (result helpers.DatabaseQuery
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func GetAllSystemTypesQuery() (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(st:SystemType)
+	RETURN {
+	uid: st.uid,
+	name: st.name,
+	code: st.code
+	} AS result
+	ORDER BY result.code;`
+	result.ReturnAlias = "result"
+	return result
+}
+
+func GetAllZonesQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(f:Facility{code: $facilityCode}) 
+	MATCH(z:Zone)-[:BELONGS_TO_FACILITY]->(f)
+	WHERE NOT ()-[:HAS_SUBZONE]->(z) 
+	RETURN {
+		name	: z.name,
+		uid		: z.uid,
+		code	: z.code
+	} as result ORDER BY result.code;`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func CreateNewSystemForNewSystemCodeQuery(parentUID, systemCode, systemTypeUID, zoneUID, facilityCode, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["parentUID"] = parentUID
+	result.Parameters["systemTypeUID"] = systemTypeUID
+	result.Parameters["zoneUID"] = zoneUID
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["userUID"] = userUID
+	result.Parameters["systemLevel"] = "SUBSYSTEMS_AND_PARTS"
+	result.Parameters["systemCode"] = systemCode
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(u:User{uid: $userUID})
+	MATCH(parent:System{uid: $parentUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(st:SystemType{uid: $systemTypeUID})
+	MATCH(z:Zone{uid: $zoneUID})
+	CREATE(s:System{uid: apoc.create.uuid(), name: st.name + " " + $systemCode, systemCode: $systemCode, systemLevel: $systemLevel, isTechnologicalUnit: false, lastUpdateTime: datetime(), lastUpdateBy: u.username, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(s)-[:HAS_SYSTEM_TYPE]->(st)
+	CREATE(s)-[:HAS_ZONE]->(z)
+	CREATE(parent)-[:HAS_SUBSYSTEM]->(s)
+	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "CREATE" }]->(u)
+	RETURN s.uid as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
