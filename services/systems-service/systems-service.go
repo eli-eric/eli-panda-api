@@ -59,6 +59,9 @@ type ISystemsService interface {
 	GetEuns(facilityCode string) (result []models.EUN, err error)
 	SyncSystemLocationByEUNs(euns []models.EunLocation, userUID string) (errs []error)
 	GetAllLocationsFlat(facilityCode string) (result []codebookModels.Codebook, err error)
+	GetAllSystemTypes() (result []codebookModels.Codebook, err error)
+	GetAllZones(facilityCode string) (result []codebookModels.Codebook, err error)
+	CreateNewSystemCode(parentUID, systemTypeUID, zoneUID, facilityCode, userUID string) (result models.System, err error)
 }
 
 // Create new security service instance
@@ -588,6 +591,56 @@ func (svc *SystemsService) GetAllLocationsFlat(facilityCode string) (result []co
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetAllSystemTypes() (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetAllSystemTypesQuery()
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetAllZones(facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetAllZonesQuery(facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) CreateNewSystemCode(parentUID, systemTypeUID, zoneUID, facilityCode, userUID string) (result models.System, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	if parentUID == "" {
+		err = errors.New("missing parent")
+		return result, err
+	}
+
+	newCode, err := svc.GetSystemCode(systemTypeUID, zoneUID, "", parentUID, facilityCode)
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return result, err
+	}
+
+	newSystemUid, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemForNewSystemCodeQuery(parentUID, newCode, systemTypeUID, zoneUID, facilityCode, userUID))
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return result, err
+	}
+
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(newSystemUid, facilityCode))
 
 	return result, err
 }
