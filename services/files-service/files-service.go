@@ -16,7 +16,7 @@ type IFilesService interface {
 	CreateFileLink(parentUid string, fileLink models.FileLink) (result models.FileLink, err error)
 	UpdateFileLink(fileLink models.FileLink) (result models.FileLink, err error)
 	DeleteFileLink(uid string) (err error)
-	SetMiniImageUrlToNode(uid string, urls *[]string, forceAll bool) (err error)
+	SetMiniImageUrlToNode(uid string, urls *[]string, nodeLabel string) (err error)
 }
 
 func NewFilesService(driver *neo4j.Driver) IFilesService {
@@ -65,11 +65,11 @@ func (svc *FilesService) DeleteFileLink(uid string) (err error) {
 	return err
 }
 
-func (svc *FilesService) SetMiniImageUrlToNode(uid string, urls *[]string, forceAll bool) (err error) {
+func (svc *FilesService) SetMiniImageUrlToNode(uid string, urls *[]string, nodeLabel string) (err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := SetMiniImageUrlToNodeQuery(uid, urls, forceAll)
+	query := SetMiniImageUrlToNodeQuery(uid, urls, nodeLabel)
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err

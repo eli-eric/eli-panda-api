@@ -79,26 +79,34 @@ func DeleteFileLinkQuery(uid string) (result helpers.DatabaseQuery) {
 	return result
 }
 
-func SetMiniImageUrlToNodeQuery(uid string, imageUrls *[]string, forceAll bool) (result helpers.DatabaseQuery) {
+func SetMiniImageUrlToNodeQuery(uid string, imageUrls *[]string, nodeLabel string) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(n{uid: $uid})
-	SET n.miniImageUrl = $imageUrl
-	WITH n
-	OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)	
-	SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl) 
-	WITH n, ci	
-	OPTIONAL MATCH (ci)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
-	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
-	WITH n
-	OPTIONAL MATCH (n)-[:HAS_SUBCATEGORY*0..20]->(subs)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)
-	SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl) 	
-	WITH n, subs
-	OPTIONAL MATCH (subs)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
-	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
-	WITH n
-	OPTIONAL MATCH (n)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
-	SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl) 
-	RETURN n.name, n.miniImageUrl`
+	if nodeLabel == "CatalogueItem" {
+		result.Query = `
+		MATCH(n{uid: $uid})
+		OPTIONAL MATCH (n)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)	
+		SET n.miniImageUrl = $imageUrl, sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl)
+		RETURN 1 as result`
+	} else if nodeLabel == "System" {
+		result.Query = `
+		MATCH(n{uid: $uid})
+		SET n.miniImageUrl = $imageUrl
+		RETURN 1 as result`
+	} else if nodeLabel == "CatalogueCategory" {
+		result.Query = `
+		MATCH(n{uid: $uid})
+		SET n.miniImageUrl = $imageUrl
+		WITH n
+		OPTIONAL MATCH (n)<-[:BELONGS_TO_CATEGORY]-(ci:CatalogueItem)
+		OPTIONAL MATCH (n)-[:HAS_SUBCATEGORY*0..20]->(subs)<-[:BELONGS_TO_CATEGORY]-(subCi:CatalogueItem)
+		WITH n, collect(ci) + collect(subCi) AS allCatalogueItems
+		UNWIND allCatalogueItems AS ci
+		SET ci.miniImageUrl = coalesce(ci.miniImageUrl, $imageUrl)
+		WITH ci
+		OPTIONAL MATCH (ci)<-[:IS_BASED_ON]-(physicalItem)<-[:CONTAINS_ITEM]-(sys:System)
+		SET sys.miniImageUrl = coalesce(sys.miniImageUrl, $imageUrl)
+		RETURN 1 as result`
+	}
 
 	result.Parameters = map[string]interface{}{}
 	result.Parameters["uid"] = uid
@@ -113,7 +121,7 @@ func SetMiniImageUrlToNodeQuery(uid string, imageUrls *[]string, forceAll bool) 
 
 	result.Parameters["imageUrl"] = imageUrl
 
-	result.ReturnAlias = "n"
+	result.ReturnAlias = "result"
 
 	return result
 }
