@@ -337,7 +337,18 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 			`
 		}
 	} else {
-		result.Query = `
+
+		// check if the search string is uuid
+		_, err := uuid.Parse(searchString)
+
+		if err == nil {
+			result.Query = `
+		MATCH(f:Facility{code: $facilityCode}) WITH f
+		MATCH(sys:System{uid: $search})-[:BELONGS_TO_FACILITY]->(f) WITH sys
+		`
+		} else {
+
+			result.Query = `
 		CALL {
 			CALL db.index.fulltext.queryNodes('searchIndexSystems', $fulltextSearch) YIELD node AS sys WHERE sys:System AND sys.deleted = false return sys
 			UNION
@@ -349,6 +360,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		MATCH(f:Facility{code: $facilityCode}) WITH f, sys
 		MATCH(sys)-[:BELONGS_TO_FACILITY]->(f)
 		WITH sys `
+		}
 	}
 
 	//apply filters
