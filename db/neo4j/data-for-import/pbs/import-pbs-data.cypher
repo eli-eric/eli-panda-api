@@ -1,4 +1,4 @@
-:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/2024_08_27_PBS_import.csv' AS line
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/2024_08_29_PBS_import.csv' AS line
 with line
 where line.ImportInstr = "Yes" 
 and line.pandaOrderGUID is not null
@@ -10,7 +10,8 @@ with line
   MERGE(o:Order{ uid: line.pandaOrderGUID })  
   MERGE(itm:Item{ eun: line.eun })   
   MERGE(o)-[ol:HAS_ORDER_LINE]->(itm)
-  MERGE(itm)-[:IS_BASED_ON]->(catItem:CatalogueItem) 
+  MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(line.PandaPartNumber, line.cataloguePartNumber)})
+  MERGE(itm)-[:IS_BASED_ON]->(catItem) 
   WITH line, o, ol, itm, catItem,
   case when line.pbsTenderReference is not null then "
   Tender reference imported from PBS: " + line.pbsTenderReference else "" end as tenderReferenceNote,
@@ -27,11 +28,9 @@ with line
   case when line.cartName is not null then "
   PBS cart name: " + line.cartName else "" end as cartNameNote,
   case when line.itemPriceCZK is not null then "CZK" else null end as currencyCZK,
-  case when line.itemPriceEUR is not null then  "EUR" else null end as currencyEUR,
+  case when line.itemPriceEUR is not null and line.itemPriceEUR <> "0" then "EUR" else "CZK" end as currencyEUR,
   case when line.pbsNumber is not null then "
-  PBS number: " + line.pbsNumber else "" end as pbsNumberNote,
-  case when itm.notes is not null then itm.notes else "" end as itmNotes,
-  case when o.notes is not null then o.notes else "" end as oDescription
+  PBS number: " + line.pbsNumber else "" end as pbsNumberNote
   SET 
     ol.isDelivered = true,
     ol.deliveredTimeImport = line.deliveredDate,
@@ -43,19 +42,19 @@ with line
     itm.deleted = false, 
     itm.uid = coalesce(itm.uid, apoc.create.uuid()),
     itm.touch_by_import = true,
-    itm.parentSystemImportUid = line.TargetSystemGUID, 
+    itm.parentSystemImportUid = line.TargetsystemGUID, 
     itm.itemUsageImport = line.ItemUsage,
     itm.itemConditionImport = line.ItemCondition,
     itm.supplierImport = line.pbsSupplier, 
     itm.lastUpdateTime = datetime(), 
     itm.lastUpdatedBy = "admin",  
-    itm.notes = pbsNumberNote + supplierNote + notesNote + descriptionNote + sectionNameNote + destinationNote + cartNameNote,
+    itm.importedNotes = pbsNumberNote + supplierNote + notesNote + descriptionNote + destinationNote + cartNameNote, 
     itm.hasImageImport = line.hasImage,
     itm.filesCountImport = line.filesCount,
     itm.quantityImport = toInteger(line.quantity),    
     o.touch_by_import = true,     
     o.lastUpdatedBy = "admin",
-    o.notes =  tenderReferenceNote,
+    o.importedNotes =  tenderReferenceNote,
     o.orderNumber = coalesce(o.orderNumber, line.pbsFis),
     o.requestNumber = coalesce(o.requestNumber, line.pbsVerso),
     catItem.name = coalesce(catItem.name, coalesce(line.PandaPartNumber, line.cataloguePartNumber)),
@@ -106,3 +105,10 @@ MERGE(itm)-[:HAS_ITEM_USAGE]->(iu);
 MATCH(cat:CatalogueCategory{uid: "97598f04-948f-4da5-95b6-b2a44e0076db"})
 MATCH(ci:CatalogueItem) where not (ci)-[:BELONGS_TO_CATEGORY]->()
 MERGE(ci)-[:BELONGS_TO_CATEGORY]->(cat);
+
+// match all items and order and set notes from importedNotes to notes
+MATCH(itm:Item) WHERE itm.importedNotes is not null and itm.importedNotes <> ""
+SET itm.notes = itm.notes + itm.importedNotes;
+
+MATCH(o:Order) WHERE o.importedNotes is not null and o.importedNotes <> ""
+SET o.notes = o.notes + o.importedNotes;
