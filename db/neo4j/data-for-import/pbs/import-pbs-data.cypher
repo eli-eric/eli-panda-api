@@ -7,8 +7,7 @@ and line.eun is not null
 with line
   CALL {
   WITH line
-  MERGE(o:Order{ uid: line.pandaOrderGUID })
-  //MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(line.PandaPartNumber, line.cataloguePartNumber) })
+  MERGE(o:Order{ uid: line.pandaOrderGUID })  
   MERGE(itm:Item{ eun: line.eun })   
   MERGE(o)-[ol:HAS_ORDER_LINE]->(itm)
   MERGE(itm)-[:IS_BASED_ON]->(catItem:CatalogueItem) 
