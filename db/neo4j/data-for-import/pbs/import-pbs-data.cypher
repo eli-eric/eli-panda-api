@@ -8,13 +8,13 @@ with line
   CALL {
   WITH line
   MERGE(o:Order{ uid: line.pandaOrderGUID })
-  MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(line.PandaPartNumber, line.cataloguePartNumber) })
-  MERGE(itm:Item{ eun: line.eun }) 
+  //MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(line.PandaPartNumber, line.cataloguePartNumber) })
+  MERGE(itm:Item{ eun: line.eun })   
   MERGE(o)-[ol:HAS_ORDER_LINE]->(itm)
-  MERGE(itm)-[:IS_BASED_ON]->(catItem) 
+  MERGE(itm)-[:IS_BASED_ON]->(catItem:CatalogueItem) 
   WITH line, o, ol, itm, catItem,
   case when line.pbsTenderReference is not null then "
-  PBS tender reference: " + line.pbsTenderReference else "" end as tenderReferenceNote,
+  Tender reference imported from PBS: " + line.pbsTenderReference else "" end as tenderReferenceNote,
   case when line.pbsSupplier is not null then "
   PBS supplier: " + line.pbsSupplier else "" end as supplierNote,
   case when line.notes is not null then "
@@ -23,8 +23,8 @@ with line
   PBS description: " + line.description else "" end as descriptionNote,
   case when line.sectionName is not null then "
   PBS section name: " + line.sectionName else "" end as sectionNameNote,
-  case when line.destionation is not null then "
-  PBS destination: " + line.destionation else "" end as destinationNote,
+  case when line.destination is not null then "
+  PBS destination: " + line.destination else "" end as destinationNote,
   case when line.cartName is not null then "
   PBS cart name: " + line.cartName else "" end as cartNameNote,
   case when line.itemPriceCZK is not null then "CZK" else null end as currencyCZK,
@@ -32,7 +32,7 @@ with line
   case when line.pbsNumber is not null then "
   PBS number: " + line.pbsNumber else "" end as pbsNumberNote,
   case when itm.notes is not null then itm.notes else "" end as itmNotes,
-  case when o.description is not null then o.description else "" end as oDescription
+  case when o.notes is not null then o.notes else "" end as oDescription
   SET 
     ol.isDelivered = true,
     ol.deliveredTimeImport = line.deliveredDate,
@@ -56,11 +56,13 @@ with line
     itm.quantityImport = toInteger(line.quantity),    
     o.touch_by_import = true,     
     o.lastUpdatedBy = "admin",
-    o.description = oDescription + tenderReferenceNote,
+    o.notes =  tenderReferenceNote,
     o.orderNumber = coalesce(o.orderNumber, line.pbsFis),
     o.requestNumber = coalesce(o.requestNumber, line.pbsVerso),
     catItem.name = coalesce(catItem.name, coalesce(line.PandaPartNumber, line.cataloguePartNumber)),
+    itm.name = coalesce(itm.name,catItem.name, line.name),
     catItem.uid = coalesce(catItem.uid, apoc.create.uuid()),
+    catItem.catalogueNumber = coalesce(catItem.catalogueNumber, coalesce(line.PandaPartNumber, line.cataloguePartNumber)),
     catItem.deleted = false, 
     catItem.touch_by_import = true, 
     catItem.lastUpdateTime = datetime(), 
@@ -78,6 +80,7 @@ SET
 s.uid = coalesce(s.uid, apoc.create.uuid()),
 s.name = itm.name,
 s.deleted = false,
+s.systemLevel = coalesce(s.systemLevel, "SUBSYSTEMS_AND_PARTS"),
 s.touch_by_import = true 
 WITH s
 MATCH(f:Facility{code: "B"})
@@ -99,3 +102,8 @@ MATCH(itm:Item) where itm.touch_by_import = true and not (itm)-[:HAS_ITEM_USAGE]
 WITH itm
 MATCH(iu:ItemUsage{name: "Stock Item"})
 MERGE(itm)-[:HAS_ITEM_USAGE]->(iu);
+
+//connect catalogue categor yto catalogue item if no connection exists
+MATCH(cat:CatalogueCategory{uid: "97598f04-948f-4da5-95b6-b2a44e0076db"})
+MATCH(ci:CatalogueItem) where not (ci)-[:BELONGS_TO_CATEGORY]->()
+MERGE(ci)-[:BELONGS_TO_CATEGORY]->(cat);
