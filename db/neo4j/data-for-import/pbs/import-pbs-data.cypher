@@ -108,7 +108,9 @@ MERGE(ci)-[:BELONGS_TO_CATEGORY]->(cat);
 
 // match all items and order and set notes from importedNotes to notes
 MATCH(itm:Item) WHERE itm.importedNotes is not null and itm.importedNotes <> ""
-SET itm.notes = itm.notes + itm.importedNotes;
+with itm, case when itm.notes is null then "" else itm.notes end as notes
+SET itm.notes = notes + itm.importedNotes;
 
 MATCH(o:Order) WHERE o.importedNotes is not null and o.importedNotes <> ""
-SET o.notes = o.notes + o.importedNotes;
+with o, case when o.notes is null then "" else o.notes end as notes
+SET o.notes = notes + o.importedNotes;
