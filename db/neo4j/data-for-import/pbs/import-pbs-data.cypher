@@ -1,4 +1,4 @@
-:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/2024_08_29_PBS_import.csv' AS line
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/2024_08_30_PBS_import.csv' AS line
 with line
 where line.ImportInstr = "Yes" 
 and line.pandaOrderGUID is not null
@@ -114,3 +114,17 @@ SET itm.notes = notes + itm.importedNotes;
 MATCH(o:Order) WHERE o.importedNotes is not null and o.importedNotes <> ""
 with o, case when o.notes is null then "" else o.notes end as notes
 SET o.notes = notes + o.importedNotes;
+
+match(itm)-[r:IS_BASED_ON]->(catItem) 
+with itm, count(r) as counts where counts > 1
+match(itm)-[r:IS_BASED_ON]->(catItem{touch_by_import: true}) 
+delete r;
+
+// set order delivery statuses
+  MATCH (o:Order{touch_by_import: true})
+	WITH o
+	MATCH(o)-[olAll:HAS_ORDER_LINE]->()
+	WITH count(olAll) as totalLines, o
+	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
+	WITH totalLines, count(olDelivered) as deliveredLines, o
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end;
