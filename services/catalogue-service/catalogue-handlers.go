@@ -285,10 +285,10 @@ func (h *CatalogueHandlers) CreateNewCatalogueItem() echo.HandlerFunc {
 
 			userUID := c.Get("userUID").(string)
 			// create catalogue item
-			newUid, err := h.catalogueService.CreateNewCatalogueItem(catalogueItem, userUID)
+			newItem, err := h.catalogueService.CreateNewCatalogueItem(catalogueItem, userUID)
 
 			if err == nil {
-				return c.JSON(http.StatusOK, newUid)
+				return c.JSON(http.StatusOK, newItem)
 			} else {
 				log.Error().Msg(err.Error())
 			}
@@ -355,11 +355,11 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 
 			userUID := c.Get("userUID").(string)
 			// create catalogue item
-			err := h.catalogueService.UpdateCatalogueItem(catalogueItem, userUID)
+			updatedItem, err := h.catalogueService.UpdateCatalogueItem(catalogueItem, userUID)
 
 			if err == nil {
 				//return c.NoContent(http.StatusNoContent)
-				return c.JSON(http.StatusOK, catalogueItem.Uid)
+				return c.JSON(http.StatusOK, updatedItem)
 			} else if err == helpers.ERR_CONFLICT {
 				log.Err(helpers.ERR_CONFLICT).Msg("Catalogue item was updated by another user")
 				return echo.ErrConflict
