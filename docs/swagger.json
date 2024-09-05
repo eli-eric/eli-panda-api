@@ -348,9 +348,7 @@
                 "propertyGroup": {
                     "type": "string"
                 },
-                "value": {
-                    "type": "any"
-                }
+                "value": {}
             }
         },
         "models.Codebook": {
@@ -396,9 +394,7 @@
                 "itemUsage": {
                     "$ref": "#/definitions/models.Codebook"
                 },
-                "price": {
-                    "type": "any"
-                },
+                "price": {},
                 "serialNumber": {
                     "type": "string"
                 },
