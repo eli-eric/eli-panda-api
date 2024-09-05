@@ -8,7 +8,7 @@ import (
 
 func GetFileLinksByParentUidQuery(parentUid string) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(n{uid: $parentUid})-[:HAS_FILE_LINK]->(fl)
+	result.Query = `MERGE(n{uid: $parentUid})-[:HAS_FILE_LINK]->(fl)
 					RETURN {
 							uid: fl.uid, 
 							name: fl.name, 
@@ -24,7 +24,7 @@ func GetFileLinksByParentUidQuery(parentUid string) (result helpers.DatabaseQuer
 
 func CreateFileLinkQuery(parentUid string, fileLink models.FileLink) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(n{uid: $parentUid})
+	result.Query = `MERGE(n{uid: $parentUid})
 	CREATE(fl:FileLink{ 
 		uid: apoc.create.uuid(), 
 		name: $name, 
