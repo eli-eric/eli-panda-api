@@ -15,6 +15,43 @@
     "host": "localhost:50000",
     "basePath": "/",
     "paths": {
+        "/v1/general/{uid}/graph": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get graph by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "general"
+                ],
+                "summary": "Get graph by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.GraphResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/getuserbyazureidtoken": {
             "get": {
                 "description": "Get user by azure id token",
@@ -348,7 +385,9 @@
                 "propertyGroup": {
                     "type": "string"
                 },
-                "value": {}
+                "value": {
+                    "type": "any"
+                }
             }
         },
         "models.Codebook": {
@@ -379,6 +418,57 @@
                 }
             }
         },
+        "models.GraphLink": {
+            "type": "object",
+            "properties": {
+                "relationship": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GraphNode": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GraphResponse": {
+            "type": "object",
+            "properties": {
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GraphLink"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GraphNode"
+                    }
+                }
+            }
+        },
         "models.PhysicalItem": {
             "type": "object",
             "properties": {
@@ -394,7 +484,9 @@
                 "itemUsage": {
                     "$ref": "#/definitions/models.Codebook"
                 },
-                "price": {},
+                "price": {
+                    "type": "any"
+                },
                 "serialNumber": {
                     "type": "string"
                 },

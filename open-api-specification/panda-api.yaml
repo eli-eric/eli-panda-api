@@ -63,7 +63,8 @@ definitions:
         $ref: '#/definitions/models.CatalogueCategoryProperty'
       propertyGroup:
         type: string
-      value: {}
+      value:
+        type: any
     type: object
   models.Codebook:
     properties:
@@ -83,6 +84,39 @@ definitions:
       location_uid:
         type: string
     type: object
+  models.GraphLink:
+    properties:
+      relationship:
+        type: string
+      source:
+        type: string
+      target:
+        type: string
+    type: object
+  models.GraphNode:
+    properties:
+      label:
+        type: string
+      name:
+        type: string
+      properties:
+        additionalProperties:
+          type: string
+        type: object
+      uid:
+        type: string
+    type: object
+  models.GraphResponse:
+    properties:
+      links:
+        items:
+          $ref: '#/definitions/models.GraphLink'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/models.GraphNode'
+        type: array
+    type: object
   models.PhysicalItem:
     properties:
       catalogueItem:
@@ -93,7 +127,8 @@ definitions:
         type: string
       itemUsage:
         $ref: '#/definitions/models.Codebook'
-      price: {}
+      price:
+        type: any
       serialNumber:
         type: string
       uid:
@@ -234,6 +269,29 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/general/{uid}/graph:
+    get:
+      description: Get graph by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.GraphResponse'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get graph by uid
+      tags:
+      - general
   /v1/getuserbyazureidtoken:
     get:
       description: Get user by azure id token
