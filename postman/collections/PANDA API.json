@@ -2443,7 +2443,8 @@
 									"    pm.response.to.have.status(200);",
 									"});"
 								],
-								"type": "text/javascript"
+								"type": "text/javascript",
+								"packages": {}
 							}
 						}
 					],
@@ -2465,7 +2466,7 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10000}",
+							"raw": "{{baseUrl}}/systems?pagination={\"page\" : 1 , \"pageSize\": 10000}&search=ff2fe2bf-3357-4a8b-a7e6-66401ca63345",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -2476,6 +2477,10 @@
 								{
 									"key": "pagination",
 									"value": "{\"page\" : 1 , \"pageSize\": 10000}"
+								},
+								{
+									"key": "search",
+									"value": "ff2fe2bf-3357-4a8b-a7e6-66401ca63345"
 								}
 							]
 						}
@@ -3965,6 +3970,63 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Get graph by uid",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "0998b371-b241-47c4-9802-9c3227f1ef4a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"pm.test(\"Body is correct\", function () {",
+									"    pm.response.to.have.jsonBody()",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "a6dad988-aebb-4026-9e93-077da31a58ec",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/general/:uid/graph",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"general",
+								":uid",
+								"graph"
+							],
+							"variable": [
+								{
+									"key": "uid",
+									"value": "89e12bb6-4da0-48c2-823f-dc8eec8ffd98"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			],
 			"id": "e9823618-5124-4a8d-a82f-3f2c07425119"
@@ -4341,7 +4403,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n \"url\": [\"catalogue/254c1037-cbc3-4c1f-8b9a-8609f2946c63/image-small/5lRkRV5tzHQnBV3T2Bnwp\", \"jirka\"]\n}",
+							"raw": "{\n \"url\": [\"/api/catalogue-category/ec30a517-4bdd-40ac-9dc1-c9ca40afef1b/image-small/CpHAqcHu2LBSA_tgkVcKI\"]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -4349,7 +4411,7 @@
 							}
 						},
 						"url": {
-							"raw": "{{baseUrl}}/files/node/:uid/mini-image-url",
+							"raw": "{{baseUrl}}/files/node/:uid/mini-image-url?nodeLabel=CatalogueCategory",
 							"host": [
 								"{{baseUrl}}"
 							],
@@ -4359,10 +4421,16 @@
 								":uid",
 								"mini-image-url"
 							],
+							"query": [
+								{
+									"key": "nodeLabel",
+									"value": "CatalogueCategory"
+								}
+							],
 							"variable": [
 								{
 									"key": "uid",
-									"value": "ec30a517-4bdd-40ac-9dc1-c9ca40afef1b"
+									"value": "1adeae21-ab0f-40f3-868d-36f7d40210ca"
 								}
 							]
 						}
