@@ -9,7 +9,13 @@ func GetGraphNodesByUidQuery(uid string) (result helpers.DatabaseQuery) {
 	 uid: o.uid, 
 	 name: o.name, 
 	 label: labels(o)[0], 
-	 properties: apoc.map.removeKeys(properties(o), ['passwordHash','passwordToChange', 'isEnabled', 'deleted', 'username', 'printEUN']) } as nodes`
+	 properties: apoc.map.removeKeys(properties(o), ['passwordHash','passwordToChange', 'isEnabled', 'deleted', 'username', 'printEUN', 'image']) } as nodes
+	 union all
+     match(n{uid:$uid}) RETURN DISTINCT {
+	 uid: n.uid, 
+	 name: n.name, 
+	 label: labels(n)[0], 
+	 properties: apoc.map.removeKeys(properties(n), ['passwordHash','passwordToChange', 'isEnabled', 'deleted', 'username', 'printEUN', 'image'] )} as nodes`
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.ReturnAlias = "nodes"
