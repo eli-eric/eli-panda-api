@@ -488,6 +488,12 @@ const docTemplate = `{
                 "itemUsage": {
                     "$ref": "#/definitions/models.Codebook"
                 },
+                "orderNumber": {
+                    "type": "string"
+                },
+                "orderUid": {
+                    "type": "string"
+                },
                 "price": {
                     "type": "any"
                 },

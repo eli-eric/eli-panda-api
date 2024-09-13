@@ -38,6 +38,8 @@ type PhysicalItem struct {
 	EUN           *string                       `json:"eun,omitempty"`
 	SerialNumber  *string                       `json:"serialNumber,omitempty"`
 	CatalogueItem catalogueModels.CatalogueItem `json:"catalogueItem"`
+	OrderNumber   *string                       `json:"orderNumber,omitempty" neo4j:"prop,orderNumber"`
+	OrderUid      *string                       `json:"orderUid,omitempty" neo4j:"prop,orderUid"`
 }
 
 type PhysicalItemDetail struct {
