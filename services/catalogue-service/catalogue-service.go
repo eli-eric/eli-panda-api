@@ -35,10 +35,10 @@ type ICatalogueService interface {
 	GetManufacturersCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebook(searchString string, limit int) (result []codebookModels.Codebook, err error)
 	GetCatalogueCategoriesCodebookTree(search string) (result []codebookModels.CodebookTreeItem, err error)
-	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error)
+	CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (result models.CatalogueItem, err error)
 	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
 	GetCatalogueCategoryPhysicalItemPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
-	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error)
+	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (result models.CatalogueItem, err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
 	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
@@ -329,15 +329,20 @@ func (svc *CatalogueService) GetCatalogueCategoriesCodebook(searchString string,
 	return result, err
 }
 
-func (svc *CatalogueService) CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (uid string, err error) {
+func (svc *CatalogueService) CreateNewCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (result models.CatalogueItem, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	//create new item
 	query := NewCatalogueItemQuery(catalogueItem, userUID)
-	uid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	uid, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 
-	return uid, err
+	if err == nil {
+		//get created item
+		result, err = svc.GetCatalogueItemWithDetailsByUid(uid)
+	}
+
+	return result, err
 }
 
 func (svc *CatalogueService) GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error) {
@@ -381,7 +386,7 @@ func (svc *CatalogueService) GetCatalogueCategoryPhysicalItemPropertiesByUid(uid
 	return properties, err
 }
 
-func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (err error) {
+func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (result models.CatalogueItem, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
@@ -397,10 +402,15 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 			//update category query
 			query := UpdateCatalogueItemQuery(catalogueItem, &originalItem, userUID)
 			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+
+			if err == nil {
+				//get updated item
+				result, err = svc.GetCatalogueItemWithDetailsByUid(catalogueItem.Uid)
+			}
 		}
 	}
 
-	return err
+	return result, err
 }
 
 func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (err error) {
