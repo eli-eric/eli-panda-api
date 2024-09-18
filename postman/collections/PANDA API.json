@@ -2820,6 +2820,53 @@
 					"response": []
 				},
 				{
+					"name": "Recalculate spare parts",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"id": "be97441d-e330-47f4-bd08-1780dc73864a",
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript",
+								"packages": {}
+							}
+						}
+					],
+					"id": "88024584-04b3-41c8-ab5b-fbeaed1c5175",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{bearerToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/systems/recalculate-spare-parts",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"systems",
+								"recalculate-spare-parts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
 					"name": "Update system type",
 					"event": [
 						{
