@@ -1458,3 +1458,24 @@ func CreateNewSystemForNewSystemCodeQuery(parentUID, systemCode, systemTypeUID, 
 
 	return result
 }
+
+func RecalculateSparePartsCoverageCoeficientQuery() (result helpers.DatabaseQuery) {
+	result.Query = `
+	match(sp)-[spf:IS_SPARE_FOR]->(o)
+    with sp, count(spf) as spfs, collect(spf) as spc
+    FOREACH (x IN spc | SET x.coverage = 1.0 / spfs)
+	RETURN true as result`
+	result.ReturnAlias = "result"
+	return result
+}
+
+func RecalculateSystemSparePartsCoverageQuery() (result helpers.DatabaseQuery) {
+	result.Query = `
+	match(s:System) where s.minimalSpareParstCount is not null and s.minimalSpareParstCount > 0
+	optional match(sp)-[spf:IS_SPARE_FOR]->(s) 
+	with s, coalesce(sum(spf.coverage),0) as coverage
+	set s.sparePartsCoverageSum = coverage, s.sp_coverage = coverage/s.minimalSpareParstCount
+	RETURN true as result`
+	result.ReturnAlias = "result"
+	return result
+}

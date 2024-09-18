@@ -62,6 +62,7 @@ type ISystemsService interface {
 	GetAllSystemTypes() (result []codebookModels.Codebook, err error)
 	GetAllZones(facilityCode string) (result []codebookModels.Codebook, err error)
 	CreateNewSystemCode(parentUID, systemTypeUID, zoneUID, facilityCode, userUID string) (result models.System, err error)
+	RecalculateSpareParts() (err error)
 }
 
 // Create new security service instance
@@ -643,4 +644,25 @@ func (svc *SystemsService) CreateNewSystemCode(parentUID, systemTypeUID, zoneUID
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(newSystemUid, facilityCode))
 
 	return result, err
+}
+
+func (svc *SystemsService) RecalculateSpareParts() (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, RecalculateSparePartsCoverageCoeficientQuery())
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return err
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothing(session, RecalculateSystemSparePartsCoverageQuery())
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return err
+	}
+
+	return err
 }

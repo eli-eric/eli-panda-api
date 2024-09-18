@@ -193,6 +193,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/systems/recalculate-spare-parts": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Recalculate spare parts for all systems",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Recalculate spare parts",
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/sync-locations-by-eun": {
             "post": {
                 "security": [

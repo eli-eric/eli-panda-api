@@ -51,6 +51,7 @@ type ISystemsHandlers interface {
 	GetAllSystemTypes() echo.HandlerFunc
 	GetAllZones() echo.HandlerFunc
 	CreateNewSystemCode() echo.HandlerFunc
+	RecalculateSpareParts() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -832,5 +833,27 @@ func (h *SystemsHandlers) CreateNewSystemCode() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for RecalculateSpareParts
+// @Summary Recalculate spare parts
+// @Description Recalculate spare parts for all systems
+// @Tags Systems
+// @Security BearerAuth
+// @Success 204 "No content"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/recalculate-spare-parts [post]
+func (h *SystemsHandlers) RecalculateSpareParts() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		err := h.systemsService.RecalculateSpareParts()
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
 	}
 }

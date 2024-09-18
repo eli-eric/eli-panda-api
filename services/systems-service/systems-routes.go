@@ -85,4 +85,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// create new system with system code
 	e.POST("/v1/system/system-code", m.Authorization(h.CreateNewSystemCode(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	// recalculate spare parts for system
+	e.POST("/v1/systems/recalculate-spare-parts", m.Authorization(h.RecalculateSpareParts(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }

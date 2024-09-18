@@ -383,6 +383,19 @@ paths:
       summary: Get all locations flat list
       tags:
       - Systems
+  /v1/systems/recalculate-spare-parts:
+    post:
+      description: Recalculate spare parts for all systems
+      responses:
+        "204":
+          description: No content
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Recalculate spare parts
+      tags:
+      - Systems
   /v1/systems/sync-locations-by-eun:
     post:
       consumes:
