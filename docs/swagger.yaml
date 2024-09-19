@@ -176,6 +176,10 @@ definitions:
         type: integer
       statistics:
         $ref: '#/definitions/models.SystemStatistics'
+      subSystems:
+        items:
+          $ref: '#/definitions/models.System'
+        type: array
       systemAlias:
         type: string
       systemCode:
@@ -231,8 +235,14 @@ definitions:
     type: object
   models.SystemStatistics:
     properties:
+      minimalSpareParstCount:
+        type: number
+      sp_coverage:
+        type: number
       sparePartsCount:
         type: integer
+      sparePartsCoverageSum:
+        type: number
       subsystemsCount:
         type: integer
     type: object

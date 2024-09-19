@@ -613,6 +613,9 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	minimalSpareParstCount: sys.minimalSpareParstCount,
+	sparePartsCoverageSum: sys.sparePartsCoverageSum,
+	sp_coverage: sys.sp_coverage,
 	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
@@ -640,7 +643,12 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 			supplier: case when supplier is not null then {uid: supplier.uid, name: supplier.name} else null end
 			} else null end	
 	} else null end,
-	statistics: {subsystemsCount: count(subsys)}
+	statistics: {
+			subsystemsCount: count(subsys),
+			minimalSpareParstCount: sys.minimalSpareParstCount,
+			sparePartsCoverageSum: sys.sparePartsCoverageSum,
+			sp_coverage: sys.sp_coverage
+	}
 	} AS systems
 
 ` + GetSystemsOrderByClauses(sorting) + `
@@ -703,6 +711,9 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	minimalSpareParstCount: sys.minimalSpareParstCount,
+	sparePartsCoverageSum: sys.sparePartsCoverageSum,
+	sp_coverage: sys.sp_coverage,
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
@@ -727,7 +738,12 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
 		} else null end	
 		} else null end,
-		statistics: {subsystemsCount: count(subsys)}
+		statistics: {
+			subsystemsCount: count(subsys),
+			minimalSpareParstCount: sys.minimalSpareParstCount,
+			sparePartsCoverageSum: sys.sparePartsCoverageSum,
+			sp_coverage: sys.sp_coverage
+	}
 		} AS systems
 	ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.name
 	LIMIT 1000
@@ -736,6 +752,77 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["parentUID"] = parentUID
+
+	return result
+}
+
+func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `	
+	MATCH(sys) WHERE sys.uid IN $uids `
+
+	result.Query += `	
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
+	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
+	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
+	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
+    OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	RETURN DISTINCT {  
+		uid: sys.uid,
+	description: sys.description,
+	name: sys.name,
+	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	hasSubsystems: case when subsys is not null then true else false end,
+	sparesIn: count(distinct spareIN),
+	sparesOut: count(distinct spareOUT),
+	systemCode: sys.systemCode,
+	systemAlias: sys.systemAlias,
+	systemLevel: sys.systemLevel,	
+	miniImageUrl: split(sys.miniImageUrl, ";"),
+	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
+	isTechnologicalUnit: sys.isTechnologicalUnit,
+	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
+	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
+	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
+	lastUpdateTime: sys.lastUpdateTime,
+	lastUpdateBy: sys.lastUpdateBy,	
+	physicalItem: case when physicalItem is not null then {
+		uid: physicalItem.uid, 
+		eun: physicalItem.eun, 
+		serialNumber: physicalItem.serialNumber,
+		price: physicalItem.price,
+		currency: physicalItem.currency,
+		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
+		catalogueItem: case when catalogueItem is not null then {
+			uid: catalogueItem.uid,
+			name: catalogueItem.name,
+			catalogueNumber: catalogueItem.catalogueNumber,
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+		} else null end	
+		} else null end,
+	statistics: {
+			subsystemsCount: count(subsys),
+			minimalSpareParstCount: sys.minimalSpareParstCount,
+			sparePartsCoverageSum: sys.sparePartsCoverageSum,
+			sp_coverage: sys.sp_coverage
+	}
+		} AS systems
+	ORDER BY systems.hasSubsystems desc, systems.systemLevelOrder, systems.name
+	LIMIT 1000
+`
+	result.ReturnAlias = "systems"
+
+	result.Parameters["uids"] = uids
 
 	return result
 }
@@ -760,6 +847,9 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
+	minimalSpareParstCount: sys.minimalSpareParstCount,
+	sparePartsCoverageSum: sys.sparePartsCoverageSum,
+	sp_coverage: sys.sp_coverage,
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	isTechnologicalUnit: sys.isTechnologicalUnit,
 	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
@@ -783,7 +873,12 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
 		} else null end	
 	} else null end,
-	statistics: {subsystemsCount: count(subsys)}
+	statistics: {
+			subsystemsCount: count(subsys),
+			minimalSpareParstCount: sys.minimalSpareParstCount,
+			sparePartsCoverageSum: sys.sparePartsCoverageSum,
+			sp_coverage: sys.sp_coverage
+	}
 } AS system`
 	result.ReturnAlias = "system"
 	result.Parameters = make(map[string]interface{})
@@ -832,7 +927,12 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
 		} else null end	
 	} else null end,
-	statistics: {subsystemsCount: count(subsys)}} AS system;`
+	statistics: {
+			subsystemsCount: count(subsys),
+			minimalSpareParstCount: sys.minimalSpareParstCount,
+			sparePartsCoverageSum: sys.sparePartsCoverageSum,
+			sp_coverage: sys.sp_coverage
+	}} AS system;`
 	result.ReturnAlias = "system"
 
 	result.Parameters = make(map[string]interface{})

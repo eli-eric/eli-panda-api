@@ -52,6 +52,7 @@ type ISystemsHandlers interface {
 	GetAllZones() echo.HandlerFunc
 	CreateNewSystemCode() echo.HandlerFunc
 	RecalculateSpareParts() echo.HandlerFunc
+	GetSystemsTreeByUids() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -855,5 +856,30 @@ func (h *SystemsHandlers) RecalculateSpareParts() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// get array of SystemTreeUid from the body
+		uids := new([]models.SystemTreeUid)
+
+		if err := c.Bind(uids); err != nil {
+			log.Error().Msg(err.Error())
+			return echo.ErrBadRequest
+		}
+
+		systems, err := h.systemsService.GetSystemsTreeByUids(*uids)
+
+		helpers.ProcessArrayResult(&systems, err)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, systems)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }

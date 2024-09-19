@@ -584,6 +584,12 @@ const docTemplate = `{
                 "statistics": {
                     "$ref": "#/definitions/models.SystemStatistics"
                 },
+                "subSystems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.System"
+                    }
+                },
                 "systemAlias": {
                     "type": "string"
                 },
@@ -669,8 +675,17 @@ const docTemplate = `{
         "models.SystemStatistics": {
             "type": "object",
             "properties": {
+                "minimalSpareParstCount": {
+                    "type": "number"
+                },
+                "sp_coverage": {
+                    "type": "number"
+                },
                 "sparePartsCount": {
                     "type": "integer"
+                },
+                "sparePartsCoverageSum": {
+                    "type": "number"
                 },
                 "subsystemsCount": {
                     "type": "integer"

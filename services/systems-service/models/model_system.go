@@ -28,6 +28,12 @@ type System struct {
 	SparesIn      int                    `json:"sparesIn" neo4j:"ignore"`
 	History       *[]SystemHistory       `json:"history,omitempty" neo4j:"ignore"`
 	MiniImageUrl  *[]string              `json:"miniImageUrl" neo4j:"ignore"`
+	SubSystems    *[]System              `json:"subSystems,omitempty" neo4j:"ignore"`
+}
+
+type SystemTreeUid struct {
+	UID      string           `json:"uid"`
+	Children *[]SystemTreeUid `json:"children"`
 }
 
 type PhysicalItem struct {
@@ -54,8 +60,11 @@ type SystemSimpleResponse struct {
 }
 
 type SystemStatistics struct {
-	SubsystemsCount int `json:"subsystemsCount"`
-	SparePartsCount int `json:"sparePartsCount"`
+	SubsystemsCount        int      `json:"subsystemsCount"`
+	SparePartsCount        int      `json:"sparePartsCount"`
+	MinimalSpareParstCount *float32 `json:"minimalSpareParstCount" neo4j:"ignore"`
+	SparePartsCoverageSum  *float32 `json:"sparePartsCoverageSum" neo4j:"ignore"`
+	Sp_coverage            *float32 `json:"sp_coverage" neo4j:"ignore"`
 }
 
 type SystemRelationship struct {

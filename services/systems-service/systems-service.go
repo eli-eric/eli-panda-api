@@ -63,6 +63,9 @@ type ISystemsService interface {
 	GetAllZones(facilityCode string) (result []codebookModels.Codebook, err error)
 	CreateNewSystemCode(parentUID, systemTypeUID, zoneUID, facilityCode, userUID string) (result models.System, err error)
 	RecalculateSpareParts() (err error)
+	GetSystemsByUids(uids []string) (result []models.System, err error)
+	GetSystemsTreeByUids(uids []models.SystemTreeUid) (result []models.System, err error)
+	BuildSystemHierarchy(tree models.SystemTreeUid) (*models.System, error)
 }
 
 // Create new security service instance
@@ -665,4 +668,55 @@ func (svc *SystemsService) RecalculateSpareParts() (err error) {
 	}
 
 	return err
+}
+
+func (svc *SystemsService) GetSystemsByUids(uids []string) (result []models.System, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemsByUidsQuery(uids)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.System](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemsTreeByUids(uids []models.SystemTreeUid) (result []models.System, err error) {
+
+	for _, tree := range uids {
+		system, err := svc.BuildSystemHierarchy(tree)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, *system)
+	}
+
+	return result, err
+}
+
+// Recursive function to map SystemTreeUid to System structure
+func (svc *SystemsService) BuildSystemHierarchy(tree models.SystemTreeUid) (*models.System, error) {
+	// Retrieve the system for the current node's UID
+	systems, err := svc.GetSystemsByUids([]string{tree.UID})
+	if err != nil || len(systems) == 0 {
+		log.Error().Msg(err.Error())
+		return nil, err
+	}
+	system := systems[0]
+
+	// Recursively build children
+	if tree.Children != nil {
+		var subSystems []models.System
+		for _, childTree := range *tree.Children {
+			childSystem, err := svc.BuildSystemHierarchy(childTree)
+			if err != nil {
+				return nil, err
+			}
+			subSystems = append(subSystems, *childSystem)
+		}
+		system.SubSystems = &subSystems
+	}
+
+	return &system, nil
 }
