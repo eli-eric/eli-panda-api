@@ -859,6 +859,15 @@ func (h *SystemsHandlers) RecalculateSpareParts() echo.HandlerFunc {
 	}
 }
 
+// Swagger documentation for GetSystemsTreeByUids
+// @Summary Get systems tree by UIDs
+// @Description Get systems tree by UIDs
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body []models.SystemTreeUid true "Array of system tree UIDs"
+// @Success 200 {array} models.System
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/reload [get]
 func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

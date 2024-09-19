@@ -215,6 +215,48 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/systems/reload": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get systems tree by UIDs",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get systems tree by UIDs",
+                "parameters": [
+                    {
+                        "description": "Array of system tree UIDs",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemTreeUid"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.System"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/sync-locations-by-eun": {
             "post": {
                 "security": [
@@ -689,6 +731,20 @@ const docTemplate = `{
                 },
                 "subsystemsCount": {
                     "type": "integer"
+                }
+            }
+        },
+        "models.SystemTreeUid": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemTreeUid"
+                    }
+                },
+                "uid": {
+                    "type": "string"
                 }
             }
         },

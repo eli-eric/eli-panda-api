@@ -246,6 +246,15 @@ definitions:
       subsystemsCount:
         type: integer
     type: object
+  models.SystemTreeUid:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.SystemTreeUid'
+        type: array
+      uid:
+        type: string
+    type: object
   models.UserAuthInfo:
     properties:
       accessToken:
@@ -404,6 +413,32 @@ paths:
       security:
       - BearerAuth: []
       summary: Recalculate spare parts
+      tags:
+      - Systems
+  /v1/systems/reload:
+    get:
+      description: Get systems tree by UIDs
+      parameters:
+      - description: Array of system tree UIDs
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.SystemTreeUid'
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.System'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems tree by UIDs
       tags:
       - Systems
   /v1/systems/sync-locations-by-eun:
