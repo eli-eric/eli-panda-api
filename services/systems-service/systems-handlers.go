@@ -867,7 +867,7 @@ func (h *SystemsHandlers) RecalculateSpareParts() echo.HandlerFunc {
 // @Param body body []models.SystemTreeUid true "Array of system tree UIDs"
 // @Success 200 {array} models.System
 // @Failure 500 "Internal server error"
-// @Router /v1/systems/reload [get]
+// @Router /v1/systems/reload [post]
 func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

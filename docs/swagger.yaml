@@ -416,7 +416,7 @@ paths:
       tags:
       - Systems
   /v1/systems/reload:
-    get:
+    post:
       description: Get systems tree by UIDs
       parameters:
       - description: Array of system tree UIDs

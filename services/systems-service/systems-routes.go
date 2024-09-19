@@ -89,5 +89,5 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	// recalculate spare parts for system
 	e.POST("/v1/systems/recalculate-spare-parts", m.Authorization(h.RecalculateSpareParts(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
-	e.GET("/v1/systems/reload", m.Authorization(h.GetSystemsTreeByUids(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+	e.POST("/v1/systems/reload", m.Authorization(h.GetSystemsTreeByUids(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 }

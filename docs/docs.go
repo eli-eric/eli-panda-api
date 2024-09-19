@@ -216,7 +216,7 @@ const docTemplate = `{
             }
         },
         "/v1/systems/reload": {
-            "get": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []

@@ -2,6 +2,7 @@ package systemsService
 
 import (
 	"errors"
+	"fmt"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
@@ -64,7 +65,7 @@ type ISystemsService interface {
 	CreateNewSystemCode(parentUID, systemTypeUID, zoneUID, facilityCode, userUID string) (result models.System, err error)
 	RecalculateSpareParts() (err error)
 	GetSystemsByUids(uids []string) (result []models.System, err error)
-	GetSystemsTreeByUids(uids []models.SystemTreeUid) (result []models.System, err error)
+	GetSystemsTreeByUids(trees []models.SystemTreeUid) (result []models.System, err error)
 	BuildSystemHierarchy(tree models.SystemTreeUid) (*models.System, error)
 }
 
@@ -682,10 +683,26 @@ func (svc *SystemsService) GetSystemsByUids(uids []string) (result []models.Syst
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemsTreeByUids(uids []models.SystemTreeUid) (result []models.System, err error) {
+func (svc *SystemsService) GetSystemsTreeByUids(trees []models.SystemTreeUid) (result []models.System, err error) {
 
-	for _, tree := range uids {
-		system, err := svc.BuildSystemHierarchy(tree)
+	// Step 1: Collect all UIDs
+	uids := collectUids(trees)
+
+	// Step 2: Retrieve all systems from the database in one query
+	systems, err := svc.GetSystemsByUids(uids)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: Create a map of UID -> System for quick lookup
+	systemMap := make(map[string]models.System)
+	for _, system := range systems {
+		systemMap[system.UID] = system
+	}
+
+	// Step 4: Build the system hierarchy
+	for _, tree := range trees {
+		system, err := buildSystemHierarchy(tree, systemMap)
 		if err != nil {
 			return nil, err
 		}
@@ -719,4 +736,49 @@ func (svc *SystemsService) BuildSystemHierarchy(tree models.SystemTreeUid) (*mod
 	}
 
 	return &system, nil
+}
+
+// Recursive function to map SystemTreeUid to System structure using preloaded Systems
+func buildSystemHierarchy(tree models.SystemTreeUid, systemMap map[string]models.System) (*models.System, error) {
+	// Retrieve the system for the current node's UID from the preloaded map
+	system, exists := systemMap[tree.UID]
+	if !exists {
+		return nil, fmt.Errorf("system with UID %s not found", tree.UID)
+	}
+
+	// Recursively build children
+	if tree.Children != nil {
+		var subSystems []models.System
+		for _, childTree := range *tree.Children {
+			childSystem, err := buildSystemHierarchy(childTree, systemMap)
+			if err != nil {
+				return nil, err
+			}
+			subSystems = append(subSystems, *childSystem)
+		}
+		system.SubSystems = &subSystems
+	}
+
+	return &system, nil
+}
+
+// Helper function to collect all UIDs from the tree (including root and children)
+func collectUids(trees []models.SystemTreeUid) []string {
+	var uids []string
+	var collect func(tree models.SystemTreeUid)
+
+	collect = func(tree models.SystemTreeUid) {
+		uids = append(uids, tree.UID)
+		if tree.Children != nil {
+			for _, child := range *tree.Children {
+				collect(child)
+			}
+		}
+	}
+
+	for _, tree := range trees {
+		collect(tree)
+	}
+
+	return uids
 }
