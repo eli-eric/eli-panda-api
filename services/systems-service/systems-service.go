@@ -668,6 +668,13 @@ func (svc *SystemsService) RecalculateSpareParts() (err error) {
 		return err
 	}
 
+	err = helpers.WriteNeo4jAndReturnNothing(session, RecalculateSystemSparePartsEmptyCoverageQuery())
+
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return err
+	}
+
 	return err
 }
 

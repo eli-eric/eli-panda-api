@@ -1580,3 +1580,12 @@ func RecalculateSystemSparePartsCoverageQuery() (result helpers.DatabaseQuery) {
 	result.ReturnAlias = "result"
 	return result
 }
+
+func RecalculateSystemSparePartsEmptyCoverageQuery() (result helpers.DatabaseQuery) {
+	result.Query = `	
+	match(s:System) where s.minimalSpareParstCount is null OR s.minimalSpareParstCount = 0
+	set s.sp_coverage = NULL
+	RETURN true as result`
+	result.ReturnAlias = "result"
+	return result
+}
