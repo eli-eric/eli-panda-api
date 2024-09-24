@@ -449,9 +449,7 @@
                 "propertyGroup": {
                     "type": "string"
                 },
-                "value": {
-                    "type": "any"
-                }
+                "value": {}
             }
         },
         "models.Codebook": {
@@ -554,9 +552,7 @@
                 "orderUid": {
                     "type": "string"
                 },
-                "price": {
-                    "type": "any"
-                },
+                "price": {},
                 "serialNumber": {
                     "type": "string"
                 },

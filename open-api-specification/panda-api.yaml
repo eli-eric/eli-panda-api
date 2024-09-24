@@ -63,8 +63,7 @@ definitions:
         $ref: '#/definitions/models.CatalogueCategoryProperty'
       propertyGroup:
         type: string
-      value:
-        type: any
+      value: {}
     type: object
   models.Codebook:
     properties:
@@ -131,8 +130,7 @@ definitions:
         type: string
       orderUid:
         type: string
-      price:
-        type: any
+      price: {}
       serialNumber:
         type: string
       uid:
