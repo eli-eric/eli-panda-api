@@ -395,10 +395,11 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 		result.Parameters["filterSystemCode"] = strings.ToLower(*filterVal)
 	}
 
-	//system alias
-	if filterVal := helpers.GetFilterValueString(filering, "systemAlias"); filterVal != nil {
-		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemAlias) CONTAINS $filterSystemAlias `
-		result.Parameters["filterSystemAlias"] = strings.ToLower(*filterVal)
+	// system sp_coverage
+	if filterVal := helpers.GetFilterValueRangeFloat64(filering, "sparePartsCoverage"); filterVal != nil {
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE sys.sp_coverage IS NOT NULL AND (($filterSPCoverageFrom IS NULL OR toFloat(sys.sp_coverage) >= $filterSPCoverageFrom) AND ($filterSPCoverageTo IS NULL OR toFloat(sys.sp_coverage) <= $filterSPCoverageTo)) `
+		result.Parameters["filterSPCoverageFrom"] = filterVal.Min
+		result.Parameters["filterSPCoverageTo"] = filterVal.Max
 	}
 
 	//system type
