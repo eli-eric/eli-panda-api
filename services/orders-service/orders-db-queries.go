@@ -204,7 +204,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		price: ol.price,
 		currency: ol.currency, 
 		notes: ol.notes,
-		name: itm.name, 
+		name: ci.name, 
 		eun: itm.eun,
 		serialNumber: itm.serialNumber,
 		isDelivered: ol.isDelivered,
