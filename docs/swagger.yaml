@@ -63,8 +63,7 @@ definitions:
         $ref: '#/definitions/models.CatalogueCategoryProperty'
       propertyGroup:
         type: string
-      value:
-        type: any
+      value: {}
     type: object
   models.Codebook:
     properties:
@@ -131,8 +130,7 @@ definitions:
         type: string
       orderUid:
         type: string
-      price:
-        type: any
+      price: {}
       serialNumber:
         type: string
       uid:
@@ -176,6 +174,10 @@ definitions:
         type: integer
       statistics:
         $ref: '#/definitions/models.SystemStatistics'
+      subSystems:
+        items:
+          $ref: '#/definitions/models.System'
+        type: array
       systemAlias:
         type: string
       systemCode:
@@ -231,10 +233,25 @@ definitions:
     type: object
   models.SystemStatistics:
     properties:
+      minimalSpareParstCount:
+        type: number
+      sp_coverage:
+        type: number
       sparePartsCount:
         type: integer
+      sparePartsCoverageSum:
+        type: number
       subsystemsCount:
         type: integer
+    type: object
+  models.SystemTreeUid:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.SystemTreeUid'
+        type: array
+      uid:
+        type: string
     type: object
   models.UserAuthInfo:
     properties:
@@ -381,6 +398,45 @@ paths:
       security:
       - BearerAuth: []
       summary: Get all locations flat list
+      tags:
+      - Systems
+  /v1/systems/recalculate-spare-parts:
+    post:
+      description: Recalculate spare parts for all systems
+      responses:
+        "204":
+          description: No content
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Recalculate spare parts
+      tags:
+      - Systems
+  /v1/systems/reload:
+    post:
+      description: Get systems tree by UIDs
+      parameters:
+      - description: Array of system tree UIDs
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.SystemTreeUid'
+          type: array
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.System'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems tree by UIDs
       tags:
       - Systems
   /v1/systems/sync-locations-by-eun:

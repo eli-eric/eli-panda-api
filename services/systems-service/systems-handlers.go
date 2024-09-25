@@ -51,6 +51,8 @@ type ISystemsHandlers interface {
 	GetAllSystemTypes() echo.HandlerFunc
 	GetAllZones() echo.HandlerFunc
 	CreateNewSystemCode() echo.HandlerFunc
+	RecalculateSpareParts() echo.HandlerFunc
+	GetSystemsTreeByUids() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -647,15 +649,145 @@ func (h *SystemsHandlers) GetSystemAsCsv() echo.HandlerFunc {
 
 			writer := csv.NewWriter(c.Response())
 			writer.UseCRLF = true
-			writer.Comma = ';'
+			writer.Comma = ','
 
 			defer writer.Flush()
-
+			// write header based on System struct
 			// write header
-			writer.Write([]string{"UID", "Name"})
+			writer.Write([]string{
+				"Name",
+				"SystemType",
+				"SystemCode",
+				"Zone",
+				"Location",
+				"Importance",
+				"EUN",
+				"SerialNumber",
+				"ItemUsage",
+				"SparePartsCoverage",
+				"MinimumSpareParts",
+				"CatalogueNumber",
+				"CatalogueCategory",
+				"Supplier",
+				"Owner",
+				"Responsible",
+				"ParentPath",
+				"Description",
+				"HasSubsystems",
+				"SystemLevel",
+				"OrderNumber",
+				"OrderUid",
+				"UID"})
 
 			for _, item := range items.Data {
-				writer.Write([]string{item.UID, item.Name})
+				// construct parent path string
+				parentPath := ""
+				for ip, parent := range item.ParentPath {
+					if ip > 0 {
+						parentPath += " > "
+					}
+					parentPath += parent.Name
+				}
+				systemType := ""
+				if item.SystemType != nil {
+					systemType = item.SystemType.Name
+				}
+				description := ""
+				if item.Description != nil {
+					description = *item.Description
+				}
+				systemCode := ""
+				if item.SystemCode != nil {
+					systemCode = *item.SystemCode
+				}
+				zone := ""
+				if item.Zone != nil {
+					zone = item.Zone.Code
+				}
+				location := ""
+				if item.Location != nil {
+					location = item.Location.Code
+				}
+				systemLevel := ""
+				if item.SystemLevel != nil {
+					systemLevel = *item.SystemLevel
+				}
+				owner := ""
+				if item.Owner != nil {
+					owner = item.Owner.Name
+				}
+				responsible := ""
+				if item.Responsible != nil {
+					responsible = item.Responsible.Name
+				}
+				importance := ""
+				if item.Importance != nil {
+					importance = item.Importance.Name
+				}
+				eun := ""
+				if item.PhysicalItem != nil && item.PhysicalItem.EUN != nil {
+					eun = *item.PhysicalItem.EUN
+				}
+				serialNumber := ""
+				if item.PhysicalItem != nil && item.PhysicalItem.SerialNumber != nil {
+					serialNumber = *item.PhysicalItem.SerialNumber
+				}
+				itemUsage := ""
+				if item.PhysicalItem != nil && item.PhysicalItem.ItemUsage != nil {
+					itemUsage = item.PhysicalItem.ItemUsage.Name
+				}
+				catalogueNumber := ""
+				if item.PhysicalItem != nil {
+					catalogueNumber = item.PhysicalItem.CatalogueItem.CatalogueNumber
+				}
+				catalogueCategory := ""
+				if item.PhysicalItem != nil {
+					catalogueCategory = item.PhysicalItem.CatalogueItem.Category.Name
+				}
+				orderNumber := ""
+				if item.PhysicalItem != nil && item.PhysicalItem.OrderNumber != nil {
+					orderNumber = *item.PhysicalItem.OrderNumber
+				}
+				orderUid := ""
+				if item.PhysicalItem != nil && item.PhysicalItem.OrderUid != nil {
+					orderUid = *item.PhysicalItem.OrderUid
+				}
+				supplier := ""
+				if item.PhysicalItem != nil && item.PhysicalItem.CatalogueItem.Supplier != nil {
+					supplier = item.PhysicalItem.CatalogueItem.Supplier.Name
+				}
+				sparePartsCoverage := ""
+				if item.Statistics != nil && item.Statistics.Sp_coverage != nil {
+					sparePartsCoverage = strconv.FormatFloat(float64(*item.Statistics.Sp_coverage), 'f', -1, 32)
+				}
+				minimumSpareParts := ""
+				if item.Statistics != nil && item.Statistics.MinimalSpareParstCount != nil {
+					minimumSpareParts = strconv.FormatFloat(float64(*item.Statistics.MinimalSpareParstCount), 'f', -1, 32)
+				}
+				writer.Write([]string{
+					item.Name,
+					systemType,
+					systemCode,
+					zone,
+					location,
+					importance,
+					eun,
+					serialNumber,
+					itemUsage,
+					sparePartsCoverage,
+					minimumSpareParts,
+					catalogueNumber,
+					catalogueCategory,
+					supplier,
+					owner,
+					responsible,
+					parentPath,
+					description,
+					strconv.FormatBool(item.HasSubsystems),
+					systemLevel,
+					orderNumber,
+					orderUid,
+					item.UID})
 			}
 
 			return nil
@@ -832,5 +964,61 @@ func (h *SystemsHandlers) CreateNewSystemCode() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for RecalculateSpareParts
+// @Summary Recalculate spare parts
+// @Description Recalculate spare parts for all systems
+// @Tags Systems
+// @Security BearerAuth
+// @Success 204 "No content"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/recalculate-spare-parts [post]
+func (h *SystemsHandlers) RecalculateSpareParts() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		err := h.systemsService.RecalculateSpareParts()
+
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// Swagger documentation for GetSystemsTreeByUids
+// @Summary Get systems tree by UIDs
+// @Description Get systems tree by UIDs
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body []models.SystemTreeUid true "Array of system tree UIDs"
+// @Success 200 {array} models.System
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/reload [post]
+func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// get array of SystemTreeUid from the body
+		uids := new([]models.SystemTreeUid)
+
+		if err := c.Bind(uids); err != nil {
+			log.Error().Msg(err.Error())
+			return echo.ErrBadRequest
+		}
+
+		systems, err := h.systemsService.GetSystemsTreeByUids(*uids)
+
+		helpers.ProcessArrayResult(&systems, err)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, systems)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
 	}
 }
