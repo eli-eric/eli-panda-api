@@ -100,6 +100,18 @@ func (h *OrdersHandlers) GetOrderWithOrderLinesByUid() echo.HandlerFunc {
 	}
 }
 
+// InsertNewOrder godoc
+// @Summary Insert a new order
+// @Description Insert a new order
+// @Tags Orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param order body models.OrderDetail true "Order object that needs to be inserted"
+// @Success 200 {object} models.OrderDetail
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order [post]
 func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -135,6 +147,18 @@ func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 	}
 }
 
+// UpdateOrder godoc
+// @Summary Update an order
+// @Description Update an order
+// @Tags Orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param order body models.OrderDetail true "Order object that needs to be updated"
+// @Success 200 {object} models.OrderDetail
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order [put]
 func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
