@@ -116,6 +116,68 @@ definitions:
           $ref: '#/definitions/models.GraphNode'
         type: array
     type: object
+  models.OrderDetail:
+    properties:
+      contractNumber:
+        type: string
+      lastUpdateTime:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      orderDate:
+        type: string
+      orderLines:
+        items:
+          $ref: '#/definitions/models.OrderLine'
+        type: array
+      orderNumber:
+        type: string
+      orderStatus:
+        $ref: '#/definitions/models.Codebook'
+      procurementResponsible:
+        $ref: '#/definitions/models.Codebook'
+      requestNumber:
+        type: string
+      requestor:
+        $ref: '#/definitions/models.Codebook'
+      supplier:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
+  models.OrderLine:
+    properties:
+      catalogueNumber:
+        type: string
+      catalogueUid:
+        type: string
+      currency:
+        type: string
+      deliveredTime:
+        type: string
+      eun:
+        type: string
+      isDelivered:
+        type: boolean
+      itemUsage:
+        $ref: '#/definitions/models.Codebook'
+      location:
+        $ref: '#/definitions/models.Codebook'
+      name:
+        type: string
+      notes:
+        type: string
+      price:
+        type: number
+      serialNumber:
+        type: string
+      system:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
   models.PhysicalItem:
     properties:
       catalogueItem:
@@ -337,6 +399,61 @@ paths:
       summary: Get user by azure id token
       tags:
       - Security
+  /v1/order:
+    post:
+      consumes:
+      - application/json
+      description: Insert a new order
+      parameters:
+      - description: Order object that needs to be inserted
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderDetail'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrderDetail'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Insert a new order
+      tags:
+      - Orders
+    put:
+      consumes:
+      - application/json
+      description: Update an order
+      parameters:
+      - description: Order object that needs to be updated
+        in: body
+        name: order
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderDetail'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrderDetail'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update an order
+      tags:
+      - Orders
   /v1/order/{uid}:
     delete:
       description: Delete an order by order UID
