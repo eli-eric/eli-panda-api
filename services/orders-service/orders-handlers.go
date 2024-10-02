@@ -118,7 +118,15 @@ func (h *OrdersHandlers) InsertNewOrder() echo.HandlerFunc {
 		newUID, err := h.ordersService.InsertNewOrder(order, facilityCode, userUID)
 
 		if err == nil {
-			return c.JSON(http.StatusOK, newUID)
+			// get the updated order from the database
+			order, err := h.ordersService.GetOrderWithOrderLinesByUid(newUID, facilityCode)
+
+			if err != nil {
+				log.Error().Msg(err.Error())
+				return echo.ErrInternalServerError
+			}
+
+			return c.JSON(http.StatusOK, order)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
@@ -145,7 +153,17 @@ func (h *OrdersHandlers) UpdateOrder() echo.HandlerFunc {
 		err = h.ordersService.UpdateOrder(order, facilityCode, userUID)
 
 		if err == nil {
-			return c.NoContent(http.StatusNoContent)
+			// get the updated order from the database
+			order, err := h.ordersService.GetOrderWithOrderLinesByUid(order.UID, facilityCode)
+
+			if err != nil {
+
+				log.Error().Msg(err.Error())
+				return echo.ErrInternalServerError
+			}
+
+			return c.JSON(http.StatusOK, order)
+
 		} else if err == helpers.ERR_CONFLICT {
 			return echo.ErrConflict
 		} else {
