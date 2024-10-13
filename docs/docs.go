@@ -179,6 +179,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/order/items/eun/print": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get items for EUN print",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get items for EUN print",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "EUNs",
+                        "name": "euns",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ItemForEunPrint"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/order/{uid}": {
             "delete": {
                 "security": [
@@ -619,6 +665,32 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.GraphNode"
                     }
+                }
+            }
+        },
+        "models.ItemForEunPrint": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "manufacturer": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "integer"
+                },
+                "serialNumber": {
+                    "type": "string"
                 }
             }
         },
