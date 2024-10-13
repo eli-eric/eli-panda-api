@@ -254,6 +254,18 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 	}
 }
 
+// GetItemsForEunPrint godoc
+// @Summary Get items for EUN print
+// @Description Get items for EUN print
+// @Tags Orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param euns query string true "EUNs"
+// @Success 200 {object} []models.ItemForEunPrint
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order/items/eun/print [get]
 func (h *OrdersHandlers) GetItemsForEunPrint() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

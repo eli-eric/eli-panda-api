@@ -116,6 +116,23 @@ definitions:
           $ref: '#/definitions/models.GraphNode'
         type: array
     type: object
+  models.ItemForEunPrint:
+    properties:
+      catalogueNumber:
+        type: string
+      eun:
+        type: string
+      location:
+        type: string
+      manufacturer:
+        type: string
+      name:
+        type: string
+      quantity:
+        type: integer
+      serialNumber:
+        type: string
+    type: object
   models.OrderDetail:
     properties:
       contractNumber:
@@ -473,6 +490,35 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete an order
+      tags:
+      - Orders
+  /v1/order/items/eun/print:
+    get:
+      consumes:
+      - application/json
+      description: Get items for EUN print
+      parameters:
+      - description: EUNs
+        in: query
+        name: euns
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ItemForEunPrint'
+            type: array
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get items for EUN print
       tags:
       - Orders
   /v1/system/system-code:

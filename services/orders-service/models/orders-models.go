@@ -62,6 +62,7 @@ type ItemForEunPrint struct {
 	CatalogueNumber string `json:"catalogueNumber"`
 	SerialNumber    string `json:"serialNumber"`
 	Quantity        int    `json:"quantity"`
+	Location        string `json:"location"`
 }
 
 type OrderLineDelivery struct {

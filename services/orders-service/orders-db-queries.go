@@ -706,17 +706,19 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 
 	if len(euns) == 0 {
 		result.Query = `
-		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.printEUN = true
+		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) 
 	WITH o, itm, ci
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(supplier)
-	WITH o, itm, ci, supplier
+	OPTIONAL MATCH (loc)<-[:HAS_LOCATION]-(sys)-[:CONTAINS_ITEM]->(itm)
+	WITH o, itm, ci, supplier, loc
 	RETURN DISTINCT {
 		eun: itm.eun,
 		name: itm.name,
 		catalogueNumber: ci.catalogueNumber,
 		serialNumber: itm.serialNumber,
 		manufacturer: supplier.name,
-		quantity: 1
+		quantity: 1,
+		location: loc.code
 	} as items `
 
 	} else {
@@ -724,14 +726,16 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 	MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.eun IN $euns
 	WITH o, itm, ci
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(supplier)
-	WITH o, itm, ci, supplier
+	OPTIONAL MATCH (loc)<-[:HAS_LOCATION]-(sys)-[:CONTAINS_ITEM]->(itm)
+	WITH o, itm, ci, supplier, loc
 	RETURN DISTINCT {
 		eun: itm.eun,
 		name: itm.name,
 		catalogueNumber: ci.catalogueNumber,
 		serialNumber: itm.serialNumber,
 		manufacturer: supplier.name,
-		quantity: 1
+		quantity: 1,
+		location: loc.code
 	} as items `
 
 		result.Parameters["euns"] = euns
