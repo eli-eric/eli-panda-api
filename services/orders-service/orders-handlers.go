@@ -265,7 +265,7 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 // @Success 200 {object} []models.ItemForEunPrint
 // @Failure 401 "Unauthorized"
 // @Failure 500 "Internal Server Error"
-// @Router /v1/order/items/eun/print [get]
+// @Router /v1/orders/eun-for-print [get]
 func (h *OrdersHandlers) GetItemsForEunPrint() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
