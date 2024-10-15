@@ -492,7 +492,7 @@ paths:
       summary: Delete an order
       tags:
       - Orders
-  /v1/order/items/eun/print:
+  /v1/orders/eun-for-print:
     get:
       consumes:
       - application/json

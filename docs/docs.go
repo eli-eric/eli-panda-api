@@ -179,7 +179,41 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/order/items/eun/print": {
+        "/v1/order/{uid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete an order by order UID",
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Delete an order",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/orders/eun-for-print": {
             "get": {
                 "security": [
                     {
@@ -215,40 +249,6 @@ const docTemplate = `{
                                 "$ref": "#/definitions/models.ItemForEunPrint"
                             }
                         }
-                    },
-                    "401": {
-                        "description": "Unauthorized"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
-        "/v1/order/{uid}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete an order by order UID",
-                "tags": [
-                    "Orders"
-                ],
-                "summary": "Delete an order",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Order UID",
-                        "name": "uid",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
                     },
                     "401": {
                         "description": "Unauthorized"
