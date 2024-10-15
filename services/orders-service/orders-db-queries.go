@@ -706,7 +706,7 @@ func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 
 	if len(euns) == 0 {
 		result.Query = `
-		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) 
+		MATCH (o:Order)-[:HAS_ORDER_LINE]->(itm:Item)-[:IS_BASED_ON]->(ci:CatalogueItem) WHERE itm.printEUN = true
 	WITH o, itm, ci
 	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(supplier)
 	OPTIONAL MATCH (loc)<-[:HAS_LOCATION]-(sys)-[:CONTAINS_ITEM]->(itm)
