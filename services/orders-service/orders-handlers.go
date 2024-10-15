@@ -57,10 +57,7 @@ func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
 		pagination := c.QueryParam("pagination")
 		sorting := c.QueryParam("sorting")
 		search := c.QueryParam("search")
-		supplierUID := c.QueryParam("supplierUID")
-		orderStatusUID := c.QueryParam("orderStatusUID")
-		procurementResponsibleUID := c.QueryParam("procurementResponsibleUID")
-		requestorUID := c.QueryParam("requestorUID")
+
 		facilityCode := c.Get("facilityCode").(string)
 
 		pagingObject := new(helpers.Pagination)
@@ -69,7 +66,11 @@ func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
 		sortingObject := new([]helpers.Sorting)
 		json.Unmarshal([]byte(sorting), &sortingObject)
 
-		items, err := h.ordersService.GetOrdersWithSearchAndPagination(search, supplierUID, orderStatusUID, procurementResponsibleUID, requestorUID, facilityCode, pagingObject, sortingObject)
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		items, err := h.ordersService.GetOrdersWithSearchAndPagination(search, facilityCode, pagingObject, sortingObject, filterObject)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
