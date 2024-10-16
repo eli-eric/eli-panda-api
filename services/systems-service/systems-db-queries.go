@@ -645,7 +645,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 			} else null end	
 	} else null end,
 	statistics: {
-			subsystemsCount: count(subsys),
+			subsystemsCount: count(DISTINCT subsys),
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -740,7 +740,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end	
 		} else null end,
 		statistics: {
-			subsystemsCount: count(subsys),
+			subsystemsCount: count(DISTINCT subsys),
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -812,7 +812,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 		} else null end	
 		} else null end,
 	statistics: {
-			subsystemsCount: count(subsys),
+			subsystemsCount: count(DISTINCT subsys),
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -875,7 +875,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 		} else null end	
 	} else null end,
 	statistics: {
-			subsystemsCount: count(subsys),
+			subsystemsCount: count(DISTINCT subsys),
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -929,7 +929,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 		} else null end	
 	} else null end,
 	statistics: {
-			subsystemsCount: count(subsys),
+			subsystemsCount: count(DISTINCT subsys),
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
