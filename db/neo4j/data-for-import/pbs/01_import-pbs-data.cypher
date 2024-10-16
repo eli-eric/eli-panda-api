@@ -1,4 +1,7 @@
-:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/2024_08_30_PBS_import.csv' AS line
+// this is the main import script for PBS data
+// use this script to import PBS data into the system
+// example of the import file is in the file: db/neo4j/data-for-import/pbs/example.csv
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/chnagethefilename.csv' AS line
 with line
 where line.ImportInstr = "Yes" 
 and line.pandaOrderGUID is not null
