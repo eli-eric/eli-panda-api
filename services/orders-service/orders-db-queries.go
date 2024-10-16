@@ -27,7 +27,7 @@ func GetSuppliersAutoCompleteQuery(searchString string, limit int) (result helpe
 	return result
 }
 
-func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string, orderStatusUID string, procurementResponsibleUID string, requestorUID string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
 
@@ -49,31 +49,11 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 		WITH o `
 	}
 
-	if supplierUID != "" {
-		result.Query += `MATCH(o)-[:HAS_SUPPLIER]->(ss:Supplier{uid: $supplierUID}) `
-		result.Parameters["supplierUID"] = supplierUID
-	}
-
-	if orderStatusUID != "" {
-		result.Query += `MATCH(o)-[:HAS_ORDER_STATUS]->(oss:OrderStatus{uid: $orderStatusUID}) `
-		result.Parameters["orderStatusUID"] = orderStatusUID
-	}
-
-	if procurementResponsibleUID != "" {
-		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:Employee{uid: $procurementResponsibleUID}) `
-		result.Parameters["procurementResponsibleUID"] = procurementResponsibleUID
-	}
-
-	if requestorUID != "" {
-		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:Employee{uid: $requestorUID}) `
-		result.Parameters["requestorUID"] = requestorUID
-	}
+	// order filters
+	ApplyOrderFilters(&result, filtering)
 
 	result.Query += `	
-	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
-	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
-	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
-	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
+	WITH o, s, os, proc, req		
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -108,6 +88,88 @@ func GetOrdersBySearchTextFullTextQuery(searchString string, supplierUID string,
 	return result
 }
 
+func ApplyOrderFilters(result *helpers.DatabaseQuery, filtering *[]helpers.ColumnFilter) {
+	// order name
+	if filterVal := helpers.GetFilterValueString(filtering, "name"); filterVal != nil {
+		result.Query += ` WHERE toLower(o.name) CONTAINS $filterName `
+		result.Parameters["filterName"] = strings.ToLower(*filterVal)
+	}
+
+	// order number
+	if filterVal := helpers.GetFilterValueString(filtering, "orderNumber"); filterVal != nil {
+		result.Query += ` WITH o WHERE toLower(o.orderNumber) CONTAINS $filterOrderNumber `
+		result.Parameters["filterOrderNumber"] = strings.ToLower(*filterVal)
+	}
+
+	// request number
+	if filterVal := helpers.GetFilterValueString(filtering, "requestNumber"); filterVal != nil {
+		result.Query += ` WITH o WHERE toLower(o.requestNumber) CONTAINS $filterRequestNumber `
+		result.Parameters["filterRequestNumber"] = strings.ToLower(*filterVal)
+	}
+
+	// contract number
+	if filterVal := helpers.GetFilterValueString(filtering, "contractNumber"); filterVal != nil {
+		result.Query += ` WITH o WHERE toLower(o.contractNumber) CONTAINS $filterContractNumber `
+		result.Parameters["filterContractNumber"] = strings.ToLower(*filterVal)
+	}
+
+	// notes
+	if filterVal := helpers.GetFilterValueString(filtering, "notes"); filterVal != nil {
+		result.Query += ` WITH o WHERE toLower(o.notes) CONTAINS $filterNotes `
+		result.Parameters["filterNotes"] = strings.ToLower(*filterVal)
+	}
+
+	// supplier
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "supplier"); filterVal != nil {
+		result.Query += ` MATCH (o)-[:HAS_SUPPLIER]->(s) WHERE s.uid = $filterSupplier `
+		result.Parameters["filterSupplier"] = (*filterVal).UID
+	} else {
+		result.Query += ` OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  `
+	}
+
+	// order status
+	if filterVal := helpers.GetFilterValueListString(filtering, "orderStatus"); filterVal != nil {
+		result.Query += ` WITH o , s MATCH (o)-[:HAS_ORDER_STATUS]->(os) WHERE os.uid IN $filterOrderStatus `
+		result.Parameters["filterOrderStatus"] = filterVal
+	} else {
+		result.Query += ` WITH o, s OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)  `
+	}
+
+	// procurementResponsible
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "procurementResponsible"); filterVal != nil {
+		result.Query += ` WITH o, s, os MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc) WHERE proc.uid = $filterProcurementResponsible `
+		result.Parameters["filterProcurementResponsible"] = (*filterVal).UID
+	} else {
+		result.Query += ` WITH o, s, os OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)  `
+	}
+
+	// requestor
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "requestor"); filterVal != nil {
+		result.Query += ` WITH o, s, os, proc MATCH (o)-[:HAS_REQUESTOR]->(req) WHERE req.uid = $filterRequestor `
+		result.Parameters["filterRequestor"] = (*filterVal).UID
+	} else {
+		result.Query += ` WITH o, s, os, proc OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)  `
+	}
+
+	// eun filter
+	if filterVal := helpers.GetFilterValueString(filtering, "eun"); filterVal != nil {
+		result.Query += ` WITH o, s, os, proc, req MATCH (o)-[:HAS_ORDER_LINE]->(itm) WHERE toLower(itm.eun) CONTAINS $filterEun `
+		result.Parameters["filterEun"] = strings.ToLower(*filterVal)
+	}
+
+	// part number filter
+	if filterVal := helpers.GetFilterValueString(filtering, "partNumber"); filterVal != nil {
+		result.Query += ` WITH o, s, os, proc, req MATCH (o)-[:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci) WHERE toLower(ci.catalogueNumber) CONTAINS $filterPartNumber `
+		result.Parameters["filterPartNumber"] = strings.ToLower(*filterVal)
+	}
+
+	// delivery status filter
+	if filterVal := helpers.GetFilterValueListString(filtering, "deliveryStatus"); filterVal != nil {
+		result.Query += ` WITH o, s, os, proc, req WHERE toString(o.deliveryStatus) IN $filterDeliveryStatus `
+		result.Parameters["filterDeliveryStatus"] = filterVal
+	}
+}
+
 func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
@@ -129,7 +191,7 @@ func GetOrdersOrderByClauses(sorting *[]helpers.Sorting) string {
 	return result
 }
 
-func GetOrdersBySearchTextFullTextCountQuery(searchString string, supplierUID string, orderStatusUID string, procurementResponsibleUID string, requestorUID string, facilityCode string) (result helpers.DatabaseQuery) {
+func GetOrdersBySearchTextFullTextCountQuery(searchString string, facilityCode string, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
 
@@ -150,33 +212,11 @@ func GetOrdersBySearchTextFullTextCountQuery(searchString string, supplierUID st
 		MATCH(o)-[:BELONGS_TO_FACILITY]->(f)
 		WITH o `
 	}
-
-	if supplierUID != "" {
-		result.Query += `MATCH(o)-[:HAS_SUPPLIER]->(ss:Supplier{uid: $supplierUID}) `
-		result.Parameters["supplierUID"] = supplierUID
-	}
-
-	if orderStatusUID != "" {
-		result.Query += `MATCH(o)-[:HAS_ORDER_STATUS]->(oss:OrderStatus{uid: $orderStatusUID}) `
-		result.Parameters["orderStatusUID"] = orderStatusUID
-	}
-
-	if procurementResponsibleUID != "" {
-		result.Query += `MATCH(o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(procs:User{uid: $procurementResponsibleUID}) `
-		result.Parameters["procurementResponsibleUID"] = procurementResponsibleUID
-	}
-
-	if requestorUID != "" {
-		result.Query += `MATCH(o)-[:HAS_REQUESTOR]->(reqs:User{uid: $requestorUID}) `
-		result.Parameters["requestorUID"] = requestorUID
-	}
+	// order filters
+	ApplyOrderFilters(&result, filtering)
 
 	result.Query += `	
-	OPTIONAL MATCH (o)-[:HAS_SUPPLIER]->(s)  
-	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)
-	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
-	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
-		
+			
     return count(o) as count
 `
 	result.ReturnAlias = "count"
