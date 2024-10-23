@@ -53,6 +53,7 @@ type ISystemsHandlers interface {
 	CreateNewSystemCode() echo.HandlerFunc
 	RecalculateSpareParts() echo.HandlerFunc
 	GetSystemsTreeByUids() echo.HandlerFunc
+	MovePhysicalItem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -1020,5 +1021,47 @@ func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// Swagger documentation for MovePhysicalItem
+// @Summary Move physical item
+// @Description Move physical item from one system to another
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body models.PhysicalItemMovement true "Move physical item request model"
+// @Success 200 "Return destination system UID"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/physical-item/move [post]
+func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		movePhysicalItemRequest := new(models.PhysicalItemMovement)
+
+		if err := c.Bind(movePhysicalItemRequest); err == nil {
+
+			log.Info().Msgf("Move physical item request: %+v", movePhysicalItemRequest)
+
+			userUID := c.Get("userUID").(string)
+
+			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID)
+
+			if err == nil {
+				return c.String(http.StatusOK, destinationSystemUID)
+			}
+
+			if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "destination system") {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
 	}
 }

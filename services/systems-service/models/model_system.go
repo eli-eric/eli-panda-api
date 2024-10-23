@@ -122,3 +122,14 @@ type SystemCodeRequest struct {
 	SystemTypeUID string `json:"systemTypeUid"`
 	ZoneUID       string `json:"zoneUid"`
 }
+
+type PhysicalItemMovement struct {
+	SourceSystemUID      string           `json:"sourceSystemUid"`
+	ParentSystemUID      string           `json:"parentSystemUid"`
+	DestinationSystemUID string           `json:"destinationSystemUid"`
+	SystemName           string           `json:"systemName"`
+	Location             *models.Codebook `json:"location"`
+	ItemUsage            *models.Codebook `json:"itemUsage"`
+	Condition            *models.Codebook `json:"condition"`
+	DeleteSourceSystem   bool             `json:"deleteSourceSystem"`
+}

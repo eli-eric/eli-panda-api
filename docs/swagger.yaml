@@ -215,6 +215,25 @@ definitions:
       uid:
         type: string
     type: object
+  models.PhysicalItemMovement:
+    properties:
+      condition:
+        $ref: '#/definitions/models.Codebook'
+      deleteSourceSystem:
+        type: boolean
+      destinationSystemUid:
+        type: string
+      itemUsage:
+        $ref: '#/definitions/models.Codebook'
+      location:
+        $ref: '#/definitions/models.Codebook'
+      parentSystemUid:
+        type: string
+      sourceSystemUid:
+        type: string
+      systemName:
+        type: string
+    type: object
   models.System:
     properties:
       description:
@@ -521,6 +540,28 @@ paths:
       summary: Get items for EUN print
       tags:
       - Orders
+  /v1/physical-item/move:
+    post:
+      description: Move physical item from one system to another
+      parameters:
+      - description: Move physical item request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.PhysicalItemMovement'
+      responses:
+        "200":
+          description: Return destination system UID
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Move physical item
+      tags:
+      - Systems
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type

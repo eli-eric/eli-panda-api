@@ -1589,3 +1589,91 @@ func RecalculateSystemSparePartsEmptyCoverageQuery() (result helpers.DatabaseQue
 	result.ReturnAlias = "result"
 	return result
 }
+
+func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["sourceSystemUid"] = movementInfo.SourceSystemUID
+	if movementInfo.DestinationSystemUID == "" {
+		movementInfo.DestinationSystemUID = uuid.NewString()
+	}
+	result.Parameters["destinationSystemUid"] = movementInfo.DestinationSystemUID
+	result.Parameters["parentSystemUid"] = movementInfo.ParentSystemUID
+	result.Parameters["systemName"] = movementInfo.SystemName
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(source:System{uid: $sourceSystemUid})-[rsource:CONTAINS_ITEM]->(itm:Item)
+	CREATE(itm)-[:WAS_MOVED_FROM{ at: datetime(), userUid: $userUID }]->(source)
+	WITH source, rsource, itm, u
+	DELETE rsource
+	WITH source, itm, u `
+
+	if movementInfo.DeleteSourceSystem {
+		result.Query += `
+		SET source.deleted = true
+		CREATE(source)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
+		`
+	}
+
+	result.Query += `
+	WITH source, itm, u
+	MERGE(destination:System{uid: $destinationSystemUid})
+	SET destination.name = $systemName 
+	CREATE(destination)-[:CONTAINS_ITEM]->(itm) `
+	if movementInfo.ParentSystemUID != "" {
+		result.Query += `WITH destination, itm
+		 MATCH(parent:System{uid: $parentSystemUid}) 
+		 CREATE(parent)-[:HAS_SUBSYSTEM]->(destination) `
+	}
+
+	if movementInfo.Location != nil {
+		result.Parameters["locationUid"] = movementInfo.Location.UID
+		// if there already is a location relationship, delete it
+		result.Query += `
+		WITH destination, itm
+		OPTIONAL MATCH(destination)-[rLocation:HAS_LOCATION]->(loc)
+		DELETE rLocation
+		WITH destination, itm
+		MATCH(l:Location{uid: $locationUid})
+		CREATE(destination)-[:HAS_LOCATION]->(l) `
+	}
+
+	if movementInfo.Condition != nil {
+		result.Parameters["conditionUid"] = movementInfo.Condition.UID
+		// if there already is a condition relationship, delete it
+		result.Query += `
+		WITH destination, itm
+		OPTIONAL MATCH(itm)-[rCondition:HAS_CONDITION_STATUS]->(cond)
+		DELETE rCondition
+		WITH destination, itm
+		MATCH(cond:ItemCondition{uid: $conditionUid})
+		CREATE(itm)-[:HAS_CONDITION_STATUS]->(cond) `
+	}
+
+	if movementInfo.ItemUsage != nil {
+		result.Parameters["itemUsageUid"] = movementInfo.ItemUsage.UID
+		// if there already is a item usage relationship, delete it
+		result.Query += `
+		WITH destination, itm
+		OPTIONAL MATCH(itm)-[rItemUsage:HAS_ITEM_USAGE]->(iu)
+		DELETE rItemUsage
+		WITH destination, itm
+		MATCH(iu:ItemUsage{uid: $itemUsageUid})
+		CREATE(itm)-[:HAS_ITEM_USAGE]->(iu) `
+	}
+
+	result.Query += ` RETURN destination.uid as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func HasSystemPhysicalItemQuery(systemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `OPTIONAL MATCH(s:System{uid: $systemUID})-[:CONTAINS_ITEM]->(itm:Item) RETURN itm IS NOT NULL as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	return result
+}
