@@ -620,7 +620,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,	
 	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
@@ -718,7 +718,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -790,7 +790,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -853,7 +853,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	sp_coverage: sys.sp_coverage,
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -908,7 +908,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	systemLevel: sys.systemLevel,
 	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -1635,7 +1635,7 @@ func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID st
 		OPTIONAL MATCH(destination)-[rLocation:HAS_LOCATION]->(loc)
 		DELETE rLocation
 		WITH destination, itm
-		MATCH(l:Location{code: $locationUid})
+		MATCH(l:Location{uid: $locationUid})
 		CREATE(destination)-[:HAS_LOCATION]->(l) `
 	}
 
