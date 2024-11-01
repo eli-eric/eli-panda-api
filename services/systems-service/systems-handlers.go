@@ -1053,6 +1053,8 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 				return c.String(http.StatusOK, destinationSystemUID)
 			}
 
+			log.Error().Msg(err.Error())
+
 			if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "destination system") {
 				return c.String(http.StatusBadRequest, err.Error())
 			}

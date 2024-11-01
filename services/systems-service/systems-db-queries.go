@@ -1635,7 +1635,7 @@ func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID st
 		OPTIONAL MATCH(destination)-[rLocation:HAS_LOCATION]->(loc)
 		DELETE rLocation
 		WITH destination, itm
-		MATCH(l:Location{uid: $locationUid})
+		MATCH(l:Location{code: $locationUid})
 		CREATE(destination)-[:HAS_LOCATION]->(l) `
 	}
 
