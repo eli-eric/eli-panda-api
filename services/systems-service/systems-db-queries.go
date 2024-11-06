@@ -1619,7 +1619,10 @@ func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID st
 	result.Query += `
 	WITH source, itm, u
 	MERGE(destination:System{uid: $destinationSystemUid})
-	SET destination.name = $systemName 
+	SET destination.name = $systemName,
+	 destination.systemLevel = source.systemLevel,
+	 destination.lastUpdateTime = datetime(), 
+	 destination.lastUpdateBy = u.username
 	CREATE(destination)-[:CONTAINS_ITEM]->(itm) `
 	if movementInfo.ParentSystemUID != "" {
 		result.Query += `WITH destination, itm
@@ -1675,5 +1678,56 @@ func HasSystemPhysicalItemQuery(systemUID string) (result helpers.DatabaseQuery)
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["systemUID"] = systemUID
+	return result
+}
+
+func CopySystemTypeQuery(sourceSystemUID, destinationSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (source:System {uid: $sourceSystemUID})
+					OPTIONAL MATCH (source)-[:HAS_SYSTEM_TYPE]->(st)
+					MATCH (destination:System {uid: $destinationSystemUID})
+					OPTIONAL MATCH (destination)-[r:HAS_SYSTEM_TYPE]->(std)
+					WITH source, st, destination, r
+					WHERE st IS NOT NULL // Ensure source has HAS_SYSTEM_TYPE
+					DELETE r
+					CREATE (destination)-[:HAS_SYSTEM_TYPE]->(st)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	result.Parameters["destinationSystemUID"] = destinationSystemUID
+	return result
+}
+
+func CopySystemResponsibleQuery(sourceSystemUID, destinationSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (source:System {uid: $sourceSystemUID})
+					OPTIONAL MATCH (source)-[:HAS_RESPONSIBLE]->(r)
+					MATCH (destination:System {uid: $destinationSystemUID})
+					OPTIONAL MATCH (destination)-[rd:HAS_RESPONSIBLE]->(responsible)
+					WITH source, r, destination, rd
+					WHERE r IS NOT NULL // Ensure source has HAS_RESPONSIBLE
+					DELETE rd
+					CREATE (destination)-[:HAS_RESPONSIBLE]->(r)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	result.Parameters["destinationSystemUID"] = destinationSystemUID
+	return result
+}
+
+func CopySystemResponsibleTeamQuery(sourceSystemUID, destinationSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (source:System {uid: $sourceSystemUID})
+					OPTIONAL MATCH (source)-[:HAS_RESPONSIBLE_TEAM]->(rt)
+					MATCH (destination:System {uid: $destinationSystemUID})
+					OPTIONAL MATCH (destination)-[rtd:HAS_RESPONSIBLE_TEAM]->(responsibleTeam)
+					WITH source, rt, destination, rtd
+					WHERE rt IS NOT NULL // Ensure source has HAS_RESPONSIBLE_TEAM
+					DELETE rtd
+					CREATE (destination)-[:HAS_RESPONSIBLE_TEAM]->(rt)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	result.Parameters["destinationSystemUID"] = destinationSystemUID
 	return result
 }
