@@ -820,6 +820,7 @@ func (svc *SystemsService) MovePhysicalItem(movement *models.PhysicalItemMovemen
 			CopySystemTypeQuery(movement.SourceSystemUID, destinationSystemUid),
 			CopySystemResponsibleQuery(movement.SourceSystemUID, destinationSystemUid),
 			CopySystemResponsibleTeamQuery(movement.SourceSystemUID, destinationSystemUid),
+			RecordItemMoveHistoryQuery(userUID, movement.SourceSystemUID, destinationSystemUid),
 		}
 		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
 	}

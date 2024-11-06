@@ -1231,14 +1231,26 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
-		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2)
+		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2:System)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
 		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
+		UNION		
+		MATCH(s:System{uid: $systemUID})
+		MATCH(itm)-[upd:WAS_MOVED_FROM]->(s)
+		WITH s,upd,itm
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , detail: { systemUid: upd.movedToUid, systemName: itm.name, direction: "IN" }} as history
+		UNION		
+		MATCH(s:System{uid: $systemUID})
+		MATCH(itm)-[upd:WAS_MOVED_TO]->(s)
+		WITH s,upd,itm
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , detail: { systemUid: upd.movedFromUid, systemName: itm.name, direction: "OUT" }} as history		
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
-		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2)
+		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2:System)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
 		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
@@ -1604,7 +1616,6 @@ func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID st
 	result.Query = `
 	MATCH(u:User{uid: $userUID})
 	MATCH(source:System{uid: $sourceSystemUid})-[rsource:CONTAINS_ITEM]->(itm:Item)
-	CREATE(itm)-[:WAS_MOVED_FROM{ at: datetime(), userUid: $userUID }]->(source)
 	WITH source, rsource, itm, u
 	DELETE rsource
 	WITH source, itm, u `
@@ -1729,5 +1740,48 @@ func CopySystemResponsibleTeamQuery(sourceSystemUID, destinationSystemUID string
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["sourceSystemUID"] = sourceSystemUID
 	result.Parameters["destinationSystemUID"] = destinationSystemUID
+	return result
+}
+
+func RecordSystemUpdateHistoryQuery(systemUID, userUID, action string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (s:System{uid: $systemUID})
+					MATCH (u:User{uid: $userUID})
+					CREATE (s)-[:WAS_UPDATED_BY{ at: datetime(), action: $action }]->(u)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["action"] = action
+	return result
+}
+
+func RecordSystemMoveHistoryQuery(systemUID, userUID, action, targetSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (s:System{uid: $systemUID})
+					MATCH (u:User{uid: $userUID})
+					MATCH (t:System{uid: $targetSystemUID})
+					CREATE (s)-[:WAS_MOVED_FROM{ at: datetime(), action: $action, userUid: $userUID }]->(t)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["action"] = action
+	result.Parameters["targetSystemUID"] = targetSystemUID
+	return result
+}
+
+func RecordItemMoveHistoryQuery(userUID, targetSystemUID, sourceSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (u:User{uid: $userUID})
+					MATCH (s:System{uid: $sourceSystemUID})-[:CONTAINS_ITEM]->(i:Item)
+					MATCH (t:System{uid: $targetSystemUID})
+					CREATE (i)-[:WAS_MOVED_TO{ at: datetime(), action: "ITEM_MOVE", userUid: $userUID, movedFromUid: $sourceSystemUID }]->(t)
+					CREATE (i)-[:WAS_MOVED_FROM{ at: datetime(), action: "ITEM_MOVE", userUid: $userUID, movedToUid: $targetSystemUID }]->(s)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["targetSystemUID"] = targetSystemUID
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
 	return result
 }
