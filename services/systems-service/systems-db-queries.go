@@ -1631,7 +1631,7 @@ func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID st
 	WITH source, itm, u
 	MERGE(destination:System{uid: $destinationSystemUid})
 	SET destination.name = $systemName,
-	 destination.deleted = fasle,
+	 destination.deleted = false,
 	 destination.systemLevel = source.systemLevel,
 	 destination.lastUpdateTime = datetime(), 
 	 destination.lastUpdateBy = u.username
@@ -1784,5 +1784,16 @@ func RecordItemMoveHistoryQuery(userUID, targetSystemUID, sourceSystemUID string
 	result.Parameters["userUID"] = userUID
 	result.Parameters["targetSystemUID"] = targetSystemUID
 	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	return result
+}
+
+func SetMissingFacilityToSystems(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(s:System) WHERE NOT (s)-[:BELONGS_TO_FACILITY]->(:Facility)
+					MATCH(f:Facility{code: $facilityCode})
+					CREATE(s)-[:BELONGS_TO_FACILITY]->(f)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }

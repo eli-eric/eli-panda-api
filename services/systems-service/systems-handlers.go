@@ -1046,8 +1046,9 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 			log.Info().Msgf("Move physical item request: %+v", movePhysicalItemRequest)
 
 			userUID := c.Get("userUID").(string)
+			facilityCode := c.Get("facilityCode").(string)
 
-			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID)
+			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
 				return c.String(http.StatusOK, destinationSystemUID)

@@ -67,7 +67,7 @@ type ISystemsService interface {
 	GetSystemsByUids(uids []string) (result []models.System, err error)
 	GetSystemsTreeByUids(trees []models.SystemTreeUid) (result []models.System, err error)
 	BuildSystemHierarchy(tree models.SystemTreeUid) (*models.System, error)
-	MovePhysicalItem(movement *models.PhysicalItemMovement, userUID string) (destinationSystemUid string, err error)
+	MovePhysicalItem(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 }
 
 // Create new security service instance
@@ -791,7 +791,7 @@ func collectUids(trees []models.SystemTreeUid) []string {
 	return uids
 }
 
-func (svc *SystemsService) MovePhysicalItem(movement *models.PhysicalItemMovement, userUID string) (destinationSystemUid string, err error) {
+func (svc *SystemsService) MovePhysicalItem(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
@@ -821,6 +821,7 @@ func (svc *SystemsService) MovePhysicalItem(movement *models.PhysicalItemMovemen
 			CopySystemResponsibleQuery(movement.SourceSystemUID, destinationSystemUid),
 			CopySystemResponsibleTeamQuery(movement.SourceSystemUID, destinationSystemUid),
 			RecordItemMoveHistoryQuery(userUID, movement.SourceSystemUID, destinationSystemUid),
+			SetMissingFacilityToSystems(facilityCode),
 		}
 		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
 	}
