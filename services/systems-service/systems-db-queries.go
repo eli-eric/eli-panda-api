@@ -1631,6 +1631,7 @@ func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID st
 	WITH source, itm, u
 	MERGE(destination:System{uid: $destinationSystemUid})
 	SET destination.name = $systemName,
+	 destination.deleted = fasle,
 	 destination.systemLevel = source.systemLevel,
 	 destination.lastUpdateTime = datetime(), 
 	 destination.lastUpdateBy = u.username
