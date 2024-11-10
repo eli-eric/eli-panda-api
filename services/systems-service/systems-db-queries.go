@@ -1797,3 +1797,43 @@ func SetMissingFacilityToSystems(facilityCode string) (result helpers.DatabaseQu
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func ReplacePhysicalItemsQuery(movementInfo *models.PhysicalItemMovement, userUID, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(sourceSystem:System{uid: $sourceSystemUID})-[rSource:CONTAINS_ITEM]->(sourceItem:Item)
+	MATCH(destinationSystem:System{uid: $destinationSystemUID})-[rDest:CONTAINS_ITEM]->(destinationItem:Item)
+	MATCH(parentSystem:System{uid: $parentSystemUID})
+	WITH sourceSystem, sourceItem, destinationSystem, destinationItem, u, f, parentSystem, rSource, rDest
+    CREATE(oldSystem:System{
+	uid: $oldSystemUid,
+	name: destinationSystem.name, 	
+	systemLevel: sourceSystem.systemLevel, 
+	lastUpdateTime: datetime(), 
+	lastUpdateBy: u.username, 
+	deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(parentSystem)-[:HAS_SUBSYSTEM]->(oldSystem)
+	CREATE(oldSystem)-[:CONTAINS_ITEM]->(destinationItem)
+	CREATE(destinationSystem)-[:CONTAINS_ITEM]->(sourceItem)
+	DELETE rDest, rSource
+	`
+	if movementInfo.DeleteSourceSystem {
+		result.Query += `
+		SET sourceSystem.deleted = true
+		CREATE(sourceSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
+		`
+	}
+
+	result.Query += ` RETURN $oldSystemUid as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = movementInfo.SourceSystemUID
+	result.Parameters["destinationSystemUID"] = movementInfo.DestinationSystemUID
+	result.Parameters["parentSystemUID"] = movementInfo.ParentSystemUID
+	result.Parameters["oldSystemUid"] = uuid.NewString()
+	result.Parameters["userUID"] = userUID
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}

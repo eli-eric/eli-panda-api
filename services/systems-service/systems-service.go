@@ -68,6 +68,7 @@ type ISystemsService interface {
 	GetSystemsTreeByUids(trees []models.SystemTreeUid) (result []models.System, err error)
 	BuildSystemHierarchy(tree models.SystemTreeUid) (*models.System, error)
 	MovePhysicalItem(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
+	ReplacePhysicalItems(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 }
 
 // Create new security service instance
@@ -838,6 +839,58 @@ func ValidatePhysicalItemMovement(movement *systemsModels.PhysicalItemMovement) 
 
 	if movement.SystemName == "" {
 		return errors.New("missing system name")
+	}
+
+	return nil
+}
+
+func (svc *SystemsService) ReplacePhysicalItems(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = ValidatePhysicalItemReplacement(movement)
+
+	if err != nil {
+		return "", err
+	}
+
+	oldSystemUid, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, ReplacePhysicalItemsQuery(movement, userUID, facilityCode))
+
+	if err == nil {
+		queries := []helpers.DatabaseQuery{
+			CopySystemTypeQuery(movement.SourceSystemUID, destinationSystemUid),
+			CopySystemTypeQuery(movement.DestinationSystemUID, oldSystemUid),
+			CopySystemResponsibleQuery(movement.SourceSystemUID, destinationSystemUid),
+			CopySystemResponsibleQuery(movement.DestinationSystemUID, oldSystemUid),
+			CopySystemResponsibleTeamQuery(movement.SourceSystemUID, destinationSystemUid),
+			CopySystemResponsibleTeamQuery(movement.DestinationSystemUID, oldSystemUid),
+			RecordItemMoveHistoryQuery(userUID, movement.SourceSystemUID, destinationSystemUid),
+			RecordItemMoveHistoryQuery(userUID, movement.DestinationSystemUID, oldSystemUid),
+		}
+		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
+	}
+
+	return destinationSystemUid, err
+}
+
+func ValidatePhysicalItemReplacement(movement *systemsModels.PhysicalItemMovement) error {
+
+	erros := make([]string, 0)
+	if movement.DestinationSystemUID == "" {
+		erros = append(erros, "missing destination system")
+	}
+
+	if movement.ParentSystemUID == "" {
+		erros = append(erros, "missing parent system")
+	}
+
+	if movement.SourceSystemUID == "" {
+		erros = append(erros, "missing source system")
+	}
+
+	if len(erros) > 0 {
+		resultErr := strings.Join(erros[:], ", ")
+		return errors.New(resultErr)
 	}
 
 	return nil

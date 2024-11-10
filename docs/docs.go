@@ -295,6 +295,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/physical-item/replace": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Replace physical items between two systems",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Replace physical item",
+                "parameters": [
+                    {
+                        "description": "Move physical item request model",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PhysicalItemMovement"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return destination system UID"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/system-code": {
             "post": {
                 "security": [

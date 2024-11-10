@@ -562,6 +562,28 @@ paths:
       summary: Move physical item
       tags:
       - Systems
+  /v1/physical-item/replace:
+    post:
+      description: Replace physical items between two systems
+      parameters:
+      - description: Move physical item request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.PhysicalItemMovement'
+      responses:
+        "200":
+          description: Return destination system UID
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Replace physical item
+      tags:
+      - Systems
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type
