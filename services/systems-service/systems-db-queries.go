@@ -620,7 +620,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,	
 	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
@@ -718,7 +718,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -790,7 +790,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -853,7 +853,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	sp_coverage: sys.sp_coverage,
 	miniImageUrl: split(sys.miniImageUrl, ";"),
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -908,7 +908,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	systemLevel: sys.systemLevel,
 	miniImageUrl: split(sys.miniImageUrl, ";"),	
 	isTechnologicalUnit: sys.isTechnologicalUnit,
-	location: case when loc is not null then {uid: loc.code, name: loc.name} else null end,
+	location: case when loc is not null then {uid: loc.uid, name: loc.name} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
@@ -1231,14 +1231,26 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
-		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2)
+		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2:System)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
 		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
+		UNION		
+		MATCH(s:System{uid: $systemUID})
+		MATCH(itm)-[upd:WAS_MOVED_FROM]->(s)
+		WITH s,upd,itm
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , detail: { systemUid: upd.movedToUid, systemName: itm.name, direction: "IN" }} as history
+		UNION		
+		MATCH(s:System{uid: $systemUID})
+		MATCH(itm)-[upd:WAS_MOVED_TO]->(s)
+		WITH s,upd,itm
+		MATCH(usr:User{uid: upd.userUid})
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , detail: { systemUid: upd.movedFromUid, systemName: itm.name, direction: "OUT" }} as history		
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
-		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2)
+		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2:System)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
 		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
@@ -1587,5 +1599,241 @@ func RecalculateSystemSparePartsEmptyCoverageQuery() (result helpers.DatabaseQue
 	set s.sp_coverage = NULL
 	RETURN true as result`
 	result.ReturnAlias = "result"
+	return result
+}
+
+func MovePhysicalItemQuery(movementInfo *models.PhysicalItemMovement, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["sourceSystemUid"] = movementInfo.SourceSystemUID
+	if movementInfo.DestinationSystemUID == "" {
+		movementInfo.DestinationSystemUID = uuid.NewString()
+	}
+	result.Parameters["destinationSystemUid"] = movementInfo.DestinationSystemUID
+	result.Parameters["parentSystemUid"] = movementInfo.ParentSystemUID
+	result.Parameters["systemName"] = movementInfo.SystemName
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(source:System{uid: $sourceSystemUid})-[rsource:CONTAINS_ITEM]->(itm:Item)
+	WITH source, rsource, itm, u
+	DELETE rsource
+	WITH source, itm, u `
+
+	if movementInfo.DeleteSourceSystem {
+		result.Query += `
+		SET source.deleted = true
+		CREATE(source)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
+		`
+	}
+
+	result.Query += `
+	WITH source, itm, u
+	MERGE(destination:System{uid: $destinationSystemUid})
+	SET destination.name = $systemName,
+	 destination.deleted = false,
+	 destination.systemLevel = source.systemLevel,
+	 destination.lastUpdateTime = datetime(), 
+	 destination.lastUpdateBy = u.username
+	CREATE(destination)-[:CONTAINS_ITEM]->(itm) `
+	if movementInfo.ParentSystemUID != "" {
+		result.Query += `WITH destination, itm
+		 MATCH(parent:System{uid: $parentSystemUid}) 
+		 CREATE(parent)-[:HAS_SUBSYSTEM]->(destination) `
+	}
+
+	if movementInfo.Location != nil {
+		result.Parameters["locationUid"] = movementInfo.Location.UID
+		// if there already is a location relationship, delete it
+		result.Query += `
+		WITH destination, itm
+		OPTIONAL MATCH(destination)-[rLocation:HAS_LOCATION]->(loc)
+		DELETE rLocation
+		WITH destination, itm
+		MATCH(l:Location{uid: $locationUid})
+		CREATE(destination)-[:HAS_LOCATION]->(l) `
+	}
+
+	if movementInfo.Condition != nil {
+		result.Parameters["conditionUid"] = movementInfo.Condition.UID
+		// if there already is a condition relationship, delete it
+		result.Query += `
+		WITH destination, itm
+		OPTIONAL MATCH(itm)-[rCondition:HAS_CONDITION_STATUS]->(cond)
+		DELETE rCondition
+		WITH destination, itm
+		MATCH(cond:ItemCondition{uid: $conditionUid})
+		CREATE(itm)-[:HAS_CONDITION_STATUS]->(cond) `
+	}
+
+	if movementInfo.ItemUsage != nil {
+		result.Parameters["itemUsageUid"] = movementInfo.ItemUsage.UID
+		// if there already is a item usage relationship, delete it
+		result.Query += `
+		WITH destination, itm
+		OPTIONAL MATCH(itm)-[rItemUsage:HAS_ITEM_USAGE]->(iu)
+		DELETE rItemUsage
+		WITH destination, itm
+		MATCH(iu:ItemUsage{uid: $itemUsageUid})
+		CREATE(itm)-[:HAS_ITEM_USAGE]->(iu) `
+	}
+
+	result.Query += ` RETURN destination.uid as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func HasSystemPhysicalItemQuery(systemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `OPTIONAL MATCH(s:System{uid: $systemUID})-[:CONTAINS_ITEM]->(itm:Item) RETURN itm IS NOT NULL as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	return result
+}
+
+func CopySystemTypeQuery(sourceSystemUID, destinationSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (source:System {uid: $sourceSystemUID})
+					OPTIONAL MATCH (source)-[:HAS_SYSTEM_TYPE]->(st)
+					MATCH (destination:System {uid: $destinationSystemUID})
+					OPTIONAL MATCH (destination)-[r:HAS_SYSTEM_TYPE]->(std)
+					WITH source, st, destination, r
+					WHERE st IS NOT NULL // Ensure source has HAS_SYSTEM_TYPE
+					DELETE r
+					CREATE (destination)-[:HAS_SYSTEM_TYPE]->(st)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	result.Parameters["destinationSystemUID"] = destinationSystemUID
+	return result
+}
+
+func CopySystemResponsibleQuery(sourceSystemUID, destinationSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (source:System {uid: $sourceSystemUID})
+					OPTIONAL MATCH (source)-[:HAS_RESPONSIBLE]->(r)
+					MATCH (destination:System {uid: $destinationSystemUID})
+					OPTIONAL MATCH (destination)-[rd:HAS_RESPONSIBLE]->(responsible)
+					WITH source, r, destination, rd
+					WHERE r IS NOT NULL // Ensure source has HAS_RESPONSIBLE
+					DELETE rd
+					CREATE (destination)-[:HAS_RESPONSIBLE]->(r)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	result.Parameters["destinationSystemUID"] = destinationSystemUID
+	return result
+}
+
+func CopySystemResponsibleTeamQuery(sourceSystemUID, destinationSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (source:System {uid: $sourceSystemUID})
+					OPTIONAL MATCH (source)-[:HAS_RESPONSIBLE_TEAM]->(rt)
+					MATCH (destination:System {uid: $destinationSystemUID})
+					OPTIONAL MATCH (destination)-[rtd:HAS_RESPONSIBLE_TEAM]->(responsibleTeam)
+					WITH source, rt, destination, rtd
+					WHERE rt IS NOT NULL // Ensure source has HAS_RESPONSIBLE_TEAM
+					DELETE rtd
+					CREATE (destination)-[:HAS_RESPONSIBLE_TEAM]->(rt)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	result.Parameters["destinationSystemUID"] = destinationSystemUID
+	return result
+}
+
+func RecordSystemUpdateHistoryQuery(systemUID, userUID, action string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (s:System{uid: $systemUID})
+					MATCH (u:User{uid: $userUID})
+					CREATE (s)-[:WAS_UPDATED_BY{ at: datetime(), action: $action }]->(u)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["action"] = action
+	return result
+}
+
+func RecordSystemMoveHistoryQuery(systemUID, userUID, action, targetSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (s:System{uid: $systemUID})
+					MATCH (u:User{uid: $userUID})
+					MATCH (t:System{uid: $targetSystemUID})
+					CREATE (s)-[:WAS_MOVED_FROM{ at: datetime(), action: $action, userUid: $userUID }]->(t)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["action"] = action
+	result.Parameters["targetSystemUID"] = targetSystemUID
+	return result
+}
+
+func RecordItemMoveHistoryQuery(userUID, targetSystemUID, sourceSystemUID string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (u:User{uid: $userUID})
+					MATCH (s:System{uid: $sourceSystemUID})-[:CONTAINS_ITEM]->(i:Item)
+					MATCH (t:System{uid: $targetSystemUID})
+					CREATE (i)-[:WAS_MOVED_TO{ at: datetime(), action: "ITEM_MOVE", userUid: $userUID, movedFromUid: $sourceSystemUID }]->(t)
+					CREATE (i)-[:WAS_MOVED_FROM{ at: datetime(), action: "ITEM_MOVE", userUid: $userUID, movedToUid: $targetSystemUID }]->(s)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["targetSystemUID"] = targetSystemUID
+	result.Parameters["sourceSystemUID"] = sourceSystemUID
+	return result
+}
+
+func SetMissingFacilityToSystems(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH(s:System) WHERE NOT (s)-[:BELONGS_TO_FACILITY]->(:Facility)
+					MATCH(f:Facility{code: $facilityCode})
+					CREATE(s)-[:BELONGS_TO_FACILITY]->(f)
+					RETURN true as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func ReplacePhysicalItemsQuery(movementInfo *models.PhysicalItemMovement, userUID, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(sourceSystem:System{uid: $sourceSystemUID})-[rSource:CONTAINS_ITEM]->(sourceItem:Item)
+	MATCH(destinationSystem:System{uid: $destinationSystemUID})-[rDest:CONTAINS_ITEM]->(destinationItem:Item)
+	MATCH(parentSystem:System{uid: $parentSystemUID})
+	WITH sourceSystem, sourceItem, destinationSystem, destinationItem, u, f, parentSystem, rSource, rDest
+    CREATE(oldSystem:System{
+	uid: $oldSystemUid,
+	name: destinationSystem.name, 	
+	systemLevel: sourceSystem.systemLevel, 
+	lastUpdateTime: datetime(), 
+	lastUpdateBy: u.username, 
+	deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(parentSystem)-[:HAS_SUBSYSTEM]->(oldSystem)
+	CREATE(oldSystem)-[:CONTAINS_ITEM]->(destinationItem)
+	CREATE(destinationSystem)-[:CONTAINS_ITEM]->(sourceItem)
+	DELETE rDest, rSource
+	`
+	if movementInfo.DeleteSourceSystem {
+		result.Query += `
+		SET sourceSystem.deleted = true
+		CREATE(sourceSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
+		`
+	}
+
+	result.Query += ` RETURN $oldSystemUid as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["sourceSystemUID"] = movementInfo.SourceSystemUID
+	result.Parameters["destinationSystemUID"] = movementInfo.DestinationSystemUID
+	result.Parameters["parentSystemUID"] = movementInfo.ParentSystemUID
+	result.Parameters["oldSystemUid"] = uuid.NewString()
+	result.Parameters["userUID"] = userUID
+	result.Parameters["facilityCode"] = facilityCode
 	return result
 }

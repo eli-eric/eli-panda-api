@@ -259,6 +259,78 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/physical-item/move": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Move physical item from one system to another",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Move physical item",
+                "parameters": [
+                    {
+                        "description": "Move physical item request model",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PhysicalItemMovement"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return destination system UID"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/physical-item/replace": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Replace physical items between two systems",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Replace physical item",
+                "parameters": [
+                    {
+                        "description": "Move physical item request model",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.PhysicalItemMovement"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return destination system UID"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/system-code": {
             "post": {
                 "security": [
@@ -814,6 +886,35 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PhysicalItemMovement": {
+            "type": "object",
+            "properties": {
+                "condition": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "deleteSourceSystem": {
+                    "type": "boolean"
+                },
+                "destinationSystemUid": {
+                    "type": "string"
+                },
+                "itemUsage": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "location": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "parentSystemUid": {
+                    "type": "string"
+                },
+                "sourceSystemUid": {
+                    "type": "string"
+                },
+                "systemName": {
                     "type": "string"
                 }
             }

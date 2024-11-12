@@ -10,10 +10,10 @@ and line.eun is not null
 with line
   CALL {
   WITH line
-  MERGE(o:Order{ uid: line.pandaOrderGUID })  
-  MERGE(itm:Item{ eun: line.eun })   
+  MERGE(o:Order{ uid: trim(line.pandaOrderGUID) })  
+  MERGE(itm:Item{ eun: trim(line.eun) })   
   MERGE(o)-[ol:HAS_ORDER_LINE]->(itm)
-  MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(line.PandaPartNumber, line.cataloguePartNumber)})
+  MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(trim(line.PandaPartNumber), trim(line.cataloguePartNumber))})
   MERGE(itm)-[:IS_BASED_ON]->(catItem) 
   WITH line, o, ol, itm, catItem,
   case when line.pbsTenderReference is not null then "
