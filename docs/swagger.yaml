@@ -351,6 +351,15 @@ definitions:
       uid:
         type: string
     type: object
+  models.SystemsMovement:
+    properties:
+      systemsToMoveUids:
+        items:
+          type: string
+        type: array
+      targetParentSystemUid:
+        type: string
+    type: object
   models.UserAuthInfo:
     properties:
       accessToken:
@@ -624,6 +633,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Get all locations flat list
+      tags:
+      - Systems
+  /v1/systems/move:
+    post:
+      description: Move systems to another parent system
+      parameters:
+      - description: Move systems request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemsMovement'
+      responses:
+        "200":
+          description: Return destination system UID
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Move systems
       tags:
       - Systems
   /v1/systems/recalculate-spare-parts:

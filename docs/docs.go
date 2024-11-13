@@ -398,6 +398,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/systems/move": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Move systems to another parent system",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Move systems",
+                "parameters": [
+                    {
+                        "description": "Move systems request model",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemsMovement"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Return destination system UID"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/recalculate-spare-parts": {
             "post": {
                 "security": [
@@ -1094,6 +1130,20 @@ const docTemplate = `{
                     }
                 },
                 "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemsMovement": {
+            "type": "object",
+            "properties": {
+                "systemsToMoveUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "targetParentSystemUid": {
                     "type": "string"
                 }
             }

@@ -55,6 +55,7 @@ type ISystemsHandlers interface {
 	GetSystemsTreeByUids() echo.HandlerFunc
 	MovePhysicalItem() echo.HandlerFunc
 	ReplacePhysicalItems() echo.HandlerFunc
+	MoveSystems() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -1095,6 +1096,50 @@ func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
 			facilityCode := c.Get("facilityCode").(string)
 
 			destinationSystemUID, err := h.systemsService.ReplacePhysicalItems(movePhysicalItemRequest, userUID, facilityCode)
+
+			if err == nil {
+				return c.String(http.StatusOK, destinationSystemUID)
+			}
+
+			log.Error().Msg(err.Error())
+
+			if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "system") {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for MoveSystems
+// @Summary Move systems
+// @Description Move systems to another parent system
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body models.SystemsMovement true "Move systems request model"
+// @Success 200 "Return destination system UID"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/move [post]
+func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		moveSystemsRequest := new(models.SystemsMovement)
+
+		if err := c.Bind(moveSystemsRequest); err == nil {
+
+			log.Info().Msgf("Move systems request: %+v", moveSystemsRequest)
+
+			userUID := c.Get("userUID").(string)
+
+			destinationSystemUID, err := h.systemsService.MoveSystems(moveSystemsRequest, userUID)
 
 			if err == nil {
 				return c.String(http.StatusOK, destinationSystemUID)

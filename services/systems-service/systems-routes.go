@@ -94,4 +94,6 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.POST("/v1/physical-item/move", m.Authorization(h.MovePhysicalItem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
 	e.POST("/v1/physical-item/replace", m.Authorization(h.ReplacePhysicalItems(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	e.POST("/v1/systems/move", m.Authorization(h.MoveSystems(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }

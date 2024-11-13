@@ -1837,3 +1837,21 @@ func ReplacePhysicalItemsQuery(movementInfo *models.PhysicalItemMovement, userUI
 	result.Parameters["facilityCode"] = facilityCode
 	return result
 }
+
+func MoveSystemsQuery(movementInfo *models.SystemsMovement, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(newParent:System{uid: $newParentUID})
+	MATCH(oldParent:System)-[rOld:HAS_SUBSYSTEM]->(s:System) WHERE s.uid in $systemsToMoveUids
+	CREATE(newParent)-[:HAS_SUBSYSTEM]->(s)
+	DELETE rOld
+	CREATE (s)-[:WAS_MOVED_FROM { at: datetime(), userUid: $userUID }]->(oldParent)
+	RETURN DISTINCT newParent.uid as result`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["newParentUID"] = movementInfo.TargetParentSystemUid
+	result.Parameters["systemsToMoveUids"] = movementInfo.SystemsToMoveUids
+	result.Parameters["userUID"] = userUID
+	return result
+}
