@@ -27,7 +27,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "general"
+                    "General"
                 ],
                 "summary": "Get graph by uid",
                 "parameters": [
@@ -343,7 +343,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Create publication",
                 "parameters": [
@@ -382,7 +382,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Get publication by uid",
                 "parameters": [
@@ -420,7 +420,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Update publication",
                 "parameters": [
@@ -464,7 +464,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Delete publication by uid",
                 "parameters": [
@@ -498,7 +498,7 @@
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Get publications",
                 "responses": {
@@ -794,7 +794,7 @@
                     "text/plain"
                 ],
                 "tags": [
-                    "general"
+                    "General"
                 ],
                 "summary": "Get UUID V4",
                 "responses": {

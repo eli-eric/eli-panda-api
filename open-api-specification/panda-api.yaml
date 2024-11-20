@@ -440,7 +440,7 @@ paths:
       - BearerAuth: []
       summary: Get graph by uid
       tags:
-      - general
+      - General
   /v1/getuserbyazureidtoken:
     get:
       description: Get user by azure id token
@@ -639,7 +639,7 @@ paths:
       - BearerAuth: []
       summary: Create publication
       tags:
-      - publications
+      - Publications
   /v1/publication/{uid}:
     delete:
       description: Delete publication by uid
@@ -660,7 +660,7 @@ paths:
       - BearerAuth: []
       summary: Delete publication by uid
       tags:
-      - publications
+      - Publications
     get:
       description: Get publication by uid
       parameters:
@@ -682,7 +682,7 @@ paths:
       - BearerAuth: []
       summary: Get publication by uid
       tags:
-      - publications
+      - Publications
     put:
       consumes:
       - application/json
@@ -712,7 +712,7 @@ paths:
       - BearerAuth: []
       summary: Update publication
       tags:
-      - publications
+      - Publications
   /v1/publications:
     get:
       description: Get publications
@@ -731,7 +731,7 @@ paths:
       - BearerAuth: []
       summary: Get publications
       tags:
-      - publications
+      - Publications
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type
@@ -911,7 +911,7 @@ paths:
       - BearerAuth: []
       summary: Get UUID V4
       tags:
-      - general
+      - General
 schemes:
 - http
 securityDefinitions:

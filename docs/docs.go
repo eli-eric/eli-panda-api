@@ -30,7 +30,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "general"
+                    "General"
                 ],
                 "summary": "Get graph by uid",
                 "parameters": [
@@ -346,7 +346,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Create publication",
                 "parameters": [
@@ -385,7 +385,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Get publication by uid",
                 "parameters": [
@@ -423,7 +423,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Update publication",
                 "parameters": [
@@ -467,7 +467,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Delete publication by uid",
                 "parameters": [
@@ -501,7 +501,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "publications"
+                    "Publications"
                 ],
                 "summary": "Get publications",
                 "responses": {
@@ -797,7 +797,7 @@ const docTemplate = `{
                     "text/plain"
                 ],
                 "tags": [
-                    "general"
+                    "General"
                 ],
                 "summary": "Get UUID V4",
                 "responses": {
