@@ -29,7 +29,7 @@ func NewPublicationsHandlers(svc IPublicationsService) IPublicationsHandlers {
 // CreatePublication Create publication godoc
 // @Summary Create publication
 // @Description Create publication
-// @Tags publications
+// @Tags Publications
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -60,7 +60,7 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 // GetPublication Get publication by uid godoc
 // @Summary Get publication by uid
 // @Description Get publication by uid
-// @Tags publications
+// @Tags Publications
 // @Security BearerAuth
 // @Produce json
 // @Param uid path string true "uid"
@@ -90,7 +90,7 @@ func (h *PublicationsHandlers) GetPublication() echo.HandlerFunc {
 // GetPublications Get publications godoc
 // @Summary Get publications
 // @Description Get publications
-// @Tags publications
+// @Tags Publications
 // @Security BearerAuth
 // @Produce json
 // @Success 200 {array} models.Publication
@@ -113,7 +113,7 @@ func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 // UpdatePublication Update publication godoc
 // @Summary Update publication
 // @Description Update publication
-// @Tags publications
+// @Tags Publications
 // @Security BearerAuth
 // @Accept json
 // @Produce json
@@ -149,7 +149,7 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 // DeletePublication Delete publication by uid godoc
 // @Summary Delete publication by uid
 // @Description Delete publication by uid
-// @Tags publications
+// @Tags Publications
 // @Security BearerAuth
 // @Produce json
 // @Param uid path string true "uid"

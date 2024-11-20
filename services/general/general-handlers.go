@@ -23,7 +23,7 @@ func NewGeneralHandlers(generalSvc IGeneralService) IGeneralHandlers {
 // GetGraphByUid Get graph by uid godoc
 // @Summary Get graph by uid
 // @Description Get graph by uid
-// @Tags general
+// @Tags General
 // @Security BearerAuth
 // @Produce json
 // @Param uid path string true "uid"
@@ -57,7 +57,7 @@ func (h *GeneralHandlers) GetGraphByUid() echo.HandlerFunc {
 // GetUUID Get UUID v4 godoc
 // @Summary Get UUID V4
 // @Description Get UUID v4 string
-// @Tags general
+// @Tags General
 // @Security BearerAuth
 // @Produce plain
 // @Success 200 {string} string
