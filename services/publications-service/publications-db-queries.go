@@ -9,8 +9,7 @@ func UpdatePublicationQuery(publication *models.Publication) (result helpers.Dat
 	result.Query = `
 		MATCH (n:Publication {uid:$uid})
 		SET n.articleTitle = $articleTitle,
-			n.abstract = $abstract,
-			n.authors = $authors,
+			n.abstract = $abstract,		
 			n.keywords = $keywords,
 			n.year = $year,
 			n.publicationDOI = $publicationDOI,

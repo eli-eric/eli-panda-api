@@ -48,7 +48,7 @@ func (svc *PublicationsService) UpdatePublication(publication *models.Publicatio
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := UpdatePublicationQuery(publication)
-	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Publication](session, query)
+	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 
 	return result, err
 }
