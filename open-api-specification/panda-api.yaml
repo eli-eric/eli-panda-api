@@ -234,6 +234,27 @@ definitions:
       systemName:
         type: string
     type: object
+  models.Publication:
+    properties:
+      abstract:
+        type: string
+      articleTitle:
+        type: string
+      keywords:
+        type: string
+      longJournalTitle:
+        type: string
+      pages:
+        type: integer
+      pdfFile:
+        type: string
+      publicationDOI:
+        type: string
+      uid:
+        type: string
+      year:
+        type: string
+    type: object
   models.System:
     properties:
       description:
@@ -593,6 +614,124 @@ paths:
       summary: Replace physical item
       tags:
       - Systems
+  /v1/publication:
+    post:
+      consumes:
+      - application/json
+      description: Create publication
+      parameters:
+      - description: Publication
+        in: body
+        name: publication
+        required: true
+        schema:
+          $ref: '#/definitions/models.Publication'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create publication
+      tags:
+      - publications
+  /v1/publication/{uid}:
+    delete:
+      description: Delete publication by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete publication by uid
+      tags:
+      - publications
+    get:
+      description: Get publication by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publication by uid
+      tags:
+      - publications
+    put:
+      consumes:
+      - application/json
+      description: Update publication
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Publication
+        in: body
+        name: publication
+        required: true
+        schema:
+          $ref: '#/definitions/models.Publication'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update publication
+      tags:
+      - publications
+  /v1/publications:
+    get:
+      description: Get publications
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Publication'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publications
+      tags:
+      - publications
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type

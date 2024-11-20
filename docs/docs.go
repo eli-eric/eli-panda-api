@@ -331,6 +331,195 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/publication": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create publication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "publications"
+                ],
+                "summary": "Create publication",
+                "parameters": [
+                    {
+                        "description": "Publication",
+                        "name": "publication",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Publication"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Publication"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publication/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get publication by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "publications"
+                ],
+                "summary": "Get publication by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Publication"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update publication",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "publications"
+                ],
+                "summary": "Update publication",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Publication",
+                        "name": "publication",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Publication"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Publication"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete publication by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "publications"
+                ],
+                "summary": "Delete publication by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get publications",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "publications"
+                ],
+                "summary": "Get publications",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Publication"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/system/system-code": {
             "post": {
                 "security": [
@@ -979,6 +1168,38 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "systemName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Publication": {
+            "type": "object",
+            "properties": {
+                "abstract": {
+                    "type": "string"
+                },
+                "articleTitle": {
+                    "type": "string"
+                },
+                "keywords": {
+                    "type": "string"
+                },
+                "longJournalTitle": {
+                    "type": "string"
+                },
+                "pages": {
+                    "type": "integer"
+                },
+                "pdfFile": {
+                    "type": "string"
+                },
+                "publicationDOI": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "year": {
                     "type": "string"
                 }
             }
