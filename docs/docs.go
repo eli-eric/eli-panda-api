@@ -595,6 +595,34 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/v1/uuid/v4": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get UUID v4 string",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "general"
+                ],
+                "summary": "Get UUID V4",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
         }
     },
     "definitions": {

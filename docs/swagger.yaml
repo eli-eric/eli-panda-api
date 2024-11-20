@@ -756,6 +756,23 @@ paths:
       summary: Get all zones
       tags:
       - Systems
+  /v1/uuid/v4:
+    get:
+      description: Get UUID v4 string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get UUID V4
+      tags:
+      - general
 schemes:
 - http
 securityDefinitions:
