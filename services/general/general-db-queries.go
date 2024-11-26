@@ -34,3 +34,11 @@ func GetGraphLinksByUidQuery(uid string) (result helpers.DatabaseQuery) {
 
 	return result
 }
+
+func GetUUIDQuery() (result helpers.DatabaseQuery) {
+	result.Query = `RETURN apoc.create.uuid() as uuid`
+	result.Parameters = make(map[string]interface{})
+	result.ReturnAlias = "uuid"
+
+	return result
+}

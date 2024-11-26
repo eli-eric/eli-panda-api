@@ -53,6 +53,9 @@ type ISystemsHandlers interface {
 	CreateNewSystemCode() echo.HandlerFunc
 	RecalculateSpareParts() echo.HandlerFunc
 	GetSystemsTreeByUids() echo.HandlerFunc
+	MovePhysicalItem() echo.HandlerFunc
+	ReplacePhysicalItems() echo.HandlerFunc
+	MoveSystems() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -1020,5 +1023,139 @@ func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// Swagger documentation for MovePhysicalItem
+// @Summary Move physical item
+// @Description Move physical item from one system to another
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body models.PhysicalItemMovement true "Move physical item request model"
+// @Success 200 "Return destination system UID"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/physical-item/move [post]
+func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		movePhysicalItemRequest := new(models.PhysicalItemMovement)
+
+		if err := c.Bind(movePhysicalItemRequest); err == nil {
+
+			log.Info().Msgf("Move physical item request: %+v", movePhysicalItemRequest)
+
+			userUID := c.Get("userUID").(string)
+			facilityCode := c.Get("facilityCode").(string)
+
+			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID, facilityCode)
+
+			if err == nil {
+				return c.String(http.StatusOK, destinationSystemUID)
+			}
+
+			log.Error().Msg(err.Error())
+
+			if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "destination system") {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for ReplacePhysicalItems
+// @Summary Replace physical item
+// @Description Replace physical items between two systems
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body models.PhysicalItemMovement true "Move physical item request model"
+// @Success 200 "Return destination system UID"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/physical-item/replace [post]
+func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		movePhysicalItemRequest := new(models.PhysicalItemMovement)
+
+		if err := c.Bind(movePhysicalItemRequest); err == nil {
+
+			log.Info().Msgf("Move physical item request: %+v", movePhysicalItemRequest)
+
+			userUID := c.Get("userUID").(string)
+			facilityCode := c.Get("facilityCode").(string)
+
+			destinationSystemUID, err := h.systemsService.ReplacePhysicalItems(movePhysicalItemRequest, userUID, facilityCode)
+
+			if err == nil {
+				return c.String(http.StatusOK, destinationSystemUID)
+			}
+
+			log.Error().Msg(err.Error())
+
+			if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "system") {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
+	}
+}
+
+// Swagger documentation for MoveSystems
+// @Summary Move systems
+// @Description Move systems to another parent system
+// @Tags Systems
+// @Security BearerAuth
+// @Param body body models.SystemsMovement true "Move systems request model"
+// @Success 200 "Return destination system UID"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/move [post]
+func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		moveSystemsRequest := new(models.SystemsMovement)
+
+		if err := c.Bind(moveSystemsRequest); err == nil {
+
+			log.Info().Msgf("Move systems request: %+v", moveSystemsRequest)
+
+			userUID := c.Get("userUID").(string)
+
+			destinationSystemUID, err := h.systemsService.MoveSystems(moveSystemsRequest, userUID)
+
+			if err == nil {
+				return c.String(http.StatusOK, destinationSystemUID)
+			}
+
+			log.Error().Msg(err.Error())
+
+			if strings.Contains(err.Error(), "missing") || strings.Contains(err.Error(), "system") {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return echo.ErrBadRequest
 	}
 }

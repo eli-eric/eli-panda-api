@@ -31,3 +31,6 @@ const ROLE_ROOM_CARDS_VIEW string = "room-cards-view"
 const ROLE_ROOM_CARDS_EDIT string = "room-cards-edit"
 
 const SYSTEM_ATTRIBUTE_EDIT string = "system-attribute-edit"
+
+const ROLE_PUBLICATIONS_VIEW string = "publications-view"
+const ROLE_PUBLICATIONS_EDIT string = "publications-edit"

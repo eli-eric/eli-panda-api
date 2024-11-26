@@ -1,4 +1,7 @@
-:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/2024_08_30_PBS_import.csv' AS line
+// this is the main import script for PBS data
+// use this script to import PBS data into the system
+// example of the import file is in the file: db/neo4j/data-for-import/pbs/example.csv
+:auto LOAD CSV WITH HEADERS FROM 'file:///var/lib/neo4j/import/chnagethefilename.csv' AS line
 with line
 where line.ImportInstr = "Yes" 
 and line.pandaOrderGUID is not null
@@ -7,10 +10,10 @@ and line.eun is not null
 with line
   CALL {
   WITH line
-  MERGE(o:Order{ uid: line.pandaOrderGUID })  
-  MERGE(itm:Item{ eun: line.eun })   
+  MERGE(o:Order{ uid: trim(line.pandaOrderGUID) })  
+  MERGE(itm:Item{ eun: trim(line.eun) })   
   MERGE(o)-[ol:HAS_ORDER_LINE]->(itm)
-  MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(line.PandaPartNumber, line.cataloguePartNumber)})
+  MERGE(catItem:CatalogueItem{catalogueNumber: coalesce(trim(line.PandaPartNumber), trim(line.cataloguePartNumber))})
   MERGE(itm)-[:IS_BASED_ON]->(catItem) 
   WITH line, o, ol, itm, catItem,
   case when line.pbsTenderReference is not null then "

@@ -215,6 +215,46 @@ definitions:
       uid:
         type: string
     type: object
+  models.PhysicalItemMovement:
+    properties:
+      condition:
+        $ref: '#/definitions/models.Codebook'
+      deleteSourceSystem:
+        type: boolean
+      destinationSystemUid:
+        type: string
+      itemUsage:
+        $ref: '#/definitions/models.Codebook'
+      location:
+        $ref: '#/definitions/models.Codebook'
+      parentSystemUid:
+        type: string
+      sourceSystemUid:
+        type: string
+      systemName:
+        type: string
+    type: object
+  models.Publication:
+    properties:
+      abstract:
+        type: string
+      articleTitle:
+        type: string
+      keywords:
+        type: string
+      longJournalTitle:
+        type: string
+      pages:
+        type: integer
+      pdfFile:
+        type: string
+      publicationDOI:
+        type: string
+      uid:
+        type: string
+      year:
+        type: string
+    type: object
   models.System:
     properties:
       description:
@@ -332,6 +372,15 @@ definitions:
       uid:
         type: string
     type: object
+  models.SystemsMovement:
+    properties:
+      systemsToMoveUids:
+        items:
+          type: string
+        type: array
+      targetParentSystemUid:
+        type: string
+    type: object
   models.UserAuthInfo:
     properties:
       accessToken:
@@ -391,7 +440,7 @@ paths:
       - BearerAuth: []
       summary: Get graph by uid
       tags:
-      - general
+      - General
   /v1/getuserbyazureidtoken:
     get:
       description: Get user by azure id token
@@ -521,6 +570,168 @@ paths:
       summary: Get items for EUN print
       tags:
       - Orders
+  /v1/physical-item/move:
+    post:
+      description: Move physical item from one system to another
+      parameters:
+      - description: Move physical item request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.PhysicalItemMovement'
+      responses:
+        "200":
+          description: Return destination system UID
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Move physical item
+      tags:
+      - Systems
+  /v1/physical-item/replace:
+    post:
+      description: Replace physical items between two systems
+      parameters:
+      - description: Move physical item request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.PhysicalItemMovement'
+      responses:
+        "200":
+          description: Return destination system UID
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Replace physical item
+      tags:
+      - Systems
+  /v1/publication:
+    post:
+      consumes:
+      - application/json
+      description: Create publication
+      parameters:
+      - description: Publication
+        in: body
+        name: publication
+        required: true
+        schema:
+          $ref: '#/definitions/models.Publication'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create publication
+      tags:
+      - Publications
+  /v1/publication/{uid}:
+    delete:
+      description: Delete publication by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete publication by uid
+      tags:
+      - Publications
+    get:
+      description: Get publication by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publication by uid
+      tags:
+      - Publications
+    put:
+      consumes:
+      - application/json
+      description: Update publication
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Publication
+        in: body
+        name: publication
+        required: true
+        schema:
+          $ref: '#/definitions/models.Publication'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Publication'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update publication
+      tags:
+      - Publications
+  /v1/publications:
+    get:
+      description: Get publications
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Publication'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publications
+      tags:
+      - Publications
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type
@@ -561,6 +772,28 @@ paths:
       security:
       - BearerAuth: []
       summary: Get all locations flat list
+      tags:
+      - Systems
+  /v1/systems/move:
+    post:
+      description: Move systems to another parent system
+      parameters:
+      - description: Move systems request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemsMovement'
+      responses:
+        "200":
+          description: Return destination system UID
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Move systems
       tags:
       - Systems
   /v1/systems/recalculate-spare-parts:
@@ -662,6 +895,23 @@ paths:
       summary: Get all zones
       tags:
       - Systems
+  /v1/uuid/v4:
+    get:
+      description: Get UUID v4 string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get UUID V4
+      tags:
+      - General
 schemes:
 - http
 securityDefinitions:
