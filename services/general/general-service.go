@@ -14,6 +14,7 @@ type GeneralService struct {
 type IGeneralService interface {
 	GetGraphNodesByUid(uid string) (result []models.GraphNode, err error)
 	GetGraphLinksByUid(uid string) (result []models.GraphLink, err error)
+	GetUUID() (uuid string, err error)
 }
 
 func NewGeneralService(driver *neo4j.Driver) IGeneralService {
@@ -42,4 +43,14 @@ func (svc *GeneralService) GetGraphLinksByUid(uid string) (result []models.Graph
 	helpers.ProcessArrayResult(&result, err)
 
 	return result, err
+}
+
+func (svc *GeneralService) GetUUID() (uuid string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetUUIDQuery()
+	uuid, err = helpers.GetNeo4jSingleRecordSingleValue[string](session, query)
+
+	return uuid, err
 }

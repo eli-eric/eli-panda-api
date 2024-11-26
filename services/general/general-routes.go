@@ -9,4 +9,6 @@ import (
 
 func MapGeneralRoutes(e *echo.Echo, h IGeneralHandlers, jwtMiddleware echo.MiddlewareFunc) {
 	e.GET("/v1/general/:uid/graph", m.Authorization(h.GetGraphByUid(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
+
+	e.GET("/v1/uuid/v4", m.Authorization(h.GetUUID(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 }

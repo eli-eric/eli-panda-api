@@ -8,6 +8,7 @@ import (
 	filesservice "panda/apigateway/services/files-service"
 	"panda/apigateway/services/general"
 	ordersService "panda/apigateway/services/orders-service"
+	publicationsservice "panda/apigateway/services/publications-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 
@@ -64,4 +65,10 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	generalHandlers := general.NewGeneralHandlers(generalSvc)
 	general.MapGeneralRoutes(e, generalHandlers, jwtMiddleware)
 	log.Info().Msg("General   service initialized successfully.")
+
+	// publications service
+	publicationsSvc := publicationsservice.NewPublicationsService(neo4jDriver)
+	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc)
+	publicationsservice.MapPublicationsRoutes(e, publicationsHandlers, jwtMiddleware)
+	log.Info().Msg("Publications service initialized successfully.")
 }

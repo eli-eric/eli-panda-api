@@ -69,6 +69,7 @@ type ISystemsService interface {
 	BuildSystemHierarchy(tree models.SystemTreeUid) (*models.System, error)
 	MovePhysicalItem(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 	ReplacePhysicalItems(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
+	MoveSystems(movement *models.SystemsMovement, userUID string) (destinationSystemUid string, err error)
 }
 
 // Create new security service instance
@@ -886,6 +887,40 @@ func ValidatePhysicalItemReplacement(movement *systemsModels.PhysicalItemMovemen
 
 	if movement.SourceSystemUID == "" {
 		erros = append(erros, "missing source system")
+	}
+
+	if len(erros) > 0 {
+		resultErr := strings.Join(erros[:], ", ")
+		return errors.New(resultErr)
+	}
+
+	return nil
+}
+
+func (svc *SystemsService) MoveSystems(movement *models.SystemsMovement, userUID string) (destinationSystemUid string, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = ValidateSystemsMovement(movement)
+
+	if err != nil {
+		return "", err
+	}
+
+	destinationSystemUid, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, MoveSystemsQuery(movement, userUID))
+
+	return destinationSystemUid, err
+}
+
+func ValidateSystemsMovement(movement *models.SystemsMovement) error {
+
+	erros := make([]string, 0)
+	if movement.TargetParentSystemUid == "" {
+		erros = append(erros, "missing destination parent system")
+	}
+
+	if len(movement.SystemsToMoveUids) == 0 {
+		erros = append(erros, "missing systems to move")
 	}
 
 	if len(erros) > 0 {

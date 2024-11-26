@@ -133,3 +133,8 @@ type PhysicalItemMovement struct {
 	Condition            *models.Codebook `json:"condition"`
 	DeleteSourceSystem   bool             `json:"deleteSourceSystem"`
 }
+
+type SystemsMovement struct {
+	TargetParentSystemUid string   `json:"targetParentSystemUid"`
+	SystemsToMoveUids     []string `json:"systemsToMoveUids"`
+}
