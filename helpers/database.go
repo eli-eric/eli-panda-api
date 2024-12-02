@@ -25,6 +25,101 @@ func NewNeo4jSession(driver neo4j.Driver) (neo4j.Session, error) {
 	return session, err
 }
 
+func CreateOrUpdateNodeQuery(session neo4j.Session, node interface{}) (DatabaseQuery, error) {
+	val := reflect.ValueOf(node)
+	typ := reflect.TypeOf(node)
+
+	if typ.Kind() == reflect.Ptr {
+		val = val.Elem()
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return DatabaseQuery{}, fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+	params := map[string]interface{}{}
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i)
+
+		// Skip unexported fields
+		if !value.CanInterface() {
+			continue
+		}
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: $%s", propName, propName))
+			params[propName] = value.Interface()
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			params[propName] = value.Interface()
+		}
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MERGE (n:%s {uid: $uid})
+	SET n += {%s}
+	RETURN n
+	`, typ.Name(), strings.Join(fields, ", "))
+
+	// Run the query
+	return DatabaseQuery{
+		Query:       query,
+		Parameters:  params,
+		ReturnAlias: "n",
+	}, nil
+}
+
+func DeleteNodeQuery(nodeUID string) (result DatabaseQuery) {
+	result.Query = `
+	MATCH (n {uid:$uid})
+	DETACH DELETE n`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = nodeUID
+
+	return result
+}
+
+func SoftDeleteNodeQuery(nodeUID string) (result DatabaseQuery) {
+	result.Query = `
+	MATCH (n {uid:$uid})
+	SET n.deleted = true
+	RETURN n`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = nodeUID
+
+	return result
+}
+
+func HistoryLogQuery(uid, action, userUID string) (result DatabaseQuery) {
+	result.Query = `
+	MATCH(u:User{uid:$userUID})
+	MATCH(s{uid:$uid})
+	with u,s
+	CREATE(s)-[:WAS_UPDATED_BY{at: datetime(), action: $action}]->(u)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["action"] = action
+	result.Parameters["userUID"] = userUID
+
+	return result
+}
+
 func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
 	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(query.Query, query.Parameters)
@@ -135,7 +230,7 @@ func WriteNeo4jAndReturnNothing(session neo4j.Session, query DatabaseQuery) (err
 }
 
 // write transaction with multiple queries
-func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries []DatabaseQuery) (err error) {
+func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries ...DatabaseQuery) (err error) {
 
 	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		for _, query := range queries {

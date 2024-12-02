@@ -6,7 +6,7 @@ import (
 )
 
 type Publication struct {
-	Uid                 string                   `json:"uid" neo4j:"ignore"`
+	Uid                 string                   `json:"uid" neo4j:"key,uid"`
 	Doi                 string                   `json:"doi" neo4j:"prop,doi"`
 	ArticleTitle        string                   `json:"articleTitle" neo4j:"prop,articleTitle"`
 	Abstract            *string                  `json:"abstract" neo4j:"prop,abstract"`

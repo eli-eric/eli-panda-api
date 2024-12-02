@@ -99,7 +99,7 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 	deliveryStatusQuery := UpdateOrderDeliveryStatusQuery(newUid, facilityCode)
 	queries = append(queries, deliveryStatusQuery)
 
-	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 
 	return newUid, err
 }
@@ -147,7 +147,7 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 		deliveryStatusQuery := UpdateOrderDeliveryStatusQuery(order.UID, facilityCode)
 		queries = append(queries, deliveryStatusQuery)
 
-		return helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
+		return helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 
 	} else {
 		err = helpers.ERR_INVALID_INPUT

@@ -5,6 +5,7 @@ import (
 
 	"panda/apigateway/services/publications-service/models"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
@@ -47,7 +48,13 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 			return echo.ErrBadRequest
 		}
 
-		_, err := h.PublicationsService.CreatePublication(publication)
+		userUID := c.Get("userUID").(string)
+
+		if publication.Uid == "" {
+			publication.Uid = uuid.New().String()
+		}
+
+		_, err := h.PublicationsService.CreatePublication(publication, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error creating publication")
 			return echo.ErrInternalServerError
@@ -163,8 +170,9 @@ func (h *PublicationsHandlers) DeletePublication() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		uid := c.Param("uid")
+		userUID := c.Get("userUID").(string)
 
-		err := h.PublicationsService.DeletePublication(uid)
+		err := h.PublicationsService.DeletePublication(uid, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error deleting publication")
 			return echo.ErrInternalServerError
