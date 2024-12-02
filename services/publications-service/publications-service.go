@@ -14,7 +14,7 @@ type PublicationsService struct {
 type IPublicationsService interface {
 	GetPublicationByUid(uid string) (result models.Publication, err error)
 	CreatePublication(publication *models.Publication) (result models.Publication, err error)
-	UpdatePublication(publication *models.Publication) (result models.Publication, err error)
+	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)
 	DeletePublication(uid string) (err error)
 	GetPublications() (result []models.Publication, err error)
 }
@@ -43,11 +43,18 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 	return *publication, err
 }
 
-func (svc *PublicationsService) UpdatePublication(publication *models.Publication) (result models.Publication, err error) {
+func (svc *PublicationsService) UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := UpdatePublicationQuery(publication)
+	oldOne, err := svc.GetPublicationByUid(newPublication.Uid)
+
+	if err != nil {
+		return result, err
+	}
+
+	query := UpdatePublicationQuery(newPublication, &oldOne, userUID)
+
 	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 
 	return result, err

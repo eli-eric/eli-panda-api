@@ -136,7 +136,9 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 
 		publication.Uid = uid
 
-		_, err := h.PublicationsService.UpdatePublication(publication)
+		userUID := c.Get("userUID").(string)
+
+		_, err := h.PublicationsService.UpdatePublication(publication, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error updating publication")
 			return echo.ErrInternalServerError

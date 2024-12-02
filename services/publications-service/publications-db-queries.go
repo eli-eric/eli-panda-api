@@ -5,28 +5,26 @@ import (
 	"panda/apigateway/services/publications-service/models"
 )
 
-func UpdatePublicationQuery(publication *models.Publication) (result helpers.DatabaseQuery) {
-	result.Query = `
-		MATCH (n:Publication {uid:$uid})
-		SET n.articleTitle = $articleTitle,
-			n.abstract = $abstract,		
-			n.keywords = $keywords,
-			n.year = $year,
-			n.publicationDOI = $publicationDOI,
-			n.longJournalTitle = $longJournalTitle,
-			n.pages = $pages,
-			n.pdfFile = $pdfFile
-		RETURN n.uid as uid`
+func UpdatePublicationQuery(newPublication *models.Publication, oldPublication *models.Publication, userUID string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["uid"] = publication.Uid
-	result.Parameters["articleTitle"] = publication.ArticleTitle
-	result.Parameters["abstract"] = publication.Abstract
-	result.Parameters["keywords"] = publication.Keywords
-	result.Parameters["year"] = publication.Year
-	result.Parameters["publicationDOI"] = publication.PublicationDOI
-	result.Parameters["longJournalTitle"] = publication.LongJournalTitle
-	result.Parameters["pages"] = publication.Pages
-	result.Parameters["pdfFile"] = publication.PdfFile
+
+	result.Query = `
+		MATCH (n:Publication {uid:$uid}) `
+
+	helpers.AutoResolveObjectToUpdateQuery(&result, *newPublication, *oldPublication, "n")
+
+	result.Query += `	
+		WITH n
+		MATCH(u:User{uid: $lastUpdateBy})
+		WITH n, u
+		SET n.lastUpdateTime = datetime(), n.lastUpdateBy = u.username
+		WITH n, u
+		CREATE(n)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+		RETURN n.uid as uid
+		`
+
+	result.Parameters["uid"] = oldPublication.Uid
+	result.Parameters["lastUpdateBy"] = userUID
 
 	result.ReturnAlias = "uid"
 
@@ -68,16 +66,6 @@ func CreatePublicationQuery(publication *models.Publication) (result helpers.Dat
 			pdfFile: $pdfFile
 		})
 		RETURN n.uid as uid`
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["uid"] = publication.Uid
-	result.Parameters["articleTitle"] = publication.ArticleTitle
-	result.Parameters["abstract"] = publication.Abstract
-	result.Parameters["keywords"] = publication.Keywords
-	result.Parameters["year"] = publication.Year
-	result.Parameters["publicationDOI"] = publication.PublicationDOI
-	result.Parameters["longJournalTitle"] = publication.LongJournalTitle
-	result.Parameters["pages"] = publication.Pages
-	result.Parameters["pdfFile"] = publication.PdfFile
 
 	result.ReturnAlias = "uid"
 

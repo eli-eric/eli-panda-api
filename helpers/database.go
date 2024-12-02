@@ -254,6 +254,47 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Interface().(time.Time).Local()
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
+					} else if fieldType == "int" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Int()
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Int()
+
+						if newValue != oldValue {
+							dbQuery.Parameters[neo4jPropName] = newValue
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "*int" {
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if newValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = nil
+						} else if oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Int()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if oldValue.Elem().Int() != newValue.Elem().Int() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Int()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "float64" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Float()
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Float()
+
+						if newValue != oldValue {
+							dbQuery.Parameters[neo4jPropName] = newValue
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "*float64" {
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if newValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = nil
+						} else if oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Float()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
 					}
 
 				} else if neo4jPropType == "rel" {

@@ -1178,22 +1178,100 @@
                 "articleTitle": {
                     "type": "string"
                 },
+                "citationsCount": {
+                    "type": "integer"
+                },
+                "doi": {
+                    "type": "string"
+                },
+                "eidScopus": {
+                    "type": "string"
+                },
+                "eissn": {
+                    "type": "string"
+                },
+                "impactFactor": {
+                    "type": "number"
+                },
+                "issn": {
+                    "type": "string"
+                },
+                "issue": {
+                    "type": "integer"
+                },
+                "journalTitle": {
+                    "type": "string"
+                },
                 "keywords": {
                     "type": "string"
                 },
-                "longJournalTitle": {
+                "language": {
                     "type": "string"
                 },
-                "pages": {
+                "oecdFord": {
+                    "type": "string"
+                },
+                "openAccessType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "pagesFrom": {
                     "type": "integer"
                 },
-                "pdfFile": {
+                "pagesTo": {
+                    "type": "integer"
+                },
+                "pagesTotal": {
+                    "type": "integer"
+                },
+                "pdfFileName": {
                     "type": "string"
                 },
-                "publicationDOI": {
+                "pdfFileUrl": {
                     "type": "string"
+                },
+                "publicationCategory": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "publicationSupport": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "publishDate": {
+                    "type": "string"
+                },
+                "quartile": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                },
+                "statistics Beamlines": {
+                    "type": "integer"
+                },
+                "statisticsAlps": {
+                    "type": "integer"
+                },
+                "statisticsEric": {
+                    "type": "integer"
+                },
+                "statisticsTotal": {
+                    "type": "integer"
                 },
                 "uid": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                },
+                "userCall": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "userExperiment": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "volume": {
+                    "type": "integer"
+                },
+                "wosNumber": {
                     "type": "string"
                 },
                 "year": {
