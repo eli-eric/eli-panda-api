@@ -43,7 +43,8 @@ func GetPublicationByUidQuery(uid string) (result helpers.DatabaseQuery) {
 			year: n.year,
 			publicationDOI: n.publicationDOI,
 			pages: n.pages,
-			pdfFile: n.pdfFile
+			pdfFile: n.pdfFile,
+			citations: n.citations
 			} as publication`
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid

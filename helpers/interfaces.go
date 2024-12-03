@@ -22,3 +22,14 @@ func MapStruct[T any](mapData map[string]interface{}) (result T, err error) {
 
 	return result, err
 }
+
+func MapStructToInterface(mapData map[string]interface{}, result any) (err error) {
+	// first convert map to json
+	jsonData, err := json.Marshal(mapData)
+	//if there is no error try to convert jsonData to generic struct
+	if err == nil {
+		err = json.Unmarshal(jsonData, &result)
+	}
+
+	return err
+}

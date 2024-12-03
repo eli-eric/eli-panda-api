@@ -1181,8 +1181,11 @@ const docTemplate = `{
                 "articleTitle": {
                     "type": "string"
                 },
-                "citationsCount": {
-                    "type": "integer"
+                "citations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "doi": {
                     "type": "string"

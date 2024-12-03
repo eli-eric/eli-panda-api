@@ -16,7 +16,7 @@ type Publication struct {
 	PagesFrom           *int                     `json:"pagesFrom" neo4j:"prop,pagesFrom"`
 	PagesTo             *int                     `json:"pagesTo" neo4j:"prop,pagesTo"`
 	PagesTotal          *int                     `json:"pagesTotal" neo4j:"prop,pagesTotal"`
-	CitationsCount      *int                     `json:"citationsCount" neo4j:"prop,citationsCount"`
+	Citations           *[]string                `json:"citations" neo4j:"prop,citations"`
 	ImpactFactor        *float64                 `json:"impactFactor" neo4j:"prop,impactFactor"`
 	Quartile            *string                  `json:"quartile" neo4j:"prop,quartile"`
 	Year                *string                  `json:"year" neo4j:"prop,year"`

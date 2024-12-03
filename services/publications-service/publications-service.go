@@ -12,7 +12,7 @@ type PublicationsService struct {
 }
 
 type IPublicationsService interface {
-	GetPublicationByUid(uid string) (result models.Publication, err error)
+	GetPublicationByUid(uid string) (models.Publication, error)
 	CreatePublication(publication *models.Publication, userUID string) (result models.Publication, err error)
 	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)
 	DeletePublication(uid string, userUID string) (err error)
@@ -27,8 +27,9 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetPublicationByUidQuery(uid)
-	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Publication](session, query)
+	result.Uid = uid
+
+	err = helpers.GetSingleNode(session, &result)
 
 	return result, err
 }
@@ -37,14 +38,21 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	createPublication, err := helpers.CreateOrUpdateNodeQuery(session, publication)
+	createPublicationQuery, err := helpers.CreateOrUpdateNodeQuery(publication)
+
+	if err != nil {
+		return result, err
+	}
+
+	handleRelations, err := helpers.HandleRelationshipsQuery(publication)
 
 	if err != nil {
 		return result, err
 	}
 
 	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		createPublication,
+		createPublicationQuery,
+		handleRelations,
 		helpers.HistoryLogQuery(publication.Uid, "CREATE", userUID))
 
 	return *publication, err
@@ -54,7 +62,7 @@ func (svc *PublicationsService) UpdatePublication(newPublication *models.Publica
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	updatePublication, err := helpers.CreateOrUpdateNodeQuery(session, newPublication)
+	updatePublication, err := helpers.CreateOrUpdateNodeQuery(newPublication)
 
 	if err != nil {
 		return result, err

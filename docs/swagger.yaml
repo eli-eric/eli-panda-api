@@ -240,8 +240,10 @@ definitions:
         type: string
       articleTitle:
         type: string
-      citationsCount:
-        type: integer
+      citations:
+        items:
+          type: string
+        type: array
       doi:
         type: string
       eidScopus:

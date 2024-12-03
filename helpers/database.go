@@ -25,7 +25,7 @@ func NewNeo4jSession(driver neo4j.Driver) (neo4j.Session, error) {
 	return session, err
 }
 
-func CreateOrUpdateNodeQuery(session neo4j.Session, node interface{}) (DatabaseQuery, error) {
+func CreateOrUpdateNodeQuery(node interface{}) (DatabaseQuery, error) {
 	val := reflect.ValueOf(node)
 	typ := reflect.TypeOf(node)
 
@@ -80,6 +80,281 @@ func CreateOrUpdateNodeQuery(session neo4j.Session, node interface{}) (DatabaseQ
 		Parameters:  params,
 		ReturnAlias: "n",
 	}, nil
+}
+
+// function to handle relationships
+// if there si an existing relationship to an other node it will be deleted and a new one will be created
+// if the new value is nil the existing relationship will be deleted
+func HandleRelationshipsQueryX(node interface{}) (DatabaseQuery, error) {
+	val := reflect.ValueOf(node)
+	typ := reflect.TypeOf(node)
+
+	if typ.Kind() == reflect.Ptr {
+		val = val.Elem()
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return DatabaseQuery{}, fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Get the UID of the source node
+	_, found := typ.FieldByName("Uid")
+	if !found {
+		return DatabaseQuery{}, fmt.Errorf("struct must have a 'Uid' field")
+	}
+	sourceUID := val.FieldByName("Uid").Interface()
+
+	var queries []string
+	params := map[string]interface{}{
+		"uid": sourceUID,
+	}
+
+	// Iterate over fields to find relationships
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i)
+
+		// Skip unexported fields or nil pointers
+		if !value.CanInterface() {
+			continue
+		}
+
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle `rel` tags
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return DatabaseQuery{}, fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			targetKey := tagParts[3]
+			paramKey := tagParts[4]
+
+			if value.Kind() == reflect.Ptr && value.IsNil() {
+				// Delete existing relationship if value is nil
+				queries = append(queries, fmt.Sprintf(`
+					MATCH (n:%s {uid: $uid})-[r:%s]->(:%s)
+					DELETE r
+					WITH n
+				`, typ.Name(), relationshipType, targetNodeType))
+			} else {
+				// Delete and recreate relationship if value is non-nil
+				targetNode := value.Interface()
+				targetUID := reflect.ValueOf(targetNode).FieldByName(strings.Title(targetKey)).Interface()
+				params[paramKey] = targetUID
+
+				// Delete existing relationship
+				queries = append(queries, fmt.Sprintf(`
+					MATCH (n:%s {uid: $uid})-[r:%s]->(:%s)
+					DELETE r
+					WITH n
+				`, typ.Name(), relationshipType, targetNodeType))
+
+				// Create new relationship
+				queries = append(queries, fmt.Sprintf(`
+					MATCH (t:%s {uid: $%s})
+					MERGE (n)-[r:%s]->(t)
+				`, targetNodeType, paramKey, relationshipType))
+			}
+		}
+	}
+
+	// Combine all queries
+	finalQuery := strings.Join(queries, "\n")
+
+	finalQuery += " RETURN true as result"
+
+	return DatabaseQuery{
+		Query:       finalQuery,
+		Parameters:  params,
+		ReturnAlias: "", // No alias is needed for relationships
+	}, nil
+}
+
+func HandleRelationshipsQuery(node interface{}) (DatabaseQuery, error) {
+	val := reflect.ValueOf(node)
+	typ := reflect.TypeOf(node)
+
+	// Dereference pointer if necessary
+	if typ.Kind() == reflect.Ptr {
+		val = val.Elem()
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return DatabaseQuery{}, fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Get the UID of the source node
+	uidField := val.FieldByName("Uid")
+	if !uidField.IsValid() || uidField.Kind() != reflect.String {
+		return DatabaseQuery{}, fmt.Errorf("struct must have a 'Uid' field of type string")
+	}
+	sourceUID := uidField.Interface()
+
+	var queries []string
+	params := map[string]interface{}{
+		"uid": sourceUID,
+	}
+
+	// Iterate over fields to find relationships
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i)
+
+		// Skip unexported fields
+		if !value.CanInterface() {
+			continue
+		}
+
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle `rel` tags
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return DatabaseQuery{}, fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			//targetKey := tagParts[3]
+			paramKey := tagParts[4]
+
+			if value.Kind() == reflect.Ptr && value.IsNil() {
+				// Delete existing relationship if value is nil
+				queries = append(queries, fmt.Sprintf(`
+					MATCH (n:%s {uid: $uid})-[r:%s]->(:%s)
+					DELETE r
+					WITH n
+				`, typ.Name(), relationshipType, targetNodeType))
+			} else {
+				// Delete and recreate relationship if value is non-nil
+				targetNode := value.Interface()
+				targetValue := reflect.ValueOf(targetNode)
+
+				// Ensure we're working with the actual struct, not a pointer
+				if targetValue.Kind() == reflect.Ptr {
+					targetValue = targetValue.Elem()
+				}
+
+				targetUIDField := targetValue.FieldByName("UID")
+				if !targetUIDField.IsValid() {
+					return DatabaseQuery{}, fmt.Errorf("target node struct must have a '%s' field", "UID")
+				}
+
+				targetUID := targetUIDField.Interface()
+				params[paramKey] = targetUID
+
+				// Delete existing relationship
+				queries = append(queries, fmt.Sprintf(`
+					MATCH (n:%s {uid: $uid})-[r:%s]->(:%s)
+					DELETE r
+					WITH n
+				`, typ.Name(), relationshipType, targetNodeType))
+
+				// Create new relationship
+				queries = append(queries, fmt.Sprintf(`
+				    MATCH (n:%s {uid: $uid})
+					MATCH (t:%s {uid: $%s})
+					MERGE (n)-[:%s]->(t)
+					WITH n
+				`, typ.Name(), targetNodeType, targetUID, relationshipType))
+
+			}
+		}
+	}
+
+	// Combine all queries
+	finalQuery := strings.Join(queries, "\n")
+
+	finalQuery += " RETURN true as result"
+
+	return DatabaseQuery{
+		Query:       finalQuery,
+		Parameters:  params,
+		ReturnAlias: "", // No alias is needed for relationships
+	}, nil
+}
+
+// get single node by uid
+func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
+	val := reflect.ValueOf(node)
+	typ := reflect.TypeOf(node)
+
+	if typ.Kind() == reflect.Ptr {
+		val = val.Elem()
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i)
+
+		// Skip unexported fields
+		if !value.CanInterface() {
+			continue
+		}
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+		}
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MATCH (n:%s {uid: $uid})
+	RETURN {
+	 		%s
+	} as n
+	`, typ.Name(), strings.Join(fields, ","))
+
+	// Run the query
+	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		result, err := tx.Run(query, map[string]interface{}{"uid": val.FieldByName("Uid").Interface()})
+		if err != nil {
+			return nil, err
+		}
+
+		record, err := result.Single()
+		if err != nil {
+			return nil, fmt.Errorf(err.Error())
+		}
+
+		rec, _ := record.Get("n")
+		return rec, nil
+	})
+
+	if err == nil {
+		err = MapStructToInterface(resultMap.(map[string]interface{}), node)
+	}
+
+	return err
 }
 
 func DeleteNodeQuery(nodeUID string) (result DatabaseQuery) {
