@@ -38,39 +38,50 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	createPublicationQuery, err := helpers.CreateOrUpdateNodeQuery(publication)
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:Publication {uid: $uid}) `
+	updateQuery.Parameters["uid"] = publication.Uid
 
-	if err != nil {
-		return result, err
-	}
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *publication, models.Publication{}, "n")
 
-	handleRelations, err := helpers.HandleRelationshipsQuery(publication)
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
 
-	if err != nil {
-		return result, err
-	}
+	historyLog := helpers.HistoryLogQuery(publication.Uid, "CREATE", userUID)
 
 	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		createPublicationQuery,
-		handleRelations,
-		helpers.HistoryLogQuery(publication.Uid, "CREATE", userUID))
+		updateQuery,
+		historyLog)
 
 	return *publication, err
 }
 
-func (svc *PublicationsService) UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error) {
+func (svc *PublicationsService) UpdatePublication(publication *models.Publication, userUID string) (result models.Publication, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	updatePublication, err := helpers.CreateOrUpdateNodeQuery(newPublication)
+	oldPublication, err := svc.GetPublicationByUid(publication.Uid)
 
 	if err != nil {
 		return result, err
 	}
 
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MATCH (n:Publication {uid: $uid}) `
+	updateQuery.Parameters["uid"] = publication.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *publication, oldPublication, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(publication.Uid, "UPDATE", userUID)
+
 	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		updatePublication,
-		helpers.HistoryLogQuery(newPublication.Uid, "UPDATE", userUID))
+		updateQuery,
+		historyLog)
 
 	return result, err
 }

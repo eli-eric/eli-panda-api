@@ -299,6 +299,7 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 	// Build Cypher query and parameters
 	var fields []string
+	var optionalMatchQueries []string
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
@@ -324,15 +325,35 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 			propName := strings.TrimPrefix(neo4jTag, "key,")
 			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
 		}
+
+		// handle optional match query and fields
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			targetAlias := tagParts[4]
+
+			optionalMatchQueries = append(optionalMatchQueries, fmt.Sprintf("OPTIONAL MATCH (n)-[:%s]->(%s:%s) ", relationshipType, targetAlias, targetNodeType))
+			fields = append(fields, fmt.Sprintf("%s: case when %s is NOT NULL THEN {uid: %s.uid, name: %s.name} ELSE null END", targetAlias, targetAlias, targetAlias, targetAlias))
+		}
+
 	}
 
 	// Create Cypher query
 	query := fmt.Sprintf(`
 	MATCH (n:%s {uid: $uid})
+	%s
 	RETURN {
-	 		%s
+			%s
 	} as n
-	`, typ.Name(), strings.Join(fields, ","))
+	`, typ.Name(),
+		strings.Join(optionalMatchQueries, " "),
+		strings.Join(fields, ","))
 
 	// Run the query
 	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
