@@ -378,6 +378,9 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, err error) {
 
+	dbQuery := DatabaseQuery{}
+	dbQuery.Parameters = make(map[string]interface{})
+
 	typ := reflect.TypeOf(result)
 
 	if typ.Kind() == reflect.Slice {
@@ -390,6 +393,7 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 
 	// Build Cypher query and parameters
 	var fields []string
+	searchFields := make(map[string]string) // key is the field name, value is the field type
 	var optionalMatchQueries []string
 
 	for i := 0; i < typ.NumField(); i++ {
@@ -402,13 +406,14 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 		if strings.HasPrefix(neo4jTag, "prop,") {
 			propName := strings.TrimPrefix(neo4jTag, "prop,")
 			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
-
+			searchFields[propName] = field.Type.String()
 		}
 
 		// handle key property
 		if strings.HasPrefix(neo4jTag, "key") {
 			propName := strings.TrimPrefix(neo4jTag, "key,")
 			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+			searchFields[propName] = field.Type.String()
 		}
 
 		// handle optional match query and fields
@@ -425,24 +430,47 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 
 			optionalMatchQueries = append(optionalMatchQueries, fmt.Sprintf("OPTIONAL MATCH (n)-[:%s]->(%s:%s) ", relationshipType, targetAlias, targetNodeType))
 			fields = append(fields, fmt.Sprintf("%s: case when %s is NOT NULL THEN {uid: %s.uid, name: %s.name} ELSE null END", targetAlias, targetAlias, targetAlias, targetAlias))
+			searchFields[targetAlias] = "codebook"
 		}
 
 	}
 
+	// create search query part
+	searchQuery := ""
+	if searchText != "" {
+		dbQuery.Parameters["search"] = searchText
+		// foreach field in the struct
+		for propName, propType := range searchFields {
+			if propType == "string" || propType == "*string" {
+				if searchQuery == "" {
+					searchQuery += fmt.Sprintf(" AND (toLower(n.%s) CONTAINS toLower($search)", propName)
+				} else {
+					searchQuery += fmt.Sprintf(" OR toLower(n.%s) CONTAINS toLower($search) ", propName)
+				}
+			}
+		}
+		searchQuery += ")"
+	}
+
 	// Create Cypher query
 	query := fmt.Sprintf(`
-	MATCH (n:%s) WHERE n.deleted IS NULL OR n.deleted = false
+	MATCH (n:%s) WHERE (n.deleted IS NULL OR n.deleted = false)
 	%s
+	%s	
 	RETURN {
 			%s
 	} as n SKIP %d LIMIT %d
-	`, typ.Name(),
+	`,
+		typ.Name(),
+		searchQuery,
 		strings.Join(optionalMatchQueries, " "),
 		strings.Join(fields, ","),
 		skip, limit)
 
+	dbQuery.Query = query
+	dbQuery.ReturnAlias = "n"
 	// Run the query
-	result, err = GetNeo4jArrayOfNodes[T](session, DatabaseQuery{Query: query, ReturnAlias: "n"})
+	result, err = GetNeo4jArrayOfNodes[T](session, dbQuery)
 
 	return result, err
 }
