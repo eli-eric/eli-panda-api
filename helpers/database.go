@@ -285,12 +285,15 @@ func HandleRelationshipsQuery(node interface{}) (DatabaseQuery, error) {
 
 // get single node by uid
 func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
-	val := reflect.ValueOf(node)
+
 	typ := reflect.TypeOf(node)
+	uid := ""
 
 	if typ.Kind() == reflect.Ptr {
-		val = val.Elem()
 		typ = typ.Elem()
+		uid = reflect.ValueOf(node).Elem().FieldByName("Uid").String()
+	} else {
+		uid = reflect.ValueOf(node).FieldByName("Uid").String()
 	}
 
 	if typ.Kind() != reflect.Struct {
@@ -303,12 +306,6 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
-		value := val.Field(i)
-
-		// Skip unexported fields
-		if !value.CanInterface() {
-			continue
-		}
 
 		//jsonTag := field.Tag.Get("json")
 		neo4jTag := field.Tag.Get("neo4j")
@@ -357,7 +354,8 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 	// Run the query
 	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		result, err := tx.Run(query, map[string]interface{}{"uid": val.FieldByName("Uid").Interface()})
+
+		result, err := tx.Run(query, map[string]interface{}{"uid": uid})
 		if err != nil {
 			return nil, err
 		}
@@ -376,6 +374,77 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 	}
 
 	return err
+}
+
+func GetMultipleNodes[T any](session neo4j.Session, skip, limit int) (result []T, err error) {
+
+	typ := reflect.TypeOf(result)
+
+	if typ.Kind() == reflect.Slice {
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return result, fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+	var optionalMatchQueries []string
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+		}
+
+		// handle optional match query and fields
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return result, fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			targetAlias := tagParts[4]
+
+			optionalMatchQueries = append(optionalMatchQueries, fmt.Sprintf("OPTIONAL MATCH (n)-[:%s]->(%s:%s) ", relationshipType, targetAlias, targetNodeType))
+			fields = append(fields, fmt.Sprintf("%s: case when %s is NOT NULL THEN {uid: %s.uid, name: %s.name} ELSE null END", targetAlias, targetAlias, targetAlias, targetAlias))
+		}
+
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MATCH (n:%s) WHERE n.deleted IS NULL OR n.deleted = false
+	%s
+	RETURN {
+			%s
+	} as n SKIP %d LIMIT %d
+	`, typ.Name(),
+		strings.Join(optionalMatchQueries, " "),
+		strings.Join(fields, ","),
+		skip, limit)
+
+	// Run the query
+	result, err = GetNeo4jArrayOfNodes[T](session, DatabaseQuery{Query: query, ReturnAlias: "n"})
+
+	return result, err
 }
 
 func DeleteNodeQuery(nodeUID string) (result DatabaseQuery) {

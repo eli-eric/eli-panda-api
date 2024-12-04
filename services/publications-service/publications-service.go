@@ -102,8 +102,7 @@ func (svc *PublicationsService) GetPublications() (result []models.Publication, 
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetAllPublicationsQuery()
-	result, err = helpers.GetNeo4jArrayOfNodes[models.Publication](session, query)
+	result, err = helpers.GetMultipleNodes[models.Publication](session, 0, 10)
 
 	helpers.ProcessArrayResult(&result, err)
 
