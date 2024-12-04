@@ -3,6 +3,8 @@ package publicationsservice
 import (
 	//"panda/apigateway/services/publications-service/models"
 
+	"encoding/json"
+	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
 
 	"github.com/google/uuid"
@@ -107,13 +109,32 @@ func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
 
-		publications, err := h.PublicationsService.GetPublications()
+		search := c.QueryParam("search")
+		pagination := c.QueryParam("pagination")
+		sorting := c.QueryParam("sorting")
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		publications, err := h.PublicationsService.GetPublications(search, pagingObject.Page, pagingObject.PageSize)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting publications")
 			return echo.ErrInternalServerError
 		}
 
-		return c.JSON(200, publications)
+		pagiantionResult := helpers.PaginationResult[models.Publication]{
+			TotalCount: int64(len(publications)),
+			Data:       publications,
+		}
+
+		return c.JSON(200, pagiantionResult)
 	}
 }
 

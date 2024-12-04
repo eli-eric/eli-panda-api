@@ -376,7 +376,7 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 	return err
 }
 
-func GetMultipleNodes[T any](session neo4j.Session, skip, limit int) (result []T, err error) {
+func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, err error) {
 
 	typ := reflect.TypeOf(result)
 

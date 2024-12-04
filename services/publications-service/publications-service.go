@@ -16,7 +16,7 @@ type IPublicationsService interface {
 	CreatePublication(publication *models.Publication, userUID string) (result models.Publication, err error)
 	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)
 	DeletePublication(uid string, userUID string) (err error)
-	GetPublications() (result []models.Publication, err error)
+	GetPublications(searchText string, page, pageSize int) (result []models.Publication, err error)
 }
 
 func NewPublicationsService(driver *neo4j.Driver) IPublicationsService {
@@ -98,11 +98,24 @@ func (svc *PublicationsService) DeletePublication(uid string, userUID string) (e
 
 }
 
-func (svc *PublicationsService) GetPublications() (result []models.Publication, err error) {
+func (svc *PublicationsService) GetPublications(searchText string, page, pageSize int) (result []models.Publication, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	result, err = helpers.GetMultipleNodes[models.Publication](session, 0, 10)
+	skip := pageSize
+	limit := pageSize
+
+	if skip > 0 {
+		skip = (page - 1) * pageSize
+	} else {
+		skip = 0
+	}
+
+	if limit <= 0 {
+		limit = 10
+	}
+
+	result, err = helpers.GetMultipleNodes[models.Publication](session, skip, limit, searchText)
 
 	helpers.ProcessArrayResult(&result, err)
 
