@@ -105,6 +105,8 @@ func (h *PublicationsHandlers) GetPublication() echo.HandlerFunc {
 // @Success 200 {array} models.Publication
 // @Failure 500 "Internal Server Error"
 // @Router /v1/publications [get]
+// @Param search query string false "search"
+// @Param pagination query string false "pagination"
 func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

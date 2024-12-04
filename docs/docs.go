@@ -504,6 +504,20 @@ const docTemplate = `{
                     "Publications"
                 ],
                 "summary": "Get publications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination",
+                        "name": "pagination",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",

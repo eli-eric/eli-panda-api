@@ -770,6 +770,15 @@ paths:
   /v1/publications:
     get:
       description: Get publications
+      parameters:
+      - description: search
+        in: query
+        name: search
+        type: string
+      - description: pagination
+        in: query
+        name: pagination
+        type: string
       produces:
       - application/json
       responses:
