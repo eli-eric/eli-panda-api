@@ -376,12 +376,101 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 	return err
 }
 
-func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, err error) {
+// get single node by uid
+func GetSingleNodeTest(session neo4j.Session, node interface{}) (err error) {
+
+	typ := reflect.TypeOf(node)
+	uid := ""
+
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		uid = reflect.ValueOf(node).Elem().FieldByName("Uid").String()
+	} else {
+		uid = reflect.ValueOf(node).FieldByName("Uid").String()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+	var optionalMatchQueries []string
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+		}
+
+		// handle optional match query and fields
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			targetAlias := tagParts[4]
+
+			optionalMatchQueries = append(optionalMatchQueries, fmt.Sprintf("OPTIONAL MATCH (n)-[:%s]->(%s:%s) ", relationshipType, targetAlias, targetNodeType))
+			fields = append(fields, fmt.Sprintf("%s: case when %s is NOT NULL THEN {uid: %s.uid, name: %s.name} ELSE null END", targetAlias, targetAlias, targetAlias, targetAlias))
+		}
+
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MATCH (n:%s {uid: $uid})
+	%s
+	RETURN {
+			%s
+	} as n
+	`, typ.Name(),
+		strings.Join(optionalMatchQueries, " "),
+		strings.Join(fields, ","))
+
+	// Run the query
+	node, err = session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+
+		result, err := tx.Run(query, map[string]interface{}{"uid": uid})
+		if err != nil {
+			return nil, err
+		}
+
+		record, err := result.Single()
+		if err != nil {
+			return nil, fmt.Errorf(err.Error())
+		}
+
+		rec, _ := record.Get("n")
+		return rec, nil
+	})
+
+	return err
+}
+
+func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string, structType T) (result interface{}, err error) {
 
 	dbQuery := DatabaseQuery{}
 	dbQuery.Parameters = make(map[string]interface{})
 
-	typ := reflect.TypeOf(result)
+	typ := reflect.TypeOf(structType)
 
 	if typ.Kind() == reflect.Slice {
 		typ = typ.Elem()
@@ -470,7 +559,8 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 	dbQuery.Query = query
 	dbQuery.ReturnAlias = "n"
 	// Run the query
-	result, err = GetNeo4jArrayOfNodes[T](session, dbQuery)
+
+	result, err = GetNeo4jArrayOfNodesTest(session, dbQuery)
 
 	return result, err
 }
@@ -669,6 +759,33 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 	if err == nil {
 		resultArray = results.([]T)
 	}
+
+	return resultArray, err
+}
+
+func GetNeo4jArrayOfNodesTest(session neo4j.Session, query DatabaseQuery) (resultArray interface{}, err error) {
+	// Execute a query in a new Read Transaction
+	resultArray, err = session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+
+		result, err := tx.Run(query.Query, query.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get a list of Movies from the Result
+		records, err := result.Collect()
+		if err != nil {
+			return nil, err
+		}
+		var txResults []interface{}
+		for _, record := range records {
+			itm, _ := record.Get(query.ReturnAlias)
+			if itm != nil {
+				txResults = append(txResults, itm)
+			}
+		}
+		return txResults, nil
+	})
 
 	return resultArray, err
 }
@@ -1122,6 +1239,11 @@ type RangeFloat64Nullable struct {
 type PaginationResult[T any] struct {
 	TotalCount int64 `json:"totalCount"`
 	Data       []T   `json:"data"`
+}
+
+type PaginationResultAny struct {
+	TotalCount int64 `json:"totalCount"`
+	Data       any   `json:"data"`
 }
 
 type DatabaseQuery struct {

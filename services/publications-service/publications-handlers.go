@@ -131,8 +131,8 @@ func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 			return echo.ErrInternalServerError
 		}
 
-		pagiantionResult := helpers.PaginationResult[models.Publication]{
-			TotalCount: int64(len(publications)),
+		pagiantionResult := helpers.PaginationResultAny{
+			TotalCount: 100,
 			Data:       publications,
 		}
 

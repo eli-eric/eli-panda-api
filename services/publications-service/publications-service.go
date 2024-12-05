@@ -13,10 +13,11 @@ type PublicationsService struct {
 
 type IPublicationsService interface {
 	GetPublicationByUid(uid string) (models.Publication, error)
+	GetPublicationByUidTest(uid string) (interface{}, error)
 	CreatePublication(publication *models.Publication, userUID string) (result models.Publication, err error)
 	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)
 	DeletePublication(uid string, userUID string) (err error)
-	GetPublications(searchText string, page, pageSize int) (result []models.Publication, err error)
+	GetPublications(searchText string, page, pageSize int) (result interface{}, err error)
 }
 
 func NewPublicationsService(driver *neo4j.Driver) IPublicationsService {
@@ -30,6 +31,17 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 	result.Uid = uid
 
 	err = helpers.GetSingleNode(session, &result)
+
+	return result, err
+}
+
+func (svc *PublicationsService) GetPublicationByUidTest(uid string) (result interface{}, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result = models.Publication{Uid: uid}
+
+	err = helpers.GetSingleNodeTest(session, &result)
 
 	return result, err
 }
@@ -98,7 +110,7 @@ func (svc *PublicationsService) DeletePublication(uid string, userUID string) (e
 
 }
 
-func (svc *PublicationsService) GetPublications(searchText string, page, pageSize int) (result []models.Publication, err error) {
+func (svc *PublicationsService) GetPublications(searchText string, page, pageSize int) (result interface{}, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
@@ -115,9 +127,7 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 		limit = 10
 	}
 
-	result, err = helpers.GetMultipleNodes[models.Publication](session, skip, limit, searchText)
-
-	helpers.ProcessArrayResult(&result, err)
+	result, err = helpers.GetMultipleNodes(session, skip, limit, searchText, models.Publication{})
 
 	return result, err
 }
