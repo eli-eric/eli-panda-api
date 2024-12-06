@@ -125,14 +125,14 @@ func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		publications, err := h.PublicationsService.GetPublications(search, pagingObject.Page, pagingObject.PageSize)
+		publications, totalCount, err := h.PublicationsService.GetPublications(search, pagingObject.Page, pagingObject.PageSize)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting publications")
 			return echo.ErrInternalServerError
 		}
 
 		pagiantionResult := helpers.PaginationResult[models.Publication]{
-			TotalCount: int64(len(publications)),
+			TotalCount: totalCount,
 			Data:       publications,
 		}
 

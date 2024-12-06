@@ -376,7 +376,7 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 	return err
 }
 
-func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, err error) {
+func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, totalCount int64, err error) {
 
 	dbQuery := DatabaseQuery{}
 	dbQuery.Parameters = make(map[string]interface{})
@@ -388,7 +388,7 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 	}
 
 	if typ.Kind() != reflect.Struct {
-		return result, fmt.Errorf("expected a struct, got %s", typ.Kind())
+		return result, totalCount, fmt.Errorf("expected a struct, got %s", typ.Kind())
 	}
 
 	// Build Cypher query and parameters
@@ -420,7 +420,7 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 		if strings.HasPrefix(neo4jTag, "rel,") {
 			tagParts := strings.Split(neo4jTag, ",")
 			if len(tagParts) < 5 {
-				return result, fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+				return result, totalCount, fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
 			}
 
 			// Extract relationship details
@@ -472,7 +472,28 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 	// Run the query
 	result, err = GetNeo4jArrayOfNodes[T](session, dbQuery)
 
-	return result, err
+	if err != nil {
+		return result, totalCount, err
+	}
+
+	// Create Cypher query
+	query = fmt.Sprintf(`
+	MATCH (n:%s) WHERE (n.deleted IS NULL OR n.deleted = false)
+	%s
+	%s	
+	RETURN count(n) as totalCount
+	`,
+		typ.Name(),
+		searchQuery,
+		strings.Join(optionalMatchQueries, " "),
+	)
+
+	dbQuery.Query = query
+	dbQuery.ReturnAlias = "totalCount"
+	// Run the query
+	totalCount, err = GetNeo4jSingleRecordSingleValue[int64](session, dbQuery)
+
+	return result, totalCount, err
 }
 
 func DeleteNodeQuery(nodeUID string) (result DatabaseQuery) {
