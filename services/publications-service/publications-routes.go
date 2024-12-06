@@ -17,4 +17,6 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 	e.PUT("/v1/publication/:uid", m.Authorization(h.UpdatePublication(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 
 	e.DELETE("/v1/publication/:uid", m.Authorization(h.DeletePublication(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
+
+	e.GET("/v1/publication/wos/:doi", m.Authorization(h.GetWosDataByDoi(), shared.ROLE_BASICS_VIEW), jwtMiddleware)
 }

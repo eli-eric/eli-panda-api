@@ -370,6 +370,43 @@
                 }
             }
         },
+        "/v1/publication/wos/{doi}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get WOS data by DOI",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Get WOS data by DOI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "doi",
+                        "name": "doi",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WosAPIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/publication/{uid}": {
             "get": {
                 "security": [
@@ -1526,6 +1563,187 @@
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosAPIResponse": {
+            "type": "object",
+            "properties": {
+                "hits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosHit"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/models.WosMetadata"
+                }
+            }
+        },
+        "models.WosAuthor": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "researcherId": {
+                    "type": "string"
+                },
+                "wosStandard": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosCitation": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "db": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosEditor": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosHit": {
+            "type": "object",
+            "properties": {
+                "citations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosCitation"
+                    }
+                },
+                "identifiers": {
+                    "$ref": "#/definitions/models.WosIdentifiers"
+                },
+                "keywords": {
+                    "$ref": "#/definitions/models.WosKeywords"
+                },
+                "names": {
+                    "$ref": "#/definitions/models.WosNames"
+                },
+                "source": {
+                    "$ref": "#/definitions/models.WosSource"
+                },
+                "sourceTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosIdentifiers": {
+            "type": "object",
+            "properties": {
+                "doi": {
+                    "type": "string"
+                },
+                "issn": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosKeywords": {
+            "type": "object",
+            "properties": {
+                "authorKeywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.WosMetadata": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.WosNames": {
+            "type": "object",
+            "properties": {
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosAuthor"
+                    }
+                },
+                "bookEditors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosEditor"
+                    }
+                }
+            }
+        },
+        "models.WosPages": {
+            "type": "object",
+            "properties": {
+                "begin": {
+                    "type": "string"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "end": {
+                    "type": "string"
+                },
+                "range": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosSource": {
+            "type": "object",
+            "properties": {
+                "issue": {
+                    "type": "string"
+                },
+                "pages": {
+                    "$ref": "#/definitions/models.WosPages"
+                },
+                "publishMonth": {
+                    "type": "string"
+                },
+                "publishYear": {
+                    "type": "integer"
+                },
+                "sourceTitle": {
+                    "type": "string"
+                },
+                "volume": {
                     "type": "string"
                 }
             }

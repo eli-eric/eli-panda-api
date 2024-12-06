@@ -462,6 +462,123 @@ definitions:
       username:
         type: string
     type: object
+  models.WosAPIResponse:
+    properties:
+      hits:
+        items:
+          $ref: '#/definitions/models.WosHit'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.WosMetadata'
+    type: object
+  models.WosAuthor:
+    properties:
+      displayName:
+        type: string
+      researcherId:
+        type: string
+      wosStandard:
+        type: string
+    type: object
+  models.WosCitation:
+    properties:
+      count:
+        type: integer
+      db:
+        type: string
+    type: object
+  models.WosEditor:
+    properties:
+      displayName:
+        type: string
+    type: object
+  models.WosHit:
+    properties:
+      citations:
+        items:
+          $ref: '#/definitions/models.WosCitation'
+        type: array
+      identifiers:
+        $ref: '#/definitions/models.WosIdentifiers'
+      keywords:
+        $ref: '#/definitions/models.WosKeywords'
+      names:
+        $ref: '#/definitions/models.WosNames'
+      source:
+        $ref: '#/definitions/models.WosSource'
+      sourceTypes:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      types:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
+    type: object
+  models.WosIdentifiers:
+    properties:
+      doi:
+        type: string
+      issn:
+        type: string
+    type: object
+  models.WosKeywords:
+    properties:
+      authorKeywords:
+        items:
+          type: string
+        type: array
+    type: object
+  models.WosMetadata:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  models.WosNames:
+    properties:
+      authors:
+        items:
+          $ref: '#/definitions/models.WosAuthor'
+        type: array
+      bookEditors:
+        items:
+          $ref: '#/definitions/models.WosEditor'
+        type: array
+    type: object
+  models.WosPages:
+    properties:
+      begin:
+        type: string
+      count:
+        type: integer
+      end:
+        type: string
+      range:
+        type: string
+    type: object
+  models.WosSource:
+    properties:
+      issue:
+        type: string
+      pages:
+        $ref: '#/definitions/models.WosPages'
+      publishMonth:
+        type: string
+      publishYear:
+        type: integer
+      sourceTitle:
+        type: string
+      volume:
+        type: string
+    type: object
 host: localhost:50000
 info:
   contact:
@@ -765,6 +882,29 @@ paths:
       security:
       - BearerAuth: []
       summary: Update publication
+      tags:
+      - Publications
+  /v1/publication/wos/{doi}:
+    get:
+      description: Get WOS data by DOI
+      parameters:
+      - description: doi
+        in: path
+        name: doi
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WosAPIResponse'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get WOS data by DOI
       tags:
       - Publications
   /v1/publications:

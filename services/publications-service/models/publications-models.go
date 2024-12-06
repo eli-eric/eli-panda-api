@@ -42,3 +42,71 @@ type Publication struct {
 	StatisticsBeamlines *int                     `json:"statistics Beamlines" neo4j:"prop,statisticsBeamlines"`
 	StatisticsAlps      *int                     `json:"statisticsAlps" neo4j:"prop,statisticsAlps"`
 }
+
+type WosAPIResponse struct {
+	WosMetadata WosMetadata `json:"metadata"`
+	WosHits     []WosHit    `json:"hits"`
+}
+
+type WosMetadata struct {
+	WosTotal int `json:"total"`
+	WosPage  int `json:"page"`
+	WosLimit int `json:"limit"`
+}
+
+type WosHit struct {
+	WosUID         string         `json:"uid"`
+	WosTitle       string         `json:"title"`
+	WosTypes       []string       `json:"types"`
+	WosSourceTypes []string       `json:"sourceTypes"`
+	WosSource      WosSource      `json:"source"`
+	WosNames       WosNames       `json:"names"`
+	WosCitations   []WosCitation  `json:"citations"`
+	WosIdentifiers WosIdentifiers `json:"identifiers"`
+	WosKeywords    WosKeywords    `json:"keywords"`
+}
+
+type WosSource struct {
+	WosSourceTitle  string   `json:"sourceTitle"`
+	WosPublishYear  int      `json:"publishYear"`
+	WosPublishMonth string   `json:"publishMonth"`
+	WosVolume       string   `json:"volume,omitempty"`
+	WosIssue        string   `json:"issue,omitempty"`
+	WosPages        WosPages `json:"pages"`
+}
+
+type WosPages struct {
+	WosRange string `json:"range"`
+	WosBegin string `json:"begin"`
+	WosEnd   string `json:"end"`
+	WosCount int    `json:"count"`
+}
+
+type WosNames struct {
+	WosAuthors     []WosAuthor `json:"authors"`
+	WosBookEditors []WosEditor `json:"bookEditors,omitempty"`
+}
+
+type WosAuthor struct {
+	WosDisplayName  string `json:"displayName"`
+	WosStandard     string `json:"wosStandard"`
+	WosResearcherID string `json:"researcherId"`
+}
+
+type WosEditor struct {
+	WosDisplayName string `json:"displayName"`
+}
+
+type WosCitation struct {
+	WosDB    string `json:"db"`
+	WosCount int    `json:"count"`
+}
+
+type WosIdentifiers struct {
+	WosDOI  string `json:"doi,omitempty"`
+	WosISSN string `json:"issn"`
+}
+
+type WosKeywords struct {
+	WosAuthorKeywords []string `json:"authorKeywords"`
+}

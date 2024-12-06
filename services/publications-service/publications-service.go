@@ -1,6 +1,8 @@
 package publicationsservice
 
 import (
+	"encoding/json"
+	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
 
@@ -8,7 +10,9 @@ import (
 )
 
 type PublicationsService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver      *neo4j.Driver
+	wosStarterApiUrl string
+	wosStarterApiKey string
 }
 
 type IPublicationsService interface {
@@ -17,10 +21,11 @@ type IPublicationsService interface {
 	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)
 	DeletePublication(uid string, userUID string) (err error)
 	GetPublications(searchText string, page, pageSize int) (result []models.Publication, totalCount int64, err error)
+	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
 }
 
-func NewPublicationsService(driver *neo4j.Driver) IPublicationsService {
-	return &PublicationsService{neo4jDriver: driver}
+func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
+	return &PublicationsService{neo4jDriver: driver, wosStarterApiUrl: wosSAPIURL, wosStarterApiKey: wosSAPIKEY}
 }
 
 func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.Publication, err error) {
@@ -120,4 +125,40 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 	helpers.ProcessArrayResult(&result, err)
 
 	return result, totalCount, err
+}
+
+func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result models.WosAPIResponse, err error) {
+
+	// exmaple get url /documents?db=WOS&q=DO=10.1103/PhysRevResearch.6.013126
+	// get from wos rest api
+
+	contentType := "application/json"
+	query := "/documents?db=WOS&q=DO=" + doi
+
+	request, err := http.NewRequest("GET", svc.wosStarterApiUrl+query, nil)
+
+	if err != nil {
+		return result, err
+	}
+
+	// addd header X-ApiKey
+	request.Header.Add("X-ApiKey", svc.wosStarterApiKey)
+	request.Header.Add("Content-Type", contentType)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+
+	if err != nil {
+		return result, err
+	} else {
+		err := json.NewDecoder(response.Body).Decode(&result)
+
+		if err != nil {
+			return result, err
+		}
+
+		defer response.Body.Close()
+
+		return result, nil
+	}
 }

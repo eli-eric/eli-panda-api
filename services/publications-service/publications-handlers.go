@@ -22,6 +22,7 @@ type IPublicationsHandlers interface {
 	GetPublications() echo.HandlerFunc
 	UpdatePublication() echo.HandlerFunc
 	DeletePublication() echo.HandlerFunc
+	GetWosDataByDoi() echo.HandlerFunc
 }
 
 // NewPublicationsHandlers General handlers constructor
@@ -202,5 +203,31 @@ func (h *PublicationsHandlers) DeletePublication() echo.HandlerFunc {
 		}
 
 		return c.NoContent(204)
+	}
+}
+
+// GetWosDataByDoi Get WOS data by DOI godoc
+// @Summary Get WOS data by DOI
+// @Description Get WOS data by DOI
+// @Tags Publications
+// @Security BearerAuth
+// @Produce json
+// @Param doi path string true "doi"
+// @Success 200  {object} models.WosAPIResponse
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publication/wos/{doi} [get]
+func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		doi := c.Param("doi")
+
+		result, err := h.PublicationsService.GetPublicationByDoiFromWOS(doi)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting WOS data by DOI")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
 	}
 }
