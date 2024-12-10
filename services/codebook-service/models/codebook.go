@@ -61,8 +61,7 @@ var SYSTEM_ATTRIBUTE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM_ATTRIBUT
 // UserCall, UserExperiment, PublicationCategory, OpenAccessType, Language, PublicationSupport, State
 var USER_CALL_CODEBOOK CodebookType = CodebookType{Code: "USER_CALL", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "UserCall"}
 var USER_EXPERIMENT_CODEBOOK CodebookType = CodebookType{Code: "USER_EXPERIMENT", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "UserExperiment"}
-var PUBLICATION_CATEGORY_CODEBOOK CodebookType = CodebookType{Code: "PUBLICATION_CATEGORY", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "PublicationCategory"}
 var OPEN_ACCESS_TYPE_CODEBOOK CodebookType = CodebookType{Code: "OPEN_ACCESS_TYPE", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "OpenAccessType"}
 var LANGUAGE_CODEBOOK CodebookType = CodebookType{Code: "LANGUAGE", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Language"}
-var PUBLICATION_SUPPORT_CODEBOOK CodebookType = CodebookType{Code: "PUBLICATION_SUPPORT", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "PublicationSupport"}
-var STATE_CODEBOOK CodebookType = CodebookType{Code: "STATE", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "State"}
+var COUNTRY_CODEBOOK CodebookType = CodebookType{Code: "COUNTRY", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Country"}
+var DEPARTMENT_CODEBOOK CodebookType = CodebookType{Code: "DEPARTMENT", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Department"}

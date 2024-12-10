@@ -1224,111 +1224,179 @@
             "type": "object",
             "properties": {
                 "abstract": {
+                    "description": "abstract is the abstract of the publication",
                     "type": "string"
                 },
-                "articleTitle": {
+                "allAuthors": {
+                    "description": "allAuthors is the all authors of the publication",
                     "type": "string"
                 },
-                "citations": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "allAuthorsCount": {
+                    "description": "allAuthorsCount is the all authors count of the publication",
+                    "type": "integer"
+                },
+                "citeAs": {
+                    "description": "citeAs is the citation of the publication",
+                    "type": "string"
+                },
+                "code": {
+                    "description": "code is the internal code of the publication",
+                    "type": "string"
+                },
+                "dateOfPublication": {
+                    "description": "dateOfPublication is the date of publication of the publication",
+                    "type": "string"
                 },
                 "doi": {
+                    "description": "doi is the unique identifier of the publication",
                     "type": "string"
                 },
                 "eidScopus": {
+                    "description": "eidScopus is the eid scopus of the publication",
                     "type": "string"
                 },
                 "eissn": {
+                    "description": "eissn is the eissn of the publication",
+                    "type": "string"
+                },
+                "eliAuthors": {
+                    "description": "eliAuthors is the eli authors of the publication",
+                    "type": "string"
+                },
+                "eliAuthorsCount": {
+                    "description": "eliAuthorsCount is the eli authors count of the publication",
+                    "type": "integer"
+                },
+                "experimentalSystem": {
+                    "description": "experimentalSystem is the experimental system of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "grant": {
+                    "description": "grant is the grant of the publication",
                     "type": "string"
                 },
                 "impactFactor": {
+                    "description": "impactFactor is the impact factor of the publication",
                     "type": "number"
                 },
                 "issn": {
+                    "description": "issn is the issn of the publication",
                     "type": "string"
                 },
                 "issue": {
+                    "description": "issue is the issue of the publication",
                     "type": "integer"
                 },
-                "journalTitle": {
-                    "type": "string"
-                },
                 "keywords": {
+                    "description": "keywords is the keywords of the publication",
                     "type": "string"
                 },
                 "language": {
+                    "description": "language is the language of the publication",
+                    "type": "string"
+                },
+                "longJournalTitle": {
+                    "description": "longJournalTitle is the long journal title of the publication",
+                    "type": "string"
+                },
+                "mediaType": {
+                    "description": "mediaType is the media type of the publication",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "note is the note of the publication",
                     "type": "string"
                 },
                 "oecdFord": {
+                    "description": "oecdFord is the oecd ford of the publication",
                     "type": "string"
                 },
                 "openAccessType": {
-                    "$ref": "#/definitions/models.Codebook"
+                    "description": "openAccessType is the open access type of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
-                "pagesFrom": {
-                    "type": "integer"
+                "pages": {
+                    "description": "pages is the pages of the publication",
+                    "type": "string"
                 },
-                "pagesTo": {
-                    "type": "integer"
-                },
-                "pagesTotal": {
+                "pagesCount": {
+                    "description": "pagesCount is the pages count of the publication",
                     "type": "integer"
                 },
                 "pdfFileName": {
+                    "description": "pdfFileName is the name of the pdf file of the publication",
                     "type": "string"
                 },
                 "pdfFileUrl": {
+                    "description": "pdfFileUrl is the url of the pdf file of the publication",
                     "type": "string"
                 },
-                "publicationCategory": {
-                    "$ref": "#/definitions/models.Codebook"
+                "publishingCountry": {
+                    "description": "publishingCountry is the publishing country of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
-                "publicationSupport": {
-                    "$ref": "#/definitions/models.Codebook"
-                },
-                "publishDate": {
+                "quartil": {
+                    "description": "quartil is the quartil of the publication",
                     "type": "string"
                 },
-                "quartile": {
+                "quartilBasis": {
+                    "description": "quartilBasis is the quartil basis of the publication",
                     "type": "string"
                 },
-                "state": {
+                "shortJournalTitle": {
+                    "description": "shortJournalTitle is the short journal title of the publication",
                     "type": "string"
                 },
-                "statistics Beamlines": {
-                    "type": "integer"
-                },
-                "statisticsAlps": {
-                    "type": "integer"
-                },
-                "statisticsEric": {
-                    "type": "integer"
-                },
-                "statisticsTotal": {
-                    "type": "integer"
+                "title": {
+                    "description": "title is the title of the publication",
+                    "type": "string"
                 },
                 "uid": {
-                    "type": "string"
-                },
-                "url": {
+                    "description": "uid is the unique identifier of the publication",
                     "type": "string"
                 },
                 "userCall": {
-                    "$ref": "#/definitions/models.Codebook"
+                    "description": "userCall is the user call of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
                 "userExperiment": {
-                    "$ref": "#/definitions/models.Codebook"
+                    "description": "userExperiment is the user experiment of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
                 "volume": {
+                    "description": "volume is the volume of the publication",
                     "type": "integer"
                 },
-                "wosNumber": {
+                "webLink": {
+                    "description": "webLink is the web link of the publication",
                     "type": "string"
                 },
-                "year": {
+                "wosNumber": {
+                    "description": "wosNumber is the wos number of the publication",
+                    "type": "string"
+                },
+                "yearOfPublication": {
+                    "description": "yearOfPublication is the year of publication of the publication",
                     "type": "string"
                 }
             }

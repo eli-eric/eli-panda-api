@@ -303,13 +303,12 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.TEAM_AUTOCOMPLETE_CODEBOOK,
 		models.CONTACT_PERSON_ROLE_CODEBOOK,
 		models.SYSTEM_ATTRIBUTE_CODEBOOK,
-		models.PUBLICATION_CATEGORY_CODEBOOK,
-		models.PUBLICATION_SUPPORT_CODEBOOK,
+		models.COUNTRY_CODEBOOK,
+		models.DEPARTMENT_CODEBOOK,
 		models.OPEN_ACCESS_TYPE_CODEBOOK,
 		models.LANGUAGE_CODEBOOK,
 		models.USER_CALL_CODEBOOK,
 		models.USER_EXPERIMENT_CODEBOOK,
-		models.STATE_CODEBOOK,
 	}
 }
 
@@ -356,11 +355,10 @@ var codebooksMap = map[string]models.CodebookType{
 	"TEAM":                       models.TEAM_AUTOCOMPLETE_CODEBOOK,
 	"CONTACT_PERSON_ROLE":        models.CONTACT_PERSON_ROLE_CODEBOOK,
 	"SYSTEM_ATTRIBUTE":           models.SYSTEM_ATTRIBUTE_CODEBOOK,
-	"PUBLICATION_CATEGORY":       models.PUBLICATION_CATEGORY_CODEBOOK,
-	"PUBLICATION_SUPPORT":        models.PUBLICATION_SUPPORT_CODEBOOK,
+	"DEPARTMENT":                 models.DEPARTMENT_CODEBOOK,
 	"OPEN_ACCESS_TYPE":           models.OPEN_ACCESS_TYPE_CODEBOOK,
 	"LANGUAGE":                   models.LANGUAGE_CODEBOOK,
 	"USER_CALL":                  models.USER_CALL_CODEBOOK,
 	"USER_EXPERIMENT":            models.USER_EXPERIMENT_CODEBOOK,
-	"STATE":                      models.STATE_CODEBOOK,
+	"COUNTRY":                    models.COUNTRY_CODEBOOK,
 }
