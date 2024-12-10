@@ -121,7 +121,7 @@ func getSimpleCodebookRecords(neo4jDriver *neo4j.Driver, codebookCode string, fa
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
 				MATCH (n:` + codebookDefinition.NodeLabel + `) 
-				RETURN { uid: n.uid, name: n.name, code: n.code } as codebook`
+				RETURN { uid: n.uid, name: n.name, code: n.code } as codebook ORDER BY codebook.name`
 
 				dbquery.ReturnAlias = "codebook"
 
