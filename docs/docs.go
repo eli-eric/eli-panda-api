@@ -866,6 +866,23 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.AuthorsDepartment": {
+            "type": "object",
+            "properties": {
+                "authorsCount": {
+                    "description": "authorsCount is the authors count of the publication",
+                    "type": "integer"
+                },
+                "department": {
+                    "description": "department is the department of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                }
+            }
+        },
         "models.CatalogueCategoryProperty": {
             "type": "object",
             "properties": {
@@ -1238,6 +1255,20 @@ const docTemplate = `{
                     "description": "allAuthorsCount is the all authors count of the publication",
                     "type": "integer"
                 },
+                "authorsDepartments": {
+                    "description": "authorsDepartments is the authors departments of the publication",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.AuthorsDepartment"
+                    }
+                },
+                "authorsDepartmentsArray": {
+                    "description": "authorsDepartmentsArray is the authors departments array of the publication",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "citeAs": {
                     "description": "citeAs is the citation of the publication",
                     "type": "string"
@@ -1272,11 +1303,7 @@ const docTemplate = `{
                 },
                 "experimentalSystem": {
                     "description": "experimentalSystem is the experimental system of the publication",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Codebook"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "grant": {
                     "description": "grant is the grant of the publication",

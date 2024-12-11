@@ -1,5 +1,15 @@
 basePath: /
 definitions:
+  models.AuthorsDepartment:
+    properties:
+      authorsCount:
+        description: authorsCount is the authors count of the publication
+        type: integer
+      department:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: department is the department of the publication
+    type: object
   models.CatalogueCategoryProperty:
     properties:
       defaultValue:
@@ -245,6 +255,17 @@ definitions:
       allAuthorsCount:
         description: allAuthorsCount is the all authors count of the publication
         type: integer
+      authorsDepartments:
+        description: authorsDepartments is the authors departments of the publication
+        items:
+          $ref: '#/definitions/models.AuthorsDepartment'
+        type: array
+      authorsDepartmentsArray:
+        description: authorsDepartmentsArray is the authors departments array of the
+          publication
+        items:
+          type: string
+        type: array
       citeAs:
         description: citeAs is the citation of the publication
         type: string
@@ -270,9 +291,8 @@ definitions:
         description: eliAuthorsCount is the eli authors count of the publication
         type: integer
       experimentalSystem:
-        allOf:
-        - $ref: '#/definitions/models.Codebook'
         description: experimentalSystem is the experimental system of the publication
+        type: string
       grant:
         description: grant is the grant of the publication
         type: string

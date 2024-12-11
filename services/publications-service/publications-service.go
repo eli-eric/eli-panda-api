@@ -4,7 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 	"panda/apigateway/helpers"
+	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/publications-service/models"
+	"strconv"
+	"strings"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -36,12 +39,48 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 
 	err = helpers.GetSingleNode(session, &result)
 
+	if err == nil {
+		decodeAuthorsDepartments(&result)
+	}
+
 	return result, err
+}
+
+func decodeAuthorsDepartments(publication *models.Publication) {
+
+	if len(publication.AuthorsDepartmentsArray) > 0 {
+		publication.AuthorsDepartments = make([]models.AuthorsDepartment, 0)
+		for i := 0; i < len(publication.AuthorsDepartmentsArray); i++ {
+			authorDepartmentString := strings.Split(publication.AuthorsDepartmentsArray[i], "||")
+			if len(authorDepartmentString) == 3 {
+				uid := authorDepartmentString[0]
+				name := authorDepartmentString[1]
+				authorsCount, _ := strconv.Atoi(authorDepartmentString[2])
+
+				authorDepartment := models.AuthorsDepartment{Department: codebookModels.Codebook{UID: uid, Name: name}, AuthorsCount: authorsCount}
+				publication.AuthorsDepartments = append(publication.AuthorsDepartments, authorDepartment)
+			}
+		}
+	}
+}
+
+func encodeAuthorsDepartments(publication *models.Publication) {
+
+	if len(publication.AuthorsDepartments) > 0 {
+		publication.AuthorsDepartmentsArray = make([]string, 0)
+		for i := 0; i < len(publication.AuthorsDepartments); i++ {
+			authorDepartment := publication.AuthorsDepartments[i]
+			authorsDepartmentString := authorDepartment.Department.UID + "||" + authorDepartment.Department.Name + "||" + strconv.Itoa(authorDepartment.AuthorsCount)
+			publication.AuthorsDepartmentsArray = append(publication.AuthorsDepartmentsArray, authorsDepartmentString)
+		}
+	}
 }
 
 func (svc *PublicationsService) CreatePublication(publication *models.Publication, userUID string) (result models.Publication, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	encodeAuthorsDepartments(publication)
 
 	updateQuery := helpers.DatabaseQuery{}
 	updateQuery.Parameters = make(map[string]interface{})
@@ -65,6 +104,8 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 func (svc *PublicationsService) UpdatePublication(publication *models.Publication, userUID string) (result models.Publication, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	encodeAuthorsDepartments(publication)
 
 	oldPublication, err := svc.GetPublicationByUid(publication.Uid)
 
@@ -123,6 +164,10 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 	result, totalCount, err = helpers.GetMultipleNodes[models.Publication](session, skip, limit, searchText)
 
 	helpers.ProcessArrayResult(&result, err)
+
+	for i := 0; i < len(result); i++ {
+		decodeAuthorsDepartments(&result[i])
+	}
 
 	return result, totalCount, err
 }
