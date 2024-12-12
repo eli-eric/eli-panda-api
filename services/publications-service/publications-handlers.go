@@ -48,7 +48,8 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 		publication := new(models.Publication)
 		if err := c.Bind(publication); err != nil {
 			log.Error().Err(err).Msg("Error binding publication")
-			return echo.ErrBadRequest
+			// return custom bad request with the message
+			return helpers.BadRequest(err.Error())
 		}
 
 		userUID := c.Get("userUID").(string)
@@ -162,7 +163,7 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 		publication := new(models.Publication)
 		if err := c.Bind(publication); err != nil {
 			log.Error().Err(err).Msg("Error binding publication")
-			return echo.ErrBadRequest
+			return helpers.BadRequest(err.Error())
 		}
 
 		publication.Uid = uid

@@ -125,8 +125,8 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		system := new(models.System)
-
-		if err := c.Bind(system); err == nil {
+		err := c.Bind(system)
+		if err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
@@ -142,7 +142,7 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -152,8 +152,8 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		system := new(models.System)
-
-		if err := c.Bind(system); err == nil {
+		err := c.Bind(system)
+		if err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
@@ -168,7 +168,7 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 			return echo.ErrInternalServerError
 
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -302,8 +302,8 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		systemRelationshipRequest := new(models.SystemRelationshipRequest)
-
-		if err := c.Bind(systemRelationshipRequest); err == nil {
+		err := c.Bind(systemRelationshipRequest)
+		if err == nil {
 
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
@@ -319,7 +319,7 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -371,8 +371,8 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 		userUid := c.Get("userUID").(string)
 
 		properties := new([]models.PhysicalItemDetail)
-
-		if err := c.Bind(properties); err == nil {
+		err := c.Bind(properties)
+		if err == nil {
 
 			err := h.systemsService.UpdatePhysicalItemProperties(uid, *properties, userUid)
 
@@ -386,7 +386,7 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -498,8 +498,8 @@ func (h *SystemsHandlers) CreateSystemTypeGroup() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		systemTypeGroup := new(codebookModels.Codebook)
-
-		if err := c.Bind(systemTypeGroup); err == nil {
+		err := c.Bind(systemTypeGroup)
+		if err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
@@ -516,7 +516,7 @@ func (h *SystemsHandlers) CreateSystemTypeGroup() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -526,8 +526,8 @@ func (h *SystemsHandlers) UpdateSystemTypeGroup() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		systemTypeGroup := new(codebookModels.Codebook)
-
-		if err := c.Bind(systemTypeGroup); err == nil {
+		err := c.Bind(systemTypeGroup)
+		if err == nil {
 
 			userUID := c.Get("userUID").(string)
 			systemTypeGroup.UID = c.Param("uid")
@@ -545,7 +545,7 @@ func (h *SystemsHandlers) UpdateSystemTypeGroup() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -555,8 +555,8 @@ func (h *SystemsHandlers) CreateSystemType() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		systemType := new(models.SystemType)
-
-		if err := c.Bind(systemType); err == nil {
+		err := c.Bind(systemType)
+		if err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
@@ -573,7 +573,7 @@ func (h *SystemsHandlers) CreateSystemType() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -583,8 +583,8 @@ func (h *SystemsHandlers) UpdateSystemType() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		systemType := new(models.SystemType)
-
-		if err := c.Bind(systemType); err == nil {
+		err := c.Bind(systemType)
+		if err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
@@ -603,7 +603,7 @@ func (h *SystemsHandlers) UpdateSystemType() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -836,8 +836,8 @@ func (h *SystemsHandlers) SyncSystemLocationByEUNs() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		eunLocations := new([]models.EunLocation)
-
-		if err := c.Bind(eunLocations); err == nil {
+		err := c.Bind(eunLocations)
+		if err == nil {
 
 			userUID := c.Get("userUID").(string)
 
@@ -852,7 +852,7 @@ func (h *SystemsHandlers) SyncSystemLocationByEUNs() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -944,8 +944,8 @@ func (h *SystemsHandlers) CreateNewSystemCode() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		systemCode := new(models.SystemCodeRequest)
-
-		if err := c.Bind(systemCode); err == nil {
+		err := c.Bind(systemCode)
+		if err == nil {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
@@ -966,7 +966,7 @@ func (h *SystemsHandlers) CreateNewSystemCode() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -1010,7 +1010,7 @@ func (h *SystemsHandlers) GetSystemsTreeByUids() echo.HandlerFunc {
 
 		if err := c.Bind(uids); err != nil {
 			log.Error().Msg(err.Error())
-			return echo.ErrBadRequest
+			return helpers.BadRequest(err.Error())
 		}
 
 		systems, err := h.systemsService.GetSystemsTreeByUids(*uids)
@@ -1042,8 +1042,8 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		movePhysicalItemRequest := new(models.PhysicalItemMovement)
-
-		if err := c.Bind(movePhysicalItemRequest); err == nil {
+		err := c.Bind(movePhysicalItemRequest)
+		if err == nil {
 
 			log.Info().Msgf("Move physical item request: %+v", movePhysicalItemRequest)
 
@@ -1067,7 +1067,7 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -1087,8 +1087,8 @@ func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		movePhysicalItemRequest := new(models.PhysicalItemMovement)
-
-		if err := c.Bind(movePhysicalItemRequest); err == nil {
+		err := c.Bind(movePhysicalItemRequest)
+		if err == nil {
 
 			log.Info().Msgf("Move physical item request: %+v", movePhysicalItemRequest)
 
@@ -1112,7 +1112,7 @@ func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -1132,8 +1132,8 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 
 		// lets bind catalogue category data from request body
 		moveSystemsRequest := new(models.SystemsMovement)
-
-		if err := c.Bind(moveSystemsRequest); err == nil {
+		err := c.Bind(moveSystemsRequest)
+		if err == nil {
 
 			log.Info().Msgf("Move systems request: %+v", moveSystemsRequest)
 
@@ -1156,6 +1156,6 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 		} else {
 			log.Error().Msg(err.Error())
 		}
-		return echo.ErrBadRequest
+		return helpers.BadRequest(err.Error())
 	}
 }
