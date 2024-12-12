@@ -1407,11 +1407,7 @@ const docTemplate = `{
                 },
                 "userExperiment": {
                     "description": "userExperiment is the user experiment of the publication",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Codebook"
-                        }
-                    ]
+                    "type": "string"
                 },
                 "volume": {
                     "description": "volume is the volume of the publication",

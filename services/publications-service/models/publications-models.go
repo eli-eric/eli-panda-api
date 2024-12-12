@@ -44,7 +44,7 @@ type Publication struct {
 	OpenAccessType          *codebookModels.Codebook `json:"openAccessType" neo4j:"rel,OpenAccessType,HAS_OPEN_ACCESS_TYPE,uid,openAccessType"`  // openAccessType is the open access type of the publication
 	PublishingCountry       *codebookModels.Codebook `json:"publishingCountry" neo4j:"rel,Country,HAS_PUBLISHING_COUNTRY,uid,publishingCountry"` // publishingCountry is the publishing country of the publication
 	UserCall                *codebookModels.Codebook `json:"userCall" neo4j:"rel,UserCall,HAS_USER_CALL,uid,userCall"`                           // userCall is the user call of the publication
-	UserExperiment          *codebookModels.Codebook `json:"userExperiment" neo4j:"rel,UserExperiment,HAS_USER_EXPERIMENT,uid,userExperiment"`   // userExperiment is the user experiment of the publication
+	UserExperiment          *string                  `json:"userExperiment" neo4j:"prop,userExperiment"`                                         // userExperiment is the user experiment of the publication
 	ExperimentalSystem      *string                  `json:"experimentalSystem" neo4j:"prop,experimentalSystem"`                                 // experimentalSystem is the experimental system of the publication
 }
 

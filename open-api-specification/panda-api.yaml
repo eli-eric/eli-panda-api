@@ -363,9 +363,8 @@ definitions:
         - $ref: '#/definitions/models.Codebook'
         description: userCall is the user call of the publication
       userExperiment:
-        allOf:
-        - $ref: '#/definitions/models.Codebook'
         description: userExperiment is the user experiment of the publication
+        type: string
       volume:
         description: volume is the volume of the publication
         type: integer
