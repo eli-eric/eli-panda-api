@@ -2,7 +2,6 @@ package models
 
 import (
 	codebookModels "panda/apigateway/services/codebook-service/models"
-	"time"
 )
 
 type Publication struct {
@@ -25,7 +24,7 @@ type Publication struct {
 	YearOfPublication       string                   `json:"yearOfPublication" neo4j:"prop,yearOfPublication"`                                   // yearOfPublication is the year of publication of the publication
 	PdfFileName             *string                  `json:"pdfFileName" neo4j:"prop,pdfFileName"`                                               // pdfFileName is the name of the pdf file of the publication
 	PdfFileUrl              *string                  `json:"pdfFileUrl" neo4j:"prop,pdfFileUrl"`                                                 // pdfFileUrl is the url of the pdf file of the publication
-	DateOfPublication       *time.Time               `json:"dateOfPublication" neo4j:"prop,dateOfPublication"`                                   // dateOfPublication is the date of publication of the publication
+	DateOfPublication       *string                  `json:"dateOfPublication" neo4j:"prop,dateOfPublication"`                                   // dateOfPublication is the date of publication of the publication
 	Keywords                string                   `json:"keywords" neo4j:"prop,keywords"`                                                     // keywords is the keywords of the publication
 	OecdFord                *string                  `json:"oecdFord" neo4j:"prop,oecdFord"`                                                     // oecdFord is the oecd ford of the publication
 	WosNumber               *string                  `json:"wosNumber" neo4j:"prop,wosNumber"`                                                   // wosNumber is the wos number of the publication
