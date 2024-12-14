@@ -586,6 +586,14 @@ const docTemplate = `{
                     "Publications"
                 ],
                 "summary": "Get publications as CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "CSV file"

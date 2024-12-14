@@ -242,6 +242,7 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 // @Description Get publications as CSV
 // @Tags Publications
 // @Security BearerAuth
+// @Param search query string false "search"
 // @Produce text/csv
 // @Success 200 "CSV file"
 // @Failure 500 "Internal Server Error"

@@ -1007,6 +1007,11 @@ paths:
   /v1/publications/export:
     get:
       description: Get publications as CSV
+      parameters:
+      - description: search
+        in: query
+        name: search
+        type: string
       produces:
       - text/csv
       responses:
