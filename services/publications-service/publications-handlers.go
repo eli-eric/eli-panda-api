@@ -3,9 +3,12 @@ package publicationsservice
 import (
 	//"panda/apigateway/services/publications-service/models"
 
+	"encoding/csv"
 	"encoding/json"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
+	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -23,6 +26,7 @@ type IPublicationsHandlers interface {
 	UpdatePublication() echo.HandlerFunc
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
+	GetPublicationsAsCsv() echo.HandlerFunc
 }
 
 // NewPublicationsHandlers General handlers constructor
@@ -230,5 +234,185 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 		}
 
 		return c.JSON(200, result)
+	}
+}
+
+func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		search := c.QueryParam("search")
+		sorting := c.QueryParam("sorting")
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		publications, _, err := h.PublicationsService.GetPublications(search, 1, 1_000_000)
+
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting publications")
+			return echo.ErrInternalServerError
+		}
+
+		c.Response().Header().Set(echo.HeaderContentType, "text/csv")
+		// file name - will be publications-yyyy-mm-dd-hh-mm-ss.csv
+		fileName := "publications-" + time.Now().Format("2006-01-02-15-04-05") + ".csv"
+		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename="+fileName)
+
+		writer := csv.NewWriter(c.Response())
+		writer.UseCRLF = true
+		writer.Comma = ','
+
+		defer writer.Flush()
+		// write header based on System struct
+		// write header
+		writer.Write([]string{
+			"Media Type",
+			"Code",
+			"Experimental System",
+			"User Call",
+			"User Experiment",
+			"DOI",
+			"Web Link",
+			"Open Access Type",
+			"Title",
+			"Authors",
+			"Authors Count",
+			"ELI Authors",
+			"ELI Authors Count",
+			"Journal Title",
+			"Volume",
+			"Issue",
+			"Pages",
+			"Pages Count",
+			"Cite As",
+			"Impact Factor",
+			"Quartile Basis",
+			"Quartile",
+			"Year Of Publication",
+			"Date Of Publication",
+			"Abstract",
+			"Keywords",
+			"OECD Ford",
+			"Grant",
+			"WOS Number",
+			"ISSN",
+			"E-ISSN",
+			"EID Scopus",
+			"Publishing Country",
+			"Language",
+			"Note",
+			"UID"})
+
+		for _, item := range publications {
+
+			experimentalSystem := ""
+			if item.ExperimentalSystem != nil {
+				experimentalSystem = *item.ExperimentalSystem
+			}
+			userCall := ""
+			if item.UserCall != nil {
+				userCall = item.UserCall.Name
+			}
+			userExperiment := ""
+			if item.UserExperiment != nil {
+				userExperiment = *item.UserExperiment
+			}
+			openAccessType := ""
+			if item.OpenAccessType != nil {
+				openAccessType = item.OpenAccessType.Name
+			}
+			issue := ""
+			if item.Issue != nil {
+				issue = strconv.Itoa(*item.Issue)
+			}
+			impactFactor := ""
+			if item.ImpactFactor != nil {
+				impactFactor = strconv.FormatFloat(*item.ImpactFactor, 'f', -1, 64)
+			}
+			quartilBasis := ""
+			if item.QuartilBasis != nil {
+				quartilBasis = *item.QuartilBasis
+			}
+			quartil := ""
+			if item.Quartil != nil {
+				quartil = *item.Quartil
+			}
+			dateOfPublication := ""
+			if item.DateOfPublication != nil {
+				dateOfPublication = *item.DateOfPublication
+			}
+			oecdFord := ""
+			if item.OecdFord != nil {
+				oecdFord = *item.OecdFord
+			}
+			grant := ""
+			if item.Grant != nil {
+				grant = *item.Grant
+			}
+			wosNumber := ""
+			if item.WosNumber != nil {
+				wosNumber = *item.WosNumber
+			}
+			issn := ""
+			if item.Issn != nil {
+				issn = *item.Issn
+			}
+			eIssn := ""
+			if item.EIssn != nil {
+				eIssn = *item.EIssn
+			}
+			eidScopus := ""
+			if item.EidScopus != nil {
+				eidScopus = *item.EidScopus
+			}
+			note := ""
+			if item.Note != nil {
+				note = *item.Note
+			}
+			writer.Write([]string{
+				item.MediaType,
+				item.Code,
+				experimentalSystem,
+				userCall,
+				userExperiment,
+				item.Doi,
+				item.WebLink,
+				openAccessType,
+				item.Title,
+				item.AllAuthors,
+				strconv.Itoa(item.AllAuthorsCount),
+				item.EliAuthors,
+				strconv.Itoa(item.EliAuthorsCount),
+				item.LongJournalTitle,
+				strconv.Itoa(item.Volume),
+				issue,
+				item.Pages,
+				strconv.Itoa(item.PagesCount),
+				item.CiteAs,
+				impactFactor,
+				quartilBasis,
+				quartil,
+				item.YearOfPublication,
+				dateOfPublication,
+				item.Abstract,
+				item.Keywords,
+				oecdFord,
+				grant,
+				wosNumber,
+				issn,
+				eIssn,
+				eidScopus,
+				item.PublishingCountry.Name,
+				item.Language,
+				note,
+				item.Uid})
+		}
+
+		return nil
 	}
 }
