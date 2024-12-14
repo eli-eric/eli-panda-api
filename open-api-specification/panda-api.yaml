@@ -1004,6 +1004,21 @@ paths:
       summary: Get publications
       tags:
       - Publications
+  /v1/publications/export:
+    get:
+      description: Get publications as CSV
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publications as CSV
+      tags:
+      - Publications
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type

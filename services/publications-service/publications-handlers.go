@@ -237,6 +237,15 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 	}
 }
 
+// GetPublicationsAsCsv Get publications as CSV godoc
+// @Summary Get publications as CSV
+// @Description Get publications as CSV
+// @Tags Publications
+// @Security BearerAuth
+// @Produce text/csv
+// @Success 200 "CSV file"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publications/export [get]
 func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

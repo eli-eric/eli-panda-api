@@ -571,6 +571,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/publications/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get publications as CSV",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Get publications as CSV",
+                "responses": {
+                    "200": {
+                        "description": "CSV file"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/system/system-code": {
             "post": {
                 "security": [
