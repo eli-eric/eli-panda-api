@@ -2,6 +2,7 @@ package models
 
 import (
 	codebookModels "panda/apigateway/services/codebook-service/models"
+	"time"
 )
 
 type Publication struct {
@@ -46,6 +47,7 @@ type Publication struct {
 	UserCall                *codebookModels.Codebook `json:"userCall" neo4j:"rel,UserCall,HAS_USER_CALL,uid,userCall"`                           // userCall is the user call of the publication
 	UserExperiment          *string                  `json:"userExperiment" neo4j:"prop,userExperiment"`                                         // userExperiment is the user experiment of the publication
 	ExperimentalSystem      *string                  `json:"experimentalSystem" neo4j:"prop,experimentalSystem"`                                 // experimentalSystem is the experimental system of the publication
+	UpdatedAt               *time.Time               `json:"updatedAt" neo4j:"prop,updatedAt"`                                                   // updatedAt is the time when the publication was last updated
 }
 
 type AuthorsDepartment struct {

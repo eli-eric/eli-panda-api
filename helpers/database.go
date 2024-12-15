@@ -25,6 +25,7 @@ func NewNeo4jSession(driver neo4j.Driver) (neo4j.Session, error) {
 	return session, err
 }
 
+// not used yet - its for the future
 func CreateOrUpdateNodeQuery(node interface{}) (DatabaseQuery, error) {
 	val := reflect.ValueOf(node)
 	typ := reflect.TypeOf(node)
@@ -255,10 +256,10 @@ func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText 
 	query := fmt.Sprintf(`
 	MATCH (n:%s) WHERE (n.deleted IS NULL OR n.deleted = false)
 	%s
-	%s	
+	%s		
 	RETURN {
-			%s
-	} as n SKIP %d LIMIT %d
+			%s			
+	} as n ORDER BY n.updatedAt DESC SKIP %d LIMIT %d
 	`,
 		typ.Name(),
 		searchQuery,

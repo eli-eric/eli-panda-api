@@ -1430,6 +1430,10 @@ const docTemplate = `{
                     "description": "uid is the unique identifier of the publication",
                     "type": "string"
                 },
+                "updatedAt": {
+                    "description": "updatedAt is the time when the publication was last updated",
+                    "type": "string"
+                },
                 "userCall": {
                     "description": "userCall is the user call of the publication",
                     "allOf": [

@@ -84,7 +84,7 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 
 	updateQuery := helpers.DatabaseQuery{}
 	updateQuery.Parameters = make(map[string]interface{})
-	updateQuery.Query = `MERGE (n:Publication {uid: $uid}) `
+	updateQuery.Query = `MERGE (n:Publication {uid: $uid}) SET n.updatedAt = datetime() WITH n `
 	updateQuery.Parameters["uid"] = publication.Uid
 
 	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *publication, models.Publication{}, "n")
@@ -115,7 +115,7 @@ func (svc *PublicationsService) UpdatePublication(publication *models.Publicatio
 
 	updateQuery := helpers.DatabaseQuery{}
 	updateQuery.Parameters = make(map[string]interface{})
-	updateQuery.Query = `MATCH (n:Publication {uid: $uid}) `
+	updateQuery.Query = `MATCH (n:Publication {uid: $uid}) SET n.updatedAt = datetime() WITH n  `
 	updateQuery.Parameters["uid"] = publication.Uid
 
 	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *publication, oldPublication, "n")
