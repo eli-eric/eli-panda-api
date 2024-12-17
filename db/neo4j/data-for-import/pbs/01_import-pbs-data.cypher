@@ -131,3 +131,6 @@ delete r;
 	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
 	WITH totalLines, count(olDelivered) as deliveredLines, o
 	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end;
+
+  // set order names if not set
+  MATCH(o:Order) WHERE o.name IS NULL and o.orderNumber IS NOT NULL SET o.name = "Order " + o.orderNumber;
