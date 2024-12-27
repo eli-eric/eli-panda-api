@@ -187,6 +187,7 @@ func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result m
 	}
 
 	// addd header X-ApiKey
+	// wos.starter with institution key
 	request.Header.Add("X-ApiKey", svc.wosStarterApiKey)
 	request.Header.Add("Content-Type", contentType)
 
