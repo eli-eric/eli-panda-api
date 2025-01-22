@@ -459,14 +459,40 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	catalogueNameFilter := helpers.GetFilterValueString(filering, "catalogueName")
 	supplierFilter := helpers.GetFilterValueCodebook(filering, "supplier")
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
-	orderNumberFilter := helpers.GetFilterValueString(filering, "order")
+	orderFilter := helpers.GetFilterValueString(filering, "order")
+	orderNameFilter := helpers.GetFilterValueString(filering, "orderName")
+	orderNumberFilter := helpers.GetFilterValueString(filering, "orderNumber")
+	orderRequestNumberFilter := helpers.GetFilterValueString(filering, "orderRequestNumber")
+	orderContractNumberFilter := helpers.GetFilterValueString(filering, "orderContractNumber")
 
-	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil || orderNumberFilter != nil { // || priceFilter != nil {
+	if orderContractNumberFilter != nil || orderRequestNumberFilter != nil || orderNumberFilter != nil || orderNameFilter != nil || itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil || orderFilter != nil { // || priceFilter != nil {
+
+		if orderFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.orderNumber CONTAINS $filterOrder OR order.requestNumber CONTAINS $filterOrder OR order.contractNumber CONTAINS $filterOrder `
+			result.Parameters["filterOrder"] = *orderFilter
+		}
+
+		if orderNameFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.name CONTAINS $filterOrderName `
+			result.Parameters["filterOrderName"] = strings.ToLower(*orderNameFilter)
+		}
 
 		if orderNumberFilter != nil {
-			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.orderNumber CONTAINS $filterOrderNumber OR order.requestNumber CONTAINS $filterOrderNumber OR order.contractNumber CONTAINS $filterOrderNumber `
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.orderNumber CONTAINS $filterOrderNumber `
 			result.Parameters["filterOrderNumber"] = *orderNumberFilter
-		} else {
+		}
+
+		if orderRequestNumberFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.requestNumber CONTAINS $filterOrderRequestNumber `
+			result.Parameters["filterOrderRequestNumber"] = *orderRequestNumberFilter
+		}
+
+		if orderContractNumberFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.contractNumber CONTAINS $filterOrderContractNumber `
+			result.Parameters["filterOrderContractNumber"] = *orderContractNumberFilter
+		}
+
+		if orderFilter == nil && orderNameFilter == nil && orderNumberFilter == nil && orderRequestNumberFilter == nil && orderContractNumberFilter == nil {
 			result.Query += ` OPTIONAL MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) `
 		}
 
