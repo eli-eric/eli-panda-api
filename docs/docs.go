@@ -1252,6 +1252,9 @@ const docTemplate = `{
                 "itemUsage": {
                     "$ref": "#/definitions/models.Codebook"
                 },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
                 "location": {
                     "$ref": "#/definitions/models.Codebook"
                 },

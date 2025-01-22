@@ -53,6 +53,7 @@ type OrderLine struct {
 	DeliveredTime   *time.Time               `json:"deliveredTime"`
 	SerialNumber    *string                  `json:"serialNumber"`
 	Notes           *string                  `json:"notes" neo4j:"prop,notes"`
+	LastUpdateTime  *time.Time               `json:"lastUpdateTime"`
 }
 
 type ItemForEunPrint struct {
