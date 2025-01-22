@@ -124,16 +124,17 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 			return err
 		}
 
-		if oldOrder.LastUpdateTime != order.LastUpdateTime {
-			log.Err(helpers.ERR_CONFLICT).Msg("Order was updated by another user")
-			return helpers.ERR_CONFLICT
-		}
+		// temporary disabled
+		// if oldOrder.LastUpdateTime != order.LastUpdateTime {
+		// 	log.Err(helpers.ERR_CONFLICT).Msg("Order was updated by another user")
+		// 	return helpers.ERR_CONFLICT
+		// }
 
 		queries := []helpers.DatabaseQuery{}
 		genralUpdateQuery := UpdateOrderQuery(order, &oldOrder, facilityCode, userUID)
 		queries = append(queries, genralUpdateQuery)
 
-		if order.OrderLines != nil && len(order.OrderLines) > 0 {
+		if len(order.OrderLines) > 0 {
 
 			for _, orderLine := range order.OrderLines {
 				orderLineQuery := UpdateOrderLineQuery(order.UID, &orderLine, facilityCode, userUID)

@@ -367,7 +367,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//parentSystem
 	if filterVal := helpers.GetFilterValueCodebook(filering, "parentSystem"); filterVal != nil {
-		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM]->(sys) WITH sys, physicalItem, catalogueItem, ciCategory `
+		result.Query += ` MATCH(p{uid: $filterParentSystemUID})-[:HAS_SUBSYSTEM*1..50]->(sys) WITH sys, physicalItem, catalogueItem, ciCategory `
 		result.Parameters["filterParentSystemUID"] = (*filterVal).UID
 	}
 
