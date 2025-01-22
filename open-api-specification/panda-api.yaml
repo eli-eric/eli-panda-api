@@ -784,6 +784,45 @@ paths:
       summary: Delete an order
       tags:
       - Orders
+  /v1/order/{uid}/orderlines/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Update multiple order line delivery
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Items UIDs
+        in: body
+        name: itemsUids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.OrderLine'
+            type: array
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update multiple order line delivery
+      tags:
+      - Orders
   /v1/orders/eun-for-print:
     get:
       consumes:

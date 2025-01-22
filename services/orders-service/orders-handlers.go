@@ -23,6 +23,7 @@ type IOrdersHandlers interface {
 	UpdateOrder() echo.HandlerFunc
 	DeleteOrder() echo.HandlerFunc
 	UpdateOrderLineDelivery() echo.HandlerFunc
+	UpdateMultipleOrderLineDelivery() echo.HandlerFunc
 	GetItemsForEunPrint() echo.HandlerFunc
 	SetItemPrintEUN() echo.HandlerFunc
 	GetOrderUidByOrderNumber() echo.HandlerFunc
@@ -248,6 +249,45 @@ func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, orderLine)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+// UpdateMultipleOrderLineDelivery godoc
+// @Summary Update multiple order line delivery
+// @Description Update multiple order line delivery
+// @Tags Orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "Order UID"
+// @Param itemsUids body []string true "Items UIDs"
+// @Success 200 {object} []models.OrderLine
+// @Failure 400 "Bad Request"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order/{uid}/orderlines/delivery [put]
+func (h *OrdersHandlers) UpdateMultipleOrderLineDelivery() echo.HandlerFunc {
+	return func(c echo.Context) error {
+
+		userUID := c.Get("userUID").(string)
+		facilityCode := c.Get("facilityCode").(string)
+		// get the serial number as is delivered from the request body as as struct of OrderLineDelivery
+		itemUids := new([]string)
+		err := c.Bind(itemUids)
+
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return echo.ErrBadRequest
+		}
+
+		orderLines, err := h.ordersService.UpdateMultipleOrderLineDelivery(*itemUids, userUID, facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, orderLines)
 		} else {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError

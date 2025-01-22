@@ -23,6 +23,7 @@ type IOrdersService interface {
 	UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error)
 	DeleteOrder(orderUid string, userUID string) (err error)
 	UpdateOrderLineDelivery(itemUid string, isDelivered bool, serialNumber *string, eun *string, userUID string, facilityCode string) (result models.OrderLine, err error)
+	UpdateMultipleOrderLineDelivery(itemUids []string, userUID string, facilityCode string) (result []models.OrderLine, err error)
 	GetItemsForEunPrint(euns []string) (result []models.ItemForEunPrint, err error)
 	SetItemPrintEUN(eun string, printEUN bool) (err error)
 	GetOrderUidByOrderNumber(orderNumber string) (result string, err error)
@@ -212,6 +213,21 @@ func (svc *OrdersService) GetMinAndMaxOrderLinePrice(facilityCode string) (resul
 
 	query := GetMinAndMaxOrderLinePriceQuery(facilityCode)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderLineMinMax](session, query)
+
+	return result, err
+}
+
+func (svc *OrdersService) UpdateMultipleOrderLineDelivery(itemUids []string, userUID string, facilityCode string) (result []models.OrderLine, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	for _, itemUid := range itemUids {
+		query := UpdateOrderLineDeliveryQuery(itemUid, true, nil, nil, userUID, facilityCode)
+		orderLine, err := helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.OrderLine](session, query)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, orderLine)
+	}
 
 	return result, err
 }
