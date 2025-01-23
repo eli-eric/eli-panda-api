@@ -53,10 +53,10 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		facilityCode := c.Get("facilityCode").(string)
 		filter := c.QueryParams().Get("filter")
 		roles := c.Get("userRoles").([]string)
+		userUID := c.Get("userUID").(string)
 
 		//has the user role CODEBOOKS_ADMIN ?
 		isCodebooksAdmin := contains(roles, shared.ROLE_CODEBOOKS_ADMIN)
-		isAdmin := contains(roles, shared.ROLE_ADMIN)
 
 		filterObject := new([]helpers.Filter)
 		if filter != "" {
@@ -72,7 +72,7 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 			limit = autocompleteMaxLimit
 		}
 
-		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject, isAdmin)
+		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject, userUID, roles)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, codebookResponse)

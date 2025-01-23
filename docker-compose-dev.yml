@@ -20,6 +20,8 @@ services:
       - NEO4J_SCHEMA=bolt://
       - API_INTEGRATION_B_OKBASE_GET_EMPLOYEES_URL=https://elieric.okbase.cz/okbase/service/rest/sestava/run
       - API_INTEGRATION_B_OKBASE_API_KEY=${API_INTEGRATION_B_OKBASE_API_KEY}
+      - API_INTEGRATION_B_WOS_STARTER_API_URL=https://api.clarivate.com/apis/wos-starter/v1
+      - API_INTEGRATION_B_WOS_STARTER_API_KEY=${API_INTEGRATION_B_WOS_STARTER_API_KEY}
     build:
       context: ./
       dockerfile: Dockerfile.devenv

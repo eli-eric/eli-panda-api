@@ -210,6 +210,67 @@
                 }
             }
         },
+        "/v1/order/{uid}/orderlines/delivery": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update multiple order line delivery",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Update multiple order line delivery",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Items UIDs",
+                        "name": "itemsUids",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.OrderLine"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/orders/eun-for-print": {
             "get": {
                 "security": [
@@ -370,6 +431,43 @@
                 }
             }
         },
+        "/v1/publication/wos/{doi}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get WOS data by DOI",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Get WOS data by DOI",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "doi",
+                        "name": "doi",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WosAPIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/publication/{uid}": {
             "get": {
                 "security": [
@@ -501,6 +599,20 @@
                     "Publications"
                 ],
                 "summary": "Get publications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination",
+                        "name": "pagination",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -510,6 +622,39 @@
                                 "$ref": "#/definitions/models.Publication"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI Authors Count,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Get publications as CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "CSV file"
                     },
                     "500": {
                         "description": "Internal Server Error"
@@ -812,6 +957,23 @@
         }
     },
     "definitions": {
+        "models.AuthorsDepartment": {
+            "type": "object",
+            "properties": {
+                "authorsCount": {
+                    "description": "authorsCount is the authors count of the publication",
+                    "type": "integer"
+                },
+                "department": {
+                    "description": "department is the department of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                }
+            }
+        },
         "models.CatalogueCategoryProperty": {
             "type": "object",
             "properties": {
@@ -1087,6 +1249,9 @@
                 "itemUsage": {
                     "$ref": "#/definitions/models.Codebook"
                 },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
                 "location": {
                     "$ref": "#/definitions/models.Codebook"
                 },
@@ -1173,30 +1338,189 @@
             "type": "object",
             "properties": {
                 "abstract": {
+                    "description": "abstract is the abstract of the publication",
                     "type": "string"
                 },
-                "articleTitle": {
+                "allAuthors": {
+                    "description": "allAuthors is the all authors of the publication",
                     "type": "string"
+                },
+                "allAuthorsCount": {
+                    "description": "allAuthorsCount is the all authors count of the publication",
+                    "type": "integer"
+                },
+                "authorsDepartments": {
+                    "description": "authorsDepartments is the authors departments of the publication",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.AuthorsDepartment"
+                    }
+                },
+                "authorsDepartmentsArray": {
+                    "description": "authorsDepartmentsArray is the authors departments array of the publication",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "citeAs": {
+                    "description": "citeAs is the citation of the publication",
+                    "type": "string"
+                },
+                "code": {
+                    "description": "code is the internal code of the publication",
+                    "type": "string"
+                },
+                "dateOfPublication": {
+                    "description": "dateOfPublication is the date of publication of the publication",
+                    "type": "string"
+                },
+                "doi": {
+                    "description": "doi is the unique identifier of the publication",
+                    "type": "string"
+                },
+                "eidScopus": {
+                    "description": "eidScopus is the eid scopus of the publication",
+                    "type": "string"
+                },
+                "eissn": {
+                    "description": "eissn is the eissn of the publication",
+                    "type": "string"
+                },
+                "eliAuthors": {
+                    "description": "eliAuthors is the eli authors of the publication",
+                    "type": "string"
+                },
+                "eliAuthorsCount": {
+                    "description": "eliAuthorsCount is the eli authors count of the publication",
+                    "type": "integer"
+                },
+                "experimentalSystem": {
+                    "description": "experimentalSystem is the experimental system of the publication",
+                    "type": "string"
+                },
+                "grant": {
+                    "description": "grant is the grant of the publication",
+                    "type": "string"
+                },
+                "impactFactor": {
+                    "description": "impactFactor is the impact factor of the publication",
+                    "type": "number"
+                },
+                "issn": {
+                    "description": "issn is the issn of the publication",
+                    "type": "string"
+                },
+                "issue": {
+                    "description": "issue is the issue of the publication",
+                    "type": "integer"
                 },
                 "keywords": {
+                    "description": "keywords is the keywords of the publication",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "language is the language of the publication",
                     "type": "string"
                 },
                 "longJournalTitle": {
+                    "description": "longJournalTitle is the long journal title of the publication",
                     "type": "string"
+                },
+                "mediaType": {
+                    "description": "mediaType is the media type of the publication",
+                    "type": "string"
+                },
+                "note": {
+                    "description": "note is the note of the publication",
+                    "type": "string"
+                },
+                "oecdFord": {
+                    "description": "oecdFord is the oecd ford of the publication",
+                    "type": "string"
+                },
+                "openAccessType": {
+                    "description": "openAccessType is the open access type of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
                 "pages": {
-                    "type": "integer"
-                },
-                "pdfFile": {
+                    "description": "pages is the pages of the publication",
                     "type": "string"
                 },
-                "publicationDOI": {
+                "pagesCount": {
+                    "description": "pagesCount is the pages count of the publication",
+                    "type": "integer"
+                },
+                "pdfFileName": {
+                    "description": "pdfFileName is the name of the pdf file of the publication",
+                    "type": "string"
+                },
+                "pdfFileUrl": {
+                    "description": "pdfFileUrl is the url of the pdf file of the publication",
+                    "type": "string"
+                },
+                "publishingCountry": {
+                    "description": "publishingCountry is the publishing country of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "quartil": {
+                    "description": "quartil is the quartil of the publication",
+                    "type": "string"
+                },
+                "quartilBasis": {
+                    "description": "quartilBasis is the quartil basis of the publication",
+                    "type": "string"
+                },
+                "shortJournalTitle": {
+                    "description": "shortJournalTitle is the short journal title of the publication",
+                    "type": "string"
+                },
+                "title": {
+                    "description": "title is the title of the publication",
                     "type": "string"
                 },
                 "uid": {
+                    "description": "uid is the unique identifier of the publication",
                     "type": "string"
                 },
-                "year": {
+                "updatedAt": {
+                    "description": "updatedAt is the time when the publication was last updated",
+                    "type": "string"
+                },
+                "userCall": {
+                    "description": "userCall is the user call of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "userExperiment": {
+                    "description": "userExperiment is the user experiment of the publication",
+                    "type": "string"
+                },
+                "volume": {
+                    "description": "volume is the volume of the publication",
+                    "type": "integer"
+                },
+                "webLink": {
+                    "description": "webLink is the web link of the publication",
+                    "type": "string"
+                },
+                "wosNumber": {
+                    "description": "wosNumber is the wos number of the publication",
+                    "type": "string"
+                },
+                "yearOfPublication": {
+                    "description": "yearOfPublication is the year of publication of the publication",
                     "type": "string"
                 }
             }
@@ -1431,6 +1755,187 @@
                     "type": "string"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosAPIResponse": {
+            "type": "object",
+            "properties": {
+                "hits": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosHit"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/models.WosMetadata"
+                }
+            }
+        },
+        "models.WosAuthor": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "researcherId": {
+                    "type": "string"
+                },
+                "wosStandard": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosCitation": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "db": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosEditor": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosHit": {
+            "type": "object",
+            "properties": {
+                "citations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosCitation"
+                    }
+                },
+                "identifiers": {
+                    "$ref": "#/definitions/models.WosIdentifiers"
+                },
+                "keywords": {
+                    "$ref": "#/definitions/models.WosKeywords"
+                },
+                "names": {
+                    "$ref": "#/definitions/models.WosNames"
+                },
+                "source": {
+                    "$ref": "#/definitions/models.WosSource"
+                },
+                "sourceTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "title": {
+                    "type": "string"
+                },
+                "types": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosIdentifiers": {
+            "type": "object",
+            "properties": {
+                "doi": {
+                    "type": "string"
+                },
+                "issn": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosKeywords": {
+            "type": "object",
+            "properties": {
+                "authorKeywords": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.WosMetadata": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.WosNames": {
+            "type": "object",
+            "properties": {
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosAuthor"
+                    }
+                },
+                "bookEditors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosEditor"
+                    }
+                }
+            }
+        },
+        "models.WosPages": {
+            "type": "object",
+            "properties": {
+                "begin": {
+                    "type": "string"
+                },
+                "count": {
+                    "type": "integer"
+                },
+                "end": {
+                    "type": "string"
+                },
+                "range": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosSource": {
+            "type": "object",
+            "properties": {
+                "issue": {
+                    "type": "string"
+                },
+                "pages": {
+                    "$ref": "#/definitions/models.WosPages"
+                },
+                "publishMonth": {
+                    "type": "string"
+                },
+                "publishYear": {
+                    "type": "integer"
+                },
+                "sourceTitle": {
+                    "type": "string"
+                },
+                "volume": {
                     "type": "string"
                 }
             }

@@ -67,7 +67,7 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	log.Info().Msg("General   service initialized successfully.")
 
 	// publications service
-	publicationsSvc := publicationsservice.NewPublicationsService(neo4jDriver)
+	publicationsSvc := publicationsservice.NewPublicationsService(neo4jDriver, settings.ApiIntegrationBeamlinesWOSBaseUrl, settings.ApiIntegrationBeamlinesWOSBaseApiKey)
 	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc)
 	publicationsservice.MapPublicationsRoutes(e, publicationsHandlers, jwtMiddleware)
 	log.Info().Msg("Publications service initialized successfully.")

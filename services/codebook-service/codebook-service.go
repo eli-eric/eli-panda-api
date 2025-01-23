@@ -23,7 +23,7 @@ type CodebookService struct {
 }
 
 type ICodebookService interface {
-	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error)
+	GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, userUID string, userRoles []string) (codebookResponse models.CodebookResponse, err error)
 	GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error)
 	GetListOfCodebooks() (codebookList []models.CodebookType)
 	GetListOfEditableCodebooks(userRoles []string) (codebookList []models.CodebookType)
@@ -43,18 +43,18 @@ func NewCodebookService(settings *config.Config,
 	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
 }
 
-func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (codebookResponse models.CodebookResponse, err error) {
+func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, userUID string, userRoles []string) (codebookResponse models.CodebookResponse, err error) {
 
 	codebookList := make([]models.Codebook, 0)
 	codebookMetadata := codebooksMap[codebookCode]
 
 	if codebookMetadata != (models.CodebookType{}) {
 
+		hasRights := checkUserRoles(userRoles, codebookMetadata.RoleEdit)
+
 		switch codebookCode {
 		case "ZONE":
 			codebookList, err = svc.systemsService.GetZonesCodebook(facilityCode, searchString)
-		case "UNIT":
-			codebookList, err = svc.catalogueService.GetUnitsCodebook()
 		case "CATALOGUE_PROPERTY_TYPE":
 			codebookList, err = svc.catalogueService.GetPropertyTypesCodebook()
 		case "SYSTEM_TYPE":
@@ -80,7 +80,7 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 		case "SYSTEM":
 			codebookList, err = svc.systemsService.GetSystemsAutocompleteCodebook(searchString, limit, facilityCode, filter)
 		case "EMPLOYEE":
-			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode, filter, isAdmin)
+			codebookList, err = svc.securityService.GetEmployeesAutocompleteCodebook(searchString, limit, facilityCode, filter, hasRights)
 		case "CATALOGUE_CATEGORY":
 			codebookList, err = svc.catalogueService.GetCatalogueCategoriesCodebook(searchString, limit)
 		case "MANUFACTURER":
@@ -91,6 +91,8 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.securityService.GetContactPersonRolesAutocompleteCodebook(searchString, limit, facilityCode)
 		case "SYSTEM_ATTRIBUTE":
 			codebookList, err = svc.systemsService.GetSystemAttributesCodebook(facilityCode)
+		default:
+			codebookList, err = getSimpleCodebookRecords(svc.neo4jDriver, codebookCode, facilityCode, userUID, userRoles)
 		}
 
 		if err == nil {
@@ -103,6 +105,38 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 	}
 
 	return codebookResponse, err
+}
+
+func getSimpleCodebookRecords(neo4jDriver *neo4j.Driver, codebookCode string, facilityCode string, userUID string, userRoles []string) (result []models.Codebook, err error) {
+
+	codebookDefinition := codebooksMap[codebookCode]
+
+	if codebookDefinition != (models.CodebookType{}) {
+		if checkUserRoles(userRoles, codebookDefinition.RoleEdit) {
+
+			if codebookDefinition.NodeLabel != "" {
+				// Open a new Session
+				session, _ := helpers.NewNeo4jSession(*neo4jDriver)
+
+				dbquery := helpers.DatabaseQuery{}
+				dbquery.Query = `				
+				MATCH (n:` + codebookDefinition.NodeLabel + `) 
+				RETURN { uid: n.uid, name: n.name, code: n.code } as codebook ORDER BY codebook.name`
+
+				dbquery.ReturnAlias = "codebook"
+
+				result, err = helpers.GetNeo4jArrayOfNodes[models.Codebook](session, dbquery)
+
+				if err == nil {
+					helpers.ProcessArrayResult(&result, err)
+				}
+			}
+		} else {
+			err = helpers.ERR_UNAUTHORIZED
+		}
+	}
+
+	return result, err
 }
 
 func (svc *CodebookService) GetCodebookTree(codebookCode string, facilityCode string, columnFilter *[]helpers.ColumnFilter) (treeData []models.CodebookTreeItem, err error) {
@@ -269,6 +303,12 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.TEAM_AUTOCOMPLETE_CODEBOOK,
 		models.CONTACT_PERSON_ROLE_CODEBOOK,
 		models.SYSTEM_ATTRIBUTE_CODEBOOK,
+		models.COUNTRY_CODEBOOK,
+		models.DEPARTMENT_CODEBOOK,
+		models.OPEN_ACCESS_TYPE_CODEBOOK,
+		models.LANGUAGE_CODEBOOK,
+		models.USER_CALL_CODEBOOK,
+		models.USER_EXPERIMENT_CODEBOOK,
 	}
 }
 
@@ -315,4 +355,10 @@ var codebooksMap = map[string]models.CodebookType{
 	"TEAM":                       models.TEAM_AUTOCOMPLETE_CODEBOOK,
 	"CONTACT_PERSON_ROLE":        models.CONTACT_PERSON_ROLE_CODEBOOK,
 	"SYSTEM_ATTRIBUTE":           models.SYSTEM_ATTRIBUTE_CODEBOOK,
+	"DEPARTMENT":                 models.DEPARTMENT_CODEBOOK,
+	"OPEN_ACCESS_TYPE":           models.OPEN_ACCESS_TYPE_CODEBOOK,
+	"LANGUAGE":                   models.LANGUAGE_CODEBOOK,
+	"USER_CALL":                  models.USER_CALL_CODEBOOK,
+	"USER_EXPERIMENT":            models.USER_EXPERIMENT_CODEBOOK,
+	"COUNTRY":                    models.COUNTRY_CODEBOOK,
 }

@@ -23,8 +23,12 @@ func LoadConfiguraion() (*Config, error) {
 	config.Neo4jUsername = os.Getenv("NEO4J_USER")
 	config.Neo4jPassword = os.Getenv("NEO4J_PASSWORD")
 	config.Neo4jSchema = os.Getenv("NEO4J_SCHEMA")
+
 	config.ApiIntegrationBeamlinesOKBaseUrl = os.Getenv("API_INTEGRATION_B_OKBASE_GET_EMPLOYEES_URL")
 	config.ApiIntegrationBeamlinesOKBaseApiKey = os.Getenv("API_INTEGRATION_B_OKBASE_API_KEY")
+
+	config.ApiIntegrationBeamlinesWOSBaseUrl = os.Getenv("API_INTEGRATION_B_WOS_STARTER_API_URL")
+	config.ApiIntegrationBeamlinesWOSBaseApiKey = os.Getenv("API_INTEGRATION_B_WOS_STARTER_API_KEY")
 
 	return &config, nil
 }
@@ -54,4 +58,8 @@ type Config struct {
 	// Beamlines OKBase
 	ApiIntegrationBeamlinesOKBaseUrl    string
 	ApiIntegrationBeamlinesOKBaseApiKey string
+
+	// Beamlines WOS
+	ApiIntegrationBeamlinesWOSBaseUrl    string
+	ApiIntegrationBeamlinesWOSBaseApiKey string
 }

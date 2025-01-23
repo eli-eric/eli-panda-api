@@ -1,5 +1,15 @@
 basePath: /
 definitions:
+  models.AuthorsDepartment:
+    properties:
+      authorsCount:
+        description: authorsCount is the authors count of the publication
+        type: integer
+      department:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: department is the department of the publication
+    type: object
   models.CatalogueCategoryProperty:
     properties:
       defaultValue:
@@ -180,6 +190,8 @@ definitions:
         type: boolean
       itemUsage:
         $ref: '#/definitions/models.Codebook'
+      lastUpdateTime:
+        type: string
       location:
         $ref: '#/definitions/models.Codebook'
       name:
@@ -237,22 +249,138 @@ definitions:
   models.Publication:
     properties:
       abstract:
+        description: abstract is the abstract of the publication
         type: string
-      articleTitle:
+      allAuthors:
+        description: allAuthors is the all authors of the publication
         type: string
+      allAuthorsCount:
+        description: allAuthorsCount is the all authors count of the publication
+        type: integer
+      authorsDepartments:
+        description: authorsDepartments is the authors departments of the publication
+        items:
+          $ref: '#/definitions/models.AuthorsDepartment'
+        type: array
+      authorsDepartmentsArray:
+        description: authorsDepartmentsArray is the authors departments array of the
+          publication
+        items:
+          type: string
+        type: array
+      citeAs:
+        description: citeAs is the citation of the publication
+        type: string
+      code:
+        description: code is the internal code of the publication
+        type: string
+      dateOfPublication:
+        description: dateOfPublication is the date of publication of the publication
+        type: string
+      doi:
+        description: doi is the unique identifier of the publication
+        type: string
+      eidScopus:
+        description: eidScopus is the eid scopus of the publication
+        type: string
+      eissn:
+        description: eissn is the eissn of the publication
+        type: string
+      eliAuthors:
+        description: eliAuthors is the eli authors of the publication
+        type: string
+      eliAuthorsCount:
+        description: eliAuthorsCount is the eli authors count of the publication
+        type: integer
+      experimentalSystem:
+        description: experimentalSystem is the experimental system of the publication
+        type: string
+      grant:
+        description: grant is the grant of the publication
+        type: string
+      impactFactor:
+        description: impactFactor is the impact factor of the publication
+        type: number
+      issn:
+        description: issn is the issn of the publication
+        type: string
+      issue:
+        description: issue is the issue of the publication
+        type: integer
       keywords:
+        description: keywords is the keywords of the publication
+        type: string
+      language:
+        description: language is the language of the publication
         type: string
       longJournalTitle:
+        description: longJournalTitle is the long journal title of the publication
         type: string
+      mediaType:
+        description: mediaType is the media type of the publication
+        type: string
+      note:
+        description: note is the note of the publication
+        type: string
+      oecdFord:
+        description: oecdFord is the oecd ford of the publication
+        type: string
+      openAccessType:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: openAccessType is the open access type of the publication
       pages:
-        type: integer
-      pdfFile:
+        description: pages is the pages of the publication
         type: string
-      publicationDOI:
+      pagesCount:
+        description: pagesCount is the pages count of the publication
+        type: integer
+      pdfFileName:
+        description: pdfFileName is the name of the pdf file of the publication
+        type: string
+      pdfFileUrl:
+        description: pdfFileUrl is the url of the pdf file of the publication
+        type: string
+      publishingCountry:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: publishingCountry is the publishing country of the publication
+      quartil:
+        description: quartil is the quartil of the publication
+        type: string
+      quartilBasis:
+        description: quartilBasis is the quartil basis of the publication
+        type: string
+      shortJournalTitle:
+        description: shortJournalTitle is the short journal title of the publication
+        type: string
+      title:
+        description: title is the title of the publication
         type: string
       uid:
+        description: uid is the unique identifier of the publication
         type: string
-      year:
+      updatedAt:
+        description: updatedAt is the time when the publication was last updated
+        type: string
+      userCall:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: userCall is the user call of the publication
+      userExperiment:
+        description: userExperiment is the user experiment of the publication
+        type: string
+      volume:
+        description: volume is the volume of the publication
+        type: integer
+      webLink:
+        description: webLink is the web link of the publication
+        type: string
+      wosNumber:
+        description: wosNumber is the wos number of the publication
+        type: string
+      yearOfPublication:
+        description: yearOfPublication is the year of publication of the publication
         type: string
     type: object
   models.System:
@@ -408,6 +536,123 @@ definitions:
       username:
         type: string
     type: object
+  models.WosAPIResponse:
+    properties:
+      hits:
+        items:
+          $ref: '#/definitions/models.WosHit'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.WosMetadata'
+    type: object
+  models.WosAuthor:
+    properties:
+      displayName:
+        type: string
+      researcherId:
+        type: string
+      wosStandard:
+        type: string
+    type: object
+  models.WosCitation:
+    properties:
+      count:
+        type: integer
+      db:
+        type: string
+    type: object
+  models.WosEditor:
+    properties:
+      displayName:
+        type: string
+    type: object
+  models.WosHit:
+    properties:
+      citations:
+        items:
+          $ref: '#/definitions/models.WosCitation'
+        type: array
+      identifiers:
+        $ref: '#/definitions/models.WosIdentifiers'
+      keywords:
+        $ref: '#/definitions/models.WosKeywords'
+      names:
+        $ref: '#/definitions/models.WosNames'
+      source:
+        $ref: '#/definitions/models.WosSource'
+      sourceTypes:
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      types:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
+    type: object
+  models.WosIdentifiers:
+    properties:
+      doi:
+        type: string
+      issn:
+        type: string
+    type: object
+  models.WosKeywords:
+    properties:
+      authorKeywords:
+        items:
+          type: string
+        type: array
+    type: object
+  models.WosMetadata:
+    properties:
+      limit:
+        type: integer
+      page:
+        type: integer
+      total:
+        type: integer
+    type: object
+  models.WosNames:
+    properties:
+      authors:
+        items:
+          $ref: '#/definitions/models.WosAuthor'
+        type: array
+      bookEditors:
+        items:
+          $ref: '#/definitions/models.WosEditor'
+        type: array
+    type: object
+  models.WosPages:
+    properties:
+      begin:
+        type: string
+      count:
+        type: integer
+      end:
+        type: string
+      range:
+        type: string
+    type: object
+  models.WosSource:
+    properties:
+      issue:
+        type: string
+      pages:
+        $ref: '#/definitions/models.WosPages'
+      publishMonth:
+        type: string
+      publishYear:
+        type: integer
+      sourceTitle:
+        type: string
+      volume:
+        type: string
+    type: object
 host: localhost:50000
 info:
   contact:
@@ -539,6 +784,45 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete an order
+      tags:
+      - Orders
+  /v1/order/{uid}/orderlines/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Update multiple order line delivery
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Items UIDs
+        in: body
+        name: itemsUids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.OrderLine'
+            type: array
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update multiple order line delivery
       tags:
       - Orders
   /v1/orders/eun-for-print:
@@ -713,9 +997,41 @@ paths:
       summary: Update publication
       tags:
       - Publications
+  /v1/publication/wos/{doi}:
+    get:
+      description: Get WOS data by DOI
+      parameters:
+      - description: doi
+        in: path
+        name: doi
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WosAPIResponse'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get WOS data by DOI
+      tags:
+      - Publications
   /v1/publications:
     get:
       description: Get publications
+      parameters:
+      - description: search
+        in: query
+        name: search
+        type: string
+      - description: pagination
+        in: query
+        name: pagination
+        type: string
       produces:
       - application/json
       responses:
@@ -730,6 +1046,30 @@ paths:
       security:
       - BearerAuth: []
       summary: Get publications
+      tags:
+      - Publications
+  /v1/publications/export:
+    get:
+      description: 'CSV header: Media Type,Code,Experimental System,User Call,User
+        Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI
+        Authors Count,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact
+        Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD
+        Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID'
+      parameters:
+      - description: search
+        in: query
+        name: search
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: CSV file
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publications as CSV
       tags:
       - Publications
   /v1/system/system-code:

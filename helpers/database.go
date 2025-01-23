@@ -25,6 +25,315 @@ func NewNeo4jSession(driver neo4j.Driver) (neo4j.Session, error) {
 	return session, err
 }
 
+// not used yet - its for the future
+func CreateOrUpdateNodeQuery(node interface{}) (DatabaseQuery, error) {
+	val := reflect.ValueOf(node)
+	typ := reflect.TypeOf(node)
+
+	if typ.Kind() == reflect.Ptr {
+		val = val.Elem()
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return DatabaseQuery{}, fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+	params := map[string]interface{}{}
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		value := val.Field(i)
+
+		// Skip unexported fields
+		if !value.CanInterface() {
+			continue
+		}
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: $%s", propName, propName))
+			params[propName] = value.Interface()
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			params[propName] = value.Interface()
+		}
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MERGE (n:%s {uid: $uid})
+	SET n += {%s}
+	RETURN n
+	`, typ.Name(), strings.Join(fields, ", "))
+
+	// Run the query
+	return DatabaseQuery{
+		Query:       query,
+		Parameters:  params,
+		ReturnAlias: "n",
+	}, nil
+}
+
+// get single node by uid
+func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
+
+	typ := reflect.TypeOf(node)
+	uid := ""
+
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		uid = reflect.ValueOf(node).Elem().FieldByName("Uid").String()
+	} else {
+		uid = reflect.ValueOf(node).FieldByName("Uid").String()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+	var optionalMatchQueries []string
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+		}
+
+		// handle optional match query and fields
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			targetAlias := tagParts[4]
+
+			optionalMatchQueries = append(optionalMatchQueries, fmt.Sprintf("OPTIONAL MATCH (n)-[:%s]->(%s:%s) ", relationshipType, targetAlias, targetNodeType))
+			fields = append(fields, fmt.Sprintf("%s: case when %s is NOT NULL THEN {uid: %s.uid, name: %s.name} ELSE null END", targetAlias, targetAlias, targetAlias, targetAlias))
+		}
+
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MATCH (n:%s {uid: $uid})
+	%s
+	RETURN {
+			%s
+	} as n
+	`, typ.Name(),
+		strings.Join(optionalMatchQueries, " "),
+		strings.Join(fields, ","))
+
+	// Run the query
+	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+
+		result, err := tx.Run(query, map[string]interface{}{"uid": uid})
+		if err != nil {
+			return nil, err
+		}
+
+		record, err := result.Single()
+		if err != nil {
+			return nil, fmt.Errorf(err.Error())
+		}
+
+		rec, _ := record.Get("n")
+		return rec, nil
+	})
+
+	if err == nil {
+		err = MapStructToInterface(resultMap.(map[string]interface{}), node)
+	}
+
+	return err
+}
+
+func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, totalCount int64, err error) {
+
+	dbQuery := DatabaseQuery{}
+	dbQuery.Parameters = make(map[string]interface{})
+
+	typ := reflect.TypeOf(result)
+
+	if typ.Kind() == reflect.Slice {
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		return result, totalCount, fmt.Errorf("expected a struct, got %s", typ.Kind())
+	}
+
+	// Build Cypher query and parameters
+	var fields []string
+	searchFields := make(map[string]string) // key is the field name, value is the field type
+	var optionalMatchQueries []string
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+
+		//jsonTag := field.Tag.Get("json")
+		neo4jTag := field.Tag.Get("neo4j")
+
+		// Handle only `prop` fields for nodes
+		if strings.HasPrefix(neo4jTag, "prop,") {
+			propName := strings.TrimPrefix(neo4jTag, "prop,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+			searchFields[propName] = field.Type.String()
+		}
+
+		// handle key property
+		if strings.HasPrefix(neo4jTag, "key") {
+			propName := strings.TrimPrefix(neo4jTag, "key,")
+			fields = append(fields, fmt.Sprintf("%s: n.%s", propName, propName))
+			searchFields[propName] = field.Type.String()
+		}
+
+		// handle optional match query and fields
+		if strings.HasPrefix(neo4jTag, "rel,") {
+			tagParts := strings.Split(neo4jTag, ",")
+			if len(tagParts) < 5 {
+				return result, totalCount, fmt.Errorf("invalid 'rel' tag format: %s", neo4jTag)
+			}
+
+			// Extract relationship details
+			targetNodeType := tagParts[1]
+			relationshipType := tagParts[2]
+			targetAlias := tagParts[4]
+
+			optionalMatchQueries = append(optionalMatchQueries, fmt.Sprintf("OPTIONAL MATCH (n)-[:%s]->(%s:%s) ", relationshipType, targetAlias, targetNodeType))
+			fields = append(fields, fmt.Sprintf("%s: case when %s is NOT NULL THEN {uid: %s.uid, name: %s.name} ELSE null END", targetAlias, targetAlias, targetAlias, targetAlias))
+			searchFields[targetAlias] = "codebook"
+		}
+
+	}
+
+	// create search query part
+	searchQuery := ""
+	if searchText != "" {
+		dbQuery.Parameters["search"] = searchText
+		// foreach field in the struct
+		for propName, propType := range searchFields {
+			if propType == "string" || propType == "*string" {
+				if searchQuery == "" {
+					searchQuery += fmt.Sprintf(" AND (toLower(n.%s) CONTAINS toLower($search)", propName)
+				} else {
+					searchQuery += fmt.Sprintf(" OR toLower(n.%s) CONTAINS toLower($search) ", propName)
+				}
+			}
+		}
+		searchQuery += ")"
+	}
+
+	// Create Cypher query
+	query := fmt.Sprintf(`
+	MATCH (n:%s) WHERE (n.deleted IS NULL OR n.deleted = false)
+	%s
+	%s		
+	RETURN {
+			%s			
+	} as n ORDER BY n.updatedAt DESC SKIP %d LIMIT %d
+	`,
+		typ.Name(),
+		searchQuery,
+		strings.Join(optionalMatchQueries, " "),
+		strings.Join(fields, ","),
+		skip, limit)
+
+	dbQuery.Query = query
+	dbQuery.ReturnAlias = "n"
+	// Run the query
+	result, err = GetNeo4jArrayOfNodes[T](session, dbQuery)
+
+	if err != nil {
+		return result, totalCount, err
+	}
+
+	// Create Cypher query
+	query = fmt.Sprintf(`
+	MATCH (n:%s) WHERE (n.deleted IS NULL OR n.deleted = false)
+	%s
+	%s	
+	RETURN count(n) as totalCount
+	`,
+		typ.Name(),
+		searchQuery,
+		strings.Join(optionalMatchQueries, " "),
+	)
+
+	dbQuery.Query = query
+	dbQuery.ReturnAlias = "totalCount"
+	// Run the query
+	totalCount, err = GetNeo4jSingleRecordSingleValue[int64](session, dbQuery)
+
+	return result, totalCount, err
+}
+
+func DeleteNodeQuery(nodeUID string) (result DatabaseQuery) {
+	result.Query = `
+	MATCH (n {uid:$uid})
+	DETACH DELETE n`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = nodeUID
+
+	return result
+}
+
+func SoftDeleteNodeQuery(nodeUID string) (result DatabaseQuery) {
+	result.Query = `
+	MATCH (n {uid:$uid})
+	SET n.deleted = true
+	RETURN n`
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = nodeUID
+
+	return result
+}
+
+func HistoryLogQuery(uid, action, userUID string) (result DatabaseQuery) {
+	result.Query = `
+	MATCH(u:User{uid:$userUID})
+	MATCH(s{uid:$uid})
+	with u,s
+	CREATE(s)-[:WAS_UPDATED_BY{at: datetime(), action: $action}]->(u)
+	RETURN true as result`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["action"] = action
+	result.Parameters["userUID"] = userUID
+
+	return result
+}
+
 func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
 	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		result, err := tx.Run(query.Query, query.Parameters)
@@ -135,7 +444,7 @@ func WriteNeo4jAndReturnNothing(session neo4j.Session, query DatabaseQuery) (err
 }
 
 // write transaction with multiple queries
-func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries []DatabaseQuery) (err error) {
+func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries ...DatabaseQuery) (err error) {
 
 	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
 		for _, query := range queries {
@@ -252,6 +561,57 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						} else if oldValue.Elem().Interface().(time.Time) != newValue.Elem().Interface().(time.Time) {
 							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Interface().(time.Time).Local()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "int" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Int()
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Int()
+
+						if newValue != oldValue {
+							dbQuery.Parameters[neo4jPropName] = newValue
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "*int" {
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if newValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = nil
+						} else if oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Int()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if oldValue.Elem().Int() != newValue.Elem().Int() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Int()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "float64" {
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Float()
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Float()
+
+						if newValue != oldValue {
+							dbQuery.Parameters[neo4jPropName] = newValue
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+					} else if fieldType == "*float64" {
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
+
+						if newValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = nil
+						} else if oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Float()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						}
+						// else if array of strings
+					} else if fieldType == "[]string" {
+
+						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name).Interface().([]string)
+						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name).Interface().([]string)
+
+						if !reflect.DeepEqual(newValue, oldValue) {
+							dbQuery.Parameters[neo4jPropName] = newValue
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
 					}
