@@ -1,6 +1,7 @@
 package filesservice
 
 import (
+	"panda/apigateway/helpers"
 	"panda/apigateway/services/files-service/models"
 
 	"github.com/labstack/echo/v4"
@@ -47,7 +48,7 @@ func (h *FilesHandlers) CreateFileLink() echo.HandlerFunc {
 		fileLink := models.FileLink{}
 		if err := c.Bind(&fileLink); err != nil {
 			log.Error().Err(err).Msg("Error binding file link")
-			return echo.ErrBadRequest
+			return helpers.BadRequest(err.Error())
 		}
 
 		result, err := h.filesService.CreateFileLink(parentUid, fileLink)
@@ -69,7 +70,7 @@ func (h *FilesHandlers) UpdateFileLink() echo.HandlerFunc {
 		fileLink := models.FileLink{}
 		if err := c.Bind(&fileLink); err != nil {
 			log.Error().Err(err).Msg("Error binding file link")
-			return echo.ErrBadRequest
+			return helpers.BadRequest(err.Error())
 		}
 
 		fileLink.UID = uid
@@ -107,14 +108,16 @@ func (h *FilesHandlers) SetMiniImageUrlToNode() echo.HandlerFunc {
 		nodeLabel := c.QueryParam("nodeLabel")
 
 		if nodeLabel == "" {
-			log.Error().Msg("Node label is required")
-			return echo.ErrBadRequest
+			msg := "Node label is required"
+			log.Error().Msg(msg)
+			return helpers.BadRequest(msg)
 		}
 
 		link := models.MiniImageLinks{}
 		if err := c.Bind(&link); err != nil {
-			log.Error().Err(err).Msg("Error binding file link")
-			return echo.ErrBadRequest
+			msg := "Error binding file link"
+			log.Error().Err(err).Msg(msg)
+			return helpers.BadRequest(msg)
 		}
 
 		link.UID = uid

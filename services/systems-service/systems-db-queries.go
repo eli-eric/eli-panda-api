@@ -459,14 +459,40 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 	catalogueNameFilter := helpers.GetFilterValueString(filering, "catalogueName")
 	supplierFilter := helpers.GetFilterValueCodebook(filering, "supplier")
 	priceFilter := helpers.GetFilterValueRangeFloat64(filering, "price")
-	orderNumberFilter := helpers.GetFilterValueString(filering, "order")
+	orderFilter := helpers.GetFilterValueString(filering, "order")
+	orderNameFilter := helpers.GetFilterValueString(filering, "orderName")
+	orderNumberFilter := helpers.GetFilterValueString(filering, "orderNumber")
+	orderRequestNumberFilter := helpers.GetFilterValueString(filering, "orderRequestNumber")
+	orderContractNumberFilter := helpers.GetFilterValueString(filering, "orderContractNumber")
 
-	if itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil || orderNumberFilter != nil { // || priceFilter != nil {
+	if orderContractNumberFilter != nil || orderRequestNumberFilter != nil || orderNumberFilter != nil || orderNameFilter != nil || itemUsageFilter != nil || eunFilter != nil || serialNumberFilter != nil || catalogueNumberFilter != nil || catalogueNameFilter != nil || supplierFilter != nil || catalogueCategoryFilter != nil || orderFilter != nil { // || priceFilter != nil {
+
+		if orderFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.orderNumber CONTAINS $filterOrder OR order.requestNumber CONTAINS $filterOrder OR order.contractNumber CONTAINS $filterOrder `
+			result.Parameters["filterOrder"] = *orderFilter
+		}
+
+		if orderNameFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.name CONTAINS $filterOrderName `
+			result.Parameters["filterOrderName"] = strings.ToLower(*orderNameFilter)
+		}
 
 		if orderNumberFilter != nil {
-			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.orderNumber CONTAINS $filterOrderNumber OR order.requestNumber CONTAINS $filterOrderNumber OR order.contractNumber CONTAINS $filterOrderNumber `
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.orderNumber CONTAINS $filterOrderNumber `
 			result.Parameters["filterOrderNumber"] = *orderNumberFilter
-		} else {
+		}
+
+		if orderRequestNumberFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.requestNumber CONTAINS $filterOrderRequestNumber `
+			result.Parameters["filterOrderRequestNumber"] = *orderRequestNumberFilter
+		}
+
+		if orderContractNumberFilter != nil {
+			result.Query += ` MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) WHERE order.contractNumber CONTAINS $filterOrderContractNumber `
+			result.Parameters["filterOrderContractNumber"] = *orderContractNumberFilter
+		}
+
+		if orderFilter == nil && orderNameFilter == nil && orderNumberFilter == nil && orderRequestNumberFilter == nil && orderContractNumberFilter == nil {
 			result.Query += ` OPTIONAL MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order) `
 		}
 
@@ -771,7 +797,9 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
+	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	OPTIONAL MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order)
 	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
@@ -801,6 +829,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
+		orderNumber: case when order is not null then order.orderNumber else null end,
 		price: physicalItem.price,
 		currency: physicalItem.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
@@ -808,7 +837,8 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 			uid: catalogueItem.uid,
 			name: catalogueItem.name,
 			catalogueNumber: catalogueItem.catalogueNumber,
-			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end,
+			supplier: case when supplier is not null then {uid: supplier.uid, name: supplier.name} else null end
 		} else null end	
 		} else null end,
 	statistics: {

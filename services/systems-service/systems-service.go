@@ -825,7 +825,7 @@ func (svc *SystemsService) MovePhysicalItem(movement *models.PhysicalItemMovemen
 			RecordItemMoveHistoryQuery(userUID, movement.SourceSystemUID, destinationSystemUid),
 			SetMissingFacilityToSystems(facilityCode),
 		}
-		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
+		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 	}
 
 	return destinationSystemUid, err
@@ -868,7 +868,7 @@ func (svc *SystemsService) ReplacePhysicalItems(movement *models.PhysicalItemMov
 			RecordItemMoveHistoryQuery(userUID, movement.SourceSystemUID, destinationSystemUid),
 			RecordItemMoveHistoryQuery(userUID, movement.DestinationSystemUID, oldSystemUid),
 		}
-		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries)
+		err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 	}
 
 	return destinationSystemUid, err

@@ -78,3 +78,6 @@ MATCH(itm:Item) where itm.imported_qr_code = true and not (itm)-[:HAS_ITEM_USAGE
 WITH itm
 MATCH(iu:ItemUsage{name: "Stock Item"})
 MERGE(itm)-[:HAS_ITEM_USAGE]->(iu);
+
+// set order names if not set
+MATCH(o:Order) WHERE o.name IS NULL and o.orderNumber IS NOT NULL SET o.name = "Order " + o.orderNumber;
