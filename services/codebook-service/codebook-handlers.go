@@ -78,7 +78,12 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, codebookResponse)
 		}
 
-		return echo.ErrInternalServerError
+		log.Error().Msg(err.Error())
+		if err == helpers.ERR_UNAUTHORIZED {
+			return echo.ErrUnauthorized
+		} else {
+			return echo.ErrInternalServerError
+		}
 	}
 }
 
