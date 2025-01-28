@@ -572,6 +572,22 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
 					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
 				}
+			} else if filter.Type == "range" {
+				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
+					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v)
+					WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order, apoc.convert.fromJsonMap(pv.value) as jsonValue					
+					WHERE (toFloat(jsonValue.min) <= $propFilterValFrom%[1]v - $propFilterValTo%[1]v) 
+					AND (toFloat(jsonValue.max) >= $propFilterValFrom%[1]v + $propFilterValTo%[1]v) 
+					`, i, itemTypeByPropType[filter.PropType])
+
+					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
+					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
+					if filterPropvalue.Max == nil {
+						filterPropvalue.Max = &plusMinusZero
+					}
+					result.Parameters[fmt.Sprintf("propFilterValTo%v", i)] = filterPropvalue.Max
+				}
 			}
 		}
 
@@ -592,6 +608,8 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	return result
 }
+
+var plusMinusZero float64 = 0
 
 // this map is used to map filter prop type to type of item that has this prop related to in the query/func "GetSystemsSearchFilterQueryOnly"
 var itemTypeByPropType = map[string]string{
