@@ -8,6 +8,7 @@ import (
 	ordersService "panda/apigateway/services/orders-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
+	"panda/apigateway/shared"
 
 	"github.com/google/uuid"
 	"github.com/labstack/gommon/log"
@@ -112,7 +113,7 @@ func getSimpleCodebookRecords(neo4jDriver *neo4j.Driver, codebookCode string, fa
 	codebookDefinition := codebooksMap[codebookCode]
 
 	if codebookDefinition != (models.CodebookType{}) {
-		if checkUserRoles(userRoles, codebookDefinition.RoleEdit) {
+		if checkUserRoles(userRoles, shared.ROLE_BASICS_VIEW) {
 
 			if codebookDefinition.NodeLabel != "" {
 				// Open a new Session
