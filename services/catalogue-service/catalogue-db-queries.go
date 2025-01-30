@@ -157,7 +157,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
 	OPTIONAL MATCH(itm)-[upd:WAS_UPDATED_BY]->(user)
-	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit, max(upd.at) as lastUpdateTime, max(user.username) as lastUpdateUser
+	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit, max(upd.at) as lastUpdateTime, max(user.lastName + " " + user.firstName) as lastUpdateUser
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
