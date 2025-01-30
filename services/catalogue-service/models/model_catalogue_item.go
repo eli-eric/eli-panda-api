@@ -59,6 +59,10 @@ type CatalogueItemSimple struct {
 	Details []CatalogueItemDetail `json:"details,omitempty"`
 
 	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
+
+	LastUpdateTime *time.Time `json:"lastUpdateTime"`
+
+	LastUpdateBy *string `json:"lastUpdateBy"`
 }
 
 type CatalogueItemDetailSimple struct {

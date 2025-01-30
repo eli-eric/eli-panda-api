@@ -156,7 +156,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
     OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
 	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit
+	OPTIONAL MATCH(itm)-[upd:WAS_UPDATED_BY]->(user)
+	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit, max(upd.at) as lastUpdateTime, max(user.username) as lastUpdateUser
 	RETURN {
 	uid: itm.uid,
 	name: itm.name,
@@ -166,6 +167,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 	category: { uid: cat.uid, name: cat.name},
 	supplier: case when supp is not null then { uid: supp.uid, name: supp.name } else null end,
 	manufacturerUrl: itm.manufacturerUrl,	
+	lastUpdateTime: lastUpdateTime,
+	lastUpdateBy: lastUpdateUser,
 	details: case when count(prop) > 0 then collect(DISTINCT { 
 		property:{
 			uid: prop.uid,
@@ -180,6 +183,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 
 	if sorting != nil && len(*sorting) > 0 {
 		result.Query += " ORDER BY "
+	} else {
+		result.Query += " ORDER BY items.lastUpdateTime DESC "
 	}
 	for ids, sort := range *sorting {
 
