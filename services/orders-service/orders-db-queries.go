@@ -521,7 +521,9 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 			result.Query += `MERGE (ci:CatalogueItem{ name: $itemName, catalogueNumber: $catalogueNumber }) WITH o, itm, ci, ccg `
 			result.Query += `SET ci.uid = $catalogueItemUID, ci.lastUpdateTime = datetime() WITH o, itm, ci, ccg `
 			result.Query += `MERGE (itm)-[:IS_BASED_ON]->(ci) WITH o, itm, ci, ccg `
-			result.Query += `MERGE (ci)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm, ci `
+			result.Query += `MERGE (ci)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm, ci
+							 MATCH(usr:User{uid: $lastUpdateBy}) 
+							 CREATE(ci)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o,ccg, itm, ci `
 
 			result.Parameters["catalogueItemUID"] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
 			result.Parameters["catalogueNumber"] = strings.TrimSpace(orderLine.CatalogueNumber)
