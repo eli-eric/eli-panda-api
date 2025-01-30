@@ -589,7 +589,7 @@ func DeleteOrderLinesQuery(newOrder *models.OrderDetail, oldOrder *models.OrderD
 	MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
 	`
 	// compare new and old order lines and delete the ones that are not in the new order
-	if newOrder.OrderLines != nil && len(newOrder.OrderLines) > 0 {
+	if newOrder.OrderLines != nil && len(newOrder.OrderLines) >= 0 {
 		for idxDelete, oldOrderLine := range oldOrder.OrderLines {
 			found := false
 			for _, newOrderLine := range newOrder.OrderLines {
