@@ -8,6 +8,7 @@ import (
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/rs/zerolog/log"
 )
@@ -509,6 +510,11 @@ func (svc *CatalogueService) CreateCatalogueServiceType(catalogueServiceType *mo
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
+	// Ensure UID is set
+	if catalogueServiceType.Uid == "" {
+		catalogueServiceType.Uid = uuid.New().String()
+	}
+
 	updateQuery := helpers.DatabaseQuery{}
 	updateQuery.Parameters = make(map[string]interface{})
 	updateQuery.Query = `MERGE (n:CatalogueServiceType {uid: $uid}) SET n.updatedAt = datetime() WITH n `
@@ -526,7 +532,6 @@ func (svc *CatalogueService) CreateCatalogueServiceType(catalogueServiceType *mo
 		historyLog)
 
 	return *catalogueServiceType, err
-
 }
 
 func (svc *CatalogueService) UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error) {

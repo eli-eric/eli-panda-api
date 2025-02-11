@@ -8,7 +8,6 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -506,12 +505,12 @@ func (h *CatalogueHandlers) GetCatalogueServiceTypes() echo.HandlerFunc {
 // @Param catalogueServiceType body models.CatalogueServiceType true "Catalogue service type"
 // @Success 200 {object} models.CatalogueServiceType
 // @Failure 500 "Internal Server Error"
+// @Failure 400 "Bad Request"
 // @Router /v1/catalogue/service/type [post]
 func (h *CatalogueHandlers) CreateCatalogueServiceType() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
 
-		// lets bind catalogue service type data from request body
 		catalogueServiceType := new(models.CatalogueServiceType)
 		if err := c.Bind(catalogueServiceType); err != nil {
 			log.Error().Err(err).Msg("Error binding catalogue service type")
@@ -519,9 +518,6 @@ func (h *CatalogueHandlers) CreateCatalogueServiceType() echo.HandlerFunc {
 		}
 
 		userUID := c.Get("userUID").(string)
-		if catalogueServiceType.Uid == "" {
-			catalogueServiceType.Uid = uuid.New().String()
-		}
 
 		createdCatalogueServiceType, err := h.catalogueService.CreateCatalogueServiceType(catalogueServiceType, userUID)
 
