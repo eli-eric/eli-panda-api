@@ -83,6 +83,10 @@ definitions:
         type: string
       name:
         type: string
+      properties:
+        items:
+          type: string
+        type: array
       uid:
         type: string
     type: object
@@ -701,6 +705,26 @@ paths:
       tags:
       - Catalogue
   /v1/catalogue/service/type/{uid}:
+    delete:
+      description: Delete catalogue service type
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete catalogue service type
+      tags:
+      - Catalogue
     get:
       description: Get catalogue service type by uid
       parameters:

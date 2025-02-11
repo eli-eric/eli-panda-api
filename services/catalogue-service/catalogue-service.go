@@ -500,7 +500,7 @@ func (svc *CatalogueService) GetCatalogueServiceTypes() (result []models.Catalog
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	result, _, err = helpers.GetMultipleNodes[models.CatalogueServiceType](session, 0, 0, "")
+	result, _, err = helpers.GetMultipleNodes[models.CatalogueServiceType](session, 0, 100, "")
 
 	return result, err
 }

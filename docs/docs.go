@@ -142,6 +142,38 @@ const docTemplate = `{
                         "description": "Internal Server Error"
                     }
                 }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete catalogue service type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue service type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
             }
         },
         "/v1/catalogue/service/types": {
@@ -1244,6 +1276,12 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "uid": {
                     "type": "string"
