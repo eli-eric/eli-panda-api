@@ -42,4 +42,7 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.GET("/v1/catalogue/item/:uid/statistics", m.Authorization(h.GetCatalogueItemStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
 	//get catalogue items overall statistics
 	e.GET("/v1/catalogue/items/statistics", m.Authorization(h.CatalogueItemsOverallStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
+	//get catalogue service type by uid
+	//TODO: add roles
+	e.GET("/v1/catalogue/service/type/:uid", m.Authorization(h.GetCatalogueServiceTypeByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 }

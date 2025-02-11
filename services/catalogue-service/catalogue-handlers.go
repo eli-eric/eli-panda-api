@@ -33,6 +33,8 @@ type ICatalogueHandlers interface {
 	DeleteCatalogueItem() echo.HandlerFunc
 	GetCatalogueItemStatistics() echo.HandlerFunc
 	CatalogueItemsOverallStatistics() echo.HandlerFunc
+	GetCatalogueServiceTypeByUid() echo.HandlerFunc
+	GetCatalogueServiceTypes() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -428,6 +430,60 @@ func (h *CatalogueHandlers) CatalogueItemsOverallStatistics() echo.HandlerFunc {
 		if err == nil {
 			helpers.ProcessArrayResult[models.CatalogueStatistics](&statistics, err)
 			return c.JSON(http.StatusOK, statistics)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetCatalogueServiceTypeByUid Get catalogue service type by uid godoc
+// @Summary Get catalogue service type by uid
+// @Description Get catalogue service type by uid
+// @Tags Catalogue
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 200 {object} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type/{uid} [get]
+func (h *CatalogueHandlers) GetCatalogueServiceTypeByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		serviceType, err := h.catalogueService.GetCatalogueServiceTypeByUid(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, serviceType)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetCatalogueServiceTypes Get catalogue service types godoc
+// @Summary Get catalogue service types
+// @Description Get catalogue service types
+// @Tags Catalogue
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/types [get]
+func (h *CatalogueHandlers) GetCatalogueServiceTypes() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		serviceTypes, err := h.catalogueService.GetCatalogueServiceTypes()
+
+		if err == nil {
+			return c.JSON(http.StatusOK, serviceTypes)
 		} else {
 			log.Error().Msg(err.Error())
 		}

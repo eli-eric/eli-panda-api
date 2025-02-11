@@ -42,6 +42,8 @@ type ICatalogueService interface {
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
 	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
+	GetCatalogueServiceTypeByUid(uid string) (result models.CatalogueServiceType, err error)
+	GetCatalogueServiceTypes() (result []models.CatalogueServiceType, err error)
 }
 
 // Create new security service instance
@@ -476,6 +478,26 @@ func (svc *CatalogueService) CatalogueItemsOverallStatistics() (result []models.
 
 	query := CatalogueItemsOverallStatisticsQuery()
 	result, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueStatistics](session, query)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueServiceTypeByUid(uid string) (result models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result.Uid = uid
+
+	err = helpers.GetSingleNode(session, &result)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueServiceTypes() (result []models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result, _, err = helpers.GetMultipleNodes[models.CatalogueServiceType](session, 0, 0, "")
 
 	return result, err
 }

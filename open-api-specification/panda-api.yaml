@@ -75,6 +75,17 @@ definitions:
         type: string
       value: {}
     type: object
+  models.CatalogueServiceType:
+    properties:
+      category:
+        $ref: '#/definitions/models.Codebook'
+      description:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
   models.Codebook:
     properties:
       additionalData:
@@ -663,6 +674,48 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/catalogue/service/type/{uid}:
+    get:
+      description: Get catalogue service type by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueServiceType'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue service type by uid
+      tags:
+      - Catalogue
+  /v1/catalogue/service/types:
+    get:
+      description: Get catalogue service types
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CatalogueServiceType'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue service types
+      tags:
+      - Catalogue
   /v1/general/{uid}/graph:
     get:
       description: Get graph by uid
