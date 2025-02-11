@@ -8,6 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
@@ -35,6 +36,8 @@ type ICatalogueHandlers interface {
 	CatalogueItemsOverallStatistics() echo.HandlerFunc
 	GetCatalogueServiceTypeByUid() echo.HandlerFunc
 	GetCatalogueServiceTypes() echo.HandlerFunc
+	CreateCatalogueServiceType() echo.HandlerFunc
+	UpdateCatalogueServiceType() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -484,6 +487,85 @@ func (h *CatalogueHandlers) GetCatalogueServiceTypes() echo.HandlerFunc {
 
 		if err == nil {
 			return c.JSON(http.StatusOK, serviceTypes)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// CreateCatalogueServiceType Create catalogue service type godoc
+// @Summary Create catalogue service type
+// @Description Create catalogue service type
+// @Tags Catalogue
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param catalogueServiceType body models.CatalogueServiceType true "Catalogue service type"
+// @Success 200 {object} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type [post]
+func (h *CatalogueHandlers) CreateCatalogueServiceType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue service type data from request body
+		catalogueServiceType := new(models.CatalogueServiceType)
+		if err := c.Bind(catalogueServiceType); err != nil {
+			log.Error().Err(err).Msg("Error binding catalogue service type")
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+		if catalogueServiceType.Uid == "" {
+			catalogueServiceType.Uid = uuid.New().String()
+		}
+
+		createdCatalogueServiceType, err := h.catalogueService.CreateCatalogueServiceType(catalogueServiceType, userUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, createdCatalogueServiceType)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// UpdateCatalogueServiceType Update catalogue service type godoc
+// @Summary Update catalogue service type
+// @Description Update catalogue service type
+// @Tags Catalogue
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "uid"
+// @Param catalogueServiceType body models.CatalogueServiceType true "Catalogue service type"
+// @Success 200 {object} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type/{uid} [put]
+func (h *CatalogueHandlers) UpdateCatalogueServiceType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		catalogueServiceType := new(models.CatalogueServiceType)
+		if err := c.Bind(catalogueServiceType); err != nil {
+			log.Error().Err(err).Msg("Error binding catalogue service type")
+			return helpers.BadRequest(err.Error())
+		}
+
+		catalogueServiceType.Uid = uid
+
+		userUID := c.Get("userUID").(string)
+
+		_, err := h.catalogueService.UpdateCatalogueServiceType(catalogueServiceType, userUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, catalogueServiceType)
 		} else {
 			log.Error().Msg(err.Error())
 		}

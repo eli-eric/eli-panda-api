@@ -45,4 +45,6 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	//get catalogue service type by uid
 	//TODO: add roles
 	e.GET("/v1/catalogue/service/type/:uid", m.Authorization(h.GetCatalogueServiceTypeByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	//get catalogue service types
+	e.GET("/v1/catalogue/service/types", m.Authorization(h.GetCatalogueServiceTypes(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 }

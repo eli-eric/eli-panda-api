@@ -674,6 +674,32 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/catalogue/service/type:
+    post:
+      consumes:
+      - application/json
+      description: Create catalogue service type
+      parameters:
+      - description: Catalogue service type
+        in: body
+        name: catalogueServiceType
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueServiceType'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueServiceType'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create catalogue service type
+      tags:
+      - Catalogue
   /v1/catalogue/service/type/{uid}:
     get:
       description: Get catalogue service type by uid
@@ -695,6 +721,36 @@ paths:
       security:
       - BearerAuth: []
       summary: Get catalogue service type by uid
+      tags:
+      - Catalogue
+    put:
+      consumes:
+      - application/json
+      description: Update catalogue service type
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Catalogue service type
+        in: body
+        name: catalogueServiceType
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueServiceType'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueServiceType'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update catalogue service type
       tags:
       - Catalogue
   /v1/catalogue/service/types:

@@ -44,6 +44,8 @@ type ICatalogueService interface {
 	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
 	GetCatalogueServiceTypeByUid(uid string) (result models.CatalogueServiceType, err error)
 	GetCatalogueServiceTypes() (result []models.CatalogueServiceType, err error)
+	CreateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
+	UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
 }
 
 // Create new security service instance
@@ -500,4 +502,57 @@ func (svc *CatalogueService) GetCatalogueServiceTypes() (result []models.Catalog
 	result, _, err = helpers.GetMultipleNodes[models.CatalogueServiceType](session, 0, 0, "")
 
 	return result, err
+}
+
+func (svc *CatalogueService) CreateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:CatalogueServiceType {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = catalogueServiceType.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *catalogueServiceType, models.CatalogueServiceType{}, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(catalogueServiceType.Uid, "CREATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *catalogueServiceType, err
+
+}
+
+func (svc *CatalogueService) UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	oldCatalogueServiceType, err := svc.GetCatalogueServiceTypeByUid(catalogueServiceType.Uid)
+
+	if err != nil {
+		return result, err
+	}
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:CatalogueServiceType {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = catalogueServiceType.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *catalogueServiceType, oldCatalogueServiceType, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(catalogueServiceType.Uid, "UPDATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *catalogueServiceType, err
 }
