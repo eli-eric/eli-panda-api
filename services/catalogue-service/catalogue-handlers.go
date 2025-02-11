@@ -38,6 +38,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueServiceTypes() echo.HandlerFunc
 	CreateCatalogueServiceType() echo.HandlerFunc
 	UpdateCatalogueServiceType() echo.HandlerFunc
+	DeleteCatalogueServiceType() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -571,5 +572,32 @@ func (h *CatalogueHandlers) UpdateCatalogueServiceType() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+// DeleteCatalogueServiceType Delete catalogue service type godoc
+// @Summary Delete catalogue service type
+// @Description Delete catalogue service type
+// @Tags Catalogue
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 204 "No Content"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type/{uid} [delete]
+func (h *CatalogueHandlers) DeleteCatalogueServiceType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.catalogueService.DeleteCatalogueServiceType(uid, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting catalogue service type")
+			return echo.ErrInternalServerError
+		}
+
+		return c.NoContent(204)
 	}
 }

@@ -46,6 +46,7 @@ type ICatalogueService interface {
 	GetCatalogueServiceTypes() (result []models.CatalogueServiceType, err error)
 	CreateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
 	UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
+	DeleteCatalogueServiceType(uid string, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -555,4 +556,15 @@ func (svc *CatalogueService) UpdateCatalogueServiceType(catalogueServiceType *mo
 		historyLog)
 
 	return *catalogueServiceType, err
+}
+
+func (svc *CatalogueService) DeleteCatalogueServiceType(uid string, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		helpers.SoftDeleteNodeQuery(uid),
+		helpers.HistoryLogQuery(uid, "DELETE", userUID))
+
+	return err
 }
