@@ -1,38 +1,18 @@
 package publicationsservice
 
 import (
-	"log"
-	"os"
 	"testing"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/stretchr/testify/assert"
+
+	"panda/apigateway/services/testsetup"
 )
 
-var testDriver neo4j.Driver
-var testSession neo4j.Session
-
-func TestMain(m *testing.M) {
-	var err error
-	testDriver, err = neo4j.NewDriver("bolt://localhost:7682", neo4j.BasicAuth("neo4j", "xxxxx", ""))
-	if err != nil {
-		log.Fatal("Failed to connect to test Neo4j:", err)
-	}
-
-	testSession = testDriver.NewSession(neo4j.SessionConfig{})
-
-	code := m.Run()
-
-	// Cleanup
-	testDriver.Close()
-	os.Exit(code)
-}
-
 func TestGetPublicationByUid(t *testing.T) {
-	service := NewPublicationsService(&testDriver, "", "")
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
 
 	// Insert test data
-	_, err := testSession.Run(`CREATE (p:Publication {uid: "test123"}) RETURN p`, nil)
+	_, err := testsetup.TestSession.Run(`CREATE (p:Publication {uid: "test123"}) RETURN p`, nil)
 	assert.NoError(t, err)
 
 	// Run the actual test
@@ -41,4 +21,8 @@ func TestGetPublicationByUid(t *testing.T) {
 	// Assertions
 	assert.NoError(t, err)
 	assert.Equal(t, "test123", result.Uid)
+
+	// Clean up
+	_, err = testsetup.TestSession.Run(`MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
+	assert.NoError(t, err)
 }
