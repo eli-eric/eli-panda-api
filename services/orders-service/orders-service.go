@@ -97,6 +97,13 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 		}
 	}
 
+	if order.ServiceLines != nil && len(order.ServiceLines) > 0 {
+		for _, serviceLine := range order.ServiceLines {
+			serviceLineQuery := InsertNewServiceLineQuery(newUid, &serviceLine, facilityCode, userUID)
+			queries = append(queries, serviceLineQuery)
+		}
+	}
+
 	deliveryStatusQuery := UpdateOrderDeliveryStatusQuery(newUid, facilityCode)
 	queries = append(queries, deliveryStatusQuery)
 

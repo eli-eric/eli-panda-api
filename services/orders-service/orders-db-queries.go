@@ -422,6 +422,8 @@ func InsertNewOrderOrderLineQuery(orderUID string, orderLine *models.OrderLine, 
 	return result
 }
 
+
+
 func InsertNewOrderDeliveryStatusQuery(orderUID string, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{}, 0)
 
@@ -865,4 +867,43 @@ func GetMinAndMaxOrderLinePriceQuery(facilityCode string) (result helpers.Databa
 	result.Parameters["facilityCode"] = facilityCode
 
 	return result
+}
+
+// db query to insert new order service line 
+func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+    result.Query = `
+    CREATE (si:ServiceItem {
+        uid: apoc.create.uuid(),
+        name: $name,
+        isDelivered: $isDelivered,
+        deliveredTime: datetime(),
+        lastUpdateTime: datetime(),
+        lastUpdateBy: $lastUpdateBy
+    })
+    SET si.deliveredTime = datetime()
+    MATCH (o:Order {uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+    
+    CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
+    CREATE (si)-[:IS_BASED_ON]->(st:ServiceType {uid: $serviceTypeUID})
+
+    FOREACH (detail IN $details | 
+        MATCH (cp:CatalogueCategoryProperty {uid: detail.uid})
+        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)
+    )
+
+    RETURN si.uid as uid`
+
+    result.ReturnAlias = "uid"
+    result.Parameters["name"] = serviceLine.Name
+    result.Parameters["price"] = serviceLine.Price
+    result.Parameters["currency"] = serviceLine.Currency
+    result.Parameters["isDelivered"] = serviceLine.IsDelivered
+    result.Parameters["lastUpdateBy"] = userUID
+    result.Parameters["uid"] = orderUID
+    result.Parameters["details"] = serviceLine.Details
+
+    return result
+	
 }

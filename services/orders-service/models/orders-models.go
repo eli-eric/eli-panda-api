@@ -1,6 +1,7 @@
 package models
 
 import (
+	catalogueModels "panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"time"
 )
@@ -35,6 +36,7 @@ type OrderDetail struct {
 	ProcurementResponsible *codebookModels.Codebook `json:"procurementResponsible" neo4j:"rel,Employee,HAS_PROCUREMENT_RESPONSIBLE,uid,procurementResponsible"`
 	OrderDate              time.Time                `json:"orderDate" neo4j:"prop,orderDate"`
 	OrderLines             []OrderLine              `json:"orderLines"`
+	ServiceLines           []ServiceLine            `json:"serviceLines"`
 	LastUpdateTime         time.Time                `json:"lastUpdateTime"`
 }
 
@@ -54,6 +56,27 @@ type OrderLine struct {
 	SerialNumber    *string                  `json:"serialNumber"`
 	Notes           *string                  `json:"notes" neo4j:"prop,notes"`
 	LastUpdateTime  *time.Time               `json:"lastUpdateTime"`
+}
+
+
+
+type ServiceLine struct {
+	Name            string                   `json:"name"`
+	UID             string                   `json:"uid"`
+	ServiceType     codebookModels.Codebook `json:"serviceType"`
+	Item            codebookModels.Codebook `json:"item"`
+	Details         []catalogueModels.CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
+	Price           float64                 `json:"price"`
+	Currency        string                   `json:"currency"`
+	IsDelivered     bool                     `json:"isDelivered"`
+	DeliveredTime   *time.Time               `json:"deliveredTime"`
+	Notes           *string                  `json:"notes" neo4j:"prop,notes"`
+	LastUpdateTime  *time.Time               `json:"lastUpdateTime"`
+}
+
+type CatalogueItemDetail struct {
+	DetailName string `json:"detailName"`
+	DetailValue string `json:"detailValue"`
 }
 
 type ItemForEunPrint struct {
