@@ -26,3 +26,16 @@ func TestGetPublicationByUid(t *testing.T) {
 	_, err = testsetup.TestSession.Run(`MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
 	assert.NoError(t, err)
 }
+
+func TestGetPublicationByUidNotFound(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// Run the actual test
+	_, err := service.GetPublicationByUid("test123")
+
+	// Assertions
+	assert.Error(t, err)
+
+	_, cleanupErr := testsetup.TestSession.Run(`MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
+	assert.NoError(t, cleanupErr)
+}
