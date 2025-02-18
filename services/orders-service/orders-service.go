@@ -143,15 +143,24 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 		queries = append(queries, genralUpdateQuery)
 
 		if len(order.OrderLines) > 0 {
-
 			for _, orderLine := range order.OrderLines {
 				orderLineQuery := UpdateOrderLineQuery(order.UID, &orderLine, facilityCode, userUID)
 				queries = append(queries, orderLineQuery)
 			}
 		}
 
+		if len(order.ServiceLines) > 0 {
+			for _, serviceLine := range order.ServiceLines {
+				serviceLineQuery := UpdateServiceLineQuery(order.UID, &serviceLine, facilityCode, userUID)
+				queries = append(queries, serviceLineQuery)
+			}
+		}
+
 		deleteOrderLinesQuery := DeleteOrderLinesQuery(order, &oldOrder, facilityCode, userUID)
 		queries = append(queries, deleteOrderLinesQuery)
+
+		deleteServiceLinesQuery := DeleteServiceLinesQuery(order, &oldOrder, facilityCode, userUID)
+		queries = append(queries, deleteServiceLinesQuery)
 
 		deliveryStatusQuery := UpdateOrderDeliveryStatusQuery(order.UID, facilityCode)
 		queries = append(queries, deliveryStatusQuery)

@@ -255,6 +255,22 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
 		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
+	
+	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
+	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
+	WITH o, s, os, req, proc, orderLines, 
+	CASE WHEN si IS NOT NULL THEN collect({ 
+		uid: si.uid,
+		name: si.name,
+		price: sl.price,
+		currency: sl.currency,
+		isDelivered: si.isDelivered,
+		deliveredTime: si.deliveredTime,
+		lastUpdateTime: si.lastUpdateTime,
+		item: {uid: servitm.uid, name: servitm.name},
+		serviceType: {uid: st.uid, name: st.name}
+	}) ELSE NULL END as serviceLines
+
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -268,7 +284,8 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	requestor: CASE WHEN req IS NOT NULL THEN {uid: req.uid,name: req.lastName + " " + req.firstName} ELSE NULL END,
 	procurementResponsible: CASE WHEN proc IS NOT NULL THEN {uid: proc.uid,name: proc.lastName + " " + proc.firstName} ELSE NULL END,
 	orderDate: o.orderDate,
-	orderLines:  orderLines,
+	orderLines: orderLines,
+	serviceLines: serviceLines,
 	lastUpdateTime: o.lastUpdateTime
 } AS order 
 	`
@@ -917,6 +934,72 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     result.Parameters["facilityCode"] = facilityCode
     result.Parameters["itemUID"] = serviceLine.Item.UID
     result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+
+    return result
+}
+
+func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+    result.Parameters = make(map[string]interface{})
+    
+    result.Query = `
+    MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+    MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem{uid: $serviceItemUID})
+    SET si.name = $name,
+        si.isDelivered = $isDelivered,
+        si.lastUpdateTime = datetime(),
+        si.lastUpdateBy = $lastUpdateBy,
+        sl.price = $price,
+        sl.currency = $currency,
+        sl.lastUpdateTime = datetime()
+    WITH si
+    MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
+    MERGE (si)-[:IS_BASED_ON]->(st)
+    RETURN si.uid as uid`
+
+    result.ReturnAlias = "uid"
+    result.Parameters["serviceItemUID"] = serviceLine.UID
+    result.Parameters["name"] = serviceLine.Name
+    result.Parameters["price"] = serviceLine.Price
+    result.Parameters["currency"] = serviceLine.Currency
+    result.Parameters["isDelivered"] = serviceLine.IsDelivered
+    result.Parameters["lastUpdateBy"] = userUID
+    result.Parameters["orderUID"] = orderUID
+    result.Parameters["facilityCode"] = facilityCode
+    result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+
+    return result
+}
+
+func DeleteServiceLinesQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+    result.Parameters = make(map[string]interface{})
+
+    result.Query = `
+    MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
+    `
+    // compare new and old service lines and delete the ones that are not in the new order
+    if newOrder.ServiceLines != nil && len(newOrder.ServiceLines) >= 0 {
+        for idxDelete, oldServiceLine := range oldOrder.ServiceLines {
+            found := false
+            for _, newServiceLine := range newOrder.ServiceLines {
+                if oldServiceLine.UID == newServiceLine.UID {
+                    found = true
+                    break
+                }
+            }
+            if !found {
+                result.Query += fmt.Sprintf(` WITH o MATCH (o)-[:HAS_SERVICE_LINE]->(siForDelete%[1]v:ServiceItem{uid: $serviceItemUIDForDelete%[1]v}) DETACH DELETE siForDelete%[1]v `, idxDelete)
+                result.Parameters[fmt.Sprintf("serviceItemUIDForDelete%v", idxDelete)] = oldServiceLine.UID
+            }
+        }
+    }
+
+    result.Query += `
+    RETURN o.uid as uid`
+
+    result.Parameters["uid"] = oldOrder.UID
+    result.Parameters["facilityCode"] = facilityCode
+    result.Parameters["lastUpdateBy"] = userUID
+    result.ReturnAlias = "uid"
 
     return result
 }
