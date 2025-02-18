@@ -422,8 +422,6 @@ func InsertNewOrderOrderLineQuery(orderUID string, orderLine *models.OrderLine, 
 	return result
 }
 
-
-
 func InsertNewOrderDeliveryStatusQuery(orderUID string, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{}, 0)
 
@@ -869,12 +867,12 @@ func GetMinAndMaxOrderLinePriceQuery(facilityCode string) (result helpers.Databa
 	return result
 }
 
-// db query to insert new order service line 
+// db query to insert new order service line
 func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
-	result.Parameters = make(map[string]interface{})
-
+    result.Parameters = make(map[string]interface{})
+    
     result.Query = `
-    CREATE (si:ServiceItem {
+    CREATE (si:ServiceItem { 
         uid: apoc.create.uuid(),
         name: $name,
         isDelivered: $isDelivered,
@@ -882,18 +880,32 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
         lastUpdateTime: datetime(),
         lastUpdateBy: $lastUpdateBy
     })
-    SET si.deliveredTime = datetime()
-    MATCH (o:Order {uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
-    
+    WITH si
+    MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
+    MATCH (i:Item{uid: $itemUID})
+    MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
+    WITH si, o, i, st
+    CREATE (i)-[:IS_SERVICED_BY]->(si)
     CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
-    CREATE (si)-[:IS_BASED_ON]->(st:ServiceType {uid: $serviceTypeUID})
-
-    FOREACH (detail IN $details | 
-        MATCH (cp:CatalogueCategoryProperty {uid: detail.uid})
-        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)
-    )
-
+    CREATE (si)-[:IS_BASED_ON]->(st)
     RETURN si.uid as uid`
+
+    if len(serviceLine.Details) > 0 {
+        result.Query += `
+        MATCH (cp:CatalogueCategoryProperty) WHERE cp.uid IN $propertyUIDs
+        WITH si, cp, $propertyDetails as details
+        UNWIND details as detail
+        WITH si, cp, detail WHERE cp.uid = detail.Property.Uid
+        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.Value}]->(cp)
+        WITH si`
+
+        propertyUIDs := make([]string, len(serviceLine.Details))
+        for i, detail := range serviceLine.Details {
+            propertyUIDs[i] = detail.Property.UID
+        }
+        result.Parameters["propertyUIDs"] = propertyUIDs
+        result.Parameters["propertyDetails"] = serviceLine.Details
+    }
 
     result.ReturnAlias = "uid"
     result.Parameters["name"] = serviceLine.Name
@@ -901,9 +913,10 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     result.Parameters["currency"] = serviceLine.Currency
     result.Parameters["isDelivered"] = serviceLine.IsDelivered
     result.Parameters["lastUpdateBy"] = userUID
-    result.Parameters["uid"] = orderUID
-    result.Parameters["details"] = serviceLine.Details
+    result.Parameters["orderUID"] = orderUID
+    result.Parameters["facilityCode"] = facilityCode
+    result.Parameters["itemUID"] = serviceLine.Item.UID
+    result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
 
     return result
-	
 }
