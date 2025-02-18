@@ -1227,7 +1227,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CatalogueItemDetail"
+                        "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
                     }
                 },
                 "lastUpdateTime": {
@@ -1254,18 +1254,6 @@ const docTemplate = `{
                 "uid": {
                     "type": "string"
                 }
-            }
-        },
-        "models.CatalogueItemDetail": {
-            "type": "object",
-            "properties": {
-                "property": {
-                    "$ref": "#/definitions/models.CatalogueCategoryProperty"
-                },
-                "propertyGroup": {
-                    "type": "string"
-                },
-                "value": {}
             }
         },
         "models.CatalogueServiceType": {
@@ -1434,6 +1422,12 @@ const docTemplate = `{
                 },
                 "requestor": {
                     "$ref": "#/definitions/models.Codebook"
+                },
+                "serviceLines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ServiceLine"
+                    }
                 },
                 "supplier": {
                     "$ref": "#/definitions/models.Codebook"
@@ -1739,6 +1733,47 @@ const docTemplate = `{
                 },
                 "yearOfPublication": {
                     "description": "yearOfPublication is the year of publication of the publication",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ServiceLine": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "deliveredTime": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
+                    }
+                },
+                "isDelivered": {
+                    "type": "boolean"
+                },
+                "item": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "serviceType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
                     "type": "string"
                 }
             }
@@ -2156,6 +2191,18 @@ const docTemplate = `{
                 "volume": {
                     "type": "string"
                 }
+            }
+        },
+        "panda_apigateway_services_catalogue-service_models.CatalogueItemDetail": {
+            "type": "object",
+            "properties": {
+                "property": {
+                    "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                },
+                "propertyGroup": {
+                    "type": "string"
+                },
+                "value": {}
             }
         }
     },

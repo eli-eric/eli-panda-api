@@ -48,7 +48,7 @@ definitions:
         type: string
       details:
         items:
-          $ref: '#/definitions/models.CatalogueItemDetail'
+          $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
         type: array
       lastUpdateTime:
         type: string
@@ -66,14 +66,6 @@ definitions:
         $ref: '#/definitions/models.Codebook'
       uid:
         type: string
-    type: object
-  models.CatalogueItemDetail:
-    properties:
-      property:
-        $ref: '#/definitions/models.CatalogueCategoryProperty'
-      propertyGroup:
-        type: string
-      value: {}
     type: object
   models.CatalogueServiceType:
     properties:
@@ -184,6 +176,10 @@ definitions:
         type: string
       requestor:
         $ref: '#/definitions/models.Codebook'
+      serviceLines:
+        items:
+          $ref: '#/definitions/models.ServiceLine'
+        type: array
       supplier:
         $ref: '#/definitions/models.Codebook'
       uid:
@@ -396,6 +392,33 @@ definitions:
         type: string
       yearOfPublication:
         description: yearOfPublication is the year of publication of the publication
+        type: string
+    type: object
+  models.ServiceLine:
+    properties:
+      currency:
+        type: string
+      deliveredTime:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
+        type: array
+      isDelivered:
+        type: boolean
+      item:
+        $ref: '#/definitions/models.Codebook'
+      lastUpdateTime:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      price:
+        type: number
+      serviceType:
+        $ref: '#/definitions/models.Codebook'
+      uid:
         type: string
     type: object
   models.System:
@@ -667,6 +690,14 @@ definitions:
         type: string
       volume:
         type: string
+    type: object
+  panda_apigateway_services_catalogue-service_models.CatalogueItemDetail:
+    properties:
+      property:
+        $ref: '#/definitions/models.CatalogueCategoryProperty'
+      propertyGroup:
+        type: string
+      value: {}
     type: object
 host: localhost:50000
 info:
