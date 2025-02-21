@@ -139,8 +139,9 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 		// }
 
 		queries := []helpers.DatabaseQuery{}
-		genralUpdateQuery := UpdateOrderQuery(order, &oldOrder, facilityCode, userUID)
+		genralUpdateQuery, additionalQueries := UpdateOrderQuery(order, &oldOrder, facilityCode, userUID)
 		queries = append(queries, genralUpdateQuery)
+		queries = append(queries, additionalQueries...)
 
 		if len(order.OrderLines) > 0 {
 			for _, orderLine := range order.OrderLines {

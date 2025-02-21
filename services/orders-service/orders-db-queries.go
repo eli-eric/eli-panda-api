@@ -255,7 +255,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
 		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
-	
+
 	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
 	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
 	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)
@@ -467,8 +467,9 @@ func InsertNewOrderDeliveryStatusQuery(orderUID string, facilityCode string) (re
 }
 
 // update order query
-func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery, additionalQueries []helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{}, 0)
+	additionalQueries = make([]helpers.DatabaseQuery, 0)
 
 	result.Query = `
 	MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
@@ -476,22 +477,29 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newOrder, *oldOrder, "o")
 
-	result.Query += `	
+	// Handle new service lines
+	for _, serviceLine := range newOrder.ServiceLines {
+		if serviceLine.UID == "" {
+			insertQuery := InsertNewServiceLineQuery(newOrder.UID, &serviceLine, facilityCode, userUID)
+			additionalQueries = append(additionalQueries, insertQuery)
+		}
+	}
+
+	result.Query += `    
 	WITH o
 	MATCH(u:User{uid: $lastUpdateBy})
 	WITH o, u
 	SET o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
 	WITH o, u
 	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
-	RETURN o.uid as uid
-	`
+	RETURN o.uid as uid`
 
 	result.Parameters["uid"] = oldOrder.UID
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["lastUpdateBy"] = userUID
 	result.ReturnAlias = "uid"
 
-	return result
+	return result, additionalQueries
 }
 
 func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
@@ -895,6 +903,7 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     result.Parameters = make(map[string]interface{})
     
     result.Query = `
+    MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
     CREATE (si:ServiceItem { 
         uid: apoc.create.uuid(),
         name: $name,
@@ -903,25 +912,21 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
         lastUpdateTime: datetime(),
         lastUpdateBy: $lastUpdateBy
     })
-    WITH si
-    MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
+    WITH si, o
     MATCH (i:Item{uid: $itemUID})
     MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
-    WITH si, o, i, st
     CREATE (i)-[:IS_SERVICED_BY]->(si)
     CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
-    CREATE (si)-[:IS_BASED_ON]->(st)
-    WITH si`
+    CREATE (si)-[:IS_BASED_ON]->(st)`
 
     if len(serviceLine.Details) > 0 {
         result.Query += `
+        WITH si
         MATCH (cp:CatalogueCategoryProperty) WHERE cp.uid IN $propertyUIDs
-        WITH si, cp
         UNWIND $propertyDetails as detail
         WITH si, cp, detail
         WHERE cp.uid = detail.propertyUid
-        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)
-        WITH si`
+        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)`
 
         propertyUIDs := make([]string, len(serviceLine.Details))
         details := make([]map[string]interface{}, len(serviceLine.Details))
@@ -936,18 +941,15 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
         result.Parameters["propertyDetails"] = details
     }
 
-    result.Query += ` RETURN si.uid as uid`
-
-    result.ReturnAlias = "uid"
+    result.Parameters["orderUID"] = orderUID
     result.Parameters["name"] = serviceLine.Name
+    result.Parameters["isDelivered"] = serviceLine.IsDelivered
     result.Parameters["price"] = serviceLine.Price
     result.Parameters["currency"] = serviceLine.Currency
-    result.Parameters["isDelivered"] = serviceLine.IsDelivered
-    result.Parameters["lastUpdateBy"] = userUID
-    result.Parameters["orderUID"] = orderUID
-    result.Parameters["facilityCode"] = facilityCode
     result.Parameters["itemUID"] = serviceLine.Item.UID
     result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+    result.Parameters["lastUpdateBy"] = userUID
+    result.Parameters["facilityCode"] = facilityCode
 
     return result
 }
