@@ -450,6 +450,8 @@ func InsertNewOrderDeliveryStatusQuery(orderUID string, facilityCode string) (re
 	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
 	WITH totalLines, count(olDelivered) as deliveredLines, o
 	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o
+
 	RETURN o.uid as uid
 	`
 
@@ -905,24 +907,32 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     CREATE (i)-[:IS_SERVICED_BY]->(si)
     CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
     CREATE (si)-[:IS_BASED_ON]->(st)
-    RETURN si.uid as uid`
+    WITH si`
 
     if len(serviceLine.Details) > 0 {
         result.Query += `
         MATCH (cp:CatalogueCategoryProperty) WHERE cp.uid IN $propertyUIDs
-        WITH si, cp, $propertyDetails as details
-        UNWIND details as detail
-        WITH si, cp, detail WHERE cp.uid = detail.Property.Uid
-        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.Value}]->(cp)
+        WITH si, cp
+        UNWIND $propertyDetails as detail
+        WITH si, cp, detail
+        WHERE cp.uid = detail.propertyUid
+        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)
         WITH si`
 
         propertyUIDs := make([]string, len(serviceLine.Details))
+        details := make([]map[string]interface{}, len(serviceLine.Details))
         for i, detail := range serviceLine.Details {
             propertyUIDs[i] = detail.Property.UID
+            details[i] = map[string]interface{}{
+                "propertyUid": detail.Property.UID,
+                "value": detail.Value,
+            }
         }
         result.Parameters["propertyUIDs"] = propertyUIDs
-        result.Parameters["propertyDetails"] = serviceLine.Details
+        result.Parameters["propertyDetails"] = details
     }
+
+    result.Query += ` RETURN si.uid as uid`
 
     result.ReturnAlias = "uid"
     result.Parameters["name"] = serviceLine.Name

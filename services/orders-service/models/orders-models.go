@@ -59,17 +59,17 @@ type OrderLine struct {
 }
 
 type ServiceLine struct {
-	Name           string                                `json:"name"`
-	UID            string                                `json:"uid"`
-	ServiceType    codebookModels.Codebook               `json:"serviceType"`
-	Item           codebookModels.Codebook               `json:"item"`
+	Name           string                  `json:"name"`
+	UID            string                  `json:"uid"`
+	ServiceType    codebookModels.Codebook `json:"serviceType"`
+	Item           codebookModels.Codebook `json:"item"`
 	Details        []catalogueModels.CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
-	Price          float64                               `json:"price"`
-	Currency       string                                `json:"currency"`
-	IsDelivered    bool                                  `json:"isDelivered"`
-	DeliveredTime  *time.Time                            `json:"deliveredTime"`
-	Notes          *string                               `json:"notes" neo4j:"prop,notes"`
-	LastUpdateTime *time.Time                            `json:"lastUpdateTime"`
+	Price          float64                 `json:"price"`
+	Currency       string                  `json:"currency"`
+	IsDelivered    bool                    `json:"isDelivered"`
+	DeliveredTime  *time.Time              `json:"deliveredTime"`
+	Notes          *string                 `json:"notes" neo4j:"prop,notes"`
+	LastUpdateTime *time.Time              `json:"lastUpdateTime"`
 }
 
 type CatalogueItemDetail struct {
