@@ -258,6 +258,9 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	
 	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
 	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
+	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)
+	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st,
+		 COLLECT({property: {uid: prop.uid, name: prop.name}, value: cp.value}) as details
 	WITH o, s, os, req, proc, orderLines, 
 	CASE WHEN si IS NOT NULL THEN collect({ 
 		uid: si.uid,
@@ -268,7 +271,8 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		deliveredTime: si.deliveredTime,
 		lastUpdateTime: si.lastUpdateTime,
 		item: {uid: servitm.uid, name: servitm.name},
-		serviceType: {uid: st.uid, name: st.name}
+		serviceType: {uid: st.uid, name: st.name},
+		details: details
 	}) ELSE NULL END as serviceLines
 
 	RETURN DISTINCT {  
