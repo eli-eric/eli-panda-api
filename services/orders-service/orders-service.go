@@ -1,6 +1,8 @@
 package ordersService
 
 import (
+	"encoding/json"
+
 	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -79,6 +81,21 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityC
 
 	query := GetOrderWithOrderLinesByUidQuery(orderUid, facilityCode)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, query)
+
+	// Konverze string hodnot zpět na objekty pro service lines
+	if err == nil && result.ServiceLines != nil {
+		for i, serviceLine := range result.ServiceLines {
+			for j, detail := range serviceLine.Details {
+				if strValue, ok := detail.Value.(string); ok {
+					// Pokus o deserializaci JSON stringu
+					var jsonValue interface{}
+					if err := json.Unmarshal([]byte(strValue), &jsonValue); err == nil {
+						result.ServiceLines[i].Details[j].Value = jsonValue
+					}
+				}
+			}
+		}
+	}
 
 	return result, err
 }

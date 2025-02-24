@@ -1,6 +1,7 @@
 package ordersService
 
 import (
+	"encoding/json"
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/orders-service/models"
@@ -260,7 +261,14 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
 	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)
 	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st,
-		 COLLECT({property: {uid: prop.uid, name: prop.name}, value: cp.value}) as details
+		 collect({
+			property: {
+				uid: prop.uid,
+				name: prop.name,
+				type: prop.type
+			},
+			value: cp.value
+		 }) as details
 	WITH o, s, os, req, proc, orderLines, 
 	CASE WHEN si IS NOT NULL THEN collect({ 
 		uid: si.uid,
@@ -932,9 +940,20 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
         details := make([]map[string]interface{}, len(serviceLine.Details))
         for i, detail := range serviceLine.Details {
             propertyUIDs[i] = detail.Property.UID
-            details[i] = map[string]interface{}{
-                "propertyUid": detail.Property.UID,
-                "value": detail.Value,
+            
+            // Převod range hodnot na JSON string
+            if detail.Property.Type.Code == "range" {
+                if jsonValue, err := json.Marshal(detail.Value); err == nil {
+                    details[i] = map[string]interface{}{
+                        "propertyUid": detail.Property.UID,
+                        "value": string(jsonValue),
+                    }
+                }
+            } else {
+                details[i] = map[string]interface{}{
+                    "propertyUid": detail.Property.UID,
+                    "value": detail.Value,
+                }
             }
         }
         result.Parameters["propertyUIDs"] = propertyUIDs
