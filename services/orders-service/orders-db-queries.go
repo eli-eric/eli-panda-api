@@ -259,14 +259,22 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 
 	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
 	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
-	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)
+	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)-[:IS_PROPERTY_TYPE]->(propType:CatalogueCategoryPropertyType)
+	OPTIONAL MATCH (group:CatalogueCategoryPropertyGroup)-[:CONTAINS_PROPERTY]->(prop)
+	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(unit)
 	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st,
 		 collect({
 			property: {
 				uid: prop.uid,
 				name: prop.name,
-				type: prop.type
+				type: {
+					uid: propType.uid,
+					name: propType.name,
+					code: propType.code
+				},
+				unit: CASE WHEN unit IS NOT NULL THEN {uid: unit.uid, name: unit.name} ELSE NULL END
 			},
+			propertyGroup: group.name,
 			value: cp.value
 		 }) as details
 	WITH o, s, os, req, proc, orderLines, 
@@ -560,8 +568,8 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 			result.Query += `MERGE (ci:CatalogueItem{ name: $itemName, catalogueNumber: $catalogueNumber }) WITH o, itm, ci, ccg `
 			result.Query += `SET ci.uid = $catalogueItemUID, ci.lastUpdateTime = datetime() WITH o, itm, ci, ccg `
 			result.Query += `MERGE (itm)-[:IS_BASED_ON]->(ci) WITH o, itm, ci, ccg `
-			result.Query += `MERGE (ci)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm, ci
-							 MATCH(usr:User{uid: $lastUpdateBy}) 
+			result.Query += `MERGE (ci)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm, ci `
+			result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) 
 							 CREATE(ci)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o,ccg, itm, ci `
 
 			result.Parameters["catalogueItemUID"] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
@@ -908,9 +916,9 @@ func GetMinAndMaxOrderLinePriceQuery(facilityCode string) (result helpers.Databa
 
 // db query to insert new order service line
 func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
-    result.Parameters = make(map[string]interface{})
-    
-    result.Query = `
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
     MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
     CREATE (si:ServiceItem { 
         uid: apoc.create.uuid(),
@@ -927,8 +935,8 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
     CREATE (si)-[:IS_BASED_ON]->(st)`
 
-    if len(serviceLine.Details) > 0 {
-        result.Query += `
+	if len(serviceLine.Details) > 0 {
+		result.Query += `
         WITH si
         MATCH (cp:CatalogueCategoryProperty) WHERE cp.uid IN $propertyUIDs
         UNWIND $propertyDetails as detail
@@ -936,47 +944,47 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
         WHERE cp.uid = detail.propertyUid
         CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)`
 
-        propertyUIDs := make([]string, len(serviceLine.Details))
-        details := make([]map[string]interface{}, len(serviceLine.Details))
-        for i, detail := range serviceLine.Details {
-            propertyUIDs[i] = detail.Property.UID
-            
-            // Převod range hodnot na JSON string
-            if detail.Property.Type.Code == "range" {
-                if jsonValue, err := json.Marshal(detail.Value); err == nil {
-                    details[i] = map[string]interface{}{
-                        "propertyUid": detail.Property.UID,
-                        "value": string(jsonValue),
-                    }
-                }
-            } else {
-                details[i] = map[string]interface{}{
-                    "propertyUid": detail.Property.UID,
-                    "value": detail.Value,
-                }
-            }
-        }
-        result.Parameters["propertyUIDs"] = propertyUIDs
-        result.Parameters["propertyDetails"] = details
-    }
+		propertyUIDs := make([]string, len(serviceLine.Details))
+		details := make([]map[string]interface{}, len(serviceLine.Details))
+		for i, detail := range serviceLine.Details {
+			propertyUIDs[i] = detail.Property.UID
 
-    result.Parameters["orderUID"] = orderUID
-    result.Parameters["name"] = serviceLine.Name
-    result.Parameters["isDelivered"] = serviceLine.IsDelivered
-    result.Parameters["price"] = serviceLine.Price
-    result.Parameters["currency"] = serviceLine.Currency
-    result.Parameters["itemUID"] = serviceLine.Item.UID
-    result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
-    result.Parameters["lastUpdateBy"] = userUID
-    result.Parameters["facilityCode"] = facilityCode
+			// Převod range hodnot na JSON string
+			if detail.Property.Type.Code == "range" {
+				if jsonValue, err := json.Marshal(detail.Value); err == nil {
+					details[i] = map[string]interface{}{
+						"propertyUid": detail.Property.UID,
+						"value":       string(jsonValue),
+					}
+				}
+			} else {
+				details[i] = map[string]interface{}{
+					"propertyUid": detail.Property.UID,
+					"value":       detail.Value,
+				}
+			}
+		}
+		result.Parameters["propertyUIDs"] = propertyUIDs
+		result.Parameters["propertyDetails"] = details
+	}
 
-    return result
+	result.Parameters["orderUID"] = orderUID
+	result.Parameters["name"] = serviceLine.Name
+	result.Parameters["isDelivered"] = serviceLine.IsDelivered
+	result.Parameters["price"] = serviceLine.Price
+	result.Parameters["currency"] = serviceLine.Currency
+	result.Parameters["itemUID"] = serviceLine.Item.UID
+	result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+	result.Parameters["lastUpdateBy"] = userUID
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
 }
 
 func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
-    result.Parameters = make(map[string]interface{})
-    
-    result.Query = `
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
     MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
     MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem{uid: $serviceItemUID})
     SET si.name = $name,
@@ -991,50 +999,50 @@ func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, fa
     MERGE (si)-[:IS_BASED_ON]->(st)
     RETURN si.uid as uid`
 
-    result.ReturnAlias = "uid"
-    result.Parameters["serviceItemUID"] = serviceLine.UID
-    result.Parameters["name"] = serviceLine.Name
-    result.Parameters["price"] = serviceLine.Price
-    result.Parameters["currency"] = serviceLine.Currency
-    result.Parameters["isDelivered"] = serviceLine.IsDelivered
-    result.Parameters["lastUpdateBy"] = userUID
-    result.Parameters["orderUID"] = orderUID
-    result.Parameters["facilityCode"] = facilityCode
-    result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+	result.ReturnAlias = "uid"
+	result.Parameters["serviceItemUID"] = serviceLine.UID
+	result.Parameters["name"] = serviceLine.Name
+	result.Parameters["price"] = serviceLine.Price
+	result.Parameters["currency"] = serviceLine.Currency
+	result.Parameters["isDelivered"] = serviceLine.IsDelivered
+	result.Parameters["lastUpdateBy"] = userUID
+	result.Parameters["orderUID"] = orderUID
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
 
-    return result
+	return result
 }
 
 func DeleteServiceLinesQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
-    result.Parameters = make(map[string]interface{})
+	result.Parameters = make(map[string]interface{})
 
-    result.Query = `
+	result.Query = `
     MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
     `
-    // compare new and old service lines and delete the ones that are not in the new order
-    if newOrder.ServiceLines != nil && len(newOrder.ServiceLines) >= 0 {
-        for idxDelete, oldServiceLine := range oldOrder.ServiceLines {
-            found := false
-            for _, newServiceLine := range newOrder.ServiceLines {
-                if oldServiceLine.UID == newServiceLine.UID {
-                    found = true
-                    break
-                }
-            }
-            if !found {
-                result.Query += fmt.Sprintf(` WITH o MATCH (o)-[:HAS_SERVICE_LINE]->(siForDelete%[1]v:ServiceItem{uid: $serviceItemUIDForDelete%[1]v}) DETACH DELETE siForDelete%[1]v `, idxDelete)
-                result.Parameters[fmt.Sprintf("serviceItemUIDForDelete%v", idxDelete)] = oldServiceLine.UID
-            }
-        }
-    }
+	// compare new and old service lines and delete the ones that are not in the new order
+	if newOrder.ServiceLines != nil && len(newOrder.ServiceLines) >= 0 {
+		for idxDelete, oldServiceLine := range oldOrder.ServiceLines {
+			found := false
+			for _, newServiceLine := range newOrder.ServiceLines {
+				if oldServiceLine.UID == newServiceLine.UID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result.Query += fmt.Sprintf(` WITH o MATCH (o)-[:HAS_SERVICE_LINE]->(siForDelete%[1]v:ServiceItem{uid: $serviceItemUIDForDelete%[1]v}) DETACH DELETE siForDelete%[1]v `, idxDelete)
+				result.Parameters[fmt.Sprintf("serviceItemUIDForDelete%v", idxDelete)] = oldServiceLine.UID
+			}
+		}
+	}
 
-    result.Query += `
+	result.Query += `
     RETURN o.uid as uid`
 
-    result.Parameters["uid"] = oldOrder.UID
-    result.Parameters["facilityCode"] = facilityCode
-    result.Parameters["lastUpdateBy"] = userUID
-    result.ReturnAlias = "uid"
+	result.Parameters["uid"] = oldOrder.UID
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["lastUpdateBy"] = userUID
+	result.ReturnAlias = "uid"
 
-    return result
+	return result
 }
