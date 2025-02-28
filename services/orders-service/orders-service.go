@@ -31,6 +31,8 @@ type IOrdersService interface {
 	GetOrderUidByOrderNumber(orderNumber string) (result string, err error)
 	GetOrdersForCatalogueItem(catalogueItemUid string, facilityCode string) (result []models.OrderListItem, err error)
 	GetMinAndMaxOrderLinePrice(facilityCode string) (result models.OrderLineMinMax, err error)
+	UpdateServiceLineDelivery(serviceItemUid string, isDelivered bool, userUID string, facilityCode string) (result models.ServiceLine, err error)
+	UpdateMultipleServiceLineDelivery(serviceItemUids []string, userUID string, facilityCode string) (result []models.ServiceLine, err error)
 }
 
 func NewOrdersService(driver *neo4j.Driver) IOrdersService {
@@ -261,6 +263,30 @@ func (svc *OrdersService) UpdateMultipleOrderLineDelivery(itemUids []string, use
 			return nil, err
 		}
 		result = append(result, orderLine)
+	}
+
+	return result, err
+}
+
+func (svc *OrdersService) UpdateServiceLineDelivery(serviceItemUid string, isDelivered bool, userUID string, facilityCode string) (result models.ServiceLine, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := UpdateServiceLineDeliveryQuery(serviceItemUid, isDelivered, nil, nil, userUID, facilityCode)
+	result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.ServiceLine](session, query)
+
+	return result, err
+}
+
+func (svc *OrdersService) UpdateMultipleServiceLineDelivery(serviceItemUids []string, userUID string, facilityCode string) (result []models.ServiceLine, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	for _, serviceItemUid := range serviceItemUids {
+		query := UpdateServiceLineDeliveryQuery(serviceItemUid, true, nil, nil, userUID, facilityCode)
+		serviceLine, err := helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.ServiceLine](session, query)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, serviceLine)
 	}
 
 	return result, err
