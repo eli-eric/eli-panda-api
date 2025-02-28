@@ -404,6 +404,8 @@ definitions:
         items:
           $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
         type: array
+      eun:
+        type: string
       isDelivered:
         type: boolean
       item:
@@ -416,6 +418,8 @@ definitions:
         type: string
       price:
         type: number
+      serialNumber:
+        type: string
       serviceType:
         $ref: '#/definitions/models.Codebook'
       uid:
