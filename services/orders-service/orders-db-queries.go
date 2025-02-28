@@ -793,6 +793,55 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 	return result
 }
 
+func UpdateServiceLineDeliveryQuery(serviceItemUID string, isDelivered bool, serialNumber *string, eun *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem{uid: $serviceItemUID})
+	WITH u, o, sl, si
+	OPTIONAL MATCH (si)-[:IS_BASED_ON]->(st:CatalogueServiceType)
+	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(item:Item)
+	WITH u, o, sl, si, st, item
+	SET sl.isDelivered = $isDelivered, 
+	    sl.deliveredTime = CASE WHEN $isDelivered = true THEN datetime() ELSE null END, 
+		sl.lastUpdateTime = datetime(), 
+		sl.lastUpdateBy = u.username, 
+		o.lastUpdateTime = datetime(), 
+		o.lastUpdateBy = u.username,
+		si.isDelivered = $isDelivered,
+		si.deliveredTime = CASE WHEN $isDelivered = true THEN datetime() ELSE null END
+	WITH o, sl, u, si, st, item
+	MATCH(o)-[slAll:HAS_SERVICE_LINE]->()
+	WITH count(slAll) as totalLines, o, sl, u, si, st, item
+	OPTIONAL MATCH(o)-[slDelivered:HAS_SERVICE_LINE{isDelivered: true}]->()
+	WITH totalLines, count(slDelivered) as deliveredLines, o, sl, u, si, st, item
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o, sl, u, si, st, item
+	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+	RETURN DISTINCT { 
+			uid: si.uid,  
+			isDelivered: sl.isDelivered,
+			deliveredTime: sl.deliveredTime,
+			lastUpdateTime: sl.lastUpdateTime,
+			price: sl.price,
+			currency: sl.currency, 
+			name: si.name, 
+			serviceType: CASE WHEN st IS NOT NULL THEN {uid: st.uid, name: st.name} ELSE NULL END,
+			item: CASE WHEN item IS NOT NULL THEN {uid: item.uid, name: item.name} ELSE NULL END
+	} as serviceLine;
+	`
+
+	result.ReturnAlias = "serviceLine"
+
+	result.Parameters["serviceItemUID"] = serviceItemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["isDelivered"] = isDelivered
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
 func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 
 	result.ReturnAlias = "items"

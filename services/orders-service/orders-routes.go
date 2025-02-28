@@ -22,8 +22,10 @@ func MapOrdersRoutes(e *echo.Echo, h IOrdersHandlers, jwtMiddleware echo.Middlew
 	e.PUT("/v1/order/:uid", m.Authorization(h.UpdateOrder(), shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 
 	e.PUT("/v1/order/:uid/orderline/:itemUid/delivery", m.Authorization(h.UpdateOrderLineDelivery(), shared.ROLE_ORDERS_DELIVERY_EDIT, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
+	e.PUT("/v1/order/:uid/serviceline/:serviceItemUid/delivery", m.Authorization(h.UpdateServiceLineDelivery(), shared.ROLE_ORDERS_DELIVERY_EDIT, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 
 	e.PUT("/v1/order/:uid/orderlines/delivery", m.Authorization(h.UpdateMultipleOrderLineDelivery(), shared.ROLE_ORDERS_DELIVERY_EDIT, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
+	e.PUT("/v1/order/:uid/servicelines/delivery", m.Authorization(h.UpdateMultipleServiceLineDelivery(), shared.ROLE_ORDERS_DELIVERY_EDIT, shared.ROLE_ORDERS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/orders/eun-for-print", m.Authorization(h.GetItemsForEunPrint(), shared.ROLE_ORDERS_VIEW, shared.ROLE_ORDERS_DELIVERY_EDIT), jwtMiddleware)
 

@@ -95,6 +95,10 @@ type OrderLineDelivery struct {
 	EUN          *string `json:"eun"`
 }
 
+type ServiceLineDelivery struct {
+	IsDelivered bool `json:"isDelivered"`
+}
+
 type OrderLineMinMax struct {
 	Min int `json:"min"`
 	Max int `json:"max"`

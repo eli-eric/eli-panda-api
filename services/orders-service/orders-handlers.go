@@ -24,6 +24,8 @@ type IOrdersHandlers interface {
 	DeleteOrder() echo.HandlerFunc
 	UpdateOrderLineDelivery() echo.HandlerFunc
 	UpdateMultipleOrderLineDelivery() echo.HandlerFunc
+	UpdateServiceLineDelivery() echo.HandlerFunc
+	UpdateMultipleServiceLineDelivery() echo.HandlerFunc
 	GetItemsForEunPrint() echo.HandlerFunc
 	SetItemPrintEUN() echo.HandlerFunc
 	GetOrderUidByOrderNumber() echo.HandlerFunc
@@ -295,6 +297,86 @@ func (h *OrdersHandlers) UpdateMultipleOrderLineDelivery() echo.HandlerFunc {
 	}
 }
 
+// UpdateServiceLineDelivery godoc
+// @Summary Update service line delivery
+// @Description Update service line delivery status
+// @Tags Orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "Order UID"
+// @Param serviceItemUid path string true "Service Item UID"
+// @Param serviceLineDelivery body models.ServiceLineDelivery true "Service Line Delivery object"
+// @Success 200 {object} models.ServiceLine
+// @Failure 400 "Bad Request"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order/{uid}/serviceline/{serviceItemUid}/delivery [put]
+func (h *OrdersHandlers) UpdateServiceLineDelivery() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		serviceItemUID := c.Param("serviceItemUid")
+		userUID := c.Get("userUID").(string)
+		facilityCode := c.Get("facilityCode").(string)
+		
+		// get the delivery info from the request body
+		serviceLineDelivery := new(models.ServiceLineDelivery)
+		err := c.Bind(serviceLineDelivery)
+
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+
+		serviceLine, err := h.ordersService.UpdateServiceLineDelivery(serviceItemUID, serviceLineDelivery.IsDelivered, userUID, facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, serviceLine)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+// UpdateMultipleServiceLineDelivery godoc
+// @Summary Update multiple service line delivery
+// @Description Update multiple service line delivery status to delivered
+// @Tags Orders
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "Order UID"
+// @Param serviceItemUids body []string true "Service Item UIDs"
+// @Success 200 {object} []models.ServiceLine
+// @Failure 400 "Bad Request"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/order/{uid}/servicelines/delivery [put]
+func (h *OrdersHandlers) UpdateMultipleServiceLineDelivery() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userUID := c.Get("userUID").(string)
+		facilityCode := c.Get("facilityCode").(string)
+		
+		// get the service item UIDs from the request body
+		serviceItemUids := new([]string)
+		err := c.Bind(serviceItemUids)
+
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return echo.ErrBadRequest
+		}
+
+		serviceLines, err := h.ordersService.UpdateMultipleServiceLineDelivery(*serviceItemUids, userUID, facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, serviceLines)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
 // GetItemsForEunPrint godoc
 // @Summary Get items for EUN print
 // @Description Get items for EUN print
@@ -404,3 +486,4 @@ func (h *OrdersHandlers) GetMinAndMaxOrderLinePrice() echo.HandlerFunc {
 
 	}
 }
+

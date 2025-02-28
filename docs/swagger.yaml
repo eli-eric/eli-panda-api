@@ -425,6 +425,11 @@ definitions:
       uid:
         type: string
     type: object
+  models.ServiceLineDelivery:
+    properties:
+      isDelivered:
+        type: boolean
+    type: object
   models.System:
     properties:
       description:
@@ -993,6 +998,85 @@ paths:
       security:
       - BearerAuth: []
       summary: Update multiple order line delivery
+      tags:
+      - Orders
+  /v1/order/{uid}/serviceline/{serviceItemUid}/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Update service line delivery status
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Service Item UID
+        in: path
+        name: serviceItemUid
+        required: true
+        type: string
+      - description: Service Line Delivery object
+        in: body
+        name: serviceLineDelivery
+        required: true
+        schema:
+          $ref: '#/definitions/models.ServiceLineDelivery'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ServiceLine'
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update service line delivery
+      tags:
+      - Orders
+  /v1/order/{uid}/servicelines/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Update multiple service line delivery status to delivered
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Service Item UIDs
+        in: body
+        name: serviceItemUids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ServiceLine'
+            type: array
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update multiple service line delivery
       tags:
       - Orders
   /v1/orders/eun-for-print:
