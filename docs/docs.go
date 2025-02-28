@@ -1752,6 +1752,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
                     }
                 },
+                "eun": {
+                    "type": "string"
+                },
                 "isDelivered": {
                     "type": "boolean"
                 },
@@ -1769,6 +1772,9 @@ const docTemplate = `{
                 },
                 "price": {
                     "type": "number"
+                },
+                "serialNumber": {
+                    "type": "string"
                 },
                 "serviceType": {
                     "$ref": "#/definitions/models.Codebook"

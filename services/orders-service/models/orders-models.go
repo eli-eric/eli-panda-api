@@ -65,6 +65,8 @@ type ServiceLine struct {
 	Item           codebookModels.Codebook `json:"item"`
 	Details        []catalogueModels.CatalogueItemDetail `json:"details,omitempty" neo4j:"ignore"`
 	Price          float64                 `json:"price"`
+	EUN            *string                 `json:"eun"`
+	SerialNumber   *string                 `json:"serialNumber"`
 	Currency       string                  `json:"currency"`
 	IsDelivered    bool                    `json:"isDelivered"`
 	DeliveredTime  *time.Time              `json:"deliveredTime"`
