@@ -983,7 +983,7 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     WITH si, o
     MATCH (i:Item{uid: $itemUID})
     MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
-    CREATE (i)-[:IS_SERVICED_BY]->(si)
+    CREATE (i)-[:IS_SERVICED_BY {created: datetime()}]->(si)
     CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
     CREATE (si)-[:IS_BASED_ON]->(st)`
 
