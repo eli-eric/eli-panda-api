@@ -48,7 +48,7 @@ definitions:
         type: string
       details:
         items:
-          $ref: '#/definitions/models.CatalogueItemDetail'
+          $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
         type: array
       lastUpdateTime:
         type: string
@@ -67,13 +67,20 @@ definitions:
       uid:
         type: string
     type: object
-  models.CatalogueItemDetail:
+  models.CatalogueServiceType:
     properties:
-      property:
-        $ref: '#/definitions/models.CatalogueCategoryProperty'
-      propertyGroup:
+      category:
+        $ref: '#/definitions/models.Codebook'
+      description:
         type: string
-      value: {}
+      name:
+        type: string
+      properties:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
     type: object
   models.Codebook:
     properties:
@@ -169,6 +176,10 @@ definitions:
         type: string
       requestor:
         $ref: '#/definitions/models.Codebook'
+      serviceLines:
+        items:
+          $ref: '#/definitions/models.ServiceLine'
+        type: array
       supplier:
         $ref: '#/definitions/models.Codebook'
       uid:
@@ -382,6 +393,42 @@ definitions:
       yearOfPublication:
         description: yearOfPublication is the year of publication of the publication
         type: string
+    type: object
+  models.ServiceLine:
+    properties:
+      currency:
+        type: string
+      deliveredTime:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
+        type: array
+      eun:
+        type: string
+      isDelivered:
+        type: boolean
+      item:
+        $ref: '#/definitions/models.Codebook'
+      lastUpdateTime:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      price:
+        type: number
+      serialNumber:
+        type: string
+      serviceType:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
+  models.ServiceLineDelivery:
+    properties:
+      isDelivered:
+        type: boolean
     type: object
   models.System:
     properties:
@@ -653,6 +700,14 @@ definitions:
       volume:
         type: string
     type: object
+  panda_apigateway_services_catalogue-service_models.CatalogueItemDetail:
+    properties:
+      property:
+        $ref: '#/definitions/models.CatalogueCategoryProperty'
+      propertyGroup:
+        type: string
+      value: {}
+    type: object
 host: localhost:50000
 info:
   contact:
@@ -663,6 +718,126 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/catalogue/service/type:
+    post:
+      consumes:
+      - application/json
+      description: Create catalogue service type
+      parameters:
+      - description: Catalogue service type
+        in: body
+        name: catalogueServiceType
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueServiceType'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueServiceType'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create catalogue service type
+      tags:
+      - Catalogue
+  /v1/catalogue/service/type/{uid}:
+    delete:
+      description: Delete catalogue service type
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete catalogue service type
+      tags:
+      - Catalogue
+    get:
+      description: Get catalogue service type by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueServiceType'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue service type by uid
+      tags:
+      - Catalogue
+    put:
+      consumes:
+      - application/json
+      description: Update catalogue service type
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Catalogue service type
+        in: body
+        name: catalogueServiceType
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueServiceType'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueServiceType'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update catalogue service type
+      tags:
+      - Catalogue
+  /v1/catalogue/service/types:
+    get:
+      description: Get catalogue service types
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CatalogueServiceType'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue service types
+      tags:
+      - Catalogue
   /v1/general/{uid}/graph:
     get:
       description: Get graph by uid
@@ -823,6 +998,85 @@ paths:
       security:
       - BearerAuth: []
       summary: Update multiple order line delivery
+      tags:
+      - Orders
+  /v1/order/{uid}/serviceline/{serviceItemUid}/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Update service line delivery status
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Service Item UID
+        in: path
+        name: serviceItemUid
+        required: true
+        type: string
+      - description: Service Line Delivery object
+        in: body
+        name: serviceLineDelivery
+        required: true
+        schema:
+          $ref: '#/definitions/models.ServiceLineDelivery'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ServiceLine'
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update service line delivery
+      tags:
+      - Orders
+  /v1/order/{uid}/servicelines/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Update multiple service line delivery status to delivered
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Service Item UIDs
+        in: body
+        name: serviceItemUids
+        required: true
+        schema:
+          items:
+            type: string
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ServiceLine'
+            type: array
+        "400":
+          description: Bad Request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update multiple service line delivery
       tags:
       - Orders
   /v1/orders/eun-for-print:

@@ -33,6 +33,11 @@ type ICatalogueHandlers interface {
 	DeleteCatalogueItem() echo.HandlerFunc
 	GetCatalogueItemStatistics() echo.HandlerFunc
 	CatalogueItemsOverallStatistics() echo.HandlerFunc
+	GetCatalogueServiceTypeByUid() echo.HandlerFunc
+	GetCatalogueServiceTypes() echo.HandlerFunc
+	CreateCatalogueServiceType() echo.HandlerFunc
+	UpdateCatalogueServiceType() echo.HandlerFunc
+	DeleteCatalogueServiceType() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -433,5 +438,162 @@ func (h *CatalogueHandlers) CatalogueItemsOverallStatistics() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+// GetCatalogueServiceTypeByUid Get catalogue service type by uid godoc
+// @Summary Get catalogue service type by uid
+// @Description Get catalogue service type by uid
+// @Tags Catalogue
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 200 {object} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type/{uid} [get]
+func (h *CatalogueHandlers) GetCatalogueServiceTypeByUid() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		//get uid path param
+		uid := c.Param("uid")
+
+		serviceType, err := h.catalogueService.GetCatalogueServiceTypeByUid(uid)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, serviceType)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetCatalogueServiceTypes Get catalogue service types godoc
+// @Summary Get catalogue service types
+// @Description Get catalogue service types
+// @Tags Catalogue
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {array} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/types [get]
+func (h *CatalogueHandlers) GetCatalogueServiceTypes() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		serviceTypes, err := h.catalogueService.GetCatalogueServiceTypes()
+
+		if err == nil {
+			return c.JSON(http.StatusOK, serviceTypes)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// CreateCatalogueServiceType Create catalogue service type godoc
+// @Summary Create catalogue service type
+// @Description Create catalogue service type
+// @Tags Catalogue
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param catalogueServiceType body models.CatalogueServiceType true "Catalogue service type"
+// @Success 200 {object} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Failure 400 "Bad Request"
+// @Router /v1/catalogue/service/type [post]
+func (h *CatalogueHandlers) CreateCatalogueServiceType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		catalogueServiceType := new(models.CatalogueServiceType)
+		if err := c.Bind(catalogueServiceType); err != nil {
+			log.Error().Err(err).Msg("Error binding catalogue service type")
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+
+		createdCatalogueServiceType, err := h.catalogueService.CreateCatalogueServiceType(catalogueServiceType, userUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, createdCatalogueServiceType)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// UpdateCatalogueServiceType Update catalogue service type godoc
+// @Summary Update catalogue service type
+// @Description Update catalogue service type
+// @Tags Catalogue
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "uid"
+// @Param catalogueServiceType body models.CatalogueServiceType true "Catalogue service type"
+// @Success 200 {object} models.CatalogueServiceType
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type/{uid} [put]
+func (h *CatalogueHandlers) UpdateCatalogueServiceType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		catalogueServiceType := new(models.CatalogueServiceType)
+		if err := c.Bind(catalogueServiceType); err != nil {
+			log.Error().Err(err).Msg("Error binding catalogue service type")
+			return helpers.BadRequest(err.Error())
+		}
+
+		catalogueServiceType.Uid = uid
+
+		userUID := c.Get("userUID").(string)
+
+		_, err := h.catalogueService.UpdateCatalogueServiceType(catalogueServiceType, userUID)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, catalogueServiceType)
+		} else {
+			log.Error().Msg(err.Error())
+		}
+
+		return echo.ErrInternalServerError
+	}
+}
+
+// DeleteCatalogueServiceType Delete catalogue service type godoc
+// @Summary Delete catalogue service type
+// @Description Delete catalogue service type
+// @Tags Catalogue
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 204 "No Content"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/catalogue/service/type/{uid} [delete]
+func (h *CatalogueHandlers) DeleteCatalogueServiceType() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.catalogueService.DeleteCatalogueServiceType(uid, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting catalogue service type")
+			return echo.ErrInternalServerError
+		}
+
+		return c.NoContent(204)
 	}
 }

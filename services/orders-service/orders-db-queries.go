@@ -1,6 +1,7 @@
 package ordersService
 
 import (
+	"encoding/json"
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/orders-service/models"
@@ -255,6 +256,44 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
 		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
+
+	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
+	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
+	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)-[:IS_PROPERTY_TYPE]->(propType:CatalogueCategoryPropertyType)
+	OPTIONAL MATCH (group:CatalogueCategoryPropertyGroup)-[:CONTAINS_PROPERTY]->(prop)
+	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(unit)
+	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st, prop, propType, unit, group, cp
+	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st,
+		 CASE WHEN prop IS NOT NULL THEN collect({
+			property: {
+				uid: prop.uid,
+				name: prop.name,
+				type: {
+					uid: propType.uid,
+					name: propType.name,
+					code: propType.code
+				},
+				unit: CASE WHEN unit IS NOT NULL THEN {uid: unit.uid, name: unit.name} ELSE NULL END
+			},
+			propertyGroup: group.name,
+			value: cp.value
+		 }) ELSE NULL END as details
+	WITH o, s, os, req, proc, orderLines, 
+	CASE WHEN si IS NOT NULL THEN collect({ 
+		uid: si.uid,
+		name: si.name,
+		price: sl.price,
+		currency: sl.currency,
+		isDelivered: si.isDelivered,
+		deliveredTime: si.deliveredTime,
+		lastUpdateTime: si.lastUpdateTime,
+		item: {uid: servitm.uid, name: servitm.name},
+		eun: servitm.eun,
+		serialNumber: servitm.serialNumber,
+		serviceType: {uid: st.uid, name: st.name},
+		details: details
+	}) ELSE NULL END as serviceLines
+
 	RETURN DISTINCT {  
 	uid: o.uid,
 	name: o.name,
@@ -268,7 +307,8 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	requestor: CASE WHEN req IS NOT NULL THEN {uid: req.uid,name: req.lastName + " " + req.firstName} ELSE NULL END,
 	procurementResponsible: CASE WHEN proc IS NOT NULL THEN {uid: proc.uid,name: proc.lastName + " " + proc.firstName} ELSE NULL END,
 	orderDate: o.orderDate,
-	orderLines:  orderLines,
+	orderLines: orderLines,
+	serviceLines: serviceLines,
 	lastUpdateTime: o.lastUpdateTime
 } AS order 
 	`
@@ -433,6 +473,8 @@ func InsertNewOrderDeliveryStatusQuery(orderUID string, facilityCode string) (re
 	OPTIONAL MATCH(o)-[olDelivered:HAS_ORDER_LINE{isDelivered: true}]->()
 	WITH totalLines, count(olDelivered) as deliveredLines, o
 	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o
+
 	RETURN o.uid as uid
 	`
 
@@ -444,8 +486,9 @@ func InsertNewOrderDeliveryStatusQuery(orderUID string, facilityCode string) (re
 }
 
 // update order query
-func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery, additionalQueries []helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{}, 0)
+	additionalQueries = make([]helpers.DatabaseQuery, 0)
 
 	result.Query = `
 	MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
@@ -453,22 +496,29 @@ func UpdateOrderQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail
 
 	helpers.AutoResolveObjectToUpdateQuery(&result, *newOrder, *oldOrder, "o")
 
-	result.Query += `	
+	// Handle new service lines
+	for _, serviceLine := range newOrder.ServiceLines {
+		if serviceLine.UID == "" {
+			insertQuery := InsertNewServiceLineQuery(newOrder.UID, &serviceLine, facilityCode, userUID)
+			additionalQueries = append(additionalQueries, insertQuery)
+		}
+	}
+
+	result.Query += `    
 	WITH o
 	MATCH(u:User{uid: $lastUpdateBy})
 	WITH o, u
 	SET o.lastUpdateTime = datetime(), o.lastUpdateBy = u.username
 	WITH o, u
 	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
-	RETURN o.uid as uid
-	`
+	RETURN o.uid as uid`
 
 	result.Parameters["uid"] = oldOrder.UID
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["lastUpdateBy"] = userUID
 	result.ReturnAlias = "uid"
 
-	return result
+	return result, additionalQueries
 }
 
 func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
@@ -521,8 +571,8 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 			result.Query += `MERGE (ci:CatalogueItem{ name: $itemName, catalogueNumber: $catalogueNumber }) WITH o, itm, ci, ccg `
 			result.Query += `SET ci.uid = $catalogueItemUID, ci.lastUpdateTime = datetime() WITH o, itm, ci, ccg `
 			result.Query += `MERGE (itm)-[:IS_BASED_ON]->(ci) WITH o, itm, ci, ccg `
-			result.Query += `MERGE (ci)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm, ci
-							 MATCH(usr:User{uid: $lastUpdateBy}) 
+			result.Query += `MERGE (ci)-[:BELONGS_TO_CATEGORY]->(ccg) WITH o,ccg, itm, ci `
+			result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) 
 							 CREATE(ci)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o,ccg, itm, ci `
 
 			result.Parameters["catalogueItemUID"] = newCatalogueItemUIDs[orderLine.CatalogueNumber]
@@ -743,6 +793,55 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 	return result
 }
 
+func UpdateServiceLineDeliveryQuery(serviceItemUID string, isDelivered bool, serialNumber *string, eun *string, userUID string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	MATCH(o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem{uid: $serviceItemUID})
+	WITH u, o, sl, si
+	OPTIONAL MATCH (si)-[:IS_BASED_ON]->(st:CatalogueServiceType)
+	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(item:Item)
+	WITH u, o, sl, si, st, item
+	SET sl.isDelivered = $isDelivered, 
+	    sl.deliveredTime = CASE WHEN $isDelivered = true THEN datetime() ELSE null END, 
+		sl.lastUpdateTime = datetime(), 
+		sl.lastUpdateBy = u.username, 
+		o.lastUpdateTime = datetime(), 
+		o.lastUpdateBy = u.username,
+		si.isDelivered = $isDelivered,
+		si.deliveredTime = CASE WHEN $isDelivered = true THEN datetime() ELSE null END
+	WITH o, sl, u, si, st, item
+	MATCH(o)-[slAll:HAS_SERVICE_LINE]->()
+	WITH count(slAll) as totalLines, o, sl, u, si, st, item
+	OPTIONAL MATCH(o)-[slDelivered:HAS_SERVICE_LINE{isDelivered: true}]->()
+	WITH totalLines, count(slDelivered) as deliveredLines, o, sl, u, si, st, item
+	SET o.deliveryStatus = case when deliveredLines = 0 then 0 when deliveredLines = totalLines then 2 else 1 end
+	WITH o, sl, u, si, st, item
+	CREATE(o)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE" }]->(u)
+	RETURN DISTINCT { 
+			uid: si.uid,  
+			isDelivered: sl.isDelivered,
+			deliveredTime: sl.deliveredTime,
+			lastUpdateTime: sl.lastUpdateTime,
+			price: sl.price,
+			currency: sl.currency, 
+			name: si.name, 
+			serviceType: CASE WHEN st IS NOT NULL THEN {uid: st.uid, name: st.name} ELSE NULL END,
+			item: CASE WHEN item IS NOT NULL THEN {uid: item.uid, name: item.name} ELSE NULL END
+	} as serviceLine;
+	`
+
+	result.ReturnAlias = "serviceLine"
+
+	result.Parameters["serviceItemUID"] = serviceItemUID
+	result.Parameters["userUID"] = userUID
+	result.Parameters["isDelivered"] = isDelivered
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
 func GetItemsForEunPrintQuery(euns []string) (result helpers.DatabaseQuery) {
 
 	result.ReturnAlias = "items"
@@ -863,6 +962,139 @@ func GetMinAndMaxOrderLinePriceQuery(facilityCode string) (result helpers.Databa
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
+// db query to insert new order service line
+func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+    MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+    CREATE (si:ServiceItem { 
+        uid: apoc.create.uuid(),
+        name: $name,
+        isDelivered: $isDelivered,
+        deliveredTime: datetime(),
+        lastUpdateTime: datetime(),
+        lastUpdateBy: $lastUpdateBy
+    })
+    WITH si, o
+    MATCH (i:Item{uid: $itemUID})
+    MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
+    CREATE (i)-[:IS_SERVICED_BY {created: datetime()}]->(si)
+    CREATE (o)-[:HAS_SERVICE_LINE{price: $price, currency: $currency, lastUpdateTime: datetime()}]->(si)
+    CREATE (si)-[:IS_BASED_ON]->(st)`
+
+	if len(serviceLine.Details) > 0 {
+		result.Query += `
+        WITH si
+        MATCH (cp:CatalogueCategoryProperty) WHERE cp.uid IN $propertyUIDs
+        UNWIND $propertyDetails as detail
+        WITH si, cp, detail
+        WHERE cp.uid = detail.propertyUid
+        CREATE (si)-[:HAS_CATALOGUE_PROPERTY {value: detail.value}]->(cp)`
+
+		propertyUIDs := make([]string, len(serviceLine.Details))
+		details := make([]map[string]interface{}, len(serviceLine.Details))
+		for i, detail := range serviceLine.Details {
+			propertyUIDs[i] = detail.Property.UID
+
+			// Převod range hodnot na JSON string
+			if detail.Property.Type.Code == "range" {
+				if jsonValue, err := json.Marshal(detail.Value); err == nil {
+					details[i] = map[string]interface{}{
+						"propertyUid": detail.Property.UID,
+						"value":       string(jsonValue),
+					}
+				}
+			} else {
+				details[i] = map[string]interface{}{
+					"propertyUid": detail.Property.UID,
+					"value":       detail.Value,
+				}
+			}
+		}
+		result.Parameters["propertyUIDs"] = propertyUIDs
+		result.Parameters["propertyDetails"] = details
+	}
+
+	result.Parameters["orderUID"] = orderUID
+	result.Parameters["name"] = serviceLine.Name
+	result.Parameters["isDelivered"] = serviceLine.IsDelivered
+	result.Parameters["price"] = serviceLine.Price
+	result.Parameters["currency"] = serviceLine.Currency
+	result.Parameters["itemUID"] = serviceLine.Item.UID
+	result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+	result.Parameters["lastUpdateBy"] = userUID
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
+func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+    MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+    MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem{uid: $serviceItemUID})
+    SET si.name = $name,
+        si.isDelivered = $isDelivered,
+        si.lastUpdateTime = datetime(),
+        si.lastUpdateBy = $lastUpdateBy,
+        sl.price = $price,
+        sl.currency = $currency,
+        sl.lastUpdateTime = datetime()
+    WITH si
+    MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
+    MERGE (si)-[:IS_BASED_ON]->(st)
+    RETURN si.uid as uid`
+
+	result.ReturnAlias = "uid"
+	result.Parameters["serviceItemUID"] = serviceLine.UID
+	result.Parameters["name"] = serviceLine.Name
+	result.Parameters["price"] = serviceLine.Price
+	result.Parameters["currency"] = serviceLine.Currency
+	result.Parameters["isDelivered"] = serviceLine.IsDelivered
+	result.Parameters["lastUpdateBy"] = userUID
+	result.Parameters["orderUID"] = orderUID
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
+
+	return result
+}
+
+func DeleteServiceLinesQuery(newOrder *models.OrderDetail, oldOrder *models.OrderDetail, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+
+	result.Query = `
+    MATCH (o:Order{uid: $uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode}) 
+    `
+	// compare new and old service lines and delete the ones that are not in the new order
+	if newOrder.ServiceLines != nil && len(newOrder.ServiceLines) >= 0 {
+		for idxDelete, oldServiceLine := range oldOrder.ServiceLines {
+			found := false
+			for _, newServiceLine := range newOrder.ServiceLines {
+				if oldServiceLine.UID == newServiceLine.UID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				result.Query += fmt.Sprintf(` WITH o MATCH (o)-[:HAS_SERVICE_LINE]->(siForDelete%[1]v:ServiceItem{uid: $serviceItemUIDForDelete%[1]v}) DETACH DELETE siForDelete%[1]v `, idxDelete)
+				result.Parameters[fmt.Sprintf("serviceItemUIDForDelete%v", idxDelete)] = oldServiceLine.UID
+			}
+		}
+	}
+
+	result.Query += `
+    RETURN o.uid as uid`
+
+	result.Parameters["uid"] = oldOrder.UID
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["lastUpdateBy"] = userUID
+	result.ReturnAlias = "uid"
 
 	return result
 }

@@ -8,6 +8,7 @@ import (
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 
+	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/rs/zerolog/log"
 )
@@ -42,6 +43,11 @@ type ICatalogueService interface {
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
 	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
+	GetCatalogueServiceTypeByUid(uid string) (result models.CatalogueServiceType, err error)
+	GetCatalogueServiceTypes() (result []models.CatalogueServiceType, err error)
+	CreateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
+	UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
+	DeleteCatalogueServiceType(uid string, userUID string) (err error)
 }
 
 // Create new security service instance
@@ -478,4 +484,92 @@ func (svc *CatalogueService) CatalogueItemsOverallStatistics() (result []models.
 	result, err = helpers.GetNeo4jArrayOfNodes[models.CatalogueStatistics](session, query)
 
 	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueServiceTypeByUid(uid string) (result models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result.Uid = uid
+
+	err = helpers.GetSingleNode(session, &result)
+
+	return result, err
+}
+
+func (svc *CatalogueService) GetCatalogueServiceTypes() (result []models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result, _, err = helpers.GetMultipleNodes[models.CatalogueServiceType](session, 0, 100, "")
+
+	return result, err
+}
+
+func (svc *CatalogueService) CreateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	// Ensure UID is set
+	if catalogueServiceType.Uid == "" {
+		catalogueServiceType.Uid = uuid.New().String()
+	}
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:CatalogueServiceType {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = catalogueServiceType.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *catalogueServiceType, models.CatalogueServiceType{}, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(catalogueServiceType.Uid, "CREATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *catalogueServiceType, err
+}
+
+func (svc *CatalogueService) UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	oldCatalogueServiceType, err := svc.GetCatalogueServiceTypeByUid(catalogueServiceType.Uid)
+
+	if err != nil {
+		return result, err
+	}
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:CatalogueServiceType {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = catalogueServiceType.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *catalogueServiceType, oldCatalogueServiceType, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(catalogueServiceType.Uid, "UPDATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *catalogueServiceType, err
+}
+
+func (svc *CatalogueService) DeleteCatalogueServiceType(uid string, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		helpers.SoftDeleteNodeQuery(uid),
+		helpers.HistoryLogQuery(uid, "DELETE", userUID))
+
+	return err
 }
