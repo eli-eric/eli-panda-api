@@ -14,6 +14,8 @@ const ROLE_SYSTEM_TYPES_EDIT string = "system-types-edit"
 const ROLE_CATALOGUE_VIEW string = "catalogue-view"
 const ROLE_CATALOGUE_EDIT string = "catalogue-edit"
 const ROLE_CATALOGUE_CATEGORY_EDIT string = "catalogue-category-edit"
+const ROLE_CATALOGUE_SERVICE_VIEW string = "catalogue-service-view"
+const ROLE_CATALOGUE_SERVICE_EDIT string = "catalogue-service-edit"
 
 // Orders
 const ROLE_ORDERS_VIEW string = "orders-view"

@@ -18,6 +18,198 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/v1/catalogue/service/type": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create catalogue service type",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue service type",
+                "parameters": [
+                    {
+                        "description": "Catalogue service type",
+                        "name": "catalogueServiceType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueServiceType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueServiceType"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/service/type/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get catalogue service type by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue service type by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueServiceType"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update catalogue service type",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue service type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Catalogue service type",
+                        "name": "catalogueServiceType",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueServiceType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueServiceType"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete catalogue service type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue service type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/service/types": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get catalogue service types",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue service types",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CatalogueServiceType"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/general/{uid}/graph": {
             "get": {
                 "security": [
@@ -259,6 +451,129 @@ const docTemplate = `{
                             "type": "array",
                             "items": {
                                 "$ref": "#/definitions/models.OrderLine"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/order/{uid}/serviceline/{serviceItemUid}/delivery": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update service line delivery status",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Update service line delivery",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Service Item UID",
+                        "name": "serviceItemUid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Service Line Delivery object",
+                        "name": "serviceLineDelivery",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceLineDelivery"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ServiceLine"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/order/{uid}/servicelines/delivery": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update multiple service line delivery status to delivered",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Update multiple service line delivery",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Service Item UIDs",
+                        "name": "serviceItemUids",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.ServiceLine"
                             }
                         }
                     },
@@ -1035,7 +1350,7 @@ const docTemplate = `{
                 "details": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.CatalogueItemDetail"
+                        "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
                     }
                 },
                 "lastUpdateTime": {
@@ -1064,16 +1379,27 @@ const docTemplate = `{
                 }
             }
         },
-        "models.CatalogueItemDetail": {
+        "models.CatalogueServiceType": {
             "type": "object",
             "properties": {
-                "property": {
-                    "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                "category": {
+                    "$ref": "#/definitions/models.Codebook"
                 },
-                "propertyGroup": {
+                "description": {
                     "type": "string"
                 },
-                "value": {}
+                "name": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                }
             }
         },
         "models.Codebook": {
@@ -1219,6 +1545,12 @@ const docTemplate = `{
                 },
                 "requestor": {
                     "$ref": "#/definitions/models.Codebook"
+                },
+                "serviceLines": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ServiceLine"
+                    }
                 },
                 "supplier": {
                     "$ref": "#/definitions/models.Codebook"
@@ -1525,6 +1857,61 @@ const docTemplate = `{
                 "yearOfPublication": {
                     "description": "yearOfPublication is the year of publication of the publication",
                     "type": "string"
+                }
+            }
+        },
+        "models.ServiceLine": {
+            "type": "object",
+            "properties": {
+                "currency": {
+                    "type": "string"
+                },
+                "deliveredTime": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
+                    }
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "isDelivered": {
+                    "type": "boolean"
+                },
+                "item": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "serviceType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ServiceLineDelivery": {
+            "type": "object",
+            "properties": {
+                "isDelivered": {
+                    "type": "boolean"
                 }
             }
         },
@@ -1941,6 +2328,18 @@ const docTemplate = `{
                 "volume": {
                     "type": "string"
                 }
+            }
+        },
+        "panda_apigateway_services_catalogue-service_models.CatalogueItemDetail": {
+            "type": "object",
+            "properties": {
+                "property": {
+                    "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                },
+                "propertyGroup": {
+                    "type": "string"
+                },
+                "value": {}
             }
         }
     },

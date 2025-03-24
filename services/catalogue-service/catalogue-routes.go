@@ -42,4 +42,15 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.GET("/v1/catalogue/item/:uid/statistics", m.Authorization(h.GetCatalogueItemStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
 	//get catalogue items overall statistics
 	e.GET("/v1/catalogue/items/statistics", m.Authorization(h.CatalogueItemsOverallStatistics(), shared.ROLE_CATALOGUE_VIEW), jwtMiddleware)
+	//get catalogue service type by uid
+	//TODO: add roles
+	e.GET("/v1/catalogue/service/type/:uid", m.Authorization(h.GetCatalogueServiceTypeByUid(), shared.ROLE_CATALOGUE_SERVICE_VIEW, shared.ROLE_CATALOGUE_SERVICE_EDIT), jwtMiddleware)
+	//get catalogue service types
+	e.GET("/v1/catalogue/service/types", m.Authorization(h.GetCatalogueServiceTypes(), shared.ROLE_CATALOGUE_SERVICE_VIEW, shared.ROLE_CATALOGUE_SERVICE_EDIT), jwtMiddleware)
+	//create catalogue service type
+	e.POST("/v1/catalogue/service/type", m.Authorization(h.CreateCatalogueServiceType(), shared.ROLE_CATALOGUE_SERVICE_EDIT), jwtMiddleware)
+	//update catalogue service type
+	e.PUT("/v1/catalogue/service/type/:uid", m.Authorization(h.UpdateCatalogueServiceType(), shared.ROLE_CATALOGUE_SERVICE_EDIT), jwtMiddleware)
+	//delete catalogue service type
+	e.DELETE("/v1/catalogue/service/type/:uid", m.Authorization(h.DeleteCatalogueServiceType(), shared.ROLE_CATALOGUE_SERVICE_EDIT), jwtMiddleware)
 }

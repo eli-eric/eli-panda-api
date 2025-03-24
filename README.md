@@ -99,3 +99,9 @@ Authorization error 401 Unauthorized
 Authentication error 403 Forbidden
 For methods not supported 405
 Generic server error 500
+
+### debug mod
+
+Ensure has installed dlv `go install github.com/go-delve/delve/cmd/dlv@latest`
+Run in debug mode: `swag init -g server.go && dlv debug . --build-flags "-tags=dev"`
+type `c` to continue and server in debug mode
