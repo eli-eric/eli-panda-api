@@ -286,6 +286,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		currency: sl.currency,
 		isDelivered: si.isDelivered,
 		deliveredTime: si.deliveredTime,
+		notes: si.notes,
 		lastUpdateTime: si.lastUpdateTime,
 		item: {uid: servitm.uid, name: servitm.name},
 		eun: servitm.eun,
@@ -826,6 +827,7 @@ func UpdateServiceLineDeliveryQuery(serviceItemUID string, isDelivered bool, ser
 			lastUpdateTime: sl.lastUpdateTime,
 			price: sl.price,
 			currency: sl.currency, 
+			notes: si.notes,
 			name: si.name, 
 			serviceType: CASE WHEN st IS NOT NULL THEN {uid: st.uid, name: st.name} ELSE NULL END,
 			item: CASE WHEN item IS NOT NULL THEN {uid: item.uid, name: item.name} ELSE NULL END
@@ -975,6 +977,7 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
     CREATE (si:ServiceItem { 
         uid: apoc.create.uuid(),
         name: $name,
+		notes: $notes,
         isDelivered: $isDelivered,
         deliveredTime: datetime(),
         lastUpdateTime: datetime(),
@@ -1025,6 +1028,7 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
 	result.Parameters["isDelivered"] = serviceLine.IsDelivered
 	result.Parameters["price"] = serviceLine.Price
 	result.Parameters["currency"] = serviceLine.Currency
+	result.Parameters["notes"] = serviceLine.Notes
 	result.Parameters["itemUID"] = serviceLine.Item.UID
 	result.Parameters["serviceTypeUID"] = serviceLine.ServiceType.UID
 	result.Parameters["lastUpdateBy"] = userUID
@@ -1043,6 +1047,7 @@ func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, fa
         si.isDelivered = $isDelivered,
         si.lastUpdateTime = datetime(),
         si.lastUpdateBy = $lastUpdateBy,
+        si.notes = $notes,
         sl.price = $price,
         sl.currency = $currency,
         sl.lastUpdateTime = datetime()
@@ -1056,6 +1061,7 @@ func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, fa
 	result.Parameters["name"] = serviceLine.Name
 	result.Parameters["price"] = serviceLine.Price
 	result.Parameters["currency"] = serviceLine.Currency
+	result.Parameters["notes"] = serviceLine.Notes
 	result.Parameters["isDelivered"] = serviceLine.IsDelivered
 	result.Parameters["lastUpdateBy"] = userUID
 	result.Parameters["orderUID"] = orderUID
