@@ -138,3 +138,11 @@ type SystemsMovement struct {
 	TargetParentSystemUid string   `json:"targetParentSystemUid"`
 	SystemsToMoveUids     []string `json:"systemsToMoveUids"`
 }
+
+type JiraSystemImportRequest struct {
+	Name            string `json:"name"`
+	Code            string `json:"code"`
+	ParentSystemUID string `json:"parentSystemUid"`
+	ZoneUID         string `json:"zoneUid"`
+	SystemTypeUID   string `json:"systemTypeUid"`
+}

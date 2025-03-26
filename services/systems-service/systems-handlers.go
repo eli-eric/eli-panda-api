@@ -24,6 +24,7 @@ type ISystemsHandlers interface {
 	GetSystemImageByUid() echo.HandlerFunc
 	GetSystemDetail() echo.HandlerFunc
 	CreateNewSystem() echo.HandlerFunc
+	CreateNewSystemFromJira() echo.HandlerFunc
 	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
@@ -143,6 +144,34 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return helpers.BadRequest(err.Error())
+	}
+}
+
+func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+		userRoles := c.Get("userRoles").([]string)
+
+		request := new(models.JiraSystemImportRequest)
+		err := c.Bind(request)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
+		}
+
+		result, err := h.systemsService.CreateNewSystemFromJira(facilityCode, userUID, userRoles, request)
+
+		if err == nil {
+			return c.String(http.StatusCreated, result)
+		}
+
+		if strings.Contains(err.Error(), "system code already exists") {
+			return c.String(http.StatusBadRequest, err.Error())
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
 	}
 }
 

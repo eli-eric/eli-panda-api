@@ -35,6 +35,7 @@ type ISystemsService interface {
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
 	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
+	CreateNewSystemFromJira(facilityCode string, userUID string, userRoles []string, request *models.JiraSystemImportRequest) (result string, err error)
 	UpdateSystem(newSystem *models.System, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
@@ -190,6 +191,26 @@ func (svc *SystemsService) CreateNewSystem(system *models.System, facilityCode s
 	// }
 
 	return uid, err
+}
+
+func (svc *SystemsService) CreateNewSystemFromJira(facilityCode string, userUID string, userRoles []string, request *models.JiraSystemImportRequest) (result string, err error) {
+
+	// check if system code already exists
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	exists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, checkSystemCodeExistsQuery(request.Code))
+
+	if err != nil {
+		return "", err
+	}
+
+	if exists {
+		return "", fmt.Errorf("system code already exists")
+	}
+
+	// create new system
+	result, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, CreateNewSystemFromJiraQuery(request, facilityCode, userUID))
+
+	return result, err
 }
 
 func (svc *SystemsService) UpdateSystem(system *models.System, facilityCode string, userUID string) (err error) {
