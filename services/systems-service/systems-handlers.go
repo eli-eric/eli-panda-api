@@ -195,7 +195,7 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 			return c.String(http.StatusCreated, result)
 		}
 
-		if strings.Contains(err.Error(), "system code already exists") {
+		if err == helpers.ERR_DUPLICATE_SYSTEM_CODE {
 			return c.String(http.StatusBadRequest, err.Error())
 		}
 

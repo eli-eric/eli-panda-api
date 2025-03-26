@@ -198,6 +198,7 @@ func (svc *SystemsService) CreateNewSystemFromJira(facilityCode string, userUID 
 	// check if system code already exists
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	exists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, checkSystemCodeExistsQuery(request.Code))
+	defer session.Close()
 
 	if err != nil {
 		return "", err
