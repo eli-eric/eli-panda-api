@@ -204,7 +204,7 @@ func (svc *SystemsService) CreateNewSystemFromJira(facilityCode string, userUID 
 	}
 
 	if exists {
-		return "", fmt.Errorf("system code already exists")
+		return "", helpers.ERR_DUPLICATE_SYSTEM_CODE
 	}
 
 	// create new system
