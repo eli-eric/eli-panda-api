@@ -150,6 +150,19 @@ definitions:
       serialNumber:
         type: string
     type: object
+  models.JiraSystemImportRequest:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      parentSystemUid:
+        type: string
+      systemTypeUid:
+        type: string
+      zoneUid:
+        type: string
+    type: object
   models.OrderDetail:
     properties:
       contractNumber:
@@ -1326,6 +1339,70 @@ paths:
       summary: Get publications as CSV
       tags:
       - Publications
+  /v1/system:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new system with the given details
+      parameters:
+      - description: System details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.System'
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: Returns the UID of the created system
+          schema:
+            type: string
+        "400":
+          description: Bad request - missing required fields
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create new system
+      tags:
+      - Systems
+  /v1/system/jira-import:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new system using data from a Jira import request
+      parameters:
+      - description: Jira system import data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.JiraSystemImportRequest'
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: Returns the UID of the created system
+          schema:
+            type: string
+        "400":
+          description: Bad request - invalid input or system code already exists
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Create new system from Jira import request
+      tags:
+      - Systems
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type
