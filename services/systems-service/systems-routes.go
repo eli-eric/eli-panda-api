@@ -19,6 +19,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.GET("/v1/system/:uid/image", m.Authorization(h.GetSystemImageByUid(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	e.POST("/v1/system", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/system/jira-import", m.Authorization(h.CreateNewSystemFromJira(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 	// get system detail by uid
 	e.GET("/v1/system/:uid", m.Authorization(h.GetSystemDetail(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 	//save new system/sub-system

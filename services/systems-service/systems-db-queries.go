@@ -745,6 +745,8 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order)
+	
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
@@ -773,7 +775,9 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
-		price: physicalItem.price,
+		orderNumber: case when order is not null then order.orderNumber else null end,
+	    orderUid: case when order is not null then order.uid else null end,
+		price: case when ol is not null then apoc.number.format(ol.price, '#,##0') else null end,
 		currency: physicalItem.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
 		catalogueItem: case when catalogueItem is not null then {
@@ -1901,5 +1905,57 @@ func MoveSystemsQuery(movementInfo *models.SystemsMovement, userUID string) (res
 	result.Parameters["newParentUID"] = movementInfo.TargetParentSystemUid
 	result.Parameters["systemsToMoveUids"] = movementInfo.SystemsToMoveUids
 	result.Parameters["userUID"] = userUID
+	return result
+}
+
+func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["name"] = request.Name
+	result.Parameters["systemCode"] = request.Code
+	result.Parameters["lastUpdateBy"] = userUID
+	result.Parameters["zoneUID"] = request.ZoneUID
+	result.Parameters["systemTypeUID"] = request.SystemTypeUID
+	result.Parameters["parentSystemUID"] = request.ParentSystemUID
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode}) 
+	MATCH(u:User{uid: $lastUpdateBy}) 
+	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(st:SystemType{uid: $systemTypeUID})
+	MATCH(parent:System{uid: $parentSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	WITH DISTINCT f, u, z, st, parent
+	
+	MERGE(s:System{systemCode: $systemCode})
+	ON CREATE SET 
+		s.uid = apoc.create.uuid(),
+		s.name = $name,
+		s.systemLevel = "SUBSYSTEMS_AND_PARTS",
+		s.deleted = false,
+		s.lastUpdateTime = datetime(),
+		s.lastUpdatedBy = u.lastName + " " + u.firstName
+	WITH DISTINCT s, f, z, st, parent, u
+	
+	MERGE(s)-[:BELONGS_TO_FACILITY]->(f)
+	MERGE(s)-[:HAS_ZONE]->(z)
+	MERGE(s)-[:HAS_SYSTEM_TYPE]->(st)
+	MERGE(parent)-[:HAS_SUBSYSTEM]->(s)
+	
+	WITH DISTINCT s, u
+	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	
+	WITH DISTINCT s
+	RETURN s.uid as result`
+
+	result.ReturnAlias = "result"
+
+	return result
+}
+
+func checkSystemCodeExistsQuery(systemCode string) (result helpers.DatabaseQuery) {
+	result.Query = `MATCH (s:System{deleted: false}) WHERE toLower(s.systemCode) = $systemCode RETURN count(s) > 0 as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemCode"] = strings.ToLower(systemCode)
 	return result
 }
