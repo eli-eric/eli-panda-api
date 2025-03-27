@@ -1949,9 +1949,9 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 }
 
 func checkSystemCodeExistsQuery(systemCode string) (result helpers.DatabaseQuery) {
-	result.Query = `MATCH (s:System{systemCode: $systemCode, deleted: false}) RETURN count(s) > 0 as result`
+	result.Query = `MATCH (s:System{deleted: false}) WHERE toLower(s.systemCode) = $systemCode RETURN count(s) > 0 as result`
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
-	result.Parameters["systemCode"] = systemCode
+	result.Parameters["systemCode"] = strings.ToLower(systemCode)
 	return result
 }
