@@ -745,6 +745,8 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order)
+	
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
@@ -773,7 +775,9 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
 		serialNumber: physicalItem.serialNumber,
-		price: physicalItem.price,
+		orderNumber: case when order is not null then order.orderNumber else null end,
+	    orderUid: case when order is not null then order.uid else null end,
+		price: case when ol is not null then apoc.number.format(ol.price, '#,##0') else null end,
 		currency: physicalItem.currency,
 		itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
 		catalogueItem: case when catalogueItem is not null then {
