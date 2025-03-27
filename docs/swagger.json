@@ -977,6 +977,108 @@
                 }
             }
         },
+        "/v1/system": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new system with the given details",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create new system",
+                "parameters": [
+                    {
+                        "description": "System details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.System"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns the UID of the created system",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - missing required fields",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/system/jira-import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new system using data from a Jira import request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create new system from Jira import request",
+                "parameters": [
+                    {
+                        "description": "Jira system import data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.JiraSystemImportRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Returns the UID of the created system",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid input or system code already exists",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/system/system-code": {
             "post": {
                 "security": [
@@ -1500,6 +1602,26 @@
                     "type": "integer"
                 },
                 "serialNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.JiraSystemImportRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentSystemUid": {
+                    "type": "string"
+                },
+                "systemTypeUid": {
+                    "type": "string"
+                },
+                "zoneUid": {
                     "type": "string"
                 }
             }

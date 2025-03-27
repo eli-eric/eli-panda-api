@@ -24,6 +24,7 @@ type ISystemsHandlers interface {
 	GetSystemImageByUid() echo.HandlerFunc
 	GetSystemDetail() echo.HandlerFunc
 	CreateNewSystem() echo.HandlerFunc
+	CreateNewSystemFromJira() echo.HandlerFunc
 	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
@@ -119,6 +120,18 @@ func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
 	}
 }
 
+// Swagger documentation for CreateNewSystem
+// @Summary Create new system
+// @Description Creates a new system with the given details
+// @Tags Systems
+// @Accept json
+// @Produce plain
+// @Security BearerAuth
+// @Param body body models.System true "System details"
+// @Success 201 {string} string "Returns the UID of the created system"
+// @Failure 400 {string} string "Bad request - missing required fields"
+// @Failure 500 {string} string "Internal server error"
+// @Router /v1/system [post]
 func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -143,6 +156,51 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return helpers.BadRequest(err.Error())
+	}
+}
+
+// Swagger documentation for CreateNewSystemFromJira
+// @Summary Create new system from Jira import request
+// @Description Creates a new system using data from a Jira import request
+// @Tags Systems
+// @Accept json
+// @Produce plain
+// @Security BearerAuth
+// @Param body body models.JiraSystemImportRequest true "Jira system import data"
+// @Success 201 {string} string "Returns the UID of the created system"
+// @Failure 400 {string} string "Bad request - invalid input or system code already exists"
+// @Failure 500 {string} string "Internal server error"
+// @Router /v1/system/jira-import [post]
+func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+		
+		// Safely get userRoles with a default empty slice
+		var userRoles []string
+		if roles, ok := c.Get("userRoles").([]string); ok {
+			userRoles = roles
+		}
+
+		request := new(models.JiraSystemImportRequest)
+		err := c.Bind(request)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
+		}
+
+		result, err := h.systemsService.CreateNewSystemFromJira(facilityCode, userUID, userRoles, request)
+
+		if err == nil {
+			return c.String(http.StatusCreated, result)
+		}
+
+		if err == helpers.ERR_DUPLICATE_SYSTEM_CODE {
+			return c.String(http.StatusBadRequest, err.Error())
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
 	}
 }
 
