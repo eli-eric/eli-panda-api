@@ -268,6 +268,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 			property: {
 				uid: prop.uid,
 				name: prop.name,
+				listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
 				type: {
 					uid: propType.uid,
 					name: propType.name,
@@ -1004,7 +1005,7 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
 		for i, detail := range serviceLine.Details {
 			propertyUIDs[i] = detail.Property.UID
 
-			// Převod range hodnot na JSON string
+			// Convert range values to JSON string
 			if detail.Property.Type.Code == "range" {
 				if jsonValue, err := json.Marshal(detail.Value); err == nil {
 					details[i] = map[string]interface{}{
@@ -1053,7 +1054,37 @@ func UpdateServiceLineQuery(orderUID string, serviceLine *models.ServiceLine, fa
         sl.lastUpdateTime = datetime()
     WITH si
     MATCH (st:CatalogueServiceType{uid: $serviceTypeUID})
-    MERGE (si)-[:IS_BASED_ON]->(st)
+    MERGE (si)-[:IS_BASED_ON]->(st)`
+
+	if len(serviceLine.Details) > 0 {
+		result.Query += `
+        WITH si
+        UNWIND $propertyDetails as detail
+        WITH si, detail
+        MATCH (si)-[r:HAS_CATALOGUE_PROPERTY]->(cp:CatalogueCategoryProperty{uid: detail.propertyUid})
+        SET r.value = detail.value`
+
+		details := make([]map[string]interface{}, len(serviceLine.Details))
+		for i, detail := range serviceLine.Details {
+			// Convert range values to JSON string
+			if detail.Property.Type.Code == "range" {
+				if jsonValue, err := json.Marshal(detail.Value); err == nil {
+					details[i] = map[string]interface{}{
+						"propertyUid": detail.Property.UID,
+						"value":       string(jsonValue),
+					}
+				}
+			} else {
+				details[i] = map[string]interface{}{
+					"propertyUid": detail.Property.UID,
+					"value":       detail.Value,
+				}
+			}
+		}
+		result.Parameters["propertyDetails"] = details
+	}
+
+	result.Query += `
     RETURN si.uid as uid`
 
 	result.ReturnAlias = "uid"
