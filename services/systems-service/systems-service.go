@@ -127,12 +127,8 @@ func (svc *SystemsService) GetItemConditionsCodebook() (result []codebookModels.
 func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	if searchText != "" {
-		query := GetLocationsBySearchTextQuery(searchText, limit, facilityCode)
-		result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
-	} else {
-		result = make([]codebookModels.Codebook, 0)
-	}
+	query := GetLocationsBySearchTextQuery(searchText, limit, facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
 }

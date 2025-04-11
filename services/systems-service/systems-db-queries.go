@@ -52,7 +52,7 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 	result.Query = `
 	MATCH (n:Location)-[:BELONGS_TO_FACILITY]->(f) where f.code = $facilityCode and n.code is not null and not (n)-[:HAS_SUBLOCATION]->()
 	with n 
-	where (toLower(n.code) contains $searchText or toLower(n.name) contains $searchText) 
+	where $searchText = '' or ((toLower(n.code) contains $searchText or toLower(n.name) contains $searchText))
 	optional match (parent)-[:HAS_SUBLOCATION*1..50]->(n) 
 	with n, collect(parent.name) as parentNames
 	return {uid: n.uid, name: n.code + " - " +  n.name + " - " + apoc.text.join(reverse(parentNames), " > ")} as result
