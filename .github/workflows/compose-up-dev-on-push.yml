@@ -7,13 +7,13 @@ on:
 
 jobs:
   use-secret:
-    runs-on: [self-hosted, czol-ap04]
+    runs-on: czechia-server
     steps:
       - name: Show secret stats
         run: |
           echo "${{ secrets.API_JWT_SECRET }}" | echo "${{ secrets.NEO4J_PASSWORD }}" | echo "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}" | echo "${{ secrets.API_INTEGRATION_B_WOS_STARTER_API_KEY }}" || wc
   compose-up:
-    runs-on: [self-hosted, czol-ap04]
+    runs-on: czechia-server
     needs: use-secret
     steps:
       - uses: actions/checkout@v3
