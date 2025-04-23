@@ -40,4 +40,4 @@ services:
       - "traefik.docker.network=panda-net-proxy"  # this has to be here if container has multiple networks!
       - "traefik.http.routers.panda-api-dev.rule=Host(`panda-api.dev.eli-laser.eu`)"
       - "traefik.http.routers.panda-api-dev.entrypoints=web,websecure"
-      - "traefik.http.routers.panda-api-dev.tls.certResolver=laser-http-staging"
+      - "traefik.http.routers.panda-api-dev.tls.certResolver=laser-http-prod"
