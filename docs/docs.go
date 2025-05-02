@@ -1615,6 +1615,12 @@ const docTemplate = `{
                 "code": {
                     "type": "string"
                 },
+                "linkName": {
+                    "type": "string"
+                },
+                "linkUrl": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
