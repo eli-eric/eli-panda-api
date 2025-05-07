@@ -1913,6 +1913,7 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["name"] = request.Name
 	result.Parameters["systemCode"] = request.Code
+	result.Parameters["description"] = request.Description
 	result.Parameters["lastUpdateBy"] = userUID
 	result.Parameters["zoneUID"] = request.ZoneUID
 	result.Parameters["systemTypeUID"] = request.SystemTypeUID
@@ -1932,6 +1933,7 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	ON CREATE SET 
 		s.uid = apoc.create.uuid(),
 		s.name = $name,
+    s.description = $description,
 		s.systemLevel = "SUBSYSTEMS_AND_PARTS",
 		s.deleted = false,
 		s.lastUpdateTime = datetime(),

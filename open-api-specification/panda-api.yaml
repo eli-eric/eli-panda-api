@@ -154,6 +154,8 @@ definitions:
     properties:
       code:
         type: string
+      description:
+        type: string
       linkName:
         type: string
       linkUrl:

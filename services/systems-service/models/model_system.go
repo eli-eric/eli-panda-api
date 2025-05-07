@@ -143,6 +143,7 @@ type JiraSystemImportRequest struct {
 	Name            string `json:"name"`
 	Code            string `json:"code"`
 	ParentSystemUID string `json:"parentSystemUid"`
+	Description     string `json:"description"`
 	LinkUrl         string `json:"linkUrl"`
 	LinkName        string `json:"linkName"`
 	ZoneUID         string `json:"zoneUid"`
