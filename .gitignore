@@ -16,8 +16,12 @@
 apigateway
 config.json
 
+# AI tools
+CLAUDE.md
+
 # Enviroment variables
 .env
+*.local.*
 
 db/neo4j/dev-instance/data
 db/neo4j/dev-instance/logs

@@ -1913,10 +1913,13 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["name"] = request.Name
 	result.Parameters["systemCode"] = request.Code
+	result.Parameters["description"] = request.Description
 	result.Parameters["lastUpdateBy"] = userUID
 	result.Parameters["zoneUID"] = request.ZoneUID
 	result.Parameters["systemTypeUID"] = request.SystemTypeUID
 	result.Parameters["parentSystemUID"] = request.ParentSystemUID
+	result.Parameters["linkUrl"] = request.LinkUrl
+	result.Parameters["linkName"] = request.LinkName
 
 	result.Query = `
 	MATCH(f:Facility{code: $facilityCode}) 
@@ -1930,6 +1933,7 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	ON CREATE SET 
 		s.uid = apoc.create.uuid(),
 		s.name = $name,
+    s.description = $description,
 		s.systemLevel = "SUBSYSTEMS_AND_PARTS",
 		s.deleted = false,
 		s.lastUpdateTime = datetime(),
@@ -1944,7 +1948,17 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	WITH DISTINCT s, u
 	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
 	
+	// Create file link for JIRA if URL is provided
 	WITH DISTINCT s
+	FOREACH (ignoreMe IN CASE WHEN $linkUrl <> "" AND $linkName <> "" THEN [1] ELSE [] END |
+		CREATE(fl:FileLink{ 
+			uid: apoc.create.uuid(), 
+			name: $linkName, 
+			url: $linkUrl, 
+			tags: "jira" })
+		CREATE(s)-[:HAS_FILE_LINK{createdAt: datetime()}]->(fl)
+	)
+	
 	RETURN s.uid as result`
 
 	result.ReturnAlias = "result"
