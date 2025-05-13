@@ -956,7 +956,7 @@ func CatalogueCategoriesTreeQuery(search string) (result helpers.DatabaseQuery) 
 	MATCH (parentCat:CatalogueCategory)
 	WHERE NOT (parentCat)<-[:HAS_SUBCATEGORY]-()
 	WITH parentCat
-	OPTIONAL MATCH path = (parentCat)-[:HAS_SUBCATEGORY*1..50]->(children)
+	OPTIONAL MATCH path = (parentCat)-[:HAS_SUBCATEGORY*0..50]->(children)
 	WHERE toLower(parentCat.name) contains $search or toLower(children.name) contains $search
 	WITH collect(path) AS paths
 	CALL apoc.convert.toTree(paths, true, {
