@@ -27,6 +27,7 @@ type IPublicationsHandlers interface {
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
 	GetPublicationsAsCsv() echo.HandlerFunc
+	ExportRivXml() echo.HandlerFunc
 }
 
 // NewPublicationsHandlers General handlers constructor
@@ -423,6 +424,28 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				item.Uid})
 		}
 
+		return nil
+	}
+}
+
+// ExportRivXml Export publications as RIV XML 2025 (stub)
+func (h *PublicationsHandlers) ExportRivXml() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		c.Response().Header().Set(echo.HeaderContentType, "application/xml")
+		fileName := "riv-export-" + time.Now().Format("2006-01-02-15-04-05") + ".xml"
+		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename="+fileName)
+
+		publications, _, err := h.PublicationsService.GetPublications("", 1, 1000000)
+		if err != nil {
+			return echo.ErrInternalServerError
+		}
+
+		xml, err := GenerateRivXml(publications)
+		if err != nil {
+			return echo.ErrInternalServerError
+		}
+
+		_, _ = c.Response().Write([]byte(xml))
 		return nil
 	}
 }

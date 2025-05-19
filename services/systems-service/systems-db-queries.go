@@ -1922,44 +1922,49 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	result.Parameters["linkName"] = request.LinkName
 
 	result.Query = `
-	MATCH(f:Facility{code: $facilityCode}) 
-	MATCH(u:User{uid: $lastUpdateBy}) 
-	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(st:SystemType{uid: $systemTypeUID})
-	MATCH(parent:System{uid: $parentSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
-	WITH DISTINCT f, u, z, st, parent
-	
-	MERGE(s:System{systemCode: $systemCode})
-	ON CREATE SET 
-		s.uid = apoc.create.uuid(),
-		s.name = $name,
-    s.description = $description,
-		s.systemLevel = "SUBSYSTEMS_AND_PARTS",
-		s.deleted = false,
-		s.lastUpdateTime = datetime(),
-		s.lastUpdatedBy = u.lastName + " " + u.firstName
-	WITH DISTINCT s, f, z, st, parent, u
-	
-	MERGE(s)-[:BELONGS_TO_FACILITY]->(f)
-	MERGE(s)-[:HAS_ZONE]->(z)
-	MERGE(s)-[:HAS_SYSTEM_TYPE]->(st)
-	MERGE(parent)-[:HAS_SUBSYSTEM]->(s)
-	
-	WITH DISTINCT s, u
-	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
-	
-	// Create file link for JIRA if URL is provided
-	WITH DISTINCT s
-	FOREACH (ignoreMe IN CASE WHEN $linkUrl <> "" AND $linkName <> "" THEN [1] ELSE [] END |
-		CREATE(fl:FileLink{ 
-			uid: apoc.create.uuid(), 
-			name: $linkName, 
-			url: $linkUrl, 
-			tags: "jira" })
-		CREATE(s)-[:HAS_FILE_LINK{createdAt: datetime()}]->(fl)
-	)
-	
-	RETURN s.uid as result`
+MATCH(f:Facility{code: $facilityCode}) 
+MATCH(u:User{uid: $lastUpdateBy}) 
+MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
+MATCH(st:SystemType{uid: $systemTypeUID})
+MATCH(parent:System{uid: $parentSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+WITH DISTINCT f, u, z, st, parent
+
+OPTIONAL MATCH(s:System{systemCode: $systemCode})
+WHERE s IS NULL OR s.deleted = true
+WITH DISTINCT f, u, z, st, parent, s
+CALL {
+    WITH f, u, z, st, parent
+    CREATE (newSystem:System {
+        uid: apoc.create.uuid(),
+        name: $name,
+        description: $description,
+        systemCode: $systemCode,
+        systemLevel: "SUBSYSTEMS_AND_PARTS",
+        deleted: false,
+        lastUpdateTime: datetime(),
+        lastUpdatedBy: u.lastName + " " + u.firstName
+    })
+    MERGE (newSystem)-[:BELONGS_TO_FACILITY]->(f)
+    MERGE (newSystem)-[:HAS_ZONE]->(z)
+    MERGE (newSystem)-[:HAS_SYSTEM_TYPE]->(st)
+    MERGE (parent)-[:HAS_SUBSYSTEM]->(newSystem)
+    RETURN newSystem AS createdSystem
+}
+WITH DISTINCT createdSystem AS s, u
+CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+
+// Create file link for JIRA if URL is provided
+WITH DISTINCT s
+FOREACH (ignoreMe IN CASE WHEN $linkUrl <> "" AND $linkName <> "" THEN [1] ELSE [] END |
+    CREATE(fl:FileLink{ 
+        uid: apoc.create.uuid(), 
+        name: $linkName, 
+        url: $linkUrl, 
+        tags: "jira" })
+    CREATE(s)-[:HAS_FILE_LINK{createdAt: datetime()}]->(fl)
+)
+
+RETURN s.uid as result`
 
 	result.ReturnAlias = "result"
 

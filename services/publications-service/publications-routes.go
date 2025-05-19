@@ -21,4 +21,6 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 	e.DELETE("/v1/publication/:uid", m.Authorization(h.DeletePublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/publication/wos/:doi", m.Authorization(h.GetWosDataByDoi(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
+	// Export RIV XML
+	e.GET("/v1/publications/export-riv-xml", m.Authorization(h.ExportRivXml(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
 }
