@@ -238,14 +238,27 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
 
+		// first check if there are systems with physical items
+		itemsInfo, err := h.systemsService.GetPhysicalItemsBySystemUidRecursive(uid)
+
+		if err != nil {
+			log.Err(err).Msg("GetPhysicalItemsBySystemUidRecursive")
+			return echo.ErrInternalServerError
+		}
+
+		// if there are some connected physical items return confiltc http error and related items and systems
+		if len(itemsInfo) > 0 {
+			return c.JSON(409, itemsInfo)
+		}
+
 		// get catalogue item
-		err := h.systemsService.DeleteSystemRecursive(uid, userUid)
+		err = h.systemsService.DeleteSystemRecursive(uid, userUid)
 
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
 		}
 
-		log.Err(err).Msg("DeleteSystemRecursiveError")
+		log.Err(err).Msg("DeleteSystemRecursive")
 		return echo.ErrInternalServerError
 	}
 }

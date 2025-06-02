@@ -272,6 +272,24 @@ func DeleteSystemByUidQuery(uid, userUid string) (result helpers.DatabaseQuery) 
 	return result
 }
 
+func GetPhysicalItemsBySystemUidRecursiveQuery(systemUid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(s:System) WHERE s.uid = $systemUid WITH s
+	OPTIONAL MATCH (s)-[:HAS_SUBSYSTEM*1..50]->(subs)
+	WITH collect(s.uid) as ss, collect(subs.uid) as subss
+	WITH ss + subss as sUids
+	OPTIONAL MATCH(systems:System)-[:CONTAINS_ITEM]->(itm) WHERE systems.uid in sUids
+	RETURN CASE WHEN systems IS NULL THEN NULL ELSE { systemUid: systems.uid, itemUid: itm.uid, systemName: systems.name, itemName: itm.name } END as result;
+	`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUid"] = systemUid
+	result.ReturnAlias = "result"
+
+	return result
+}
+
 func GetSystemsForAutocomplete(search string, limit int, facilityCode string, onlyTechnologicalUnits bool) (result helpers.DatabaseQuery) {
 
 	if onlyTechnologicalUnits {

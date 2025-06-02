@@ -71,6 +71,7 @@ type ISystemsService interface {
 	MovePhysicalItem(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 	ReplacePhysicalItems(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 	MoveSystems(movement *models.SystemsMovement, userUID string) (destinationSystemUid string, err error)
+	GetPhysicalItemsBySystemUidRecursive(systemUid string) (result []models.SystemPhysicalItemInfo, err error)
 }
 
 // Create new security service instance
@@ -245,6 +246,17 @@ func (svc *SystemsService) DeleteSystemRecursive(uid, userUid string) (err error
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
+}
+
+func (svc *SystemsService) GetPhysicalItemsBySystemUidRecursive(systemUid string) (result []models.SystemPhysicalItemInfo, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetPhysicalItemsBySystemUidRecursiveQuery(systemUid)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemPhysicalItemInfo](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
 }
 
 func (svc *SystemsService) GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error) {

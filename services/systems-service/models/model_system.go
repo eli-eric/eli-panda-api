@@ -149,3 +149,10 @@ type JiraSystemImportRequest struct {
 	ZoneUID         string `json:"zoneUid"`
 	SystemTypeUID   string `json:"systemTypeUid"`
 }
+
+type SystemPhysicalItemInfo struct {
+	SystemUid  string `json:"systemUid"`
+	SystemName string `json:"systemName"`
+	ItemUid    string `json:"itemUid"`
+	ItemName   string `json:"itemName"`
+}
