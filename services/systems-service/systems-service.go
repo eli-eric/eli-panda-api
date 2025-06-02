@@ -37,7 +37,7 @@ type ISystemsService interface {
 	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
 	CreateNewSystemFromJira(facilityCode string, userUID string, userRoles []string, request *models.JiraSystemImportRequest) (result string, err error)
 	UpdateSystem(newSystem *models.System, facilityCode string, userUID string) (err error)
-	DeleteSystemRecursive(uid string) (err error)
+	DeleteSystemRecursive(uid, userUid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
 	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
@@ -237,11 +237,11 @@ func (svc *SystemsService) UpdateSystem(system *models.System, facilityCode stri
 	return err
 }
 
-func (svc *SystemsService) DeleteSystemRecursive(uid string) (err error) {
+func (svc *SystemsService) DeleteSystemRecursive(uid, userUid string) (err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := DeleteSystemByUidQuery(uid)
+	query := DeleteSystemByUidQuery(uid, userUid)
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err

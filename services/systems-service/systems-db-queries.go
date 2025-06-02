@@ -254,15 +254,20 @@ func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facil
 	return result
 }
 
-func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
+func DeleteSystemByUidQuery(uid, userUid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH(r:System) WHERE r.uid = $uid WITH r
 	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child)
 	WITH r, child, r.uid as uid
-	SET r.deleted=true, child.deleted=true`
+	SET r.deleted=true, child.deleted=true
+	WITH r, child
+	MATCH(u:User{uid: $userUID})
+	CREATE(r)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
+	CREATE(child)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)`
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
+	result.Parameters["userUID"] = userUid
 
 	return result
 }
