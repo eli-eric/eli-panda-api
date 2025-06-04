@@ -1733,6 +1733,12 @@ const docTemplate = `{
                 "serialNumber": {
                     "type": "string"
                 },
+                "serviceItemName": {
+                    "type": "string"
+                },
+                "serviceOrderUid": {
+                    "type": "string"
+                },
                 "system": {
                     "$ref": "#/definitions/models.Codebook"
                 },

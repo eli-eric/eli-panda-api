@@ -237,10 +237,14 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
 	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
-	WITH o, s,os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
+	WITH o, s, os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
 	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
+	// Add this part to get service item information for physical items
+	OPTIONAL MATCH (itm)-[:IS_SERVICED_BY]->(serviceItem:ServiceItem)
+	OPTIONAL MATCH (serviceOrder:Order)-[:HAS_SERVICE_LINE]->(serviceItem)
+	WITH o, s, os, req, proc, itm, ci, ol, parentSystem, loc, itemUsage, serviceItem, serviceOrder
 	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
 		price: ol.price,
 		currency: ol.currency, 
@@ -255,7 +259,10 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 		catalogueUid: ci.uid, 		
 		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
 		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
-		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END   }) ELSE NULL END as orderLines
+		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END,
+		serviceItemName: CASE WHEN serviceItem IS NOT NULL THEN serviceItem.name ELSE NULL END,
+		serviceOrderUid: CASE WHEN serviceOrder IS NOT NULL THEN serviceOrder.uid ELSE NULL END
+	}) ELSE NULL END as orderLines
 
 	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
 	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
