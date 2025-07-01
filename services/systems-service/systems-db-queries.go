@@ -254,15 +254,38 @@ func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facil
 	return result
 }
 
-func DeleteSystemByUidQuery(uid string) (result helpers.DatabaseQuery) {
+func DeleteSystemByUidQuery(uid, userUid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH(r:System) WHERE r.uid = $uid WITH r
 	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child)
 	WITH r, child, r.uid as uid
-	SET r.deleted=true, child.deleted=true`
+	SET r.deleted=true, child.deleted=true
+	WITH r, child
+	MATCH(u:User{uid: $userUID})
+	CREATE(r)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
+	CREATE(child)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)`
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
+	result.Parameters["userUID"] = userUid
+
+	return result
+}
+
+func GetPhysicalItemsBySystemUidRecursiveQuery(systemUid string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(s:System) WHERE s.uid = $systemUid WITH s
+	OPTIONAL MATCH (s)-[:HAS_SUBSYSTEM*1..50]->(subs)
+	WITH collect(s.uid) as ss, collect(subs.uid) as subss
+	WITH ss + subss as sUids
+	OPTIONAL MATCH(systems:System)-[:CONTAINS_ITEM]->(itm) WHERE systems.uid in sUids
+	RETURN CASE WHEN systems IS NULL THEN NULL ELSE { systemUid: systems.uid, itemUid: itm.uid, systemName: systems.name, itemName: itm.name } END as result;
+	`
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUid"] = systemUid
+	result.ReturnAlias = "result"
 
 	return result
 }

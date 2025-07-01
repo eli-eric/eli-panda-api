@@ -175,7 +175,7 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		facilityCode := c.Get("facilityCode").(string)
 		userUID := c.Get("userUID").(string)
-		
+
 		// Safely get userRoles with a default empty slice
 		var userRoles []string
 		if roles, ok := c.Get("userRoles").([]string); ok {
@@ -236,14 +236,29 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 
 		//get uid path param
 		uid := c.Param("uid")
+		userUid := c.Get("userUID").(string)
+
+		// first check if there are systems with physical items
+		itemsInfo, err := h.systemsService.GetPhysicalItemsBySystemUidRecursive(uid)
+
+		if err != nil {
+			log.Err(err).Msg("GetPhysicalItemsBySystemUidRecursive")
+			return echo.ErrInternalServerError
+		}
+
+		// if there are some connected physical items return confiltc http error and related items and systems
+		if len(itemsInfo) > 0 {
+			return c.JSON(409, itemsInfo)
+		}
 
 		// get catalogue item
-		err := h.systemsService.DeleteSystemRecursive(uid)
+		err = h.systemsService.DeleteSystemRecursive(uid, userUid)
 
 		if err == nil {
 			return c.NoContent(http.StatusNoContent)
 		}
 
+		log.Err(err).Msg("DeleteSystemRecursive")
 		return echo.ErrInternalServerError
 	}
 }

@@ -169,6 +169,21 @@ definitions:
       zoneUid:
         type: string
     type: object
+  models.LayoutRoomCard:
+    properties:
+      location:
+        $ref: '#/definitions/models.Codebook'
+      name:
+        type: string
+      purityClass:
+        type: string
+      status:
+        type: string
+      statusColor:
+        type: string
+      uid:
+        type: string
+    type: object
   models.OrderDetail:
     properties:
       contractNumber:
@@ -231,6 +246,10 @@ definitions:
       price:
         type: number
       serialNumber:
+        type: string
+      serviceItemName:
+        type: string
+      serviceOrderUid:
         type: string
       system:
         $ref: '#/definitions/models.Codebook'
@@ -1345,6 +1364,51 @@ paths:
       summary: Get publications as CSV
       tags:
       - Publications
+  /v1/room-card/layout/location/{code}:
+    get:
+      description: |-
+        Get room card layout information for external systems to display scientific complex layout
+
+        Status values:
+        - DIRTY_MODE: Room is dirty and needs cleaning
+        - CLEAN_MODE: Room is clean and ready for use
+        - IN_PREPARATION_MODE: Room is being prepared for use
+
+        PurityClass values (ISO standards):
+        - ISO_5: ISO Class 5 cleanroom
+        - ISO_6: ISO Class 6 cleanroom
+        - ISO_7: ISO Class 7 cleanroom
+        - ISO_8: ISO Class 8 cleanroom
+
+        StatusColor values (automatically assigned based on status):
+        - DIRTY_MODE: #fecaca (light red)
+        - CLEAN_MODE: #d9f99d (light green)
+        - IN_PREPARATION_MODE: #fdba74 (light orange)
+        - Unknown status: #808080 (gray)
+      parameters:
+      - description: Location code
+        in: path
+        name: code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.LayoutRoomCard'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get room card layout info by location code
+      tags:
+      - Room Cards
   /v1/system:
     post:
       consumes:

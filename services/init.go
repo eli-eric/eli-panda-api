@@ -9,6 +9,7 @@ import (
 	"panda/apigateway/services/general"
 	ordersService "panda/apigateway/services/orders-service"
 	publicationsservice "panda/apigateway/services/publications-service"
+	roomcardsservice "panda/apigateway/services/room-cards-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 
@@ -71,4 +72,10 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc)
 	publicationsservice.MapPublicationsRoutes(e, publicationsHandlers, jwtMiddleware)
 	log.Info().Msg("Publications service initialized successfully.")
+
+	// room cards service
+	roomCardsSvc := roomcardsservice.NewRoomCardsService(neo4jDriver)
+	roomCardsHandlers := roomcardsservice.NewRoomCardsHandlers(roomCardsSvc)
+	roomcardsservice.MapRoomCardsRoutes(e, roomCardsHandlers, jwtMiddleware)
+	log.Info().Msg("Room Cards service initialized successfully.")
 }
