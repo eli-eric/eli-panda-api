@@ -54,6 +54,8 @@ type OrderLine struct {
 	IsDelivered     bool                     `json:"isDelivered"`
 	DeliveredTime   *time.Time               `json:"deliveredTime"`
 	SerialNumber    *string                  `json:"serialNumber"`
+	ServiceItemName *string                  `json:"serviceItemName"`
+	ServiceOrderUid *string                  `json:"serviceOrderUid"`
 	Notes           *string                  `json:"notes" neo4j:"prop,notes"`
 	LastUpdateTime  *time.Time               `json:"lastUpdateTime"`
 }

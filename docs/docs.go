@@ -980,6 +980,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/room-card/layout/location/{code}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get room card layout information for external systems to display scientific complex layout\n\nStatus values:\n- DIRTY_MODE: Room is dirty and needs cleaning\n- CLEAN_MODE: Room is clean and ready for use\n- IN_PREPARATION_MODE: Room is being prepared for use\n\nPurityClass values (ISO standards):\n- ISO_5: ISO Class 5 cleanroom\n- ISO_6: ISO Class 6 cleanroom\n- ISO_7: ISO Class 7 cleanroom\n- ISO_8: ISO Class 8 cleanroom\n\nStatusColor values (automatically assigned based on status):\n- DIRTY_MODE: #fecaca (light red)\n- CLEAN_MODE: #d9f99d (light green)\n- IN_PREPARATION_MODE: #fdba74 (light orange)\n- Unknown status: #808080 (gray)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Room Cards"
+                ],
+                "summary": "Get room card layout info by location code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Location code",
+                        "name": "code",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.LayoutRoomCard"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/system": {
             "post": {
                 "security": [
@@ -1638,6 +1681,29 @@ const docTemplate = `{
                 }
             }
         },
+        "models.LayoutRoomCard": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "purityClass": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "statusColor": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.OrderDetail": {
             "type": "object",
             "properties": {
@@ -1731,6 +1797,12 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "serialNumber": {
+                    "type": "string"
+                },
+                "serviceItemName": {
+                    "type": "string"
+                },
+                "serviceOrderUid": {
                     "type": "string"
                 },
                 "system": {
