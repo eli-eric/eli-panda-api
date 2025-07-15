@@ -1122,13 +1122,14 @@ func GetSystemTypeMask(systemTypeUID, facilityCode string) (result helpers.Datab
 
 	result.Query = `MATCH (st:SystemType{uid: $systemTypeUID}) `
 
-	if facilityCode == "B" {
+	switch facilityCode {
+	case "B":
 		result.Query += ` RETURN st.maskB as mask `
-	} else if facilityCode == "A" {
+	case "A":
 		result.Query += ` RETURN st.maskA as mask `
-	} else if facilityCode == "N" {
+	case "N":
 		result.Query += ` RETURN st.maskN as mask `
-	} else {
+	default:
 		result.Query += ` RETURN "" `
 	}
 
@@ -1172,7 +1173,7 @@ func GetZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
 func GetSubZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
 
 	result.Query = `
-	OPTIONAL MATCH (z:Zone{uid: "6300fd00-bb80-44a0-9569-17b88b886b06"}) 
+	OPTIONAL MATCH (z:Zone{uid: $zoneUID}) 
 	WHERE ()-[:HAS_SUBZONE]->(z)	
 	WITH CASE WHEN z IS NOT NULL THEN z.code ELSE "" END as code	
 	RETURN code as code `
