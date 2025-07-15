@@ -763,6 +763,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
+	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
@@ -807,7 +808,8 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 			uid: catalogueItem.uid,
 			name: catalogueItem.name,
 			catalogueNumber: catalogueItem.catalogueNumber,
-			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end
+			category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end,
+			supplier: case when supplier is not null then {uid: supplier.uid, name: supplier.name} else null end
 		} else null end	
 		} else null end,
 		statistics: {
@@ -1120,13 +1122,14 @@ func GetSystemTypeMask(systemTypeUID, facilityCode string) (result helpers.Datab
 
 	result.Query = `MATCH (st:SystemType{uid: $systemTypeUID}) `
 
-	if facilityCode == "B" {
+	switch facilityCode {
+	case "B":
 		result.Query += ` RETURN st.maskB as mask `
-	} else if facilityCode == "A" {
+	case "A":
 		result.Query += ` RETURN st.maskA as mask `
-	} else if facilityCode == "N" {
+	case "N":
 		result.Query += ` RETURN st.maskN as mask `
-	} else {
+	default:
 		result.Query += ` RETURN "" `
 	}
 
@@ -1157,6 +1160,22 @@ func GetZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
 	WITH z
 	OPTIONAL MATCH (pz)-[:HAS_SUBZONE]->(z)
 	WITH CASE WHEN pz IS NOT NULL THEN pz.code ELSE z.code END as code
+	RETURN code as code `
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["zoneUID"] = zoneUID
+
+	result.ReturnAlias = "code"
+
+	return result
+}
+
+func GetSubZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	OPTIONAL MATCH (z:Zone{uid: $zoneUID}) 
+	WHERE ()-[:HAS_SUBZONE]->(z)	
+	WITH CASE WHEN z IS NOT NULL THEN z.code ELSE "" END as code	
 	RETURN code as code `
 
 	result.Parameters = make(map[string]interface{})
