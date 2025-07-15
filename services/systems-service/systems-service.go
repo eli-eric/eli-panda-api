@@ -372,7 +372,7 @@ func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, pa
 
 	mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_SYSTEM_TYPE_CODE, systemTypeCode)
 
-	if strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_CODE) || strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_NAME) {
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_CODE) || strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_NAME) || strings.Contains(mask, SYSTEM_CODE_GENERATE_SUB_ZONE_CODE) {
 		if zoneUID == "" {
 			err = errors.New("missing zone")
 			return "", err
@@ -387,9 +387,15 @@ func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, pa
 				log.Error().Msg(err.Error())
 				return "", err
 			}
+			subZoneCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSubZoneCode(zoneUID))
+			if err != nil {
+				log.Error().Msg(err.Error())
+				return "", err
+			}
 
 			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_ZONE_CODE, zoneCode)
 			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_ZONE_NAME, zoneName)
+			mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_SUB_ZONE_CODE, subZoneCode)
 		}
 	}
 
@@ -448,6 +454,7 @@ func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, pa
 }
 
 const SYSTEM_CODE_GENERATE_ZONE_CODE = "{ZC}"
+const SYSTEM_CODE_GENERATE_SUB_ZONE_CODE = "{SZC}"
 const SYSTEM_CODE_GENERATE_ZONE_NAME = "{ZN}"
 const SYSTEM_CODE_GENERATE_LOCATION_CODE = "{LC}"
 const SYSTEM_CODE_GENERATE_LOCATION_NAME = "{LN}"

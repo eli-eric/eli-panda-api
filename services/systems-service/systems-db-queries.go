@@ -1169,6 +1169,22 @@ func GetZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
 	return result
 }
 
+func GetSubZoneCode(zoneUID string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	OPTIONAL MATCH (z:Zone{uid: "6300fd00-bb80-44a0-9569-17b88b886b06"}) 
+	WHERE ()-[:HAS_SUBZONE]->(z)	
+	WITH CASE WHEN z IS NOT NULL THEN z.code ELSE "" END as code	
+	RETURN code as code `
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["zoneUID"] = zoneUID
+
+	result.ReturnAlias = "code"
+
+	return result
+}
+
 func GetLocationCode(locationUID string) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH (l:Location{uid: $locationUID}) RETURN l.code as code`
