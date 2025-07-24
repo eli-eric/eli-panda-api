@@ -490,9 +490,24 @@ func UpdateCatalogueCategoryQuery(category *models.CatalogueCategory, categoryOl
 
 	if category.SystemType != nil && category.SystemType.UID != "" {
 		result.Parameters["systemTypeUID"] = category.SystemType.UID
+
+		if categoryOld != nil && categoryOld.SystemType != nil {
+			result.Parameters["oldSystemTypeUID"] = categoryOld.SystemType.UID
+			result.Query += ` WITH category
+		MATCH(oldSystemType:SystemType{uid: $oldSystemTypeUID})
+		MATCH(category)-[hstOld:HAS_SYSTEM_TYPE]->(oldSystemType)
+		DELETE hstOld		
+		`
+		}
+
 		result.Query += ` WITH category
 		MATCH(systemType:SystemType{uid: $systemTypeUID})
 		MERGE(category)-[:HAS_SYSTEM_TYPE]->(systemType)
+		WITH category `
+	} else {
+		result.Query += `  WITH category
+		OPTIONAL MATCH(category)-[hstOld:HAS_SYSTEM_TYPE]->(oldSystemType)
+		DELETE hstOld
 		WITH category
 		`
 	}
