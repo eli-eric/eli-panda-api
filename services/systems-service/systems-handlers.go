@@ -57,11 +57,39 @@ type ISystemsHandlers interface {
 	MovePhysicalItem() echo.HandlerFunc
 	ReplacePhysicalItems() echo.HandlerFunc
 	MoveSystems() echo.HandlerFunc
+	AssignSpareItem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
 func NewsystemsHandlers(systemsSvc ISystemsService) ISystemsHandlers {
 	return &SystemsHandlers{systemsService: systemsSvc}
+}
+
+func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		// lets bind catalogue category data from request body
+		assignSpareRequest := new(models.AssignSpareRequest)
+		err := c.Bind(assignSpareRequest)
+		if err == nil {
+
+			userUID := c.Get("userUID").(string)
+
+			response, err := h.systemsService.AssignSpareItem(*assignSpareRequest, userUID)
+
+			if err == nil {
+				return c.JSON(http.StatusOK, response)
+			}
+
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+
+		} else {
+			log.Error().Msg(err.Error())
+		}
+		return helpers.BadRequest(err.Error())
+	}
 }
 
 func (h *SystemsHandlers) GetSubSystemsByParentUID() echo.HandlerFunc {
