@@ -980,7 +980,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 	// Step 1: Validation - Check if system exists and has at most one item
 	validateSystemQuery := `
         MATCH (s:System {uid: $systemUid})
-        OPTIONAL MATCH (s)-[:CONTAINS]->(currentItem:Item)
+        OPTIONAL MATCH (s)-[:CONTAINS_ITEM]->(currentItem:Item)
         RETURN s.uid as systemUid, count(currentItem) as itemCount, collect(currentItem.uid) as currentItems
     `
 
@@ -1038,7 +1038,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 
 		// Detach current item from system
 		detachQuery := helpers.DatabaseQuery{
-			Query: `MATCH (s:System {uid: $systemUid})-[r:CONTAINS]->(oldItem:Item {uid: $oldItemUid}) DELETE r`,
+			Query: `MATCH (s:System {uid: $systemUid})-[r:CONTAINS_ITEM]->(oldItem:Item {uid: $oldItemUid}) DELETE r`,
 			Parameters: map[string]interface{}{
 				"systemUid":  request.SystemUid,
 				"oldItemUid": currentItemUid,
@@ -1046,36 +1046,49 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		}
 		queries = append(queries, detachQuery)
 
-		// Update old item condition
+		// Update old item condition using relationship
 		updateItemConditionQuery := helpers.DatabaseQuery{
-			Query: `MATCH (item:Item {uid: $oldItemUid}) 
-                    SET item.condition = $condition, item.conditionName = $conditionName, item.updatedAt = datetime()`,
+			Query: `MATCH (item:Item {uid: $oldItemUid})
+                    OPTIONAL MATCH (item)-[oldCondRel:HAS_CONDITION_STATUS]->(:ItemCondition)
+                    DELETE oldCondRel
+                    WITH item
+                    MATCH (newCondition:ItemCondition {uid: $conditionUid})
+                    CREATE (item)-[:HAS_CONDITION_STATUS]->(newCondition)
+                    SET item.updatedAt = datetime()`,
 			Parameters: map[string]interface{}{
-				"oldItemUid":    currentItemUid,
-				"condition":     request.OldItemCondition.UID,
-				"conditionName": request.OldItemCondition.Name,
+				"oldItemUid":   currentItemUid,
+				"conditionUid": request.OldItemCondition.UID,
 			},
 		}
 		queries = append(queries, updateItemConditionQuery)
 
-		// Update old item location
-		updateItemLocationQuery := helpers.DatabaseQuery{
-			Query: `MATCH (item:Item {uid: $oldItemUid}) 
-                    SET item.location = $location, item.locationName = $locationName, item.updatedAt = datetime()`,
+		// Create new system for old item with location
+		newSystemUid := uuid.New().String()
+		createNewSystemQuery := helpers.DatabaseQuery{
+			Query: `CREATE (newSys:System {
+                            uid: $newSystemUid,
+                            name: 'Relocated System',
+                            type: 'relocated',
+                            status: 'active',
+                            createdAt: datetime(),
+                            updatedAt: datetime()
+                        })
+                        WITH newSys
+                        MATCH (location:Location {uid: $locationUid})
+                        CREATE (newSys)-[:HAS_LOCATION]->(location)`,
 			Parameters: map[string]interface{}{
-				"oldItemUid":   currentItemUid,
-				"location":     request.NewItemLocation.UID,
-				"locationName": request.NewItemLocation.Name,
+				"newSystemUid": newSystemUid,
+				"locationUid":  request.NewItemLocation.UID,
 			},
 		}
-		queries = append(queries, updateItemLocationQuery)
+		queries = append(queries, createNewSystemQuery)
 	}
 
 	// Assign spare item to system
 	assignSpareQuery := helpers.DatabaseQuery{
 		Query: `MATCH (s:System {uid: $systemUid})
                 MATCH (spareItem:Item {uid: $spareItemUid})
-                CREATE (s)-[:CONTAINS]->(spareItem)
+                CREATE (s)-[:CONTAINS_ITEM]->(spareItem)
                 SET spareItem.status = 'in_system', spareItem.updatedAt = datetime()`,
 		Parameters: map[string]interface{}{
 			"systemUid":    request.SystemUid,

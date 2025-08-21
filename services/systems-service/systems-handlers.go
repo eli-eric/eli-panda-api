@@ -65,6 +65,18 @@ func NewsystemsHandlers(systemsSvc ISystemsService) ISystemsHandlers {
 	return &SystemsHandlers{systemsService: systemsSvc}
 }
 
+// Swagger documentation for AssignSpareItem
+// @Summary Assign spare item to system
+// @Description Assigns a spare item to a system, updating the item's condition and system association
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.AssignSpareRequest true "Assign spare item request"
+// @Success 200 {object} models.AssignSpareResponse "Returns the updated spare item information"
+// @Failure 400 {string} string "Bad request - missing required fields or invalid data"
+// @Failure 500 {string} string "Internal server error"
+// @Router /v1/system/{systemUid}/assign-spare [post]
 func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
