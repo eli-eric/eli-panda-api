@@ -990,7 +990,7 @@ func CatalogueCategoriesTreeQuery(search string) (result helpers.DatabaseQuery) 
 func CatalogueItemStatisticsQuery(uid string) (result helpers.DatabaseQuery) {
 
 	result.Query = `
-	MATCH (ci:CatalogueItem{uid: $uid})<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o)-[:BELONGS_TO_FACILITY]->(f)
+	MATCH (ci:CatalogueItem{uid: $uid})<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o{deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(usg)
 	WITH
 	f.name AS facility,
@@ -1021,7 +1021,7 @@ func CatalogueItemStatisticsQuery(uid string) (result helpers.DatabaseQuery) {
 func CatalogueItemsOverallStatisticsQuery() (result helpers.DatabaseQuery) {
 
 	result.Query = `
-	MATCH (ci)<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o)-[:BELONGS_TO_FACILITY]->(f)
+	MATCH (ci)<-[:IS_BASED_ON]-(itm)<-[:HAS_ORDER_LINE]-(o{deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(usg)
 	WITH
 	f.name AS facility,

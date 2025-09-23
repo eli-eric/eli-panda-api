@@ -1011,9 +1011,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 
 	// Step 2: Validate spare item relationship
 	validateSpareQuery := `
-        MATCH (spareItem:Item {uid: $spareItemUid})
-        MATCH (targetSystem:System {uid: $systemUid})
-        MATCH (spareItem)-[:IS_SPARE_FOR]->(targetSystem)
+        MATCH (spareItem:Item {uid: $spareItemUid})<-[:CONTAINS_ITEM]-(spareSystem:System)-[:IS_SPARE_FOR]->(targetSystem:System {uid: $systemUid})
         RETURN spareItem.uid as spareUid
     `
 
