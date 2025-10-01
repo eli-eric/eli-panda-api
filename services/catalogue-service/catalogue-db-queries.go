@@ -26,27 +26,37 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 		result.Parameters["categoryUid"] = categoryUid
 	}
 
+	// Start optimized query with CALL subquery
+	result.Query = `CALL {
+		WITH toLower($searchText) AS q`
+
 	if categoryUid == "" {
-		result.Query = `MATCH(cat:CatalogueCategory)<-[:BELONGS_TO_CATEGORY]-(itm:CatalogueItem) `
+		result.Query += `
+		// Start from items & category for all categories
+		MATCH (cat:CatalogueCategory)<-[:BELONGS_TO_CATEGORY]-(itm)`
 	} else {
-		result.Query = `
-		MATCH(category:CatalogueCategory)	
-		where $categoryUid = '' or category.uid = $categoryUid
-		optional match(category)-[:HAS_SUBCATEGORY*1..15]->(subs)		
-		with collect(subs.uid) as subCategoryUids, category.uid as itmCategoryUid
-		match(itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)		
-		where cat.uid in subCategoryUids or cat.uid = itmCategoryUid  `
+		result.Query += `
+		// Start from specific category and its subcategories
+		MATCH(category:CatalogueCategory)
+		WHERE $categoryUid = '' OR category.uid = $categoryUid
+		OPTIONAL MATCH(category)-[:HAS_SUBCATEGORY*1..15]->(subs)
+		WITH collect(subs.uid) + category.uid AS categoryUids, q
+		MATCH (itm:CatalogueItem)-[:BELONGS_TO_CATEGORY]->(cat)
+		WHERE cat.uid IN categoryUids`
 	}
-	result.Query += `	
-	OPTIONAL MATCH(itm)-[:HAS_SUPPLIER]->(supp)		
-	OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop)
-	WITH itm,cat, supp	
-	WHERE $searchText = '' or 
-	(toLower(itm.name) CONTAINS $searchText OR
-	 toLower(itm.description) CONTAINS $searchText or 
-	 toLower(supp.name) CONTAINS $searchText or 
-	 toLower(itm.catalogueNumber) CONTAINS $searchText or
-	 toLower(toString(pv.value)) CONTAINS $searchText)	`
+
+	result.Query += `
+		OPTIONAL MATCH (itm)-[:HAS_SUPPLIER]->(supp)
+		OPTIONAL MATCH (itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop)
+
+		WITH DISTINCT itm, cat, q,
+			 coalesce(toLower(itm.name), '') AS iname,
+			 coalesce(toLower(itm.description), '') AS idesc,
+			 coalesce(toLower(itm.catalogueNumber), '') AS icn,
+			 coalesce(toLower(supp.name), '') AS sname,
+			 coalesce(toLower(toString(pv.value)), '') AS pval
+
+		WHERE q = '' OR iname CONTAINS q OR idesc CONTAINS q OR icn CONTAINS q OR sname CONTAINS q OR pval CONTAINS q`
 
 	if filering != nil && len(*filering) > 0 {
 
@@ -150,62 +160,120 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
 
-	result.Query += `
-	WITH itm, cat, supp
-    OPTIONAL MATCH(itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)	
-    OPTIONAL MATCH(prop)-[:HAS_UNIT]->(unit)
-	OPTIONAL MATCH(prop)-[:IS_PROPERTY_TYPE]->(propType)
-	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(prop)
-	OPTIONAL MATCH(itm)-[upd:WAS_UPDATED_BY]->(user)
-	WITH itm,cat, propType, supp, prop, group.name as groupName, toString(propVal.value) as value, unit, max(upd.at) as lastUpdateTime, max(user.lastName + " " + user.firstName) as lastUpdateUser
-	RETURN {
-	uid: itm.uid,
-	name: itm.name,
-	catalogueNumber: itm.catalogueNumber,
-	miniImageUrl: split(itm.miniImageUrl, ";"),
-	description: itm.description,	
-	category: { uid: cat.uid, name: cat.name},
-	supplier: case when supp is not null then { uid: supp.uid, name: supp.name } else null end,
-	manufacturerUrl: itm.manufacturerUrl,	
-	lastUpdateTime: lastUpdateTime,
-	lastUpdateBy: lastUpdateUser,
-	details: case when count(prop) > 0 then collect(DISTINCT { 
-		property:{
-			uid: prop.uid,
-			name: prop.name, 
-			listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
-			type: { uid: propType.uid, name: propType.name, code: propType.code},
-			unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
-			},
-			propertyGroup: groupName, 
-			value: value}) else null end
-	} as items `
+	// Add filters if any
+	if filering != nil && len(*filering) > 0 {
+		// Apply filters within the CALL subquery for better performance
+		filterConditions := []string{}
 
+		//catalogue name
+		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
+			filterConditions = append(filterConditions, "iname CONTAINS $filterName")
+			result.Parameters["filterName"] = strings.ToLower(*filterVal)
+		}
+
+		//catalogue number
+		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
+			filterConditions = append(filterConditions, "icn CONTAINS $filterCatalogueNumber")
+			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
+		}
+
+		//supplier
+		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
+			filterConditions = append(filterConditions, "sname CONTAINS $filterSupplier")
+			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
+		}
+
+		//description
+		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
+			filterConditions = append(filterConditions, "idesc CONTAINS $filterDescription")
+			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
+		}
+
+		if len(filterConditions) > 0 {
+			result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
+		}
+	}
+
+	// Add latest update subquery and pagination
+	result.Query += `
+
+		// Latest update per item via ordered subquery
+		CALL {
+			WITH itm
+			OPTIONAL MATCH (itm)-[u:WAS_UPDATED_BY]->(usr)
+			RETURN u.at AS lastUpdateTime, usr.lastName + ' ' + usr.firstName AS lastUpdateUser
+			ORDER BY lastUpdateTime DESC
+			LIMIT 1
+		}
+
+		// Page on the reduced set
+		RETURN itm, cat, lastUpdateTime, lastUpdateUser`
+
+	// Add sorting
 	if sorting != nil && len(*sorting) > 0 {
 		result.Query += " ORDER BY "
+		for ids, sort := range *sorting {
+			sortName := sort.ID
+			// handle special cases
+			if sortName == "partNumber" {
+				sortName = "catalogueNumber"
+			} else if sortName == "categoryName" {
+				sortName = "category.name"
+			} else if sortName == "lastUpdateTime" {
+				sortName = "lastUpdateTime"
+			}
+
+			if ids == len(*sorting)-1 {
+				result.Query += fmt.Sprintf(" %s %s ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+			} else {
+				result.Query += fmt.Sprintf(" %s %s, ", sortName, helpers.GetSortingDirectionString(sort.DESC))
+			}
+		}
 	} else {
-		result.Query += " ORDER BY items.lastUpdateTime DESC "
-	}
-	for ids, sort := range *sorting {
-
-		sortName := sort.ID
-		// handle special cases
-		if sortName == "partNumber" {
-			sortName = "catalogueNumber"
-		} else if sortName == "categoryName" {
-			sortName = "category.name"
-		}
-
-		if ids == len(*sorting)-1 {
-			result.Query += fmt.Sprintf(" items.%s %s ", sortName, helpers.GetSortingDirectionString(sort.DESC))
-		} else {
-			result.Query += fmt.Sprintf(" items.%s %s, ", sortName, helpers.GetSortingDirectionString(sort.DESC))
-		}
+		result.Query += " ORDER BY lastUpdateTime DESC "
 	}
 
 	result.Query += `
-	SKIP $skip
-	LIMIT $limit`
+		SKIP toInteger($skip)
+		LIMIT toInteger($limit)
+	}
+
+	// Fan out details only for paged items
+	OPTIONAL MATCH (itm)-[propVal:HAS_CATALOGUE_PROPERTY]->(prop)
+	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(unit)
+	OPTIONAL MATCH (prop)-[:IS_PROPERTY_TYPE]->(propType)
+	OPTIONAL MATCH (group)-[:CONTAINS_PROPERTY]->(prop)
+	OPTIONAL MATCH (itm)-[:HAS_SUPPLIER]->(supp)
+
+	WITH itm, cat, propType, supp, prop, group.name AS groupName,
+		 toString(propVal.value) AS value, unit, lastUpdateTime, lastUpdateUser
+
+	RETURN {
+		uid: itm.uid,
+		name: itm.name,
+		catalogueNumber: itm.catalogueNumber,
+		miniImageUrl: split(itm.miniImageUrl, ';'),
+		description: itm.description,
+		category: { uid: cat.uid, name: cat.name },
+		supplier: CASE WHEN supp IS NOT NULL THEN { uid: supp.uid, name: supp.name } ELSE NULL END,
+		manufacturerUrl: itm.manufacturerUrl,
+		lastUpdateTime: lastUpdateTime,
+		lastUpdateBy: lastUpdateUser,
+		details: CASE WHEN COUNT(prop) > 0 THEN collect(DISTINCT {
+			property: {
+				uid: prop.uid,
+				name: prop.name,
+				listOfValues: CASE
+					WHEN prop.listOfValues IS NOT NULL AND prop.listOfValues <> ''
+					THEN apoc.text.split(prop.listOfValues, ';') ELSE NULL END,
+				type: CASE WHEN propType IS NOT NULL THEN { uid: propType.uid, name: propType.name, code: propType.code } ELSE NULL END,
+				unit: CASE WHEN unit IS NOT NULL THEN { uid: unit.uid, name: unit.name } ELSE NULL END
+			},
+			propertyGroup: groupName,
+			value: value
+		}) ELSE NULL END
+	} AS items
+	ORDER BY items.lastUpdateTime DESC`
 
 	result.ReturnAlias = "items"
 
@@ -215,8 +283,46 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, 0, 0)
+
+	// Add filters if any
+	if filering != nil && len(*filering) > 0 {
+		// Apply filters within the CALL subquery for better performance
+		filterConditions := []string{}
+
+		//catalogue name
+		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
+			filterConditions = append(filterConditions, "iname CONTAINS $filterName")
+			result.Parameters["filterName"] = strings.ToLower(*filterVal)
+		}
+
+		//catalogue number
+		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
+			filterConditions = append(filterConditions, "icn CONTAINS $filterCatalogueNumber")
+			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
+		}
+
+		//supplier
+		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
+			filterConditions = append(filterConditions, "sname CONTAINS $filterSupplier")
+			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
+		}
+
+		//description
+		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
+			filterConditions = append(filterConditions, "idesc CONTAINS $filterDescription")
+			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
+		}
+
+		if len(filterConditions) > 0 {
+			result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
+		}
+	}
+
+	// Close the CALL subquery and count distinct items
 	result.Query += `
-	RETURN count(distinct itm.uid) as itemsCount`
+		RETURN DISTINCT itm
+	}
+	RETURN count(itm) as itemsCount`
 
 	result.ReturnAlias = "itemsCount"
 
