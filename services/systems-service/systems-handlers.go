@@ -81,7 +81,7 @@ func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
 
-		// lets bind catalogue category data from request body
+		// bind assign spare item request data from request body
 		assignSpareRequest := new(models.AssignSpareRequest)
 		err := c.Bind(assignSpareRequest)
 		if err == nil {
