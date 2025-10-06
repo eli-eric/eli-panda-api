@@ -155,43 +155,55 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 
 var plusMinusZero float64 = 0
 
+// Helper function to build filter conditions for catalogue items queries
+func buildCatalogueItemsFilterConditions(filering *[]helpers.ColumnFilter) (filterConditions []string, parameters map[string]interface{}) {
+	parameters = make(map[string]interface{})
+	filterConditions = []string{}
+
+	if filering == nil || len(*filering) == 0 {
+		return filterConditions, parameters
+	}
+
+	//catalogue name
+	if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
+		filterConditions = append(filterConditions, "iname CONTAINS $filterName")
+		parameters["filterName"] = strings.ToLower(*filterVal)
+	}
+
+	//catalogue number
+	if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
+		filterConditions = append(filterConditions, "icn CONTAINS $filterCatalogueNumber")
+		parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
+	}
+
+	//supplier
+	if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
+		filterConditions = append(filterConditions, "sname CONTAINS $filterSupplier")
+		parameters["filterSupplier"] = strings.ToLower(*filterVal)
+	}
+
+	//description
+	if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
+		filterConditions = append(filterConditions, "idesc CONTAINS $filterDescription")
+		parameters["filterDescription"] = strings.ToLower(*filterVal)
+	}
+
+	return filterConditions, parameters
+}
+
 // Get catalogue items with pagination and filters
 func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
 
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
 
 	// Add filters if any
-	if filering != nil && len(*filering) > 0 {
-		// Apply filters within the CALL subquery for better performance
-		filterConditions := []string{}
-
-		//catalogue name
-		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
-			filterConditions = append(filterConditions, "iname CONTAINS $filterName")
-			result.Parameters["filterName"] = strings.ToLower(*filterVal)
+	filterConditions, filterParams := buildCatalogueItemsFilterConditions(filering)
+	if len(filterConditions) > 0 {
+		// Add filter parameters to the result
+		for key, value := range filterParams {
+			result.Parameters[key] = value
 		}
-
-		//catalogue number
-		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
-			filterConditions = append(filterConditions, "icn CONTAINS $filterCatalogueNumber")
-			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
-		}
-
-		//supplier
-		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
-			filterConditions = append(filterConditions, "sname CONTAINS $filterSupplier")
-			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
-		}
-
-		//description
-		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
-			filterConditions = append(filterConditions, "idesc CONTAINS $filterDescription")
-			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
-		}
-
-		if len(filterConditions) > 0 {
-			result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
-		}
+		result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
 	}
 
 	// Add latest update subquery and pagination
@@ -285,37 +297,13 @@ func CatalogueItemsFiltersTotalCountQuery(search string, categoryUid string, fil
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, 0, 0)
 
 	// Add filters if any
-	if filering != nil && len(*filering) > 0 {
-		// Apply filters within the CALL subquery for better performance
-		filterConditions := []string{}
-
-		//catalogue name
-		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
-			filterConditions = append(filterConditions, "iname CONTAINS $filterName")
-			result.Parameters["filterName"] = strings.ToLower(*filterVal)
+	filterConditions, filterParams := buildCatalogueItemsFilterConditions(filering)
+	if len(filterConditions) > 0 {
+		// Add filter parameters to the result
+		for key, value := range filterParams {
+			result.Parameters[key] = value
 		}
-
-		//catalogue number
-		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
-			filterConditions = append(filterConditions, "icn CONTAINS $filterCatalogueNumber")
-			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
-		}
-
-		//supplier
-		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
-			filterConditions = append(filterConditions, "sname CONTAINS $filterSupplier")
-			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
-		}
-
-		//description
-		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
-			filterConditions = append(filterConditions, "idesc CONTAINS $filterDescription")
-			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
-		}
-
-		if len(filterConditions) > 0 {
-			result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
-		}
+		result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
 	}
 
 	// Close the CALL subquery and count distinct items
