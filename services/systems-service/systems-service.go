@@ -1166,7 +1166,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 			linkItemToNewSystemQuery := helpers.DatabaseQuery{
 				Query: `MATCH (newSys:System {uid: $newSystemUid})
                         MATCH (oldItem:Item {uid: $oldItemUid})
-                        CREATE (newSys)-[:CONTAINS]->(oldItem)`,
+                        CREATE (newSys)-[:CONTAINS_ITEM]->(oldItem)`,
 				Parameters: map[string]interface{}{
 					"newSystemUid": newSystemUid,
 					"oldItemUid":   currentItemUid,
