@@ -1110,7 +1110,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 
 	// Mark spare item's system as deleted
 	markSpareSystemDeletedQuery := helpers.DatabaseQuery{
-		Query: `MATCH (spareItem:Item {uid: $spareItemUid})-[:CONTAINS]-(spareSystem:System)
+		Query: `MATCH (spareSystem:System)-[:CONTAINS_ITEM]->(spareItem:Item {uid: $spareItemUid})
                 SET spareSystem.status = 'deleted', spareSystem.updatedAt = datetime()`,
 		Parameters: map[string]interface{}{
 			"spareItemUid": request.SpareItemUid,
