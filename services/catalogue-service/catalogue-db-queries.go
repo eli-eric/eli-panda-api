@@ -49,21 +49,21 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 		OPTIONAL MATCH (itm)-[:HAS_SUPPLIER]->(supp)
 		OPTIONAL MATCH (itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop)
 
-		WITH DISTINCT itm, cat, q,
+		WITH DISTINCT itm, cat, q, supp, pv, prop,
 			 coalesce(toLower(itm.name), '') AS iname,
 			 coalesce(toLower(itm.description), '') AS idesc,
 			 coalesce(toLower(itm.catalogueNumber), '') AS icn,
 			 coalesce(toLower(supp.name), '') AS sname,
 			 coalesce(toLower(toString(pv.value)), '') AS pval
 
-		WHERE q = '' OR iname CONTAINS q OR idesc CONTAINS q OR icn CONTAINS q OR sname CONTAINS q OR pval CONTAINS q`
+		WHERE q = '' OR iname CONTAINS q OR idesc CONTAINS q OR icn CONTAINS q OR sname CONTAINS q OR pval CONTAINS q `
 
 	if filering != nil && len(*filering) > 0 {
 
 		//catalogue name
 		if filterVal := helpers.GetFilterValueString(filering, "name"); filterVal != nil {
 
-			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  `
 			result.Query += ` WHERE toLower(itm.name) CONTAINS $filterName `
 			result.Parameters["filterName"] = strings.ToLower(*filterVal)
 		}
@@ -71,7 +71,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 		//catalogue number
 		if filterVal := helpers.GetFilterValueString(filering, "catalogueNumber"); filterVal != nil {
 
-			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  `
 			result.Query += ` WHERE toLower(itm.catalogueNumber) CONTAINS $filterCatalogueNumber `
 			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*filterVal)
 		}
@@ -79,7 +79,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 		//supplier
 		if filterVal := helpers.GetFilterValueString(filering, "supplier"); filterVal != nil {
 
-			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  `
 			result.Query += ` WHERE toLower(supp.name) CONTAINS $filterSupplier `
 			result.Parameters["filterSupplier"] = strings.ToLower(*filterVal)
 		}
@@ -87,7 +87,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 		//manufacturerUrl
 		if filterVal := helpers.GetFilterValueString(filering, "manufacturerUrl"); filterVal != nil {
 
-			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  `
 			result.Query += ` WHERE toLower(itm.manufacturerUrl) CONTAINS $filterManufacturerUrl `
 			result.Parameters["filterManufacturerUrl"] = strings.ToLower(*filterVal)
 		}
@@ -95,7 +95,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 		//description
 		if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
 
-			result.Query += ` WITH itm, cat, supp  `
+			result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  `
 			result.Query += ` WHERE toLower(itm.description) CONTAINS $filterDescription `
 			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
 		}
@@ -107,7 +107,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 
 			if filter.Type == "text" {
 				if filterPropvalue := helpers.GetFilterValueString(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH itm, cat, supp  OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE toLower(pv.value) contains $propFilterVal%v `, i, i)
 
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
@@ -115,7 +115,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 				}
 			} else if filter.Type == "list" {
 				if filterPropvalue := helpers.GetFilterValueListString(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH itm, cat, supp OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE pv.value IN $propFilterVal%v `, i, i)
 
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
@@ -123,7 +123,7 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 				}
 			} else if filter.Type == "number" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH itm, cat, supp  OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval  OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(itm) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, i, i, i, i)
 
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
@@ -132,9 +132,9 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 				}
 			} else if filter.Type == "range" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH itm, cat, supp OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
+					result.Query += ` WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval OPTIONAL MATCH(itm)-[pv:HAS_CATALOGUE_PROPERTY]->(prop) `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%[1]v})<-[pv]-(itm)
-					WITH itm, cat, supp, apoc.convert.fromJsonMap(pv.value) as jsonValue						  
+					WITH itm, cat, supp, q, pv, prop, iname, idesc, icn, sname, pval, apoc.convert.fromJsonMap(pv.value) as jsonValue						  
 					WHERE (toFloat(jsonValue.min) <= $propFilterValFrom%[1]v - $propFilterValTo%[1]v) 
 					AND (toFloat(jsonValue.max) >= $propFilterValFrom%[1]v + $propFilterValTo%[1]v) `, i)
 
