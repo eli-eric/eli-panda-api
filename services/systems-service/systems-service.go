@@ -1097,7 +1097,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 
 	// Remove IS_SPARE_FOR relationship
 	removeSpareRelQuery := helpers.DatabaseQuery{
-		Query: `MATCH (spareItem:Item {uid: $spareItemUid})-[r:IS_SPARE_FOR]->(s:System {uid: $systemUid}) DELETE r`,
+		Query: `MATCH (spareItem:Item {uid: $spareItemUid})-[:CONTAINS]-(spareSystem:System)-[r:IS_SPARE_FOR]->(s:System {uid: $systemUid}) DELETE r`,
 		Parameters: map[string]interface{}{
 			"spareItemUid": request.SpareItemUid,
 			"systemUid":    request.SystemUid,
