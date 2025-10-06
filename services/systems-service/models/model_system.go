@@ -156,3 +156,19 @@ type SystemPhysicalItemInfo struct {
 	ItemUid    string `json:"itemUid"`
 	ItemName   string `json:"itemName"`
 }
+
+type AssignSpareRequest struct {
+	SpareItemUid       string          `json:"spareItemUid" binding:"required"`
+	SystemUid          string          `json:"systemUid" binding:"required"`
+	OldItemCondition   models.Codebook `json:"oldItemCondition" binding:"required"`
+	NewParentSystemUid string          `json:"newParentSystemUid,omitempty"`
+	NewItemLocation    models.Codebook `json:"newItemLocation" binding:"required"`
+}
+
+type AssignSpareResponse struct {
+	Success            bool   `json:"success"`
+	Message            string `json:"message"`
+	UpdatedSystemUid   string `json:"updatedSystemUid"`
+	RelocatedItemUid   string `json:"relocatedItemUid,omitempty"`
+	NewParentSystemUid string `json:"newParentSystemUid,omitempty"`
+}

@@ -1164,6 +1164,57 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{systemUid}/assign-spare": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assigns a spare item to a system, updating the item's condition and system association",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Assign spare item to system",
+                "parameters": [
+                    {
+                        "description": "Assign spare item request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignSpareRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns the updated spare item information",
+                        "schema": {
+                            "$ref": "#/definitions/models.AssignSpareResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - missing required fields or invalid data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/systems/locations-flat": {
             "get": {
                 "security": [
@@ -1420,6 +1471,52 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "models.AssignSpareRequest": {
+            "type": "object",
+            "required": [
+                "newItemLocation",
+                "oldItemCondition",
+                "spareItemUid",
+                "systemUid"
+            ],
+            "properties": {
+                "newItemLocation": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "newParentSystemUid": {
+                    "type": "string"
+                },
+                "oldItemCondition": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "spareItemUid": {
+                    "type": "string"
+                },
+                "systemUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.AssignSpareResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "newParentSystemUid": {
+                    "type": "string"
+                },
+                "relocatedItemUid": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
+                },
+                "updatedSystemUid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.AuthorsDepartment": {
             "type": "object",
             "properties": {

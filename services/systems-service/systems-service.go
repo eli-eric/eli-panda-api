@@ -13,6 +13,7 @@ import (
 
 	//"strings"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -72,6 +73,7 @@ type ISystemsService interface {
 	ReplacePhysicalItems(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 	MoveSystems(movement *models.SystemsMovement, userUID string) (destinationSystemUid string, err error)
 	GetPhysicalItemsBySystemUidRecursive(systemUid string) (result []models.SystemPhysicalItemInfo, err error)
+	AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error)
 }
 
 // Create new security service instance
@@ -966,4 +968,237 @@ func ValidateSystemsMovement(movement *models.SystemsMovement) error {
 	}
 
 	return nil
+}
+
+func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error) {
+	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	if err != nil {
+		return models.AssignSpareResponse{}, err
+	}
+	defer session.Close()
+
+	var response models.AssignSpareResponse
+	response.UpdatedSystemUid = request.SystemUid
+
+	// Step 1: Validation - Check if system exists and has at most one item
+	validateSystemQuery := `
+        MATCH (s:System {uid: $systemUid})
+        OPTIONAL MATCH (s)-[:CONTAINS_ITEM]->(currentItem:Item)
+        RETURN s.uid as systemUid, count(currentItem) as itemCount, collect(currentItem.uid) as currentItems
+    `
+
+	result, err := session.Run(validateSystemQuery, map[string]interface{}{
+		"systemUid": request.SystemUid,
+	})
+	if err != nil {
+		return response, err
+	}
+
+	record, err := result.Single()
+	if err != nil {
+		return response, errors.New("system not found")
+	}
+
+	itemCount := record.Values[1].(int64)
+	if itemCount > 1 {
+		return response, errors.New("system contains more than one item")
+	}
+
+	var currentItemUid string
+	if itemCount == 1 {
+		currentItems := record.Values[2].([]interface{})
+		if len(currentItems) > 0 {
+			currentItemUid = currentItems[0].(string)
+		}
+	}
+
+	// Step 2: Validate spare item relationship
+	validateSpareQuery := `
+        MATCH (spareItem:Item {uid: $spareItemUid})<-[:CONTAINS_ITEM]-(spareSystem:System)-[:IS_SPARE_FOR]->(targetSystem:System {uid: $systemUid})
+        RETURN spareItem.uid as spareUid
+    `
+
+	result, err = session.Run(validateSpareQuery, map[string]interface{}{
+		"spareItemUid": request.SpareItemUid,
+		"systemUid":    request.SystemUid,
+	})
+	if err != nil {
+		return response, err
+	}
+
+	if !result.Next() {
+		return response, errors.New("spare item does not have IS_SPARE_FOR relationship with target system")
+	}
+
+	// Step 3: Execute the assignment in a transaction
+	queries := []helpers.DatabaseQuery{}
+
+	// If current item exists, prepare relocation
+	if currentItemUid != "" {
+		response.RelocatedItemUid = currentItemUid
+
+		// Detach current item from system
+		detachQuery := helpers.DatabaseQuery{
+			Query: `MATCH (s:System {uid: $systemUid})-[r:CONTAINS_ITEM]->(oldItem:Item {uid: $oldItemUid}) DELETE r`,
+			Parameters: map[string]interface{}{
+				"systemUid":  request.SystemUid,
+				"oldItemUid": currentItemUid,
+			},
+		}
+		queries = append(queries, detachQuery)
+
+		// Update old item condition using relationship
+		updateItemConditionQuery := helpers.DatabaseQuery{
+			Query: `MATCH (item:Item {uid: $oldItemUid})
+                    OPTIONAL MATCH (item)-[oldCondRel:HAS_CONDITION_STATUS]->(:ItemCondition)
+                    DELETE oldCondRel
+                    WITH item
+                    MATCH (newCondition:ItemCondition {uid: $conditionUid})
+                    CREATE (item)-[:HAS_CONDITION_STATUS]->(newCondition)
+                    SET item.updatedAt = datetime()`,
+			Parameters: map[string]interface{}{
+				"oldItemUid":   currentItemUid,
+				"conditionUid": request.OldItemCondition.UID,
+			},
+		}
+		queries = append(queries, updateItemConditionQuery)
+
+		// Create new system for old item with location
+		newSystemUid := uuid.New().String()
+		createNewSystemQuery := helpers.DatabaseQuery{
+			Query: `CREATE (newSys:System {
+                            uid: $newSystemUid,
+                            name: 'Relocated System',
+                            type: 'relocated',
+                            status: 'active',
+                            createdAt: datetime(),
+                            updatedAt: datetime()
+                        })
+                        WITH newSys
+                        MATCH (location:Location {uid: $locationUid})
+                        CREATE (newSys)-[:HAS_LOCATION]->(location)`,
+			Parameters: map[string]interface{}{
+				"newSystemUid": newSystemUid,
+				"locationUid":  request.NewItemLocation.UID,
+			},
+		}
+		queries = append(queries, createNewSystemQuery)
+	}
+
+	// Assign spare item to system
+	assignSpareQuery := helpers.DatabaseQuery{
+		Query: `MATCH (s:System {uid: $systemUid})
+                MATCH (spareItem:Item {uid: $spareItemUid})
+                CREATE (s)-[:CONTAINS_ITEM]->(spareItem)
+                SET spareItem.status = 'in_system', spareItem.updatedAt = datetime()`,
+		Parameters: map[string]interface{}{
+			"systemUid":    request.SystemUid,
+			"spareItemUid": request.SpareItemUid,
+		},
+	}
+	queries = append(queries, assignSpareQuery)
+
+	// Remove IS_SPARE_FOR relationship
+	removeSpareRelQuery := helpers.DatabaseQuery{
+		Query: `MATCH (spareItem:Item {uid: $spareItemUid})-[:CONTAINS]-(spareSystem:System)-[r:IS_SPARE_FOR]->(s:System {uid: $systemUid}) DELETE r`,
+		Parameters: map[string]interface{}{
+			"spareItemUid": request.SpareItemUid,
+			"systemUid":    request.SystemUid,
+		},
+	}
+	queries = append(queries, removeSpareRelQuery)
+
+	// Mark spare item's system as deleted
+	markSpareSystemDeletedQuery := helpers.DatabaseQuery{
+		Query: `MATCH (spareSystem:System)-[:CONTAINS_ITEM]->(spareItem:Item {uid: $spareItemUid})
+                SET spareSystem.status = 'deleted', spareSystem.updatedAt = datetime()`,
+		Parameters: map[string]interface{}{
+			"spareItemUid": request.SpareItemUid,
+		},
+	}
+	queries = append(queries, markSpareSystemDeletedQuery)
+
+	// If current item exists, handle relocation
+	if currentItemUid != "" {
+		newParentSystemUid := request.NewParentSystemUid
+
+		// Auto-detect parent system if not provided
+		if newParentSystemUid == "" {
+			autoDetectQuery := helpers.DatabaseQuery{
+				Query: `MATCH (currentSystem:System {uid: $systemUid})
+                        MATCH (currentSystem)-[:HAS_SUBSYSTEM*]->(parentSystem:System)
+                        WHERE parentSystem.type = 'trash' OR parentSystem.name CONTAINS 'trash'
+                        RETURN parentSystem.uid as parentUid
+                        ORDER BY length((currentSystem)-[:HAS_SUBSYSTEM*]->(parentSystem)) ASC
+                        LIMIT 1`,
+				Parameters: map[string]interface{}{
+					"systemUid": request.SystemUid,
+				},
+			}
+
+			result, err := session.Run(autoDetectQuery.Query, autoDetectQuery.Parameters)
+			if err == nil && result.Next() {
+				newParentSystemUid = result.Record().Values[0].(string)
+			}
+		}
+
+		if newParentSystemUid != "" {
+			response.NewParentSystemUid = newParentSystemUid
+
+			// Create new system for old item
+			newSystemUid := uuid.New().String()
+			createNewSystemQuery := helpers.DatabaseQuery{
+				Query: `CREATE (newSys:System {
+                            uid: $newSystemUid,
+                            name: 'Relocated System',
+                            type: 'relocated',
+                            status: 'active',
+                            createdAt: datetime(),
+                            updatedAt: datetime()
+                        })`,
+				Parameters: map[string]interface{}{
+					"newSystemUid": newSystemUid,
+				},
+			}
+			queries = append(queries, createNewSystemQuery)
+
+			// Link old item to new system
+			linkItemToNewSystemQuery := helpers.DatabaseQuery{
+				Query: `MATCH (newSys:System {uid: $newSystemUid})
+                        MATCH (oldItem:Item {uid: $oldItemUid})
+                        CREATE (newSys)-[:CONTAINS_ITEM]->(oldItem)`,
+				Parameters: map[string]interface{}{
+					"newSystemUid": newSystemUid,
+					"oldItemUid":   currentItemUid,
+				},
+			}
+			queries = append(queries, linkItemToNewSystemQuery)
+
+			// Move new system to parent system
+			moveSystemQuery := helpers.DatabaseQuery{
+				Query: `MATCH (parentSys:System {uid: $parentSystemUid})
+                        MATCH (newSys:System {uid: $newSystemUid})
+                        CREATE (parentSys)-[:HAS_SUBSYSTEM]->(newSys)`,
+				Parameters: map[string]interface{}{
+					"parentSystemUid": newParentSystemUid,
+					"newSystemUid":    newSystemUid,
+				},
+			}
+			queries = append(queries, moveSystemQuery)
+		}
+	}
+
+	// Add history log
+	historyLog := helpers.HistoryLogQuery(request.SystemUid, "ASSIGN_SPARE", userUID)
+	queries = append(queries, historyLog)
+
+	// Execute all queries
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
+	if err != nil {
+		return response, err
+	}
+
+	response.Success = true
+	response.Message = "Spare item assigned successfully"
+	return response, nil
 }
