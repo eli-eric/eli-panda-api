@@ -971,7 +971,10 @@ func ValidateSystemsMovement(movement *models.SystemsMovement) error {
 }
 
 func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error) {
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	if err != nil {
+		return models.AssignSpareResponse{}, err
+	}
 	defer session.Close()
 
 	var response models.AssignSpareResponse
