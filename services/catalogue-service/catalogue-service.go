@@ -90,6 +90,7 @@ func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string
 
 	//get all categories by parent path
 	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize, filering, sorting)
+
 	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItemSimple](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryUid, filering))
 
