@@ -1,5 +1,36 @@
 basePath: /
 definitions:
+  models.AssignSpareRequest:
+    properties:
+      newItemLocation:
+        $ref: '#/definitions/models.Codebook'
+      newParentSystemUid:
+        type: string
+      oldItemCondition:
+        $ref: '#/definitions/models.Codebook'
+      spareItemUid:
+        type: string
+      systemUid:
+        type: string
+    required:
+    - newItemLocation
+    - oldItemCondition
+    - spareItemUid
+    - systemUid
+    type: object
+  models.AssignSpareResponse:
+    properties:
+      message:
+        type: string
+      newParentSystemUid:
+        type: string
+      relocatedItemUid:
+        type: string
+      success:
+        type: boolean
+      updatedSystemUid:
+        type: string
+    type: object
   models.AuthorsDepartment:
     properties:
       authorsCount:
@@ -1439,6 +1470,39 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new system
+      tags:
+      - Systems
+  /v1/system/{systemUid}/assign-spare:
+    post:
+      consumes:
+      - application/json
+      description: Assigns a spare item to a system, updating the item's condition
+        and system association
+      parameters:
+      - description: Assign spare item request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.AssignSpareRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns the updated spare item information
+          schema:
+            $ref: '#/definitions/models.AssignSpareResponse'
+        "400":
+          description: Bad request - missing required fields or invalid data
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Assign spare item to system
       tags:
       - Systems
   /v1/system/jira-import:
