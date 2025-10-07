@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
 )
 
 func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter, skip, limit int) (result helpers.DatabaseQuery) {
@@ -19,8 +18,6 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 	result.Parameters["skip"] = skip
 	result.Parameters["limit"] = limit
 	result.Parameters["categoryUid"] = categoryUid
-
-	log.Printf("Parameters: skip:%v limit:%v", skip, limit)
 
 	// category filter
 	filterCategory := helpers.GetFilterValueCodebook(filering, "category")
@@ -231,9 +228,13 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			sortName := sort.ID
 			// handle special cases
 			if sortName == "partNumber" {
-				sortName = "catalogueNumber"
+				sortName = "itm.catalogueNumber"
+			} else if sortName == "catalogueNumber" {
+				sortName = "itm.catalogueNumber"
 			} else if sortName == "categoryName" {
-				sortName = "category.name"
+				sortName = "cat.name"
+			} else if sortName == "name" {
+				sortName = "itm.name"
 			} else if sortName == "lastUpdateTime" {
 				sortName = "lastUpdateTime"
 			}
@@ -288,7 +289,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			value: value
 		}) ELSE NULL END
 	} AS items
-	ORDER BY items.lastUpdateTime DESC`
+	`
 
 	result.ReturnAlias = "items"
 
