@@ -250,8 +250,8 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 	}
 
 	result.Query += `
-		SKIP $skip
-		LIMIT $limit
+		SKIP toInteger($skip)
+		LIMIT toInteger($limit)
 	}
 
 	// Fan out details only for paged items
