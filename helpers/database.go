@@ -576,12 +576,13 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
 						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
 
-						if newValue.IsNil() {
+						if newValue.IsNil() && !oldValue.IsNil() {
 							dbQuery.Parameters[neo4jPropName] = nil
-						} else if oldValue.IsNil() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if !newValue.IsNil() && oldValue.IsNil() {
 							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Int()
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
-						} else if oldValue.Elem().Int() != newValue.Elem().Int() {
+						} else if !newValue.IsNil() && !oldValue.IsNil() && oldValue.Elem().Int() != newValue.Elem().Int() {
 							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Int()
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
@@ -598,9 +599,13 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 						newValue := reflect.Indirect(newValObj).FieldByName(newField.Name)
 						oldValue := reflect.Indirect(oldValObj).FieldByName(oldField.Name)
 
-						if newValue.IsNil() {
+						if newValue.IsNil() && !oldValue.IsNil() {
 							dbQuery.Parameters[neo4jPropName] = nil
-						} else if oldValue.IsNil() {
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if !newValue.IsNil() && oldValue.IsNil() {
+							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Float()
+							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
+						} else if !newValue.IsNil() && !oldValue.IsNil() && oldValue.Elem().Float() != newValue.Elem().Float() {
 							dbQuery.Parameters[neo4jPropName] = newValue.Elem().Float()
 							dbQuery.Query += fmt.Sprintf(`WITH %[1]v SET %[1]v.%[2]v=$%[2]v `, updateNodeAlias, neo4jPropName)
 						}
