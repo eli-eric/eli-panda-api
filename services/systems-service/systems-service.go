@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -1010,10 +1009,10 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		}
 	}
 
-	// Step 2: Validate spare item relationship
+	// Step 2: Validate spare item relationship and get spare system UID
 	validateSpareQuery := `
         MATCH (spareItem:Item {uid: $spareItemUid})<-[:CONTAINS_ITEM]-(spareSystem:System)-[:IS_SPARE_FOR]->(targetSystem:System {uid: $systemUid})
-        RETURN spareItem.uid as spareUid
+        RETURN spareItem.uid as spareUid, spareSystem.uid as spareSystemUid
     `
 
 	result, err = session.Run(validateSpareQuery, map[string]interface{}{
@@ -1028,14 +1027,75 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		return response, errors.New("spare item does not have IS_SPARE_FOR relationship with target system")
 	}
 
+	spareSystemRecord := result.Record()
+	spareSystemUid := spareSystemRecord.Values[1].(string)
+
 	// Step 3: Execute the assignment in a transaction
 	queries := []helpers.DatabaseQuery{}
 
-	// If current item exists, prepare relocation
+	// Get current item's usage code if it exists
+	var currentItemUsageCode string
+	if currentItemUid != "" {
+		getCurrentItemUsageQuery := `
+			MATCH (item:Item {uid: $itemUid})
+			OPTIONAL MATCH (item)-[:HAS_ITEM_USAGE]->(usage:ItemUsage)
+			RETURN usage.code as usageCode
+		`
+		usageResult, err := session.Run(getCurrentItemUsageQuery, map[string]interface{}{
+			"itemUid": currentItemUid,
+		})
+		if err == nil && usageResult.Next() {
+			usageRecord := usageResult.Record()
+			if usageRecord.Values[0] != nil {
+				currentItemUsageCode = usageRecord.Values[0].(string)
+			}
+		}
+	}
+
+	// Assign spare item to target system
+	assignSpareQuery := helpers.DatabaseQuery{
+		Query: `MATCH (s:System {uid: $systemUid})
+                MATCH (spareItem:Item {uid: $spareItemUid})
+                CREATE (s)-[:CONTAINS_ITEM]->(spareItem)
+                SET spareItem.status = 'in_system', spareItem.updatedAt = datetime()`,
+		Parameters: map[string]interface{}{
+			"systemUid":    request.SystemUid,
+			"spareItemUid": request.SpareItemUid,
+		},
+	}
+	queries = append(queries, assignSpareQuery)
+
+	// Update spare item usage to the current item's usage (if current item exists)
+	if currentItemUid != "" && currentItemUsageCode != "" {
+		updateSpareItemUsageQuery := helpers.DatabaseQuery{
+			Query: `MATCH (spareItem:Item {uid: $spareItemUid})
+                    OPTIONAL MATCH (spareItem)-[oldUsageRel:HAS_ITEM_USAGE]->(:ItemUsage)
+                    DELETE oldUsageRel
+                    WITH spareItem
+                    MATCH (newUsage:ItemUsage {code: $usageCode})
+                    CREATE (spareItem)-[:HAS_ITEM_USAGE]->(newUsage)`,
+			Parameters: map[string]interface{}{
+				"spareItemUid": request.SpareItemUid,
+				"usageCode":    currentItemUsageCode,
+			},
+		}
+		queries = append(queries, updateSpareItemUsageQuery)
+	}
+
+	// Remove ALL IS_SPARE_FOR relationships from the spare system (since it's no longer a spare for any system)
+	removeAllSpareRelQuery := helpers.DatabaseQuery{
+		Query: `MATCH (spareSystem:System {uid: $spareSystemUid})-[r:IS_SPARE_FOR]->(:System) DELETE r`,
+		Parameters: map[string]interface{}{
+			"spareSystemUid": spareSystemUid,
+		},
+	}
+	queries = append(queries, removeAllSpareRelQuery)
+
+	// If current item exists, relocate it to the spare system
 	if currentItemUid != "" {
 		response.RelocatedItemUid = currentItemUid
 
-		// Detach current item from system
+		// Detach current item from target system
 		detachQuery := helpers.DatabaseQuery{
 			Query: `MATCH (s:System {uid: $systemUid})-[r:CONTAINS_ITEM]->(oldItem:Item {uid: $oldItemUid}) DELETE r`,
 			Parameters: map[string]interface{}{
@@ -1045,7 +1105,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		}
 		queries = append(queries, detachQuery)
 
-		// Update old item condition using relationship
+		// Update old item condition
 		updateItemConditionQuery := helpers.DatabaseQuery{
 			Query: `MATCH (item:Item {uid: $oldItemUid})
                     OPTIONAL MATCH (item)-[oldCondRel:HAS_CONDITION_STATUS]->(:ItemCondition)
@@ -1061,139 +1121,115 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		}
 		queries = append(queries, updateItemConditionQuery)
 
-		// Create new system for old item with location
-		newSystemUid := uuid.New().String()
-		createNewSystemQuery := helpers.DatabaseQuery{
-			Query: `CREATE (newSys:System {
-                            uid: $newSystemUid,
-                            name: 'Relocated System',
-                            type: 'relocated',
-                            status: 'active',
-                            createdAt: datetime(),
-                            updatedAt: datetime()
-                        })
-                        WITH newSys
-                        MATCH (location:Location {uid: $locationUid})
-                        CREATE (newSys)-[:HAS_LOCATION]->(location)`,
+		// Update old item usage to "stock-item"
+		updateOldItemUsageQuery := helpers.DatabaseQuery{
+			Query: `MATCH (item:Item {uid: $oldItemUid})
+                    OPTIONAL MATCH (item)-[oldUsageRel:HAS_ITEM_USAGE]->(:ItemUsage)
+                    DELETE oldUsageRel
+                    WITH item
+                    MATCH (stockUsage:ItemUsage {code: 'stock-item'})
+                    CREATE (item)-[:HAS_ITEM_USAGE]->(stockUsage)`,
 			Parameters: map[string]interface{}{
-				"newSystemUid": newSystemUid,
-				"locationUid":  request.NewItemLocation.UID,
+				"oldItemUid": currentItemUid,
 			},
 		}
-		queries = append(queries, createNewSystemQuery)
-	}
+		queries = append(queries, updateOldItemUsageQuery)
 
-	// Assign spare item to system
-	assignSpareQuery := helpers.DatabaseQuery{
-		Query: `MATCH (s:System {uid: $systemUid})
-                MATCH (spareItem:Item {uid: $spareItemUid})
-                CREATE (s)-[:CONTAINS_ITEM]->(spareItem)
-                SET spareItem.status = 'in_system', spareItem.updatedAt = datetime()`,
-		Parameters: map[string]interface{}{
-			"systemUid":    request.SystemUid,
-			"spareItemUid": request.SpareItemUid,
-		},
-	}
-	queries = append(queries, assignSpareQuery)
+		// Assign old item to spare system (reuse the spare system)
+		assignOldItemToSpareSystemQuery := helpers.DatabaseQuery{
+			Query: `MATCH (spareSystem:System {uid: $spareSystemUid})
+                    MATCH (oldItem:Item {uid: $oldItemUid})
+                    CREATE (spareSystem)-[:CONTAINS_ITEM]->(oldItem)`,
+			Parameters: map[string]interface{}{
+				"spareSystemUid": spareSystemUid,
+				"oldItemUid":     currentItemUid,
+			},
+		}
+		queries = append(queries, assignOldItemToSpareSystemQuery)
 
-	// Remove IS_SPARE_FOR relationship
-	removeSpareRelQuery := helpers.DatabaseQuery{
-		Query: `MATCH (spareItem:Item {uid: $spareItemUid})-[:CONTAINS]-(spareSystem:System)-[r:IS_SPARE_FOR]->(s:System {uid: $systemUid}) DELETE r`,
-		Parameters: map[string]interface{}{
-			"spareItemUid": request.SpareItemUid,
-			"systemUid":    request.SystemUid,
-		},
-	}
-	queries = append(queries, removeSpareRelQuery)
+		// Update spare system status to active (it now contains the old item)
+		updateSpareSystemStatusQuery := helpers.DatabaseQuery{
+			Query: `MATCH (spareSystem:System {uid: $spareSystemUid})
+                    SET spareSystem.status = 'active', spareSystem.updatedAt = datetime()`,
+			Parameters: map[string]interface{}{
+				"spareSystemUid": spareSystemUid,
+			},
+		}
+		queries = append(queries, updateSpareSystemStatusQuery)
 
-	// Mark spare item's system as deleted
-	markSpareSystemDeletedQuery := helpers.DatabaseQuery{
-		Query: `MATCH (spareSystem:System)-[:CONTAINS_ITEM]->(spareItem:Item {uid: $spareItemUid})
-                SET spareSystem.status = 'deleted', spareSystem.updatedAt = datetime()`,
-		Parameters: map[string]interface{}{
-			"spareItemUid": request.SpareItemUid,
-		},
-	}
-	queries = append(queries, markSpareSystemDeletedQuery)
+		// Set location for the spare system if provided
+		if request.NewItemLocation.UID != "" {
+			setLocationQuery := helpers.DatabaseQuery{
+				Query: `MATCH (spareSystem:System {uid: $spareSystemUid})
+                        OPTIONAL MATCH (spareSystem)-[oldLocRel:HAS_LOCATION]->(:Location)
+                        DELETE oldLocRel
+                        WITH spareSystem
+                        MATCH (location:Location {uid: $locationUid})
+                        CREATE (spareSystem)-[:HAS_LOCATION]->(location)`,
+				Parameters: map[string]interface{}{
+					"spareSystemUid": spareSystemUid,
+					"locationUid":    request.NewItemLocation.UID,
+				},
+			}
+			queries = append(queries, setLocationQuery)
+		}
 
-	// If current item exists, handle relocation
-	if currentItemUid != "" {
+		// Determine parent system for spare system placement
 		newParentSystemUid := request.NewParentSystemUid
-
-		// Auto-detect parent system if not provided
 		if newParentSystemUid == "" {
-			autoDetectQuery := helpers.DatabaseQuery{
-				Query: `MATCH (currentSystem:System {uid: $systemUid})
-                        MATCH (currentSystem)-[:HAS_SUBSYSTEM*]->(parentSystem:System)
-                        WHERE parentSystem.type = 'trash' OR parentSystem.name CONTAINS 'trash'
-                        RETURN parentSystem.uid as parentUid
-                        ORDER BY length((currentSystem)-[:HAS_SUBSYSTEM*]->(parentSystem)) ASC
-                        LIMIT 1`,
-				Parameters: map[string]interface{}{
-					"systemUid": request.SystemUid,
-				},
-			}
-
-			result, err := session.Run(autoDetectQuery.Query, autoDetectQuery.Parameters)
-			if err == nil && result.Next() {
-				newParentSystemUid = result.Record().Values[0].(string)
-			}
+			// Use hardcoded unassigned items system as requested
+			newParentSystemUid = "c6a8e743-f348-4e4f-b5cc-c38da8bf4641"
 		}
 
-		if newParentSystemUid != "" {
-			response.NewParentSystemUid = newParentSystemUid
+		response.NewParentSystemUid = newParentSystemUid
 
-			// Create new system for old item
-			newSystemUid := uuid.New().String()
-			createNewSystemQuery := helpers.DatabaseQuery{
-				Query: `CREATE (newSys:System {
-                            uid: $newSystemUid,
-                            name: 'Relocated System',
-                            type: 'relocated',
-                            status: 'active',
-                            createdAt: datetime(),
-                            updatedAt: datetime()
-                        })`,
-				Parameters: map[string]interface{}{
-					"newSystemUid": newSystemUid,
-				},
-			}
-			queries = append(queries, createNewSystemQuery)
-
-			// Link old item to new system
-			linkItemToNewSystemQuery := helpers.DatabaseQuery{
-				Query: `MATCH (newSys:System {uid: $newSystemUid})
-                        MATCH (oldItem:Item {uid: $oldItemUid})
-                        CREATE (newSys)-[:CONTAINS_ITEM]->(oldItem)`,
-				Parameters: map[string]interface{}{
-					"newSystemUid": newSystemUid,
-					"oldItemUid":   currentItemUid,
-				},
-			}
-			queries = append(queries, linkItemToNewSystemQuery)
-
-			// Move new system to parent system
-			moveSystemQuery := helpers.DatabaseQuery{
-				Query: `MATCH (parentSys:System {uid: $parentSystemUid})
-                        MATCH (newSys:System {uid: $newSystemUid})
-                        CREATE (parentSys)-[:HAS_SUBSYSTEM]->(newSys)`,
-				Parameters: map[string]interface{}{
-					"parentSystemUid": newParentSystemUid,
-					"newSystemUid":    newSystemUid,
-				},
-			}
-			queries = append(queries, moveSystemQuery)
+		// Move spare system to parent system (remove old parent relationships first)
+		removeOldParentQuery := helpers.DatabaseQuery{
+			Query: `MATCH (parentSys:System)-[r:HAS_SUBSYSTEM]->(spareSystem:System {uid: $spareSystemUid}) DELETE r`,
+			Parameters: map[string]interface{}{
+				"spareSystemUid": spareSystemUid,
+			},
 		}
+		queries = append(queries, removeOldParentQuery)
+
+		// Add new parent relationship
+		addNewParentQuery := helpers.DatabaseQuery{
+			Query: `MATCH (parentSys:System {uid: $parentSystemUid})
+                    MATCH (spareSystem:System {uid: $spareSystemUid})
+                    CREATE (parentSys)-[:HAS_SUBSYSTEM]->(spareSystem)`,
+			Parameters: map[string]interface{}{
+				"parentSystemUid": newParentSystemUid,
+				"spareSystemUid":  spareSystemUid,
+			},
+		}
+		queries = append(queries, addNewParentQuery)
+	} else {
+		// No current item exists, mark spare system as deleted since it's now empty
+		markSpareSystemDeletedQuery := helpers.DatabaseQuery{
+			Query: `MATCH (spareSystem:System {uid: $spareSystemUid})
+                    SET spareSystem.status = 'deleted', spareSystem.updatedAt = datetime()`,
+			Parameters: map[string]interface{}{
+				"spareSystemUid": spareSystemUid,
+			},
+		}
+		queries = append(queries, markSpareSystemDeletedQuery)
 	}
 
 	// Add history log
 	historyLog := helpers.HistoryLogQuery(request.SystemUid, "ASSIGN_SPARE", userUID)
 	queries = append(queries, historyLog)
 
-	// Execute all queries
+	// Execute all queries in transaction
 	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 	if err != nil {
 		return response, err
+	}
+
+	// Recalculate spare parts coverage since IS_SPARE_FOR relationships have changed
+	err = svc.RecalculateSpareParts()
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to recalculate spare parts coverage after assignment")
+		// Don't fail the entire operation if recalculation fails, just log the error
 	}
 
 	response.Success = true
