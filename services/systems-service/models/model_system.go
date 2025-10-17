@@ -172,3 +172,130 @@ type AssignSpareResponse struct {
 	RelocatedItemUid   string `json:"relocatedItemUid,omitempty"`
 	NewParentSystemUid string `json:"newParentSystemUid,omitempty"`
 }
+
+// SystemSparePartsDetail contains comprehensive system and physical item information with all spare relations
+type SystemSparePartsDetail struct {
+	System              SystemDetailInfo             `json:"system"`
+	Location            *CodebookInfo                `json:"location,omitempty"`
+	Zone                *CodebookInfo                `json:"zone,omitempty"`
+	SystemType          *CodebookInfo                `json:"systemType,omitempty"`
+	SystemAttributes    []CodebookInfo               `json:"systemAttributes"`
+	ResponsiblePersons  ResponsiblePersonsInfo       `json:"responsiblePersons"`
+	Team                *CodebookInfo                `json:"team,omitempty"`
+	PhysicalItems       []PhysicalItemDetailExtended `json:"physicalItems"`
+	SparePartsRelations SparePartsRelationsInfo      `json:"sparePartsRelations"`
+}
+
+// CodebookInfo represents simplified codebook information
+type CodebookInfo struct {
+	UID  string  `json:"uid"`
+	Name string  `json:"name"`
+	Code *string `json:"code,omitempty"`
+}
+
+// SystemDetailInfo contains detailed system information
+type SystemDetailInfo struct {
+	UID                    string  `json:"uid"`
+	Name                   string  `json:"name"`
+	SystemCode             *string `json:"systemCode,omitempty"`
+	Description            *string `json:"description,omitempty"`
+	Status                 *string `json:"status,omitempty"`
+	IsTechnologicalUnit    *bool   `json:"isTechnologicalUnit,omitempty"`
+	IsCritical             *bool   `json:"isCritical,omitempty"`
+	MinimalSpareParstCount *int64  `json:"minimalSpareParstCount,omitempty"`
+	SparePartsCoverageSum  *int64  `json:"sparePartsCoverageSum,omitempty"`
+	SystemLevel            *string `json:"systemLevel,omitempty"`
+	SystemAlias            *string `json:"systemAlias,omitempty"`
+	Image                  *string `json:"image,omitempty"`
+	MiniImageUrl           *string `json:"miniImageUrl,omitempty"`
+	LastUpdateTime         *string `json:"lastUpdateTime,omitempty"`
+	LastUpdateBy           *string `json:"lastUpdateBy,omitempty"`
+}
+
+// ResponsiblePersonsInfo contains information about responsible persons
+type ResponsiblePersonsInfo struct {
+	Responsible *EmployeeInfo `json:"responsible,omitempty"`
+	Operator    *EmployeeInfo `json:"operator,omitempty"`
+	Maintainer  *EmployeeInfo `json:"maintainer,omitempty"`
+}
+
+// EmployeeInfo contains employee information
+type EmployeeInfo struct {
+	UID       string  `json:"uid"`
+	FirstName *string `json:"firstName,omitempty"`
+	LastName  *string `json:"lastName,omitempty"`
+	Email     *string `json:"email,omitempty"`
+	Phone     *string `json:"phone,omitempty"`
+}
+
+// PhysicalItemDetailExtended contains extended physical item information
+type PhysicalItemDetailExtended struct {
+	UID            string             `json:"uid"`
+	Name           string             `json:"name"`
+	SerialNumber   *string            `json:"serialNumber,omitempty"`
+	EUN            *string            `json:"eun,omitempty"`
+	Price          *string            `json:"price,omitempty"`
+	Currency       *string            `json:"currency,omitempty"`
+	Status         *string            `json:"status,omitempty"`
+	Notes          *string            `json:"notes,omitempty"`
+	PrintEUN       *bool              `json:"printEUN,omitempty"`
+	LastUpdateTime *string            `json:"lastUpdateTime,omitempty"`
+	Condition      *CodebookInfo      `json:"condition,omitempty"`
+	Usage          *CodebookInfo      `json:"usage,omitempty"`
+	CatalogueItem  *CatalogueItemInfo `json:"catalogueItem,omitempty"`
+}
+
+// CatalogueItemInfo contains catalogue item information
+type CatalogueItemInfo struct {
+	UID             string        `json:"uid"`
+	Name            string        `json:"name"`
+	Description     *string       `json:"description,omitempty"`
+	CatalogueNumber *string       `json:"catalogueNumber,omitempty"`
+	Image           *string       `json:"image,omitempty"`
+	MiniImageUrl    *string       `json:"miniImageUrl,omitempty"`
+	ManufacturerUrl *string       `json:"manufacturerUrl,omitempty"`
+	LastUpdateTime  *string       `json:"lastUpdateTime,omitempty"`
+	Category        *CodebookInfo `json:"category,omitempty"`
+	Manufacturer    *CodebookInfo `json:"manufacturer,omitempty"`
+}
+
+// SparePartsRelationsInfo contains spare parts relationship information
+type SparePartsRelationsInfo struct {
+	SpareSystems  []SpareSystemInfo  `json:"spareSystems"`
+	ParentSystems []SystemSimpleInfo `json:"parentSystems"`
+}
+
+// SpareSystemInfo contains spare system information
+type SpareSystemInfo struct {
+	UID           string                  `json:"uid"`
+	Name          string                  `json:"name"`
+	SystemCode    *string                 `json:"systemCode,omitempty"`
+	Description   *string                 `json:"description,omitempty"`
+	Status        *string                 `json:"status,omitempty"`
+	PhysicalItems []SparePhysicalItemInfo `json:"physicalItems"`
+}
+
+// SparePhysicalItemInfo contains spare physical item information
+type SparePhysicalItemInfo struct {
+	UID           string                   `json:"uid"`
+	Name          string                   `json:"name"`
+	SerialNumber  *string                  `json:"serialNumber,omitempty"`
+	EUN           *string                  `json:"eun,omitempty"`
+	CatalogueItem *SimpleCatalogueItemInfo `json:"catalogueItem,omitempty"`
+}
+
+// SimpleCatalogueItemInfo contains simplified catalogue item information
+type SimpleCatalogueItemInfo struct {
+	UID             string  `json:"uid"`
+	Name            string  `json:"name"`
+	CatalogueNumber *string `json:"catalogueNumber,omitempty"`
+}
+
+// SystemSimpleInfo contains simplified system information
+type SystemSimpleInfo struct {
+	UID         string  `json:"uid"`
+	Name        string  `json:"name"`
+	SystemCode  *string `json:"systemCode,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Status      *string `json:"status,omitempty"`
+}

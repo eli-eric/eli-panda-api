@@ -7,11 +7,8 @@ import (
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
-	systemsModels "panda/apigateway/services/systems-service/models"
 	"strconv"
 	"strings"
-
-	//"strings"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -32,7 +29,7 @@ type ISystemsService interface {
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error)
-	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []systemsModels.System, err error)
+	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
 	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
@@ -49,6 +46,7 @@ type ISystemsService interface {
 	GetPhysicalItemProperties(physicalItemUid string) (result []models.PhysicalItemDetail, err error)
 	UpdatePhysicalItemProperties(physicalItemUid string, details []models.PhysicalItemDetail, userUID string) (err error)
 	GetSystemHistory(uid string) (result []models.SystemHistory, err error)
+	GetSystemSparePartsDetail(systemId string, facilityCode string) (result models.SystemSparePartsDetail, err error)
 	GetSystemTypeGroups(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, facilityCode string) (result []models.SystemType, err error)
 	DeleteSystemTypeGroup(systemTypeGroupUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount)
@@ -870,7 +868,7 @@ func (svc *SystemsService) MovePhysicalItem(movement *models.PhysicalItemMovemen
 	return destinationSystemUid, err
 }
 
-func ValidatePhysicalItemMovement(movement *systemsModels.PhysicalItemMovement) error {
+func ValidatePhysicalItemMovement(movement *models.PhysicalItemMovement) error {
 
 	// if the destination system is new there has to be parent system specified
 	if movement.DestinationSystemUID == "" && movement.ParentSystemUID == "" {
@@ -913,7 +911,7 @@ func (svc *SystemsService) ReplacePhysicalItems(movement *models.PhysicalItemMov
 	return destinationSystemUid, err
 }
 
-func ValidatePhysicalItemReplacement(movement *systemsModels.PhysicalItemMovement) error {
+func ValidatePhysicalItemReplacement(movement *models.PhysicalItemMovement) error {
 
 	erros := make([]string, 0)
 	if movement.DestinationSystemUID == "" {
@@ -1201,4 +1199,292 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 	response.Success = true
 	response.Message = "Spare item assigned successfully"
 	return response, nil
+}
+
+// GetSystemSparePartsDetail returns comprehensive system and physical item information with all spare relations
+func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode string) (result models.SystemSparePartsDetail, err error) {
+	driver := *s.neo4jDriver
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close()
+
+	// Execute multiple queries to avoid nested aggregations
+	// Query 1: Get basic system information
+	systemQuery := `
+		MATCH (s:System {uid: $systemId})-[:BELONGS_TO_FACILITY]->(facility:Facility {code: $facilityCode})
+		OPTIONAL MATCH (s)-[:HAS_ZONE]->(zone:Zone)
+		OPTIONAL MATCH (s)-[:HAS_LOCATION]->(location:Location)
+		OPTIONAL MATCH (s)-[:HAS_SYSTEM_TYPE]->(systemType:SystemType)
+		OPTIONAL MATCH (s)-[:HAS_RESPONSIBLE]->(responsible:Employee)
+		OPTIONAL MATCH (s)-[:HAS_OPERATOR]->(operator:Employee)
+		OPTIONAL MATCH (s)-[:IS_MAINTAINED_BY]->(maintainer:Employee)
+		OPTIONAL MATCH (s)-[:HAS_RESPONSIBLE_TEAM]->(team:Team)
+		
+		RETURN {
+			system: {
+				uid: s.uid,
+				name: s.name,
+				systemCode: s.systemCode,
+				description: s.description,
+				status: s.status,
+				isTechnologicalUnit: s.isTechnologicalUnit,
+				isCritical: s.isCritical,
+				minimalSpareParstCount: s.minimalSpareParstCount,
+				sparePartsCoverageSum: s.sparePartsCoverageSum,
+				systemLevel: s.systemLevel,
+				systemAlias: s.systemAlias,
+				image: s.image,
+				miniImageUrl: s.miniImageUrl,
+				lastUpdateTime: toString(s.lastUpdateTime),
+				lastUpdateBy: s.lastUpdateBy
+			},
+			location: CASE WHEN location IS NOT NULL THEN {
+				uid: location.uid,
+				name: location.name,
+				code: location.code
+			} ELSE null END,
+			zone: CASE WHEN zone IS NOT NULL THEN {
+				uid: zone.uid,
+				name: zone.name,
+				code: zone.code
+			} ELSE null END,
+			systemType: CASE WHEN systemType IS NOT NULL THEN {
+				uid: systemType.uid,
+				name: systemType.name,
+				code: systemType.code
+			} ELSE null END,
+			responsiblePersons: {
+				responsible: CASE WHEN responsible IS NOT NULL THEN {
+					uid: responsible.uid,
+					firstName: responsible.firstName,
+					lastName: responsible.lastName,
+					email: responsible.email,
+					phone: responsible.phone
+				} ELSE null END,
+				operator: CASE WHEN operator IS NOT NULL THEN {
+					uid: operator.uid,
+					firstName: operator.firstName,
+					lastName: operator.lastName,
+					email: operator.email,
+					phone: operator.phone
+				} ELSE null END,
+				maintainer: CASE WHEN maintainer IS NOT NULL THEN {
+					uid: maintainer.uid,
+					firstName: maintainer.firstName,
+					lastName: maintainer.lastName,
+					email: maintainer.email,
+					phone: maintainer.phone
+				} ELSE null END
+			},
+			team: CASE WHEN team IS NOT NULL THEN {
+				uid: team.uid,
+				name: team.name
+			} ELSE null END
+		} AS result
+	`
+
+	systemResult, err := session.Run(systemQuery, map[string]interface{}{
+		"systemId":     systemId,
+		"facilityCode": facilityCode,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error executing system basic info query")
+		return result, err
+	}
+
+	var basicInfo map[string]interface{}
+	if systemResult.Next() {
+		record := systemResult.Record()
+		if resultValue, ok := record.Get("result"); ok {
+			basicInfo = resultValue.(map[string]interface{})
+		}
+	}
+
+	// Query 2: Get system attributes
+	attributesQuery := `
+		MATCH (s:System {uid: $systemId})-[:HAS_SYSTEM_ATTRIBUTE]->(attr:SystemAttribute)
+		RETURN COLLECT({
+			uid: attr.uid,
+			name: attr.name
+		}) AS systemAttributes
+	`
+
+	attrResult, err := session.Run(attributesQuery, map[string]interface{}{
+		"systemId": systemId,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error executing system attributes query")
+		return result, err
+	}
+
+	var systemAttributes []interface{}
+	if attrResult.Next() {
+		record := attrResult.Record()
+		if attrs, ok := record.Get("systemAttributes"); ok {
+			systemAttributes = attrs.([]interface{})
+		}
+	}
+
+	// Query 3: Get physical items
+	itemsQuery := `
+		MATCH (s:System {uid: $systemId})-[:CONTAINS_ITEM]->(item:Item)
+		OPTIONAL MATCH (item)-[:IS_BASED_ON]->(catalogueItem:CatalogueItem)
+		OPTIONAL MATCH (catalogueItem)-[:BELONGS_TO_CATEGORY]->(category:CatalogueCategory)
+		OPTIONAL MATCH (catalogueItem)-[:HAS_MANUFACTURER]->(manufacturer:Manufacturer)
+		OPTIONAL MATCH (item)-[:HAS_CONDITION_STATUS]->(condition:ItemCondition)
+		OPTIONAL MATCH (item)-[:HAS_ITEM_USAGE]->(usage:ItemUsage)
+		
+		RETURN COLLECT({
+			uid: item.uid,
+			name: item.name,
+			serialNumber: item.serialNumber,
+			eun: item.eun,
+			price: item.price,
+			currency: item.currency,
+			status: item.status,
+			notes: item.notes,
+			printEUN: item.printEUN,
+			lastUpdateTime: toString(item.lastUpdateTime),
+			condition: CASE WHEN condition IS NOT NULL THEN {
+				uid: condition.uid,
+				name: condition.name,
+				code: condition.code
+			} ELSE null END,
+			usage: CASE WHEN usage IS NOT NULL THEN {
+				uid: usage.uid,
+				name: usage.name,
+				code: usage.code
+			} ELSE null END,
+			catalogueItem: CASE WHEN catalogueItem IS NOT NULL THEN {
+				uid: catalogueItem.uid,
+				name: catalogueItem.name,
+				description: catalogueItem.description,
+				catalogueNumber: catalogueItem.catalogueNumber,
+				image: catalogueItem.image,
+				miniImageUrl: catalogueItem.miniImageUrl,
+				manufacturerUrl: catalogueItem.manufacturerUrl,
+				lastUpdateTime: toString(catalogueItem.lastUpdateTime),
+				category: CASE WHEN category IS NOT NULL THEN {
+					uid: category.uid,
+					name: category.name,
+					code: category.code,
+					image: category.image,
+					miniImageUrl: category.miniImageUrl
+				} ELSE null END,
+				manufacturer: CASE WHEN manufacturer IS NOT NULL THEN {
+					uid: manufacturer.uid,
+					name: manufacturer.name
+				} ELSE null END
+			} ELSE null END
+		}) AS physicalItems
+	`
+
+	itemsResult, err := session.Run(itemsQuery, map[string]interface{}{
+		"systemId": systemId,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error executing physical items query")
+		return result, err
+	}
+
+	var physicalItems []interface{}
+	if itemsResult.Next() {
+		record := itemsResult.Record()
+		if items, ok := record.Get("physicalItems"); ok {
+			physicalItems = items.([]interface{})
+		}
+	}
+
+	// Query 4: Get spare systems with their physical items
+	spareSystemsQuery := `
+		MATCH (spareSystem:System)-[:IS_SPARE_FOR]->(s:System {uid: $systemId})
+		OPTIONAL MATCH (spareSystem)-[:CONTAINS_ITEM]->(spareItem:Item)
+		OPTIONAL MATCH (spareItem)-[:IS_BASED_ON]->(spareCatalogueItem:CatalogueItem)
+		
+		WITH spareSystem, COLLECT({
+			uid: spareItem.uid,
+			name: spareItem.name,
+			serialNumber: spareItem.serialNumber,
+			eun: spareItem.eun,
+			catalogueItem: CASE WHEN spareCatalogueItem IS NOT NULL THEN {
+				uid: spareCatalogueItem.uid,
+				name: spareCatalogueItem.name,
+				catalogueNumber: spareCatalogueItem.catalogueNumber
+			} ELSE null END
+		}) AS spareItems
+		
+		RETURN COLLECT({
+			uid: spareSystem.uid,
+			name: spareSystem.name,
+			systemCode: spareSystem.systemCode,
+			description: spareSystem.description,
+			status: spareSystem.status,
+			physicalItems: [item IN spareItems WHERE item.uid IS NOT NULL | item]
+		}) AS spareSystems
+	`
+
+	spareSystemsResult, err := session.Run(spareSystemsQuery, map[string]interface{}{
+		"systemId": systemId,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error executing spare systems query")
+		return result, err
+	}
+
+	var spareSystems []interface{}
+	if spareSystemsResult.Next() {
+		record := spareSystemsResult.Record()
+		if systems, ok := record.Get("spareSystems"); ok {
+			spareSystems = systems.([]interface{})
+		}
+	}
+
+	// Query 5: Get parent systems (systems this system is spare for)
+	parentSystemsQuery := `
+		MATCH (s:System {uid: $systemId})-[:IS_SPARE_FOR]->(parentSystem:System)
+		RETURN COLLECT({
+			uid: parentSystem.uid,
+			name: parentSystem.name,
+			systemCode: parentSystem.systemCode,
+			description: parentSystem.description,
+			status: parentSystem.status
+		}) AS parentSystems
+	`
+
+	parentSystemsResult, err := session.Run(parentSystemsQuery, map[string]interface{}{
+		"systemId": systemId,
+	})
+	if err != nil {
+		log.Error().Err(err).Msg("Error executing parent systems query")
+		return result, err
+	}
+
+	var parentSystems []interface{}
+	if parentSystemsResult.Next() {
+		record := parentSystemsResult.Record()
+		if systems, ok := record.Get("parentSystems"); ok {
+			parentSystems = systems.([]interface{})
+		}
+	}
+
+	// Combine all results
+	if basicInfo != nil {
+		basicInfo["systemAttributes"] = systemAttributes
+		basicInfo["physicalItems"] = physicalItems
+		basicInfo["sparePartsRelations"] = map[string]interface{}{
+			"spareSystems":  spareSystems,
+			"parentSystems": parentSystems,
+		}
+
+		// Use MapStruct to convert the result map to our model
+		mappedResult, err := helpers.MapStruct[models.SystemSparePartsDetail](basicInfo)
+		if err != nil {
+			log.Error().Err(err).Msg("Error mapping system spare parts detail result")
+			return result, err
+		}
+
+		result = mappedResult
+		log.Info().Str("systemId", systemId).Msg("Successfully retrieved system spare parts detail")
+	}
+
+	return result, nil
 }

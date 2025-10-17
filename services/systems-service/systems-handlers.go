@@ -58,6 +58,7 @@ type ISystemsHandlers interface {
 	ReplacePhysicalItems() echo.HandlerFunc
 	MoveSystems() echo.HandlerFunc
 	AssignSpareItem() echo.HandlerFunc
+	GetSystemSparePartsDetail() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -1270,5 +1271,36 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return helpers.BadRequest(err.Error())
+	}
+}
+
+// Swagger documentation for GetSystemSparePartsDetail
+// @Summary Get system spare parts detail
+// @Description Get comprehensive system and physical item information with all spare relations by system ID
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 200 {object} models.SystemSparePartsDetail "Returns comprehensive system spare parts information"
+// @Failure 400 {string} string "Bad request - invalid system ID"
+// @Failure 404 {string} string "System not found"
+// @Failure 500 {string} string "Internal server error"
+// @Router /v1/system/{uid}/spare-parts-detail [get]
+func (h *SystemsHandlers) GetSystemSparePartsDetail() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		// Get system UID from path parameter
+		systemUid := c.Param("uid")
+		facilityCode := c.Get("facilityCode").(string)
+
+		// Call the service method
+		result, err := h.systemsService.GetSystemSparePartsDetail(systemUid, facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, result)
+		} else {
+			log.Error().Err(err).Str("systemUid", systemUid).Msg("Error getting system spare parts detail")
+			return echo.ErrInternalServerError
+		}
 	}
 }
