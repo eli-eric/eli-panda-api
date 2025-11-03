@@ -1215,6 +1215,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/spare-parts-detail": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get comprehensive system and physical item information with all spare relations by system ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system spare parts detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns comprehensive system spare parts information",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemSparePartsDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request - invalid system ID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "System not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/systems/locations-flat": {
             "get": {
                 "security": [
@@ -1621,6 +1676,41 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CatalogueItemInfo": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "category": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "manufacturer": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                },
+                "manufacturerUrl": {
+                    "type": "string"
+                },
+                "miniImageUrl": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CatalogueServiceType": {
             "type": "object",
             "properties": {
@@ -1654,6 +1744,40 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CodebookInfo": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EmployeeInfo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "phone": {
                     "type": "string"
                 },
                 "uid": {
@@ -1940,6 +2064,50 @@ const docTemplate = `{
                 }
             }
         },
+        "models.PhysicalItemDetailExtended": {
+            "type": "object",
+            "properties": {
+                "catalogueItem": {
+                    "$ref": "#/definitions/models.CatalogueItemInfo"
+                },
+                "condition": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "string"
+                },
+                "printEUN": {
+                    "type": "boolean"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "usage": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                }
+            }
+        },
         "models.PhysicalItemMovement": {
             "type": "object",
             "properties": {
@@ -2160,6 +2328,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ResponsiblePersonsInfo": {
+            "type": "object",
+            "properties": {
+                "maintainer": {
+                    "$ref": "#/definitions/models.EmployeeInfo"
+                },
+                "operator": {
+                    "$ref": "#/definitions/models.EmployeeInfo"
+                },
+                "responsible": {
+                    "$ref": "#/definitions/models.EmployeeInfo"
+                }
+            }
+        },
         "models.ServiceLine": {
             "type": "object",
             "properties": {
@@ -2212,6 +2394,83 @@ const docTemplate = `{
             "properties": {
                 "isDelivered": {
                     "type": "boolean"
+                }
+            }
+        },
+        "models.SimpleCatalogueItemInfo": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SparePartsRelationsInfo": {
+            "type": "object",
+            "properties": {
+                "parentSystems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemSimpleInfo"
+                    }
+                },
+                "spareSystems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SpareSystemInfo"
+                    }
+                }
+            }
+        },
+        "models.SparePhysicalItemInfo": {
+            "type": "object",
+            "properties": {
+                "catalogueItem": {
+                    "$ref": "#/definitions/models.SimpleCatalogueItemInfo"
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SpareSystemInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "physicalItems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SparePhysicalItemInfo"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "systemCode": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
                 }
             }
         },
@@ -2312,6 +2571,56 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemDetailInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "isCritical": {
+                    "type": "boolean"
+                },
+                "isTechnologicalUnit": {
+                    "type": "boolean"
+                },
+                "lastUpdateBy": {
+                    "type": "string"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "miniImageUrl": {
+                    "type": "string"
+                },
+                "minimalSpareParstCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "sparePartsCoverageSum": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "systemAlias": {
+                    "type": "string"
+                },
+                "systemCode": {
+                    "type": "string"
+                },
+                "systemLevel": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemHistory": {
             "type": "object",
             "properties": {
@@ -2349,6 +2658,26 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemSimpleInfo": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "systemCode": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemSimpleResponse": {
             "type": "object",
             "properties": {
@@ -2357,6 +2686,44 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemSparePartsDetail": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                },
+                "physicalItems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PhysicalItemDetailExtended"
+                    }
+                },
+                "responsiblePersons": {
+                    "$ref": "#/definitions/models.ResponsiblePersonsInfo"
+                },
+                "sparePartsRelations": {
+                    "$ref": "#/definitions/models.SparePartsRelationsInfo"
+                },
+                "system": {
+                    "$ref": "#/definitions/models.SystemDetailInfo"
+                },
+                "systemAttributes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CodebookInfo"
+                    }
+                },
+                "systemType": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                },
+                "team": {
+                    "$ref": "#/definitions/models.CodebookInfo"
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.CodebookInfo"
                 }
             }
         },

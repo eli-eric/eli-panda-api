@@ -98,6 +98,29 @@ definitions:
       uid:
         type: string
     type: object
+  models.CatalogueItemInfo:
+    properties:
+      catalogueNumber:
+        type: string
+      category:
+        $ref: '#/definitions/models.CodebookInfo'
+      description:
+        type: string
+      image:
+        type: string
+      lastUpdateTime:
+        type: string
+      manufacturer:
+        $ref: '#/definitions/models.CodebookInfo'
+      manufacturerUrl:
+        type: string
+      miniImageUrl:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
   models.CatalogueServiceType:
     properties:
       category:
@@ -120,6 +143,28 @@ definitions:
       code:
         type: string
       name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.CodebookInfo:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.EmployeeInfo:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      phone:
         type: string
       uid:
         type: string
@@ -307,6 +352,35 @@ definitions:
       uid:
         type: string
     type: object
+  models.PhysicalItemDetailExtended:
+    properties:
+      catalogueItem:
+        $ref: '#/definitions/models.CatalogueItemInfo'
+      condition:
+        $ref: '#/definitions/models.CodebookInfo'
+      currency:
+        type: string
+      eun:
+        type: string
+      lastUpdateTime:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      price:
+        type: string
+      printEUN:
+        type: boolean
+      serialNumber:
+        type: string
+      status:
+        type: string
+      uid:
+        type: string
+      usage:
+        $ref: '#/definitions/models.CodebookInfo'
+    type: object
   models.PhysicalItemMovement:
     properties:
       condition:
@@ -463,6 +537,15 @@ definitions:
         description: yearOfPublication is the year of publication of the publication
         type: string
     type: object
+  models.ResponsiblePersonsInfo:
+    properties:
+      maintainer:
+        $ref: '#/definitions/models.EmployeeInfo'
+      operator:
+        $ref: '#/definitions/models.EmployeeInfo'
+      responsible:
+        $ref: '#/definitions/models.EmployeeInfo'
+    type: object
   models.ServiceLine:
     properties:
       currency:
@@ -498,6 +581,56 @@ definitions:
     properties:
       isDelivered:
         type: boolean
+    type: object
+  models.SimpleCatalogueItemInfo:
+    properties:
+      catalogueNumber:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SparePartsRelationsInfo:
+    properties:
+      parentSystems:
+        items:
+          $ref: '#/definitions/models.SystemSimpleInfo'
+        type: array
+      spareSystems:
+        items:
+          $ref: '#/definitions/models.SpareSystemInfo'
+        type: array
+    type: object
+  models.SparePhysicalItemInfo:
+    properties:
+      catalogueItem:
+        $ref: '#/definitions/models.SimpleCatalogueItemInfo'
+      eun:
+        type: string
+      name:
+        type: string
+      serialNumber:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SpareSystemInfo:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      physicalItems:
+        items:
+          $ref: '#/definitions/models.SparePhysicalItemInfo'
+        type: array
+      status:
+        type: string
+      systemCode:
+        type: string
+      uid:
+        type: string
     type: object
   models.System:
     properties:
@@ -563,6 +696,39 @@ definitions:
       zoneUid:
         type: string
     type: object
+  models.SystemDetailInfo:
+    properties:
+      description:
+        type: string
+      image:
+        type: string
+      isCritical:
+        type: boolean
+      isTechnologicalUnit:
+        type: boolean
+      lastUpdateBy:
+        type: string
+      lastUpdateTime:
+        type: string
+      miniImageUrl:
+        type: string
+      minimalSpareParstCount:
+        type: integer
+      name:
+        type: string
+      sparePartsCoverageSum:
+        type: integer
+      status:
+        type: string
+      systemAlias:
+        type: string
+      systemCode:
+        type: string
+      systemLevel:
+        type: string
+      uid:
+        type: string
+    type: object
   models.SystemHistory:
     properties:
       action:
@@ -587,12 +753,50 @@ definitions:
       systemUid:
         type: string
     type: object
+  models.SystemSimpleInfo:
+    properties:
+      description:
+        type: string
+      name:
+        type: string
+      status:
+        type: string
+      systemCode:
+        type: string
+      uid:
+        type: string
+    type: object
   models.SystemSimpleResponse:
     properties:
       name:
         type: string
       uid:
         type: string
+    type: object
+  models.SystemSparePartsDetail:
+    properties:
+      location:
+        $ref: '#/definitions/models.CodebookInfo'
+      physicalItems:
+        items:
+          $ref: '#/definitions/models.PhysicalItemDetailExtended'
+        type: array
+      responsiblePersons:
+        $ref: '#/definitions/models.ResponsiblePersonsInfo'
+      sparePartsRelations:
+        $ref: '#/definitions/models.SparePartsRelationsInfo'
+      system:
+        $ref: '#/definitions/models.SystemDetailInfo'
+      systemAttributes:
+        items:
+          $ref: '#/definitions/models.CodebookInfo'
+        type: array
+      systemType:
+        $ref: '#/definitions/models.CodebookInfo'
+      team:
+        $ref: '#/definitions/models.CodebookInfo'
+      zone:
+        $ref: '#/definitions/models.CodebookInfo'
     type: object
   models.SystemStatistics:
     properties:
@@ -1503,6 +1707,42 @@ paths:
       security:
       - BearerAuth: []
       summary: Assign spare item to system
+      tags:
+      - Systems
+  /v1/system/{uid}/spare-parts-detail:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive system and physical item information with all
+        spare relations by system ID
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns comprehensive system spare parts information
+          schema:
+            $ref: '#/definitions/models.SystemSparePartsDetail'
+        "400":
+          description: Bad request - invalid system ID
+          schema:
+            type: string
+        "404":
+          description: System not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get system spare parts detail
       tags:
       - Systems
   /v1/system/jira-import:
