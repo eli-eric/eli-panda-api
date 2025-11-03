@@ -1,0 +1,629 @@
+{
+  "relationships": [
+    { "start": ["User"], "end": ["Role"], "type": "HAS_ROLE", "properties": [] },
+    { "start": ["SystemTypeGroup"], "end": ["SystemType"], "type": "CONTAINS_SYSTEM_TYPE", "properties": [] },
+    {
+      "start": ["SystemTypeGroup", "Zone", "Location", "User", "Order", "System", "ContactPersonRole", "Team", "SystemAttribute"],
+      "end": ["Facility"],
+      "type": "BELONGS_TO_FACILITY",
+      "properties": []
+    },
+    { "start": ["Zone"], "end": ["Zone"], "type": "HAS_SUBZONE", "properties": [] },
+    { "start": ["System"], "end": ["Zone"], "type": "HAS_ZONE", "properties": [] },
+    { "start": ["Location"], "end": ["Location"], "type": "HAS_SUBLOCATION", "properties": [] },
+    { "start": ["Facility", "System"], "end": ["Location"], "type": "HAS_LOCATION", "properties": [] },
+    { "start": ["CatalogueCategory"], "end": ["CatalogueCategory"], "type": "HAS_SUBCATEGORY", "properties": [] },
+    { "start": ["CatalogueCategoryProperty"], "end": ["CatalogueCategoryPropertyType"], "type": "IS_PROPERTY_TYPE", "properties": [] },
+    { "start": ["CatalogueCategoryPropertyGroup"], "end": ["CatalogueCategoryProperty"], "type": "CONTAINS_PROPERTY", "properties": [] },
+    { "start": ["CatalogueCategory"], "end": ["CatalogueCategoryPropertyGroup"], "type": "HAS_GROUP", "properties": [] },
+    { "start": ["CatalogueCategoryProperty"], "end": ["Unit"], "type": "HAS_UNIT", "properties": [] },
+    { "start": ["CatalogueItem", "CatalogueServiceType"], "end": ["CatalogueCategory"], "type": "BELONGS_TO_CATEGORY", "properties": [] },
+    { "start": ["CatalogueItem"], "end": ["Manufacturer"], "type": "HAS_MANUFACTURER", "properties": [] },
+    { "start": ["CatalogueItem", "ServiceItem"], "end": ["CatalogueCategoryProperty"], "type": "HAS_CATALOGUE_PROPERTY", "properties": [] },
+    { "start": ["System"], "end": ["Employee", "User"], "type": "HAS_OWNER", "properties": [] },
+    { "start": ["System"], "end": ["History"], "type": "HAS_HISTORY", "properties": [] },
+    { "start": ["History"], "end": ["User"], "type": "DONE_BY_USER", "properties": [] },
+    { "start": ["System"], "end": ["System"], "type": "HAS_SUBSYSTEM", "properties": [] },
+    { "start": ["Order"], "end": ["OrderStatus"], "type": "HAS_ORDER_STATUS", "properties": [] },
+    { "start": ["CatalogueItem", "Order"], "end": ["Supplier"], "type": "HAS_SUPPLIER", "properties": [] },
+    { "start": ["Order"], "end": ["User"], "type": "UPDATED_BY", "properties": [] },
+    { "start": ["Item", "ServiceItem"], "end": ["CatalogueItem", "CatalogueServiceType"], "type": "IS_BASED_ON", "properties": [] },
+    { "start": ["Order"], "end": ["Item"], "type": "HAS_ORDER_LINE", "properties": [] },
+    { "start": ["System"], "end": ["Item"], "type": "CONTAINS_ITEM", "properties": [] },
+    {
+      "start": [
+        "SystemType",
+        "SystemTypeGroup",
+        "CatalogueItem",
+        "Order",
+        "System",
+        "Supplier",
+        "Employee",
+        "User",
+        "Item",
+        "CatalogueItemDeleted",
+        "Manufacturer",
+        "ContactPersonRole",
+        "SystemAttribute",
+        "Unit",
+        "CatalogueServiceType",
+        "Publication"
+      ],
+      "end": ["User"],
+      "type": "WAS_UPDATED_BY",
+      "properties": []
+    },
+    { "start": ["Employee"], "end": ["Facility"], "type": "AFFILIATED_WITH_FACILITY", "properties": [] },
+    { "start": ["Order"], "end": ["Employee"], "type": "HAS_REQUESTOR", "properties": [] },
+    { "start": ["Order"], "end": ["Employee"], "type": "HAS_PROCUREMENT_RESPONSIBLE", "properties": [] },
+    { "start": ["Item"], "end": ["ItemUsage"], "type": "HAS_ITEM_USAGE", "properties": [] },
+    { "start": ["System"], "end": ["Employee"], "type": "HAS_RESPONSIBLE", "properties": [] },
+    { "start": ["System"], "end": ["SystemImportance"], "type": "HAS_IMPORTANCE", "properties": [] },
+    { "start": ["CatalogueCategory", "System"], "end": ["SystemType"], "type": "HAS_SYSTEM_TYPE", "properties": [] },
+    { "start": ["System"], "end": ["System"], "type": "IS_SPARE_FOR", "properties": [] },
+    { "start": ["Item"], "end": ["ItemCondition"], "type": "HAS_CONDITION_STATUS", "properties": [] },
+    { "start": ["Employee"], "end": ["User"], "type": "HAS_USER", "properties": [] },
+    { "start": ["System"], "end": ["Employee"], "type": "HAS_OPERATOR", "properties": [] },
+    { "start": ["System"], "end": ["Employee"], "type": "IS_MAINTAINED_BY", "properties": [] },
+    { "start": ["User"], "end": ["UserSettings"], "type": "HAS_SETTINGS", "properties": [] },
+    { "start": ["System"], "end": ["Team"], "type": "HAS_RESPONSIBLE_TEAM", "properties": [] },
+    { "start": ["HallContactPerson"], "end": ["Employee"], "type": "HAS_CONTACT_PERSON", "properties": [] },
+    { "start": ["HallContactPerson"], "end": ["ContactPersonRole"], "type": "HAS_ROOM_CARD_ROLE", "properties": [] },
+    { "start": ["RoomCard"], "end": ["HallContactPerson"], "type": "HAS_CONTACT_PERSON_HALL", "properties": [] },
+    { "start": ["RoomCard"], "end": ["Employee"], "type": "HAS_CONTACT_PERSON_DEPT", "properties": [] },
+    { "start": ["Location"], "end": ["RoomCard"], "type": "HAS_ROOM_CARD", "properties": [] },
+    { "start": ["RoomCard"], "end": ["Team"], "type": "HAS_TEAM", "properties": [] },
+    { "start": ["System", "Item"], "end": ["System"], "type": "WAS_MOVED_FROM", "properties": [] },
+    { "start": ["System", "Order", "CatalogueItem", "Item"], "end": ["FileLink"], "type": "HAS_FILE_LINK", "properties": [] },
+    { "start": ["Item"], "end": ["System"], "type": "IS_ORIGINATED_FROM", "properties": [] },
+    { "start": ["CatalogueCategory"], "end": ["CatalogueCategoryProperty"], "type": "CONTAINS_PHYSICAL_ITEM_PROPERTY", "properties": [] },
+    { "start": ["Item"], "end": ["CatalogueCategoryProperty"], "type": "HAS_PHYSICAL_ITEM_PROPERTY", "properties": [] },
+    { "start": ["CatalogueItem"], "end": ["CatalogueItem"], "type": "IS_RELATED_TO", "properties": [] },
+    { "start": ["SystemType", "System"], "end": ["SystemAttribute"], "type": "HAS_SYSTEM_ATTRIBUTE", "properties": [] },
+    { "start": ["Item"], "end": ["System"], "type": "WAS_MOVED_TO", "properties": [] },
+    { "start": ["Item"], "end": ["ServiceItem"], "type": "IS_SERVICED_BY", "properties": [] },
+    { "start": ["Order"], "end": ["ServiceItem"], "type": "HAS_SERVICE_LINE", "properties": [] },
+    { "start": ["Publication"], "end": ["Country"], "type": "HAS_PUBLISHING_COUNTRY", "properties": [] },
+    { "start": ["Publication"], "end": ["OpenAccessType"], "type": "HAS_OPEN_ACCESS_TYPE", "properties": [] },
+    { "start": ["Publication"], "end": ["UserCall"], "type": "HAS_USER_CALL", "properties": [] }
+  ],
+  "nodes": [
+    {
+      "label": "PbsData",
+      "properties": [
+        { "name": "name", "type": "String" },
+        { "name": "itemPriceEUR", "type": "String" },
+        { "name": "pbsFis", "type": "String" },
+        { "name": "itemPriceCzk", "type": "String" },
+        { "name": "pbsTenderReference", "type": "String" },
+        { "name": "quantity", "type": "String" },
+        { "name": "serialNumber", "type": "String" },
+        { "name": "eun", "type": "String" },
+        { "name": "isOrderInPanda", "type": "Boolean" },
+        { "name": "cataloguePartNumber", "type": "String" },
+        { "name": "description", "type": "String" },
+        { "name": "isEunInPanda", "type": "Boolean" },
+        { "name": "sectionName", "type": "String" },
+        { "name": "hasImage", "type": "String" },
+        { "name": "destination", "type": "String" },
+        { "name": "pbsNumber", "type": "String" },
+        { "name": "pbsSupplier", "type": "String" },
+        { "name": "filesCount", "type": "String" },
+        { "name": "notes", "type": "String" },
+        { "name": "pbsVerso", "type": "String" },
+        { "name": "cartName", "type": "String" },
+        { "name": "pandaOrderGUID", "type": "String" },
+        { "name": "deliveredDate", "type": "String" }
+      ]
+    },
+    {
+      "label": "SystemAttribute",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "Publication",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "experimentalSystem", "type": "String" },
+        { "name": "allAuthorsCount", "type": "Long" },
+        { "name": "language", "type": "String" },
+        { "name": "eliAuthorsCount", "type": "Long" },
+        { "name": "note", "type": "String" },
+        { "name": "issn", "type": "String" },
+        { "name": "doi", "type": "String" },
+        { "name": "impactFactor", "type": "Double" },
+        { "name": "authorsDepartmentsArray", "type": "StringArray" },
+        { "name": "keywords", "type": "String" },
+        { "name": "wosNumber", "type": "String" },
+        { "name": "shortJournalTitle", "type": "String" },
+        { "name": "allAuthors", "type": "String" },
+        { "name": "userExperiment", "type": "String" },
+        { "name": "eissn", "type": "String" },
+        { "name": "pagesCount", "type": "Long" },
+        { "name": "mediaType", "type": "String" },
+        { "name": "dateOfPublication", "type": "String" },
+        { "name": "webLink", "type": "String" },
+        { "name": "eidScopus", "type": "String" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "quartil", "type": "String" },
+        { "name": "abstract", "type": "String" },
+        { "name": "eliAuthors", "type": "String" },
+        { "name": "issue", "type": "Long" },
+        { "name": "grant", "type": "String" },
+        { "name": "longJournalTitle", "type": "String" },
+        { "name": "oecdFord", "type": "String" },
+        { "name": "quartilBasis", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "citeAs", "type": "String" },
+        { "name": "yearOfPublication", "type": "String" },
+        { "name": "volume", "type": "Long" },
+        { "name": "title", "type": "String" },
+        { "name": "pages", "type": "String" }
+      ]
+    },
+    {
+      "label": "LidDevice",
+      "properties": [
+        { "name": "code", "type": "String" },
+        { "name": "zone", "type": "String" },
+        { "name": "type", "type": "String" },
+        { "name": "serial", "type": "String" },
+        { "name": "description", "type": "String" },
+        { "name": "pandaCode", "type": "String" }
+      ]
+    },
+    {
+      "label": "Country",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "latitude", "type": "Double" },
+        { "name": "longitude", "type": "Double" }
+      ]
+    },
+    {
+      "label": "Department",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "OpenAccessType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "Language",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "UserCall",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "dumny",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueServiceType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "description", "type": "String" },
+        { "name": "properties", "type": "StringArray" }
+      ]
+    },
+    {
+      "label": "ServiceItem",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "notes", "type": "String" },
+        { "name": "deliveredTime", "type": "DateTime" },
+        { "name": "isDelivered", "type": "Boolean" },
+        { "name": "lastUpdateTime", "type": "DateTime" }
+      ]
+    },
+    {
+      "label": "SchemaMigration",
+      "properties": [
+        { "name": "version", "type": "Long" },
+        { "name": "dirty", "type": "Boolean" },
+        { "name": "ts", "type": "DateTime" }
+      ]
+    },
+    {
+      "label": "Facility",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "User",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "username", "type": "String" },
+        { "name": "email", "type": "String" },
+        { "name": "lastName", "type": "String" },
+        { "name": "firstName", "type": "String" },
+        { "name": "isEnabled", "type": "Boolean" },
+        { "name": "createdBy", "type": "String" },
+        { "name": "passwordHash", "type": "String" },
+        { "name": "createdAt", "type": "DateTime" },
+        { "name": "passwordToChange", "type": "Boolean" }
+      ]
+    },
+    {
+      "label": "Role",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "Manufacturer",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "Unit",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueCategoryPropertyType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "SystemTypeGroup",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "SystemType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "mask", "type": "String" },
+        { "name": "maskB", "type": "String" }
+      ]
+    },
+    {
+      "label": "ItemUsage",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "Zone",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "Location",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "facility", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueCategory",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "miniImageUrl", "type": "String" },
+        { "name": "image", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueCategoryPropertyGroup",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueCategoryProperty",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "defaultValue", "type": "String" },
+        { "name": "listOfValues", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueItem",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "imported", "type": "Boolean" },
+        { "name": "imported_qr_code", "type": "Boolean" },
+        { "name": "lastUpdatedBy", "type": "String" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "touch_by_import", "type": "Boolean" },
+        { "name": "image", "type": "String" },
+        { "name": "miniImageUrl", "type": "String" },
+        { "name": "lastUpdateTime", "type": "DateTime" },
+        { "name": "description", "type": "String" },
+        { "name": "catalogueNumber", "type": "String" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "manufacturerUrl", "type": "String" }
+      ]
+    },
+    {
+      "label": "SystemImportance",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "SystemCriticality",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "ItemCondition",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "System",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "minimalSpareParstCount", "type": "Long" },
+        { "name": "imported_qr_code", "type": "Boolean" },
+        { "name": "lastUpdatedBy", "type": "String" },
+        { "name": "status", "type": "String" },
+        { "name": "isTechnologicalUnit", "type": "Boolean" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "type", "type": "String" },
+        { "name": "lidZone", "type": "String" },
+        { "name": "touch_by_import", "type": "Boolean" },
+        { "name": "sp_coverage", "type": "Long" },
+        { "name": "image", "type": "String" },
+        { "name": "description", "type": "String" },
+        { "name": "importedFromLID", "type": "Boolean" },
+        { "name": "lastUpdateTime", "type": "DateTime" },
+        { "name": "miniImageUrl", "type": "String" },
+        { "name": "lidCode", "type": "String" },
+        { "name": "createdAt", "type": "DateTime" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "backupSystemCodeDate", "type": "String" },
+        { "name": "lidSerial", "type": "String" },
+        { "name": "lidType", "type": "String" },
+        { "name": "systemCode", "type": "String" },
+        { "name": "systemCodeOld", "type": "String" },
+        { "name": "systemCode_old", "type": "String" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "systemLevel", "type": "String" },
+        { "name": "systemAlias", "type": "String" },
+        { "name": "isCritical", "type": "Boolean" },
+        { "name": "sparePartsCoverageSum", "type": "Long" }
+      ]
+    },
+    {
+      "label": "History",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "originObject", "type": "String" },
+        { "name": "objectType", "type": "String" },
+        { "name": "timestamp", "type": "DateTime" },
+        { "name": "action", "type": "String" },
+        { "name": "objectUID", "type": "String" },
+        { "name": "newObject", "type": "String" }
+      ]
+    },
+    {
+      "label": "OrderStatus",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "sortOrde", "type": "Long" },
+        { "name": "updated", "type": "Long" },
+        { "name": "sortOrder", "type": "Long" },
+        { "name": "created", "type": "Long" }
+      ]
+    },
+    {
+      "label": "Supplier",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "VAT", "type": "String" },
+        { "name": "CIN", "type": "String" },
+        { "name": "address", "type": "String" },
+        { "name": "shortName", "type": "String" },
+        { "name": "stateCode", "type": "String" }
+      ]
+    },
+    {
+      "label": "Order",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "imported", "type": "Boolean" },
+        { "name": "imported_qr_code", "type": "Boolean" },
+        { "name": "lastUpdatedBy", "type": "String" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "touch_by_import", "type": "Boolean" },
+        { "name": "contractNumber", "type": "String" },
+        { "name": "requestNumber", "type": "String" },
+        { "name": "importedNotes", "type": "String" },
+        { "name": "lastUpdateTime", "type": "DateTime" },
+        { "name": "deliveryStatus", "type": "Long" },
+        { "name": "updated", "type": "DateTime" },
+        { "name": "created", "type": "DateTime" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "orderDate", "type": "DateTime" },
+        { "name": "createdBy", "type": "String" },
+        { "name": "testRecord", "type": "Boolean" },
+        { "name": "notes", "type": "String" },
+        { "name": "orderNumber", "type": "String" }
+      ]
+    },
+    {
+      "label": "Item",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "serialNUmber", "type": "String" },
+        { "name": "currency", "type": "String" },
+        { "name": "serialNumber", "type": "String" },
+        { "name": "imported", "type": "Boolean" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "lastUpdatedBy", "type": "String" },
+        { "name": "status", "type": "String" },
+        { "name": "imported_qr_code", "type": "Boolean" },
+        { "name": "eun", "type": "String" },
+        { "name": "touch_by_import", "type": "Boolean" },
+        { "name": "price", "type": "String" },
+        { "name": "itemConditionImport", "type": "String" },
+        { "name": "parentSystemImportUid", "type": "String" },
+        { "name": "supplierImport", "type": "String" },
+        { "name": "importedNotes", "type": "String" },
+        { "name": "lastUpdateTime", "type": "DateTime" },
+        { "name": "itemUsageImport", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "notes", "type": "String" },
+        { "name": "printEUN", "type": "Boolean" }
+      ]
+    },
+    {
+      "label": "Employee",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "email", "type": "String" },
+        { "name": "lastName", "type": "String" },
+        { "name": "firstName", "type": "String" },
+        { "name": "phone2", "type": "String" },
+        { "name": "jobPositionCode", "type": "String" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "lastUpdatedBy", "type": "String" },
+        { "name": "phone1", "type": "String" },
+        { "name": "isProcurementer", "type": "Boolean" },
+        { "name": "npGroup", "type": "String" },
+        { "name": "position", "type": "String" },
+        { "name": "fullName", "type": "String" },
+        { "name": "jobPosition", "type": "String" },
+        { "name": "superiorName", "type": "String" },
+        { "name": "phoneNumber", "type": "String" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "workplaceName", "type": "String" },
+        { "name": "employeeNumber", "type": "String" },
+        { "name": "superiorNumber", "type": "String" },
+        { "name": "lastUpdatedTime", "type": "DateTime" },
+        { "name": "phone", "type": "String" }
+      ]
+    },
+    { "label": "CatalogueItemDeleted", "properties": [{ "name": "uid", "type": "String" }] },
+    {
+      "label": "UserSettings",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "key", "type": "String" },
+        { "name": "value", "type": "String" }
+      ]
+    },
+    {
+      "label": "Team",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "ContactPersonRole",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "RoomCard",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "indoorEnvironmentQualityClient", "type": "String" },
+        { "name": "compressedAirDistribution", "type": "String" },
+        { "name": "nitrogenCentralDistributionClient", "type": "String" },
+        { "name": "maxPressureInColdDistributionClient", "type": "String" },
+        { "name": "coolingWater", "type": "String" },
+        { "name": "status", "type": "String" },
+        { "name": "entryToHvacTent", "type": "String" },
+        { "name": "coolingWaterClient", "type": "String" },
+        { "name": "compressedAirDistributionClient", "type": "String" },
+        { "name": "nitrogenCentralDistribution", "type": "String" },
+        { "name": "maxPressureInColdDistribution", "type": "String" },
+        { "name": "prescribedClothing", "type": "StringArray" },
+        { "name": "purityClass", "type": "String" },
+        { "name": "additionalRequirements", "type": "String" },
+        { "name": "indoorEnvironmentQuality", "type": "String" },
+        { "name": "cleaningScheduleDays", "type": "StringArray" }
+      ]
+    },
+    { "label": "HallContactPerson", "properties": [{ "name": "uid", "type": "String" }] },
+    {
+      "label": "FileLink",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "url", "type": "String" },
+        { "name": "tags", "type": "String" }
+      ]
+    }
+  ]
+}
