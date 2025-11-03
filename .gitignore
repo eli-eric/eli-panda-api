@@ -36,3 +36,4 @@ server
 # Ignore all .DS_Store files
 .DS_Store
 tmp/main
+tmp/build-errors.log
