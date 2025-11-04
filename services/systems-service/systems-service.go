@@ -1052,7 +1052,17 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		}
 	}
 
-	// Assign spare item to target system
+	// FIRST: Detach spare item from spare system (CRITICAL FIX)
+	detachSpareItemQuery := helpers.DatabaseQuery{
+		Query: `MATCH (spareSystem:System {uid: $spareSystemUid})-[r:CONTAINS_ITEM]->(spareItem:Item {uid: $spareItemUid}) DELETE r`,
+		Parameters: map[string]interface{}{
+			"spareSystemUid": spareSystemUid,
+			"spareItemUid":   request.SpareItemUid,
+		},
+	}
+	queries = append(queries, detachSpareItemQuery)
+
+	// THEN: Assign spare item to target system
 	assignSpareQuery := helpers.DatabaseQuery{
 		Query: `MATCH (s:System {uid: $systemUid})
                 MATCH (spareItem:Item {uid: $spareItemUid})
