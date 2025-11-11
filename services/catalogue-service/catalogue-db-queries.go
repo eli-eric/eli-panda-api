@@ -100,6 +100,14 @@ func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, fileri
 			result.Parameters["filterDescription"] = strings.ToLower(*filterVal)
 		}
 
+		//itemUID
+		if filterVal := helpers.GetFilterValueString(filering, "itemUID"); filterVal != nil {
+
+			result.Query += ` WITH itm, cat, q, iname, idesc, icn, sname, pval  `
+			result.Query += ` WHERE itm.uid = $filterItemUID `
+			result.Parameters["filterItemUID"] = *filterVal
+		}
+
 		for i, filter := range *filering {
 			if filter.Type == "" {
 				continue
@@ -186,6 +194,12 @@ func buildCatalogueItemsFilterConditions(filering *[]helpers.ColumnFilter) (filt
 	if filterVal := helpers.GetFilterValueString(filering, "description"); filterVal != nil {
 		filterConditions = append(filterConditions, "idesc CONTAINS $filterDescription")
 		parameters["filterDescription"] = strings.ToLower(*filterVal)
+	}
+
+	//itemUID
+	if filterVal := helpers.GetFilterValueString(filering, "itemUID"); filterVal != nil {
+		filterConditions = append(filterConditions, "itm.uid = $filterItemUID")
+		parameters["filterItemUID"] = *filterVal
 	}
 
 	return filterConditions, parameters
