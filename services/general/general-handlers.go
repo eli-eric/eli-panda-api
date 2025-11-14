@@ -106,7 +106,9 @@ func (h *GeneralHandlers) GlobalSearch() echo.HandlerFunc {
 		// Parse pagination
 		pagingObject := new(helpers.Pagination)
 		if pagination != "" {
-			json.Unmarshal([]byte(pagination), &pagingObject)
+			if err := json.Unmarshal([]byte(pagination), &pagingObject); err != nil {
+				log.Warn().Err(err).Str("pagination", pagination).Msg("Failed to parse pagination parameter")
+			}
 		}
 
 		// Set default pagination if not provided or invalid
@@ -114,8 +116,17 @@ func (h *GeneralHandlers) GlobalSearch() echo.HandlerFunc {
 			pagingObject.Page = 1
 		}
 		if pagingObject.PageSize == 0 {
-			pagingObject.PageSize = 10 // Hard limit of 10 items when no pagination provided
+			pagingObject.PageSize = 10 // Default of 10 items when no pagination provided
 		}
+
+		// Enforce max limit
+		const maxPageSize = 100
+		if pagingObject.PageSize > maxPageSize {
+			log.Warn().Int("requested", pagingObject.PageSize).Int("max", maxPageSize).Msg("PageSize exceeds maximum, capping to max")
+			pagingObject.PageSize = maxPageSize
+		}
+
+		log.Debug().Int("page", pagingObject.Page).Int("pageSize", pagingObject.PageSize).Str("searchText", searchText).Msg("GlobalSearch pagination")
 
 		// Call the service method
 		result, err := h.generalService.GlobalSearch(searchText, pagingObject.Page, pagingObject.PageSize)
