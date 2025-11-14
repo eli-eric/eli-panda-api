@@ -46,84 +46,82 @@ func GetUUIDQuery() (result helpers.DatabaseQuery) {
 
 func GetGlobalSearchQuery(searchText string, skip int, limit int) (result helpers.DatabaseQuery) {
 	result.Query = `
-		// Search in Systems
-		MATCH (n:System)
-		WHERE (toLower(n.name) CONTAINS $searchText 
-			OR toLower(n.systemCode) CONTAINS $searchText
-			OR toLower(n.description) CONTAINS $searchText)
-			AND (n.deleted IS NULL OR n.deleted <> true)
-		WITH n, 'System' as nodeType
-		RETURN {
-			uid: n.uid, 
-			name: n.name, 
-			description: COALESCE(n.description, ''), 
-			nodeType: nodeType
-		} as result
-		
-		UNION ALL
-		
-		// Search in Orders
-		MATCH (n:Order)
-		WHERE (toLower(n.name) CONTAINS $searchText 
-			OR toLower(n.orderNumber) CONTAINS $searchText
-			OR toLower(n.contractNumber) CONTAINS $searchText
-			OR toLower(n.requestNumber) CONTAINS $searchText)
-			AND (n.deleted IS NULL OR n.deleted <> true)
-		WITH n, 'Order' as nodeType
-		RETURN {
-			uid: n.uid, 
-			name: n.name, 
-			description: COALESCE(n.notes, ''), 
-			nodeType: nodeType
-		} as result
-		
-		UNION ALL
-		
-		// Search in CatalogueItems
-		MATCH (n:CatalogueItem)
-		WHERE (toLower(n.name) CONTAINS $searchText 
-			OR toLower(n.catalogueNumber) CONTAINS $searchText
-			OR toLower(n.description) CONTAINS $searchText)
-			AND (n.deleted IS NULL OR n.deleted <> true)
-		WITH n, 'CatalogueItem' as nodeType
-		RETURN {
-			uid: n.uid, 
-			name: n.name, 
-			description: COALESCE(n.description, ''), 
-			nodeType: nodeType
-		} as result
-		
-		// Add Items that have relations to Systems or Orders
-		UNION ALL
-		
-		MATCH (n:Item)<-[:CONTAINS_ITEM]-(s:System)
-		WHERE (toLower(n.name) CONTAINS $searchText 
-			OR toLower(n.eun) CONTAINS $searchText
-			OR toLower(n.serialNumber) CONTAINS $searchText)
-			AND (n.deleted IS NULL OR n.deleted <> true)
-		WITH DISTINCT s, 'System' as nodeType
-		RETURN {
-			uid: s.uid, 
-			name: s.name, 
-			description: COALESCE(s.description, ''), 
-			nodeType: nodeType
-		} as result
-		
-		UNION ALL
-		
-		MATCH (n:Item)<-[:HAS_ORDER_LINE]-(o:Order)
-		WHERE (toLower(n.name) CONTAINS $searchText 
-			OR toLower(n.eun) CONTAINS $searchText
-			OR toLower(n.serialNumber) CONTAINS $searchText)
-			AND (n.deleted IS NULL OR n.deleted <> true)
-		WITH DISTINCT o, 'Order' as nodeType
-		RETURN {
-			uid: o.uid, 
-			name: o.name, 
-			description: COALESCE(o.notes, ''), 
-			nodeType: nodeType
-		} as result
-		
+		CALL {
+			MATCH (n:System)
+			WHERE (toLower(n.name) CONTAINS $searchText
+				OR toLower(n.systemCode) CONTAINS $searchText
+				OR toLower(n.description) CONTAINS $searchText)
+				AND (n.deleted IS NULL OR n.deleted <> true)
+			WITH n, 'System' as nodeType
+			RETURN {
+				uid: n.uid,
+				name: n.name,
+				description: COALESCE(n.description, ''),
+				nodeType: nodeType
+			} as result
+
+			UNION
+
+			MATCH (n:Order)
+			WHERE (toLower(n.name) CONTAINS $searchText
+				OR toLower(n.orderNumber) CONTAINS $searchText
+				OR toLower(n.contractNumber) CONTAINS $searchText
+				OR toLower(n.requestNumber) CONTAINS $searchText)
+				AND (n.deleted IS NULL OR n.deleted <> true)
+			WITH n, 'Order' as nodeType
+			RETURN {
+				uid: n.uid,
+				name: n.name,
+				description: COALESCE(n.notes, ''),
+				nodeType: nodeType
+			} as result
+
+			UNION
+
+			MATCH (n:CatalogueItem)
+			WHERE (toLower(n.name) CONTAINS $searchText
+				OR toLower(n.catalogueNumber) CONTAINS $searchText
+				OR toLower(n.description) CONTAINS $searchText)
+				AND (n.deleted IS NULL OR n.deleted <> true)
+			WITH n, 'CatalogueItem' as nodeType
+			RETURN {
+				uid: n.uid,
+				name: n.name,
+				description: COALESCE(n.description, ''),
+				nodeType: nodeType
+			} as result
+
+			UNION
+
+			MATCH (n:Item)<-[:CONTAINS_ITEM]-(s:System)
+			WHERE (toLower(n.name) CONTAINS $searchText
+				OR toLower(n.eun) CONTAINS $searchText
+				OR toLower(n.serialNumber) CONTAINS $searchText)
+				AND (n.deleted IS NULL OR n.deleted <> true)
+			WITH DISTINCT s, 'System' as nodeType
+			RETURN {
+				uid: s.uid,
+				name: s.name,
+				description: COALESCE(s.description, ''),
+				nodeType: nodeType
+			} as result
+
+			UNION
+
+			MATCH (n:Item)<-[:HAS_ORDER_LINE]-(o:Order)
+			WHERE (toLower(n.name) CONTAINS $searchText
+				OR toLower(n.eun) CONTAINS $searchText
+				OR toLower(n.serialNumber) CONTAINS $searchText)
+				AND (n.deleted IS NULL OR n.deleted <> true)
+			WITH DISTINCT o, 'Order' as nodeType
+			RETURN {
+				uid: o.uid,
+				name: o.name,
+				description: COALESCE(o.notes, ''),
+				nodeType: nodeType
+			} as result
+		}
+		RETURN result
 		ORDER BY result.name
 		SKIP $skip
 		LIMIT $limit
