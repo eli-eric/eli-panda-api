@@ -34,3 +34,15 @@ type GraphResponse struct {
 	Nodes []GraphNode `json:"nodes"`
 	Links []GraphLink `json:"links"`
 }
+
+type GlobalSearchResult struct {
+	Uid         string `json:"uid"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	NodeType    string `json:"nodeType"`
+}
+
+type GlobalSearchResponse struct {
+	TotalCount int64                `json:"totalCount"`
+	Data       []GlobalSearchResult `json:"data"`
+}
