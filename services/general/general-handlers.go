@@ -7,6 +7,7 @@ import (
 	"panda/apigateway/services/general/models"
 
 	"github.com/labstack/echo/v4"
+	"github.com/rs/zerolog/log"
 )
 
 type GeneralHandlers struct {
