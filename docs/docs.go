@@ -283,6 +283,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/global-search": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Search across systems, orders, and catalogue items by free text",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "General"
+                ],
+                "summary": "Global search",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "searchText",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination object as JSON string",
+                        "name": "pagination",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_GlobalSearchResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/order": {
             "put": {
                 "security": [
@@ -1526,6 +1572,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "helpers.PaginationResult-models_GlobalSearchResult": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GlobalSearchResult"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.AssignSpareRequest": {
             "type": "object",
             "required": [
@@ -1792,6 +1852,23 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "location_uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GlobalSearchResult": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nodeType": {
+                    "type": "string"
+                },
+                "uid": {
                     "type": "string"
                 }
             }
