@@ -626,9 +626,7 @@ func (h *CatalogueHandlers) CheckCatalogueNumberUnique() echo.HandlerFunc {
 		isUnique, err := h.catalogueService.IsCatalogueNumberUnique(catalogueNumber, excludeUid)
 		if err != nil {
 			log.Error().Err(err).Str("catalogueNumber", catalogueNumber).Msg("Error checking catalogue number uniqueness")
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to check catalogue number uniqueness",
-			})
+			return echo.ErrInternalServerError
 		}
 
 		return c.JSON(http.StatusOK, map[string]interface{}{
