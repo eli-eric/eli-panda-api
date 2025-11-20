@@ -30,6 +30,8 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	// get all catalogue items with details
 	e.GET("/v1/catalogue/items", m.Authorization(h.GetCatalogueItems(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
+	// Check if catalogue number is unique
+	e.GET("/v1/catalogue/item/catalogue-number/unique", m.Authorization(h.CheckCatalogueNumberUnique(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	//get on catalogue item with details by uid
 	e.GET("/v1/catalogue/item/:uid", m.Authorization(h.GetCatalogueItemWithDetailsByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	//create new catalogue item
