@@ -15,6 +15,62 @@
     "host": "localhost:50000",
     "basePath": "/",
     "paths": {
+        "/v1/catalogue/item/catalogue-number/unique": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Validates whether a catalogue number is unique in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Check if catalogue number is unique",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue number to check",
+                        "name": "catalogueNumber",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Item UID to exclude from check (for updates)",
+                        "name": "excludeUid",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns isUnique boolean and catalogueNumber",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/catalogue/service/type": {
             "post": {
                 "security": [

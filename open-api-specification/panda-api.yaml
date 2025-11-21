@@ -1011,6 +1011,42 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/catalogue/item/catalogue-number/unique:
+    get:
+      consumes:
+      - application/json
+      description: Validates whether a catalogue number is unique in the system
+      parameters:
+      - description: Catalogue number to check
+        in: query
+        name: catalogueNumber
+        required: true
+        type: string
+      - description: Item UID to exclude from check (for updates)
+        in: query
+        name: excludeUid
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns isUnique boolean and catalogueNumber
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Check if catalogue number is unique
+      tags:
+      - Catalogue
   /v1/catalogue/service/type:
     post:
       consumes:
