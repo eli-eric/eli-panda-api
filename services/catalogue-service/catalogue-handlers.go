@@ -38,6 +38,7 @@ type ICatalogueHandlers interface {
 	CreateCatalogueServiceType() echo.HandlerFunc
 	UpdateCatalogueServiceType() echo.HandlerFunc
 	DeleteCatalogueServiceType() echo.HandlerFunc
+	CheckCatalogueNumberUnique() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -595,5 +596,42 @@ func (h *CatalogueHandlers) DeleteCatalogueServiceType() echo.HandlerFunc {
 		}
 
 		return c.NoContent(204)
+	}
+}
+
+// CheckCatalogueNumberUnique Check if catalogue number is unique godoc
+// @Summary Check if catalogue number is unique
+// @Description Validates whether a catalogue number is unique in the system
+// @Tags Catalogue
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param catalogueNumber query string true "Catalogue number to check"
+// @Param excludeUid query string false "Item UID to exclude from check (for updates)"
+// @Success 200 {object} map[string]interface{} "Returns isUnique boolean and catalogueNumber"
+// @Failure 400 {string} string "Bad Request"
+// @Failure 500 {string} string "Internal Server Error"
+// @Router /v1/catalogue/item/catalogue-number/unique [get]
+func (h *CatalogueHandlers) CheckCatalogueNumberUnique() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		catalogueNumber := c.QueryParam("catalogueNumber")
+		if catalogueNumber == "" {
+			return helpers.BadRequest("catalogueNumber parameter is required")
+		}
+
+		excludeUid := c.QueryParam("excludeUid")
+
+		isUnique, err := h.catalogueService.IsCatalogueNumberUnique(catalogueNumber, excludeUid)
+		if err != nil {
+			log.Error().Err(err).Str("catalogueNumber", catalogueNumber).Msg("Error checking catalogue number uniqueness")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"isUnique":        isUnique,
+			"catalogueNumber": catalogueNumber,
+		})
 	}
 }

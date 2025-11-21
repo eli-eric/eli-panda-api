@@ -48,6 +48,7 @@ type ICatalogueService interface {
 	CreateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
 	UpdateCatalogueServiceType(catalogueServiceType *models.CatalogueServiceType, userUID string) (result models.CatalogueServiceType, err error)
 	DeleteCatalogueServiceType(uid string, userUID string) (err error)
+	IsCatalogueNumberUnique(catalogueNumber string, excludeUid string) (bool, error)
 }
 
 // Create new security service instance
@@ -573,4 +574,30 @@ func (svc *CatalogueService) DeleteCatalogueServiceType(uid string, userUID stri
 		helpers.HistoryLogQuery(uid, "DELETE", userUID))
 
 	return err
+}
+
+func (svc *CatalogueService) IsCatalogueNumberUnique(catalogueNumber string, excludeUid string) (bool, error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{}
+	query.Parameters = make(map[string]interface{})
+	query.Query = `
+		MATCH (ci:CatalogueItem)
+		WHERE ci.catalogueNumber = $catalogueNumber
+		  AND coalesce(ci.deleted, false) = false
+		  AND ($excludeUid = '' OR ci.uid <> $excludeUid)
+		RETURN count(ci) as count
+	`
+	query.Parameters["catalogueNumber"] = catalogueNumber
+	query.Parameters["excludeUid"] = excludeUid
+	query.ReturnAlias = "count"
+
+	count, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, query)
+
+	if err != nil {
+		return false, err
+	}
+
+	return count == 0, nil
 }
