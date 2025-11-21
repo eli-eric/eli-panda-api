@@ -583,8 +583,10 @@ func (svc *CatalogueService) IsCatalogueNumberUnique(catalogueNumber string, exc
 	query := helpers.DatabaseQuery{}
 	query.Parameters = make(map[string]interface{})
 	query.Query = `
-		MATCH (ci:CatalogueItem {catalogueNumber: $catalogueNumber, deleted: false})
-		WHERE $excludeUid = '' OR ci.uid <> $excludeUid
+		MATCH (ci:CatalogueItem)
+		WHERE ci.catalogueNumber = $catalogueNumber
+		  AND coalesce(ci.deleted, false) = false
+		  AND ($excludeUid = '' OR ci.uid <> $excludeUid)
 		RETURN count(ci) as count
 	`
 	query.Parameters["catalogueNumber"] = catalogueNumber
