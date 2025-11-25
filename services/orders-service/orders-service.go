@@ -106,9 +106,11 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	// Validate system existence for all order lines
-	for i := range order.OrderLines {
-		if err := svc.validateOrderLineSystemExists(&order.OrderLines[i], facilityCode, session); err != nil {
-			return "", err
+	if order.OrderLines != nil {
+		for i := range order.OrderLines {
+			if err := svc.validateOrderLineSystemExists(&order.OrderLines[i], facilityCode, session); err != nil {
+				return "", err
+			}
 		}
 	}
 
