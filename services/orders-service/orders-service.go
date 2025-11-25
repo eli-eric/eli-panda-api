@@ -105,6 +105,32 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityC
 func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
+	// Validate system existence for all order lines
+	if order.OrderLines != nil && len(order.OrderLines) > 0 {
+		for _, orderLine := range order.OrderLines {
+			// Priority: check System first (new logic), then ParentSystem (old logic)
+			if orderLine.System != nil && orderLine.System.UID != "" {
+				exists, err := svc.checkSystemExists(orderLine.System.UID, facilityCode, session)
+				if err != nil {
+					log.Error().Err(err).Msg("Error checking system existence")
+					return "", err
+				}
+				if !exists {
+					return "", helpers.BadRequest("System with UID " + orderLine.System.UID + " not found")
+				}
+			} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+				exists, err := svc.checkSystemExists(orderLine.ParentSystem.UID, facilityCode, session)
+				if err != nil {
+					log.Error().Err(err).Msg("Error checking parent system existence")
+					return "", err
+				}
+				if !exists {
+					return "", helpers.BadRequest("Parent system with UID " + orderLine.ParentSystem.UID + " not found")
+				}
+			}
+		}
+	}
+
 	queries := []helpers.DatabaseQuery{}
 	generalQuery, newUid := InsertNewOrderQuery(order, facilityCode, userUID)
 	queries = append(queries, generalQuery)
@@ -156,6 +182,45 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 		// 	log.Err(helpers.ERR_CONFLICT).Msg("Order was updated by another user")
 		// 	return helpers.ERR_CONFLICT
 		// }
+
+		// Validate order lines
+		if len(order.OrderLines) > 0 {
+			for _, newLine := range order.OrderLines {
+				if newLine.UID != "" {
+					// Existing order line - prevent system changes
+					oldLine := findOrderLineByUID(oldOrder.OrderLines, newLine.UID)
+					if oldLine != nil {
+						if !systemsEqual(oldLine.System, newLine.System) {
+							return helpers.BadRequest("Cannot change system for existing order line with UID " + newLine.UID)
+						}
+						if !systemsEqual(oldLine.ParentSystem, newLine.ParentSystem) {
+							return helpers.BadRequest("Cannot change parent system for existing order line with UID " + newLine.UID)
+						}
+					}
+				} else {
+					// New order line - validate system existence
+					if newLine.System != nil && newLine.System.UID != "" {
+						exists, err := svc.checkSystemExists(newLine.System.UID, facilityCode, session)
+						if err != nil {
+							log.Error().Err(err).Msg("Error checking system existence")
+							return err
+						}
+						if !exists {
+							return helpers.BadRequest("System with UID " + newLine.System.UID + " not found")
+						}
+					} else if newLine.ParentSystem != nil && newLine.ParentSystem.UID != "" {
+						exists, err := svc.checkSystemExists(newLine.ParentSystem.UID, facilityCode, session)
+						if err != nil {
+							log.Error().Err(err).Msg("Error checking parent system existence")
+							return err
+						}
+						if !exists {
+							return helpers.BadRequest("Parent system with UID " + newLine.ParentSystem.UID + " not found")
+						}
+					}
+				}
+			}
+		}
 
 		queries := []helpers.DatabaseQuery{}
 		genralUpdateQuery, additionalQueries := UpdateOrderQuery(order, &oldOrder, facilityCode, userUID)
@@ -290,4 +355,40 @@ func (svc *OrdersService) UpdateMultipleServiceLineDelivery(serviceItemUids []st
 	}
 
 	return result, err
+}
+
+// checkSystemExists validates if a system exists in the specified facility
+func (svc *OrdersService) checkSystemExists(systemUID string, facilityCode string, session neo4j.Session) (bool, error) {
+	query := helpers.DatabaseQuery{
+		Query: `
+			MATCH (s:System {uid: $systemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility {code: $facilityCode})
+			RETURN count(s) > 0 as exists
+		`,
+		Parameters:  map[string]interface{}{"systemUID": systemUID, "facilityCode": facilityCode},
+		ReturnAlias: "exists",
+	}
+
+	exists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, query)
+	return exists, err
+}
+
+// systemsEqual compares two Codebook pointers for equality
+func systemsEqual(a, b *codebookModels.Codebook) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return a.UID == b.UID
+}
+
+// findOrderLineByUID finds an order line in a slice by its UID
+func findOrderLineByUID(orderLines []models.OrderLine, uid string) *models.OrderLine {
+	for i := range orderLines {
+		if orderLines[i].UID == uid {
+			return &orderLines[i]
+		}
+	}
+	return nil
 }

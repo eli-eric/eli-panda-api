@@ -421,13 +421,19 @@ func InsertNewOrderOrderLineQuery(orderUID string, orderLine *models.OrderLine, 
 	result.Parameters["serialNumber"] = orderLine.SerialNumber
 	result.Parameters["notes"] = orderLine.Notes
 
-	// assign system to the item only  if system(techn. unit) is set
-	if orderLine.System != nil {
-		result.Query += `MATCH(parentSystem:System{uid: $systemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
+	// assign system to the item - priority: System (direct link) over ParentSystem (create subsystem)
+	if orderLine.System != nil && orderLine.System.UID != "" {
+		// New logic: direct link to existing system
+		result.Query += `MATCH(sys:System{uid: $systemUID}) MERGE(sys)-[:CONTAINS_ITEM]->(itm) WITH o, ccg, itm `
+
+		result.Parameters["systemUID"] = orderLine.System.UID
+	} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+		// Old logic: create new subsystem under parent system
+		result.Query += `MATCH(parentSystem:System{uid: $parentSystemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
 		result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) CREATE(sys)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o, ccg, itm, sys `
 		result.Query += `MATCH(f:Facility{code: $facilityCode})  MERGE(sys)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm `
 
-		result.Parameters["systemUID"] = orderLine.System.UID
+		result.Parameters["parentSystemUID"] = orderLine.ParentSystem.UID
 		result.Parameters["newSystemUID"] = uuid.New().String()
 	}
 
@@ -555,13 +561,19 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 		result.Parameters["serialNumber"] = orderLine.SerialNumber
 		result.Parameters["notes"] = orderLine.Notes
 
-		// assign system to the item only  if system(techn. unit) is set
-		if orderLine.System != nil {
-			result.Query += `MATCH(parentSystem:System{uid: $systemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
+		// assign system to the item - priority: System (direct link) over ParentSystem (create subsystem)
+		if orderLine.System != nil && orderLine.System.UID != "" {
+			// New logic: direct link to existing system
+			result.Query += `MATCH(sys:System{uid: $systemUID}) MERGE(sys)-[:CONTAINS_ITEM]->(itm) WITH o, ccg, itm `
+
+			result.Parameters["systemUID"] = orderLine.System.UID
+		} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+			// Old logic: create new subsystem under parent system
+			result.Query += `MATCH(parentSystem:System{uid: $parentSystemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
 			result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) CREATE(sys)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o, ccg, itm, sys `
 			result.Query += `MATCH(f:Facility{code: $facilityCode})  MERGE(sys)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm `
 
-			result.Parameters["systemUID"] = orderLine.System.UID
+			result.Parameters["parentSystemUID"] = orderLine.ParentSystem.UID
 			result.Parameters["newSystemUID"] = uuid.New().String()
 		}
 
