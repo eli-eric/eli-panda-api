@@ -107,7 +107,7 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 	defer session.Close()
 
 	// Validate system existence for all order lines
-	if order.OrderLines != nil && len(order.OrderLines) > 0 {
+	if len(order.OrderLines) > 0 {
 		for _, orderLine := range order.OrderLines {
 			// Priority: check System first (new logic), then ParentSystem (old logic)
 			if orderLine.System != nil && orderLine.System.UID != "" {
@@ -136,7 +136,7 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 	generalQuery, newUid := InsertNewOrderQuery(order, facilityCode, userUID)
 	queries = append(queries, generalQuery)
 
-	if order.OrderLines != nil && len(order.OrderLines) > 0 {
+	if len(order.OrderLines) > 0 {
 		for _, orderLine := range order.OrderLines {
 			orderLineQuery := InsertNewOrderOrderLineQuery(newUid, &orderLine, facilityCode, userUID)
 			queries = append(queries, orderLineQuery)
