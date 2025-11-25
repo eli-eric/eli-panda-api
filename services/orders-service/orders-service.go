@@ -187,7 +187,8 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 
 		// Validate order lines
 		if len(order.OrderLines) > 0 {
-			for _, newLine := range order.OrderLines {
+			for i := range order.OrderLines {
+				newLine := &order.OrderLines[i]
 				if newLine.UID != "" {
 					// Existing order line - prevent system changes
 					oldLine := findOrderLineByUID(oldOrder.OrderLines, newLine.UID)
@@ -201,24 +202,8 @@ func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode st
 					}
 				} else {
 					// New order line - validate system existence
-					if newLine.System != nil && newLine.System.UID != "" {
-						exists, err := svc.checkSystemExists(newLine.System.UID, facilityCode, session)
-						if err != nil {
-							log.Error().Err(err).Msg("Error checking system existence")
-							return err
-						}
-						if !exists {
-							return helpers.BadRequest("System with UID " + newLine.System.UID + " not found")
-						}
-					} else if newLine.ParentSystem != nil && newLine.ParentSystem.UID != "" {
-						exists, err := svc.checkSystemExists(newLine.ParentSystem.UID, facilityCode, session)
-						if err != nil {
-							log.Error().Err(err).Msg("Error checking parent system existence")
-							return err
-						}
-						if !exists {
-							return helpers.BadRequest("Parent system with UID " + newLine.ParentSystem.UID + " not found")
-						}
+					if err := svc.validateOrderLineSystemExists(newLine, facilityCode, session); err != nil {
+						return err
 					}
 				}
 			}
@@ -372,6 +357,33 @@ func (svc *OrdersService) checkSystemExists(systemUID string, facilityCode strin
 
 	exists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, query)
 	return exists, err
+}
+
+// validateOrderLineSystemExists validates system existence for a single order line.
+// It checks System first (new logic), then ParentSystem (old logic).
+// Returns nil if validation passes, or an error if the system doesn't exist.
+func (svc *OrdersService) validateOrderLineSystemExists(orderLine *models.OrderLine, facilityCode string, session neo4j.Session) error {
+	// Priority: check System first (new logic), then ParentSystem (old logic)
+	if orderLine.System != nil && orderLine.System.UID != "" {
+		exists, err := svc.checkSystemExists(orderLine.System.UID, facilityCode, session)
+		if err != nil {
+			log.Error().Err(err).Msg("Error checking system existence")
+			return err
+		}
+		if !exists {
+			return helpers.BadRequest("System with UID " + orderLine.System.UID + " not found")
+		}
+	} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+		exists, err := svc.checkSystemExists(orderLine.ParentSystem.UID, facilityCode, session)
+		if err != nil {
+			log.Error().Err(err).Msg("Error checking parent system existence")
+			return err
+		}
+		if !exists {
+			return helpers.BadRequest("Parent system with UID " + orderLine.ParentSystem.UID + " not found")
+		}
+	}
+	return nil
 }
 
 // systemsEqual compares two Codebook pointers for equality
