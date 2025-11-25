@@ -2091,6 +2091,9 @@ const docTemplate = `{
                 "notes": {
                     "type": "string"
                 },
+                "parentSystem": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
                 "price": {
                     "type": "number"
                 },

@@ -46,6 +46,7 @@ type OrderLine struct {
 	CatalogueNumber string                   `json:"catalogueNumber"`
 	CatalogueUID    string                   `json:"catalogueUid"`
 	System          *codebookModels.Codebook `json:"system"`
+	ParentSystem    *codebookModels.Codebook `json:"parentSystem"`
 	ItemUsage       *codebookModels.Codebook `json:"itemUsage"`
 	Location        *codebookModels.Codebook `json:"location"`
 	Price           *float64                 `json:"price"`

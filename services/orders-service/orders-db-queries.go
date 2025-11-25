@@ -244,20 +244,21 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	// Add this part to get service item information for physical items
 	OPTIONAL MATCH (itm)-[:IS_SERVICED_BY]->(serviceItem:ServiceItem)
 	OPTIONAL MATCH (serviceOrder:Order)-[:HAS_SERVICE_LINE]->(serviceItem)
-	WITH o, s, os, req, proc, itm, ci, ol, parentSystem, loc, itemUsage, serviceItem, serviceOrder
-	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
+	WITH o, s, os, req, proc, itm, ci, ol, sys, parentSystem, loc, itemUsage, serviceItem, serviceOrder
+	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,
 		price: ol.price,
-		currency: ol.currency, 
+		currency: ol.currency,
 		notes: ol.notes,
-		name: ci.name, 
+		name: ci.name,
 		eun: itm.eun,
 		serialNumber: itm.serialNumber,
 		isDelivered: ol.isDelivered,
-		deliveredTime: ol.deliveredTime,	
-		lastUpdateTime: ol.lastUpdateTime,	
-		catalogueNumber: ci.catalogueNumber, 
-		catalogueUid: ci.uid, 		
-		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+		deliveredTime: ol.deliveredTime,
+		lastUpdateTime: ol.lastUpdateTime,
+		catalogueNumber: ci.catalogueNumber,
+		catalogueUid: ci.uid,
+		system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid,name: sys.name} ELSE NULL END,
+		parentSystem: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
 		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END,
 		serviceItemName: CASE WHEN serviceItem IS NOT NULL THEN serviceItem.name ELSE NULL END,
