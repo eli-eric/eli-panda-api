@@ -104,6 +104,7 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityC
 
 func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
 
 	// Validate system existence for all order lines
 	if order.OrderLines != nil && len(order.OrderLines) > 0 {
@@ -169,6 +170,7 @@ func (svc *OrdersService) DeleteOrder(orderUid string, userUID string) (err erro
 func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error) {
 	if order != nil {
 		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+		defer session.Close()
 
 		oldOrder, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, GetOrderWithOrderLinesByUidQuery(order.UID, facilityCode))
 
