@@ -104,12 +104,30 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityC
 
 func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
 
 	// Validate system existence for all order lines
-	if order.OrderLines != nil {
-		for i := range order.OrderLines {
-			if err := svc.validateOrderLineSystemExists(&order.OrderLines[i], facilityCode, session); err != nil {
-				return "", err
+	if len(order.OrderLines) > 0 {
+		for _, orderLine := range order.OrderLines {
+			// Priority: check System first (new logic), then ParentSystem (old logic)
+			if orderLine.System != nil && orderLine.System.UID != "" {
+				exists, err := svc.checkSystemExists(orderLine.System.UID, facilityCode, session)
+				if err != nil {
+					log.Error().Err(err).Msg("Error checking system existence")
+					return "", err
+				}
+				if !exists {
+					return "", helpers.BadRequest("System with UID " + orderLine.System.UID + " not found")
+				}
+			} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+				exists, err := svc.checkSystemExists(orderLine.ParentSystem.UID, facilityCode, session)
+				if err != nil {
+					log.Error().Err(err).Msg("Error checking parent system existence")
+					return "", err
+				}
+				if !exists {
+					return "", helpers.BadRequest("Parent system with UID " + orderLine.ParentSystem.UID + " not found")
+				}
 			}
 		}
 	}
@@ -118,7 +136,7 @@ func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode
 	generalQuery, newUid := InsertNewOrderQuery(order, facilityCode, userUID)
 	queries = append(queries, generalQuery)
 
-	if order.OrderLines != nil && len(order.OrderLines) > 0 {
+	if len(order.OrderLines) > 0 {
 		for _, orderLine := range order.OrderLines {
 			orderLineQuery := InsertNewOrderOrderLineQuery(newUid, &orderLine, facilityCode, userUID)
 			queries = append(queries, orderLineQuery)
@@ -152,6 +170,7 @@ func (svc *OrdersService) DeleteOrder(orderUid string, userUID string) (err erro
 func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error) {
 	if order != nil {
 		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+		defer session.Close()
 
 		oldOrder, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, GetOrderWithOrderLinesByUidQuery(order.UID, facilityCode))
 
