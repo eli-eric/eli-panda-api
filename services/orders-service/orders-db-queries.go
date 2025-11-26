@@ -236,9 +236,10 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)	
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
-	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
+	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)
 	WITH o, s, os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
-	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
 	// Add this part to get service item information for physical items

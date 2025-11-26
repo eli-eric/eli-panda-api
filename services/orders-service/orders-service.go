@@ -104,7 +104,6 @@ func (svc *OrdersService) GetOrderWithOrderLinesByUid(orderUid string, facilityC
 
 func (svc *OrdersService) InsertNewOrder(order *models.OrderDetail, facilityCode string, userUID string) (uid string, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
 
 	// Validate system existence for all order lines
 	if len(order.OrderLines) > 0 {
