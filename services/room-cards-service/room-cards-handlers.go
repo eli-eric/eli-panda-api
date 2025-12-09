@@ -22,23 +22,34 @@ func NewRoomCardsHandlers(service IRoomCardsService) IRoomCardsHandlers {
 // GetLayoutRoomCardInfo Get room card layout info by location code godoc
 // @Summary Get room card layout info by location code
 // @Description Get room card layout information for external systems to display scientific complex layout
-// @Description 
+// @Description
 // @Description Status values:
 // @Description - DIRTY_MODE: Room is dirty and needs cleaning
 // @Description - CLEAN_MODE: Room is clean and ready for use
 // @Description - IN_PREPARATION_MODE: Room is being prepared for use
-// @Description 
+// @Description
 // @Description PurityClass values (ISO standards):
 // @Description - ISO_5: ISO Class 5 cleanroom
 // @Description - ISO_6: ISO Class 6 cleanroom
 // @Description - ISO_7: ISO Class 7 cleanroom
 // @Description - ISO_8: ISO Class 8 cleanroom
-// @Description 
+// @Description
 // @Description StatusColor values (automatically assigned based on status):
 // @Description - DIRTY_MODE: #fecaca (light red)
 // @Description - CLEAN_MODE: #d9f99d (light green)
 // @Description - IN_PREPARATION_MODE: #fdba74 (light orange)
 // @Description - Unknown status: #808080 (gray)
+// @Description
+// @Description OperationalState: Codebook containing uid, name, and code of the operational state
+// @Description
+// @Description OperationalStateColor values (automatically assigned based on operationalState.code):
+// @Description - OS1: #22c55e (green)
+// @Description - OS2: #86efac (light green)
+// @Description - OS3: #facc15 (yellow)
+// @Description - OS4: #fb923c (orange)
+// @Description - OS5: #ef4444 (red)
+// @Description - OS6: #b91c1c (dark red)
+// @Description - Unknown/null: #9ca3af (gray)
 // @Tags Room Cards
 // @Security BearerAuth
 // @Produce json

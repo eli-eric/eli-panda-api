@@ -10,10 +10,12 @@ func GetRoomCardsByLocationCodeQuery(locationCode string) (result helpers.Databa
 	MATCH (location:Location {code: $locationCode})
 	MATCH (location)-[:HAS_ROOM_CARD]->(roomCard:RoomCard)
 	WHERE (roomCard.deleted IS NULL OR roomCard.deleted = false)
+	OPTIONAL MATCH (roomCard)-[:HAS_OPERATIONAL_STATE]->(os:OperationalState)
 	RETURN {
 		uid: roomCard.uid,
 		name: roomCard.name,
 		location: {uid: location.uid, name: location.name, code: location.code},
+		operationalState: case when os is not null then {uid: os.uid, name: os.name, code: os.code} else null end,
 		purityClass: roomCard.purityClass,
 		status: roomCard.status
 	} as roomCard
