@@ -44,6 +44,7 @@ var SYSTEM_IMPORTANCE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM_IMPORTA
 var SYSTEM_CRITICALITY_CLASS_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM_CRITICALITY_CLASS", Type: "SIMPLE"}
 var ITEM_USAGE_CODEBOOK CodebookType = CodebookType{Code: "ITEM_USAGE", Type: "SIMPLE", NodeLabel: "ItemUsage"}
 var ITEM_CONDITION_STATUS_CODEBOOK CodebookType = CodebookType{Code: "ITEM_CONDITION_STATUS", Type: "SIMPLE"}
+var OPERATIONAL_STATE_CODEBOOK CodebookType = CodebookType{Code: "OPERATIONAL_STATE", Type: "SIMPLE", NodeLabel: "OperationalState", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN}
 var USER_CODEBOOK CodebookType = CodebookType{Code: "USER", Type: "SIMPLE"}
 var ORDER_STATUS_CODEBOOK CodebookType = CodebookType{Code: "ORDER_STATUS", Type: "SIMPLE"}
 var PROCUREMENTER_CODEBOOK CodebookType = CodebookType{Code: "PROCUREMENTER", Type: "SIMPLE"}
