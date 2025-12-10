@@ -236,28 +236,30 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)	
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
-	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)	
+	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)
 	WITH o, s, os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
-	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
+	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)
 	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
 	// Add this part to get service item information for physical items
 	OPTIONAL MATCH (itm)-[:IS_SERVICED_BY]->(serviceItem:ServiceItem)
 	OPTIONAL MATCH (serviceOrder:Order)-[:HAS_SERVICE_LINE]->(serviceItem)
-	WITH o, s, os, req, proc, itm, ci, ol, parentSystem, loc, itemUsage, serviceItem, serviceOrder
-	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,  
+	WITH o, s, os, req, proc, itm, ci, ol, sys, parentSystem, loc, itemUsage, serviceItem, serviceOrder
+	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,
 		price: ol.price,
-		currency: ol.currency, 
+		currency: ol.currency,
 		notes: ol.notes,
-		name: ci.name, 
+		name: ci.name,
 		eun: itm.eun,
 		serialNumber: itm.serialNumber,
 		isDelivered: ol.isDelivered,
-		deliveredTime: ol.deliveredTime,	
-		lastUpdateTime: ol.lastUpdateTime,	
-		catalogueNumber: ci.catalogueNumber, 
-		catalogueUid: ci.uid, 		
-		system: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
+		deliveredTime: ol.deliveredTime,
+		lastUpdateTime: ol.lastUpdateTime,
+		catalogueNumber: ci.catalogueNumber,
+		catalogueUid: ci.uid,
+		system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid,name: sys.name} ELSE NULL END,
+		parentSystem: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
 		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
 		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END,
 		serviceItemName: CASE WHEN serviceItem IS NOT NULL THEN serviceItem.name ELSE NULL END,
@@ -420,13 +422,19 @@ func InsertNewOrderOrderLineQuery(orderUID string, orderLine *models.OrderLine, 
 	result.Parameters["serialNumber"] = orderLine.SerialNumber
 	result.Parameters["notes"] = orderLine.Notes
 
-	// assign system to the item only  if system(techn. unit) is set
-	if orderLine.System != nil {
-		result.Query += `MATCH(parentSystem:System{uid: $systemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
+	// assign system to the item - priority: System (direct link) over ParentSystem (create subsystem)
+	if orderLine.System != nil && orderLine.System.UID != "" {
+		// New logic: direct link to existing system
+		result.Query += `MATCH(sys:System{uid: $systemUID}) MERGE(sys)-[:CONTAINS_ITEM]->(itm) WITH o, ccg, itm `
+
+		result.Parameters["systemUID"] = orderLine.System.UID
+	} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+		// Old logic: create new subsystem under parent system
+		result.Query += `MATCH(parentSystem:System{uid: $parentSystemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
 		result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) CREATE(sys)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o, ccg, itm, sys `
 		result.Query += `MATCH(f:Facility{code: $facilityCode})  MERGE(sys)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm `
 
-		result.Parameters["systemUID"] = orderLine.System.UID
+		result.Parameters["parentSystemUID"] = orderLine.ParentSystem.UID
 		result.Parameters["newSystemUID"] = uuid.New().String()
 	}
 
@@ -554,13 +562,19 @@ func UpdateOrderLineQuery(orderUid string, orderLine *models.OrderLine, facility
 		result.Parameters["serialNumber"] = orderLine.SerialNumber
 		result.Parameters["notes"] = orderLine.Notes
 
-		// assign system to the item only  if system(techn. unit) is set
-		if orderLine.System != nil {
-			result.Query += `MATCH(parentSystem:System{uid: $systemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
+		// assign system to the item - priority: System (direct link) over ParentSystem (create subsystem)
+		if orderLine.System != nil && orderLine.System.UID != "" {
+			// New logic: direct link to existing system
+			result.Query += `MATCH(sys:System{uid: $systemUID}) MERGE(sys)-[:CONTAINS_ITEM]->(itm) WITH o, ccg, itm `
+
+			result.Parameters["systemUID"] = orderLine.System.UID
+		} else if orderLine.ParentSystem != nil && orderLine.ParentSystem.UID != "" {
+			// Old logic: create new subsystem under parent system
+			result.Query += `MATCH(parentSystem:System{uid: $parentSystemUID})  MERGE(parentSystem)-[:HAS_SUBSYSTEM]->(sys:System{ uid: $newSystemUID, deleted: false, name: $itemName, systemLevel: 'SUBSYSTEMS_AND_PARTS'  })-[:CONTAINS_ITEM]->(itm)  WITH o, ccg, itm, sys `
 			result.Query += `MATCH(usr:User{uid: $lastUpdateBy}) CREATE(sys)-[:WAS_UPDATED_BY{at: datetime(), action: "CREATE" }]->(usr)  WITH o, ccg, itm, sys `
 			result.Query += `MATCH(f:Facility{code: $facilityCode})  MERGE(sys)-[:BELONGS_TO_FACILITY]->(f) WITH o, ccg, itm `
 
-			result.Parameters["systemUID"] = orderLine.System.UID
+			result.Parameters["parentSystemUID"] = orderLine.ParentSystem.UID
 			result.Parameters["newSystemUID"] = uuid.New().String()
 		}
 

@@ -666,7 +666,16 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	result = GetSystemsSearchFilterQueryOnly(searchString, facilityCode, filering)
 
 	result.Query += `
-	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE 
+			WHEN fullPath IS NOT NULL 
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}] 
+			ELSE NULL 
+		END as parentPath
+	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
@@ -674,7 +683,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
-	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	parentPath: parentPath,
 	hasSubsystems: case when subsys is not null then true else false end,
 	sparesIn: count(distinct spareIN),
 	sparesOut: count(distinct spareOUT),
@@ -765,7 +774,16 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE 
+			WHEN fullPath IS NOT NULL 
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}] 
+			ELSE NULL 
+		END as parentPath
+	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
@@ -775,7 +793,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
-	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	parentPath: parentPath,
 	hasSubsystems: case when subsys is not null then true else false end,
 	sparesIn: count(distinct spareIN),
 	sparesOut: count(distinct spareOUT),
@@ -847,7 +865,16 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	OPTIONAL MATCH (physicalItem)<-[:HAS_ORDER_LINE]-(order)
-	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE 
+			WHEN fullPath IS NOT NULL 
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}] 
+			ELSE NULL 
+		END as parentPath
+	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
@@ -855,7 +882,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 		uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
-	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	parentPath: parentPath,
 	hasSubsystems: case when subsys is not null then true else false end,
 	sparesIn: count(distinct spareIN),
 	sparesOut: count(distinct spareOUT),
@@ -915,13 +942,22 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE 
+			WHEN fullPath IS NOT NULL 
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}] 
+			ELSE NULL 
+		END as parentPath
+	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})	
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
-	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	parentPath: parentPath,
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
@@ -974,13 +1010,22 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)		
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (parents{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE 
+			WHEN fullPath IS NOT NULL 
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}] 
+			ELSE NULL 
+		END as parentPath
+	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
-	parentPath: case when parents is not null then reverse(collect(distinct {uid: parents.uid, name: parents.name})) else null end,
+	parentPath: parentPath,
 	systemCode: sys.systemCode,	
 	systemLevel: sys.systemLevel,
 	miniImageUrl: split(sys.miniImageUrl, ";"),	

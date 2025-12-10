@@ -5,10 +5,13 @@ import (
 )
 
 type LayoutRoomCard struct {
-	UID         string               `json:"uid" neo4j:"key,uid"`
-	Name        string               `json:"name" neo4j:"prop,name"`
-	Location    *models.Codebook     `json:"location"`
-	PurityClass string               `json:"purityClass" neo4j:"prop,purityClass"`
-	Status      string               `json:"status" neo4j:"prop,status"`
-	StatusColor string               `json:"statusColor"`
+	UID                   string           `json:"uid" neo4j:"key,uid"`
+	Name                  string           `json:"name" neo4j:"prop,name"`
+	Location              *models.Codebook `json:"location"`
+	OperationalState      *models.Codebook `json:"operationalState"`
+	OperationalStateColor string           `json:"operationalStateColor"`
+	PurityClass           string           `json:"purityClass" neo4j:"prop,purityClass"`
+	Status                string           `json:"status" neo4j:"prop,status"`
+	StatusColor           string           `json:"statusColor"`
 }
+

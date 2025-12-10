@@ -339,6 +339,8 @@ definitions:
         type: string
       notes:
         type: string
+      parentSystem:
+        $ref: '#/definitions/models.Codebook'
       price:
         type: number
       serialNumber:
