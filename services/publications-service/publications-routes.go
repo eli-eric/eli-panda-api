@@ -29,6 +29,8 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 
 	e.POST("/v1/researcher", m.Authorization(h.CreateResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
+	e.POST("/v1/researchers", m.Authorization(h.CreateResearchers(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+
 	e.PUT("/v1/researcher/:uid", m.Authorization(h.UpdateResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.DELETE("/v1/researcher/:uid", m.Authorization(h.DeleteResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)

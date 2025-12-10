@@ -1289,6 +1289,55 @@ const docTemplate = `{
                         "description": "Internal Server Error"
                     }
                 }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create multiple researchers at once",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Create multiple researchers",
+                "parameters": [
+                    {
+                        "description": "Researchers",
+                        "name": "researchers",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Researcher"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Researcher"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
             }
         },
         "/v1/room-card/layout/location/{code}": {
@@ -2696,10 +2745,6 @@ const docTemplate = `{
         "models.Researcher": {
             "type": "object",
             "properties": {
-                "birthNumber": {
-                    "description": "birthNumber is the birth number of the researcher",
-                    "type": "string"
-                },
                 "citizenship": {
                     "description": "citizenship is the country of citizenship of the researcher",
                     "allOf": [
@@ -2710,6 +2755,10 @@ const docTemplate = `{
                 },
                 "firstName": {
                     "description": "firstName is the first name of the researcher",
+                    "type": "string"
+                },
+                "identificationNumber": {
+                    "description": "identificationNumber is the identification number of the researcher",
                     "type": "string"
                 },
                 "lastName": {

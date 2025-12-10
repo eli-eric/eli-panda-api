@@ -31,6 +31,7 @@ type IPublicationsHandlers interface {
 	GetResearchers() echo.HandlerFunc
 	GetResearcher() echo.HandlerFunc
 	CreateResearcher() echo.HandlerFunc
+	CreateResearchers() echo.HandlerFunc
 	UpdateResearcher() echo.HandlerFunc
 	DeleteResearcher() echo.HandlerFunc
 }
@@ -537,6 +538,47 @@ func (h *PublicationsHandlers) CreateResearcher() echo.HandlerFunc {
 		}
 
 		return c.JSON(200, researcher)
+	}
+}
+
+// CreateResearchers Create multiple researchers godoc
+// @Summary Create multiple researchers
+// @Description Create multiple researchers at once
+// @Tags Researchers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param researchers body []models.Researcher true "Researchers"
+// @Success 200 {array} models.Researcher
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researchers [post]
+func (h *PublicationsHandlers) CreateResearchers() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		researchers := new([]models.Researcher)
+		if err := c.Bind(researchers); err != nil {
+			log.Error().Err(err).Msg("Error binding researchers")
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+
+		// Generate UIDs for researchers without one
+		for i := range *researchers {
+			if (*researchers)[i].Uid == "" {
+				(*researchers)[i].Uid = uuid.New().String()
+			}
+		}
+
+		result, err := h.PublicationsService.CreateResearchers(*researchers, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating researchers")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
 	}
 }
 

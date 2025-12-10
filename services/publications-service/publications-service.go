@@ -29,6 +29,7 @@ type IPublicationsService interface {
 	GetResearchers(searchText string, page, pageSize int) (result []models.Researcher, totalCount int64, err error)
 	GetResearcherByUid(uid string) (models.Researcher, error)
 	CreateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
+	CreateResearchers(researchers []models.Researcher, userUID string) (result []models.Researcher, err error)
 	UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
 	DeleteResearcher(uid string, userUID string) (err error)
 }
@@ -273,6 +274,22 @@ func (svc *PublicationsService) CreateResearcher(researcher *models.Researcher, 
 		historyLog)
 
 	return *researcher, err
+}
+
+func (svc *PublicationsService) CreateResearchers(researchers []models.Researcher, userUID string) (result []models.Researcher, err error) {
+
+	result = make([]models.Researcher, 0)
+
+	for i := range researchers {
+		researcher := &researchers[i]
+		createdResearcher, err := svc.CreateResearcher(researcher, userUID)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, createdResearcher)
+	}
+
+	return result, nil
 }
 
 func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error) {

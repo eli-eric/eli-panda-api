@@ -634,7 +634,7 @@
         { "name": "uid", "type": "String" },
         { "name": "firstName", "type": "String" },
         { "name": "lastName", "type": "String" },
-        { "name": "birthNumber", "type": "String" },
+        { "name": "identificationNumber", "type": "String" },
         { "name": "orcid", "type": "String" },
         { "name": "scopusId", "type": "String" },
         { "name": "researcherId", "type": "String" },
