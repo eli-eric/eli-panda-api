@@ -47,7 +47,8 @@
         "SystemAttribute",
         "Unit",
         "CatalogueServiceType",
-        "Publication"
+        "Publication",
+        "Researcher"
       ],
       "end": ["User"],
       "type": "WAS_UPDATED_BY",
@@ -85,7 +86,9 @@
     { "start": ["Order"], "end": ["ServiceItem"], "type": "HAS_SERVICE_LINE", "properties": [] },
     { "start": ["Publication"], "end": ["Country"], "type": "HAS_PUBLISHING_COUNTRY", "properties": [] },
     { "start": ["Publication"], "end": ["OpenAccessType"], "type": "HAS_OPEN_ACCESS_TYPE", "properties": [] },
-    { "start": ["Publication"], "end": ["UserCall"], "type": "HAS_USER_CALL", "properties": [] }
+    { "start": ["Publication"], "end": ["UserCall"], "type": "HAS_USER_CALL", "properties": [] },
+    { "start": ["Publication"], "end": ["Researcher"], "type": "HAS_RESEARCHER", "properties": [] },
+    { "start": ["Researcher"], "end": ["Country"], "type": "HAS_CITIZENSHIP", "properties": [] }
   ],
   "nodes": [
     {
@@ -623,6 +626,20 @@
         { "name": "name", "type": "String" },
         { "name": "url", "type": "String" },
         { "name": "tags", "type": "String" }
+      ]
+    },
+    {
+      "label": "Researcher",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "firstName", "type": "String" },
+        { "name": "lastName", "type": "String" },
+        { "name": "birthNumber", "type": "String" },
+        { "name": "orcid", "type": "String" },
+        { "name": "scopusId", "type": "String" },
+        { "name": "researcherId", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "deleted", "type": "Boolean" }
       ]
     }
   ]

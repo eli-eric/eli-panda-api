@@ -25,6 +25,12 @@ type IPublicationsService interface {
 	DeletePublication(uid string, userUID string) (err error)
 	GetPublications(searchText string, page, pageSize int) (result []models.Publication, totalCount int64, err error)
 	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
+	// Researcher methods
+	GetResearchers(searchText string, page, pageSize int) (result []models.Researcher, totalCount int64, err error)
+	GetResearcherByUid(uid string) (models.Researcher, error)
+	CreateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
+	UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
+	DeleteResearcher(uid string, userUID string) (err error)
 }
 
 func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
@@ -207,4 +213,104 @@ func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result m
 
 		return result, nil
 	}
+}
+
+// Researcher methods
+
+func (svc *PublicationsService) GetResearcherByUid(uid string) (result models.Researcher, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result.Uid = uid
+
+	err = helpers.GetSingleNode(session, &result)
+
+	return result, err
+}
+
+func (svc *PublicationsService) GetResearchers(searchText string, page, pageSize int) (result []models.Researcher, totalCount int64, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	skip := pageSize
+	limit := pageSize
+
+	if skip > 0 {
+		skip = (page - 1) * pageSize
+	} else {
+		skip = 0
+	}
+
+	if limit <= 0 {
+		limit = 10
+	}
+
+	result, totalCount, err = helpers.GetMultipleNodes[models.Researcher](session, skip, limit, searchText)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, totalCount, err
+}
+
+func (svc *PublicationsService) CreateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:Researcher {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = researcher.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *researcher, models.Researcher{}, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(researcher.Uid, "CREATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *researcher, err
+}
+
+func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	oldResearcher, err := svc.GetResearcherByUid(researcher.Uid)
+
+	if err != nil {
+		return result, err
+	}
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MATCH (n:Researcher {uid: $uid}) SET n.updatedAt = datetime() WITH n  `
+	updateQuery.Parameters["uid"] = researcher.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *researcher, oldResearcher, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(researcher.Uid, "UPDATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *researcher, err
+}
+
+func (svc *PublicationsService) DeleteResearcher(uid string, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		helpers.SoftDeleteNodeQuery(uid),
+		helpers.HistoryLogQuery(uid, "DELETE", userUID))
+
+	return err
 }

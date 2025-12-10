@@ -1082,6 +1082,215 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/researcher": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create researcher",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Create researcher",
+                "parameters": [
+                    {
+                        "description": "Researcher",
+                        "name": "researcher",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/researcher/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get researcher by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Get researcher by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update researcher",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Update researcher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Researcher",
+                        "name": "researcher",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete researcher by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Delete researcher by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/researchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get researchers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Get researchers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination",
+                        "name": "pagination",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_Researcher"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/room-card/layout/location/{code}": {
             "get": {
                 "security": [
@@ -1089,7 +1298,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get room card layout information for external systems to display scientific complex layout\n\nStatus values:\n- DIRTY_MODE: Room is dirty and needs cleaning\n- CLEAN_MODE: Room is clean and ready for use\n- IN_PREPARATION_MODE: Room is being prepared for use\n\nPurityClass values (ISO standards):\n- ISO_5: ISO Class 5 cleanroom\n- ISO_6: ISO Class 6 cleanroom\n- ISO_7: ISO Class 7 cleanroom\n- ISO_8: ISO Class 8 cleanroom\n\nStatusColor values (automatically assigned based on status):\n- DIRTY_MODE: #fecaca (light red)\n- CLEAN_MODE: #d9f99d (light green)\n- IN_PREPARATION_MODE: #fdba74 (light orange)\n- Unknown status: #808080 (gray)",
+                "description": "Get room card layout information for external systems to display scientific complex layout\n\nStatus values:\n- DIRTY_MODE: Room is dirty and needs cleaning\n- CLEAN_MODE: Room is clean and ready for use\n- IN_PREPARATION_MODE: Room is being prepared for use\n\nPurityClass values (ISO standards):\n- ISO_5: ISO Class 5 cleanroom\n- ISO_6: ISO Class 6 cleanroom\n- ISO_7: ISO Class 7 cleanroom\n- ISO_8: ISO Class 8 cleanroom\n\nStatusColor values (automatically assigned based on status):\n- DIRTY_MODE: #fecaca (light red)\n- CLEAN_MODE: #d9f99d (light green)\n- IN_PREPARATION_MODE: #fdba74 (light orange)\n- Unknown status: #808080 (gray)\n\nOperationalState: Codebook containing uid, name, and code of the operational state\n\nOperationalStateColor values (automatically assigned based on operationalState.code):\n- OS1: #22c55e (green)\n- OS2: #86efac (light green)\n- OS3: #facc15 (yellow)\n- OS4: #fb923c (orange)\n- OS5: #ef4444 (red)\n- OS6: #b91c1c (dark red)\n- Unknown/null: #9ca3af (gray)",
                 "produces": [
                     "application/json"
                 ],
@@ -1642,6 +1851,20 @@ const docTemplate = `{
                 }
             }
         },
+        "helpers.PaginationResult-models_Researcher": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Researcher"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.AssignSpareRequest": {
             "type": "object",
             "required": [
@@ -2042,6 +2265,12 @@ const docTemplate = `{
                     "$ref": "#/definitions/models.Codebook"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "operationalState": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "operationalStateColor": {
                     "type": "string"
                 },
                 "purityClass": {
@@ -2460,6 +2689,51 @@ const docTemplate = `{
                 },
                 "yearOfPublication": {
                     "description": "yearOfPublication is the year of publication of the publication",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Researcher": {
+            "type": "object",
+            "properties": {
+                "birthNumber": {
+                    "description": "birthNumber is the birth number of the researcher",
+                    "type": "string"
+                },
+                "citizenship": {
+                    "description": "citizenship is the country of citizenship of the researcher",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "firstName": {
+                    "description": "firstName is the first name of the researcher",
+                    "type": "string"
+                },
+                "lastName": {
+                    "description": "lastName is the last name of the researcher",
+                    "type": "string"
+                },
+                "orcid": {
+                    "description": "orcid is the ORCID identifier of the researcher",
+                    "type": "string"
+                },
+                "researcherId": {
+                    "description": "researcherId is the ResearcherID of the researcher",
+                    "type": "string"
+                },
+                "scopusId": {
+                    "description": "scopusId is the Scopus identifier of the researcher",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "uid is the unique identifier of the researcher",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "updatedAt is the time when the researcher was last updated",
                     "type": "string"
                 }
             }
