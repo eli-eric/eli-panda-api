@@ -27,6 +27,13 @@ type IPublicationsHandlers interface {
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
 	GetPublicationsAsCsv() echo.HandlerFunc
+	// Researcher handlers
+	GetResearchers() echo.HandlerFunc
+	GetResearcher() echo.HandlerFunc
+	CreateResearcher() echo.HandlerFunc
+	CreateResearchers() echo.HandlerFunc
+	UpdateResearcher() echo.HandlerFunc
+	DeleteResearcher() echo.HandlerFunc
 }
 
 // NewPublicationsHandlers General handlers constructor
@@ -424,5 +431,219 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 		}
 
 		return nil
+	}
+}
+
+// Researcher handlers
+
+// GetResearchers Get researchers godoc
+// @Summary Get researchers
+// @Description Get researchers
+// @Tags Researchers
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} helpers.PaginationResult[models.Researcher]
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researchers [get]
+// @Param search query string false "search"
+// @Param pagination query string false "pagination"
+func (h *PublicationsHandlers) GetResearchers() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		search := c.QueryParam("search")
+		pagination := c.QueryParam("pagination")
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		researchers, totalCount, err := h.PublicationsService.GetResearchers(search, pagingObject.Page, pagingObject.PageSize)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting researchers")
+			return echo.ErrInternalServerError
+		}
+
+		paginationResult := helpers.PaginationResult[models.Researcher]{
+			TotalCount: totalCount,
+			Data:       researchers,
+		}
+
+		return c.JSON(200, paginationResult)
+	}
+}
+
+// GetResearcher Get researcher by uid godoc
+// @Summary Get researcher by uid
+// @Description Get researcher by uid
+// @Tags Researchers
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 200 {object} models.Researcher
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researcher/{uid} [get]
+func (h *PublicationsHandlers) GetResearcher() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		researcher, err := h.PublicationsService.GetResearcherByUid(uid)
+		if err != nil {
+			// return 404 if not found - in error message will be result contains no more records
+			if err.Error() == "Result contains no more records" {
+				return echo.ErrNotFound
+			}
+			log.Error().Err(err).Msg("Error getting researcher")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, researcher)
+	}
+}
+
+// CreateResearcher Create researcher godoc
+// @Summary Create researcher
+// @Description Create researcher
+// @Tags Researchers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param researcher body models.Researcher true "Researcher"
+// @Success 200 {object} models.Researcher
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researcher [post]
+func (h *PublicationsHandlers) CreateResearcher() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		researcher := new(models.Researcher)
+		if err := c.Bind(researcher); err != nil {
+			log.Error().Err(err).Msg("Error binding researcher")
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+
+		if researcher.Uid == "" {
+			researcher.Uid = uuid.New().String()
+		}
+
+		_, err := h.PublicationsService.CreateResearcher(researcher, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating researcher")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, researcher)
+	}
+}
+
+// CreateResearchers Create multiple researchers godoc
+// @Summary Create multiple researchers
+// @Description Create multiple researchers at once
+// @Tags Researchers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param researchers body []models.Researcher true "Researchers"
+// @Success 200 {array} models.Researcher
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researchers [post]
+func (h *PublicationsHandlers) CreateResearchers() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		researchers := new([]models.Researcher)
+		if err := c.Bind(researchers); err != nil {
+			log.Error().Err(err).Msg("Error binding researchers")
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+
+		// Generate UIDs for researchers without one
+		for i := range *researchers {
+			if (*researchers)[i].Uid == "" {
+				(*researchers)[i].Uid = uuid.New().String()
+			}
+		}
+
+		result, err := h.PublicationsService.CreateResearchers(*researchers, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating researchers")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
+	}
+}
+
+// UpdateResearcher Update researcher godoc
+// @Summary Update researcher
+// @Description Update researcher
+// @Tags Researchers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "uid"
+// @Param researcher body models.Researcher true "Researcher"
+// @Success 200 {object} models.Researcher
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researcher/{uid} [put]
+func (h *PublicationsHandlers) UpdateResearcher() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		researcher := new(models.Researcher)
+		if err := c.Bind(researcher); err != nil {
+			log.Error().Err(err).Msg("Error binding researcher")
+			return helpers.BadRequest(err.Error())
+		}
+
+		researcher.Uid = uid
+
+		userUID := c.Get("userUID").(string)
+
+		_, err := h.PublicationsService.UpdateResearcher(researcher, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error updating researcher")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, researcher)
+	}
+}
+
+// DeleteResearcher Delete researcher by uid godoc
+// @Summary Delete researcher by uid
+// @Description Delete researcher by uid
+// @Tags Researchers
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 204 "No Content"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researcher/{uid} [delete]
+func (h *PublicationsHandlers) DeleteResearcher() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.PublicationsService.DeleteResearcher(uid, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting researcher")
+			return echo.ErrInternalServerError
+		}
+
+		return c.NoContent(204)
 	}
 }
