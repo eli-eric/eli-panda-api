@@ -282,3 +282,209 @@ func TestGetResearcherWithCitizenship(t *testing.T) {
 	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
 }
+
+// ==================== Publication-Researcher Connection Tests ====================
+
+func TestCreatePublicationWithResearchers(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-with-researchers-" + uuid.New().String()
+	res1Uid := "test-res1-" + uuid.New().String()
+	res2Uid := "test-res2-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create researchers first
+	_, err := testsetup.TestSession.Run(
+		`CREATE (r1:Researcher {uid: $uid1, firstName: "John", lastName: "Doe"})
+		 CREATE (r2:Researcher {uid: $uid2, firstName: "Jane", lastName: "Smith"})`,
+		map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid},
+	)
+	assert.NoError(t, err)
+
+	// Create publication with researchers
+	publication := &models.Publication{
+		Uid:   pubUid,
+		Title: "Test Publication",
+		EliResearchers: []models.ResearcherRef{
+			{Uid: res1Uid, FirstName: "John", LastName: "Doe"},
+			{Uid: res2Uid, FirstName: "Jane", LastName: "Smith"},
+		},
+	}
+
+	result, err := service.CreatePublication(publication, userUid)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, pubUid, result.Uid)
+	assert.Equal(t, 2, len(result.EliResearchers))
+
+	// Verify relationships in database
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(dbResult.EliResearchers))
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
+
+func TestGetPublicationWithResearchers(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-get-researchers-" + uuid.New().String()
+	resUid := "test-res-get-" + uuid.New().String()
+
+	// Insert test data with HAS_RESEARCHER relationship
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (r:Researcher {uid: $resUid, firstName: "Test", lastName: "Researcher"})
+		 CREATE (p)-[:HAS_RESEARCHER]->(r)`,
+		map[string]interface{}{"pubUid": pubUid, "resUid": resUid},
+	)
+	assert.NoError(t, err)
+
+	// Run the actual test
+	result, err := service.GetPublicationByUid(pubUid)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, pubUid, result.Uid)
+	assert.Equal(t, 1, len(result.EliResearchers))
+	assert.Equal(t, resUid, result.EliResearchers[0].Uid)
+	assert.Equal(t, "Test", result.EliResearchers[0].FirstName)
+	assert.Equal(t, "Researcher", result.EliResearchers[0].LastName)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
+}
+
+func TestUpdatePublicationAddResearchers(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-add-researchers-" + uuid.New().String()
+	resUid := "test-res-add-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create publication without researchers
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (r:Researcher {uid: $resUid, firstName: "New", lastName: "Researcher"})`,
+		map[string]interface{}{"pubUid": pubUid, "resUid": resUid},
+	)
+	assert.NoError(t, err)
+
+	// Update publication to add researchers
+	publication := &models.Publication{
+		Uid:   pubUid,
+		Title: "Test Publication",
+		EliResearchers: []models.ResearcherRef{
+			{Uid: resUid, FirstName: "New", LastName: "Researcher"},
+		},
+	}
+
+	_, err = service.UpdatePublication(publication, userUid)
+	assert.NoError(t, err)
+
+	// Verify relationships in database
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(dbResult.EliResearchers))
+	assert.Equal(t, resUid, dbResult.EliResearchers[0].Uid)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
+
+func TestUpdatePublicationRemoveResearchers(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-remove-researchers-" + uuid.New().String()
+	resUid := "test-res-remove-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create publication with researcher
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (r:Researcher {uid: $resUid, firstName: "ToRemove", lastName: "Researcher"})
+		 CREATE (p)-[:HAS_RESEARCHER]->(r)`,
+		map[string]interface{}{"pubUid": pubUid, "resUid": resUid},
+	)
+	assert.NoError(t, err)
+
+	// Verify researcher is connected
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(dbResult.EliResearchers))
+
+	// Update publication to remove all researchers
+	publication := &models.Publication{
+		Uid:            pubUid,
+		Title:          "Test Publication",
+		EliResearchers: []models.ResearcherRef{}, // empty list
+	}
+
+	_, err = service.UpdatePublication(publication, userUid)
+	assert.NoError(t, err)
+
+	// Verify no researchers connected
+	dbResult, err = service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(dbResult.EliResearchers))
+
+	// Verify researcher still exists (only relationship deleted)
+	resResult, err := service.GetResearcherByUid(resUid)
+	assert.NoError(t, err)
+	assert.Equal(t, resUid, resResult.Uid)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
+
+func TestUpdatePublicationReplaceResearchers(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-replace-researchers-" + uuid.New().String()
+	res1Uid := "test-res-old-" + uuid.New().String()
+	res2Uid := "test-res-new-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create publication with one researcher
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (r1:Researcher {uid: $res1Uid, firstName: "Old", lastName: "Researcher"})
+		 CREATE (r2:Researcher {uid: $res2Uid, firstName: "New", lastName: "Researcher"})
+		 CREATE (p)-[:HAS_RESEARCHER]->(r1)`,
+		map[string]interface{}{"pubUid": pubUid, "res1Uid": res1Uid, "res2Uid": res2Uid},
+	)
+	assert.NoError(t, err)
+
+	// Verify old researcher is connected
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(dbResult.EliResearchers))
+	assert.Equal(t, res1Uid, dbResult.EliResearchers[0].Uid)
+
+	// Update publication to replace researcher
+	publication := &models.Publication{
+		Uid:   pubUid,
+		Title: "Test Publication",
+		EliResearchers: []models.ResearcherRef{
+			{Uid: res2Uid, FirstName: "New", LastName: "Researcher"},
+		},
+	}
+
+	_, err = service.UpdatePublication(publication, userUid)
+	assert.NoError(t, err)
+
+	// Verify new researcher connected, old one disconnected
+	dbResult, err = service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(dbResult.EliResearchers))
+	assert.Equal(t, res2Uid, dbResult.EliResearchers[0].Uid)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
