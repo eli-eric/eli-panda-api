@@ -2612,6 +2612,13 @@ const docTemplate = `{
                     "description": "eliAuthorsCount is the eli authors count of the publication",
                     "type": "integer"
                 },
+                "eliResearchers": {
+                    "description": "eliResearchers are the connected researchers via HAS_RESEARCHER relationship",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ResearcherRef"
+                    }
+                },
                 "experimentalSystem": {
                     "description": "experimentalSystem is the experimental system of the publication",
                     "type": "string"
@@ -2783,6 +2790,20 @@ const docTemplate = `{
                 },
                 "updatedAt": {
                     "description": "updatedAt is the time when the researcher was last updated",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResearcherRef": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "uid": {
                     "type": "string"
                 }
             }
