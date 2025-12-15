@@ -13,11 +13,9 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Login via Azure CLI (using managed identity)
-              uses: azure/login@v1
-              with:
-                  auth-type: IDENTITY
-                  enable-AzPSSession: false
+            - name: Login to Azure using managed identity
+              run: |
+                  az login --identity
 
             - name: Login to Azure Container Registry
               run: |
