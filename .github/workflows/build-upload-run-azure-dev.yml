@@ -1,0 +1,30 @@
+name: Build and Deploy to Azure DEV
+
+on:
+    push:
+        branches:
+            - "dev"
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ecz-vm-panda-dev-gwc-01
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build Docker image
+              uses: docker/build-push-action@v5
+              with:
+                  context: .
+                  file: ./Dockerfile.devenv
+                  push: false
+                  tags: panda-api:${{ github.sha }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+            # TODO: Add Azure Container Registry login and push
+            # TODO: Add Azure Container Apps deployment
