@@ -13,23 +13,21 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+            - name: Login via Azure CLI (using managed identity)
+              uses: azure/login@v1
+              with:
+                  auth-type: IDENTITY
+                  enable-AzPSSession: false
 
             - name: Login to Azure Container Registry
               run: |
                   az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}
 
             - name: Build and push Docker image
-              uses: docker/build-push-action@v5
-              with:
-                  context: .
-                  file: ./Dockerfile.devenv
-                  push: true
-                  tags: |
-                      ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
-                      ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
-                  cache-from: type=gha
-                  cache-to: type=gha,mode=max
+              run: |
+                  docker build . -f ./Dockerfile.azure -t ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
+                  docker tag ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }} ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
+                  docker push ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
+                  docker push ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
 
             # TODO: Add Azure Container Apps deployment
