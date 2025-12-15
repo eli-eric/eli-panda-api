@@ -15,7 +15,7 @@ jobs:
 
             - name: Login to Azure using managed identity
               run: |
-                  az login --identity
+                  az login --identity --allow-no-subscriptions
 
             - name: Login to Azure Container Registry
               run: |
