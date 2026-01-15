@@ -661,6 +661,256 @@ func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 	return result
 }
 
+func GetControlSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
+
+	if sorting == nil || len(*sorting) == 0 {
+		return `ORDER BY result.code ASC `
+	}
+
+	// allow a limited set of sortable columns to avoid Cypher injection
+	allowed := map[string]string{
+		"name":         "result.name",
+		"code":         "result.code",
+		"createdBy":    "result.createdBy",
+		"lastUpdateBy": "result.lastUpdateBy",
+		"zone":         "result.zone.code",
+		"location":     "result.location.code",
+	}
+
+	var result string = ` ORDER BY `
+	added := 0
+
+	for _, sort := range *sorting {
+		column, ok := allowed[sort.ID]
+		if !ok {
+			continue
+		}
+		if added > 0 {
+			result += ", "
+		}
+		result += column
+		if sort.DESC {
+			result += " DESC "
+		} else {
+			result += " ASC "
+		}
+		added++
+	}
+
+	if added == 0 {
+		return `ORDER BY result.code ASC `
+	}
+
+	return result
+}
+
+func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(sys:System{deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE sys.systemCode IS NOT NULL AND trim(sys.systemCode) <> ""
+	`
+
+	// Optional filters
+	if filterVal := helpers.GetFilterValueString(filering, "searchText"); filterVal != nil && *filterVal != "" {
+		result.Query += ` AND (toLower(sys.name) CONTAINS toLower($filterSearchText) OR toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
+		result.Parameters["filterSearchText"] = *filterVal
+	}
+
+	// Zone filter
+	if filterVal := helpers.GetFilterValueCodebook(filering, "zone"); filterVal != nil && (*filterVal).UID != "" {
+		result.Query += ` WITH sys, f MATCH(sys)-[:HAS_ZONE]->(zone:Zone{uid: $filterZoneUid}) `
+		result.Parameters["filterZoneUid"] = (*filterVal).UID
+	} else {
+		result.Query += ` WITH sys, f OPTIONAL MATCH(sys)-[:HAS_ZONE]->(zone:Zone) `
+	}
+
+	// SystemType filter
+	if filterVal := helpers.GetFilterValueCodebook(filering, "systemType"); filterVal != nil && (*filterVal).UID != "" {
+		result.Query += ` WITH sys, f, zone MATCH(sys)-[:HAS_SYSTEM_TYPE]->(st:SystemType{uid: $filterSystemTypeUid}) `
+		result.Parameters["filterSystemTypeUid"] = (*filterVal).UID
+	} else {
+		result.Query += ` WITH sys, f, zone OPTIONAL MATCH(sys)-[:HAS_SYSTEM_TYPE]->(st:SystemType) `
+	}
+
+	result.Query += `
+	WITH sys, f, zone, st
+	OPTIONAL MATCH(sys)-[:HAS_LOCATION]->(loc:Location)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE
+			WHEN fullPath IS NOT NULL
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}]
+			ELSE NULL
+		END as parentPath
+	}
+	CALL {
+		WITH sys
+		OPTIONAL MATCH (sys)-[r:WAS_UPDATED_BY]->(u)
+		WHERE r.action IN ["INSERT", "CREATE"]
+		RETURN coalesce(u.username, u.uid, "") as createdBy, r.at as createdAt
+		ORDER BY createdAt ASC
+		LIMIT 1
+	}
+	CALL {
+		WITH sys
+		OPTIONAL MATCH (sys)-[r:WAS_UPDATED_BY]->(u)
+		RETURN coalesce(u.username, u.uid, "") as lastUpdateBy, r.at as lastUpdateAt
+		ORDER BY lastUpdateAt DESC
+		LIMIT 1
+	}
+	RETURN DISTINCT {
+		name: sys.name,
+		code: sys.systemCode,
+		parentPath: parentPath,
+		createdBy: createdBy,
+		lastUpdateBy: lastUpdateBy,
+		zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
+		location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end
+	} AS result
+	` + GetControlSystemsOrderByClauses(sorting) + `
+	SKIP $skip
+	LIMIT $limit
+	`
+
+	result.ReturnAlias = "result"
+	result.Parameters["limit"] = pagination.PageSize
+	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
+
+	return result
+}
+
+func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(sys:System{deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE sys.systemCode IS NOT NULL AND trim(sys.systemCode) <> ""
+	`
+
+	if filterVal := helpers.GetFilterValueString(filering, "searchText"); filterVal != nil && *filterVal != "" {
+		result.Query += ` AND (toLower(sys.name) CONTAINS toLower($filterSearchText) OR toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
+		result.Parameters["filterSearchText"] = *filterVal
+	}
+
+	if filterVal := helpers.GetFilterValueCodebook(filering, "zone"); filterVal != nil && (*filterVal).UID != "" {
+		result.Query += ` WITH sys, f MATCH(sys)-[:HAS_ZONE]->(:Zone{uid: $filterZoneUid}) `
+		result.Parameters["filterZoneUid"] = (*filterVal).UID
+	}
+
+	if filterVal := helpers.GetFilterValueCodebook(filering, "systemType"); filterVal != nil && (*filterVal).UID != "" {
+		result.Query += ` WITH sys, f MATCH(sys)-[:HAS_SYSTEM_TYPE]->(:SystemType{uid: $filterSystemTypeUid}) `
+		result.Parameters["filterSystemTypeUid"] = (*filterVal).UID
+	}
+
+	result.Query += ` RETURN COUNT(DISTINCT sys) as count `
+	result.ReturnAlias = "count"
+	return result
+}
+
+func GetNewSystemCodesPreviewQuery(systemTypeUID string, zoneUID string, systemCodePrefix string, serialNumberLength int, batch int, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["zoneUID"] = zoneUID
+	result.Parameters["systemTypeUID"] = systemTypeUID
+	result.Parameters["systemCodePrefix"] = systemCodePrefix
+	result.Parameters["serialNumberLength"] = serialNumberLength
+	result.Parameters["batch"] = batch
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(st:SystemType{uid: $systemTypeUID})
+	WITH f, z, st
+	OPTIONAL MATCH(lastSys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE lastSys.systemCode STARTS WITH $systemCodePrefix
+	WITH z, st, lastSys
+	ORDER BY lastSys.systemCode DESC
+	LIMIT 1
+	WITH z, st,
+		CASE WHEN lastSys IS NOT NULL THEN toInteger(split(lastSys.systemCode, $systemCodePrefix)[1]) + 1 ELSE 1 END AS startSerial
+	UNWIND range(0, $batch - 1) AS i
+	WITH z, st, $systemCodePrefix + apoc.text.lpad(toString(startSerial + i), $serialNumberLength, "0") AS code
+	RETURN {
+		name: code,
+		code: code,
+		parentPath: NULL,
+		createdBy: "",
+		lastUpdateBy: "",
+		zone: {uid: z.uid, name: z.name, code: z.code},
+		location: NULL
+	} AS result
+	ORDER BY result.code ASC
+	`
+
+	result.ReturnAlias = "result"
+	return result
+}
+
+func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePrefix string, serialNumberLength int, batch int, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["zoneUID"] = zoneUID
+	result.Parameters["systemTypeUID"] = systemTypeUID
+	result.Parameters["systemCodePrefix"] = systemCodePrefix
+	result.Parameters["serialNumberLength"] = serialNumberLength
+	result.Parameters["batch"] = batch
+	result.Parameters["userUID"] = userUID
+
+	result.Query = `
+	MATCH(f:Facility{code: $facilityCode})
+	MATCH(u:User{uid: $userUID})
+	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(st:SystemType{uid: $systemTypeUID})
+	OPTIONAL MATCH(lastSys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE lastSys.systemCode STARTS WITH $systemCodePrefix
+	WITH f, u, z, st, lastSys
+	ORDER BY lastSys.systemCode DESC
+	LIMIT 1
+	WITH f, u, z, st,
+		CASE WHEN lastSys IS NOT NULL THEN toInteger(split(lastSys.systemCode, $systemCodePrefix)[1]) + 1 ELSE 1 END AS startSerial
+	UNWIND range(0, $batch - 1) AS i
+	WITH f, u, z, st, $systemCodePrefix + apoc.text.lpad(toString(startSerial + i), $serialNumberLength, "0") AS code
+	CREATE(sys:System{
+		uid: apoc.create.uuid(),
+		name: code,
+		systemCode: code,
+		lastUpdateTime: datetime(),
+		lastUpdateBy: u.username,
+		deleted: false,
+		isTechnologicalUnit: false,
+		systemLevel: "SUBSYSTEMS_AND_PARTS"
+	})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(sys)-[:HAS_SYSTEM_TYPE]->(st)
+	CREATE(sys)-[:HAS_ZONE]->(z)
+	CREATE(sys)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	RETURN {
+		name: sys.name,
+		code: sys.systemCode,
+		parentPath: NULL,
+		createdBy: coalesce(u.username, u.uid, ""),
+		lastUpdateBy: coalesce(u.username, u.uid, ""),
+		zone: {uid: z.uid, name: z.name, code: z.code},
+		location: NULL
+	} AS result
+	ORDER BY result.code ASC
+	`
+
+	result.ReturnAlias = "result"
+	return result
+}
+
 func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
 
 	result = GetSystemsSearchFilterQueryOnly(searchString, facilityCode, filering)

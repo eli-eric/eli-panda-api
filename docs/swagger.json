@@ -1797,6 +1797,157 @@
                 }
             }
         },
+        "/v1/systems/system-codes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a simplified paginated list of systems where `systemCode` is filled; supports optional filtering by zone, system type, and search text.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get systems with system codes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination JSON (e.g. {\\",
+                        "name": "pagination",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON (may contain ids: zone, systemType, searchText)",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_SystemCodesResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create new systems with generated system codes",
+                "parameters": [
+                    {
+                        "description": "System codes request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemCodesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemCodesResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/systems/system-codes/preview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates a preview of the next N system codes for a given system type and zone without creating any systems.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Preview new system codes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type UID",
+                        "name": "systemTypeUid",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Zone UID",
+                        "name": "zoneUid",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "How many codes to generate (default 1)",
+                        "name": "batch",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemCodesResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/system-types": {
             "get": {
                 "security": [
@@ -1904,6 +2055,20 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Researcher"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "helpers.PaginationResult-models_SystemCodesResult": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemCodesResult"
                     }
                 },
                 "totalCount": {
@@ -3045,6 +3210,49 @@
                 },
                 "zoneUid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemCodesRequest": {
+            "type": "object",
+            "properties": {
+                "batch": {
+                    "type": "integer"
+                },
+                "systemType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.Codebook"
+                }
+            }
+        },
+        "models.SystemCodesResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "lastUpdateBy": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentPath": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemSimpleResponse"
+                    }
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.Codebook"
                 }
             }
         },

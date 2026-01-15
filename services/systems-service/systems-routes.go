@@ -11,6 +11,11 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// get systems with search and pagination
 	e.GET("/v1/systems", m.Authorization(h.GetSystemsWithSearchAndPagination(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+
+	// control systems - simplified systems view (only systems with systemCode)
+	e.GET("/v1/systems/system-codes", m.Authorization(h.GetSystemsForControlsSystems(), shared.ROLE_CONTROL_SYSTEMS_VIEW), jwtMiddleware)
+	e.GET("/v1/systems/system-codes/preview", m.Authorization(h.GetNewSystemCodesPreview(), shared.ROLE_CONTROL_SYSTEMS_VIEW), jwtMiddleware)
+	e.POST("/v1/systems/system-codes", m.Authorization(h.SaveNewSystemCodes(), shared.ROLE_CONTROL_SYSTEMS_EDIT), jwtMiddleware)
 	// get all subsystems for given parent system spec. by parentUID
 	// if no parentUID is presented then get all root systems
 	e.GET("/v1/system/:parentUID/subsystems", m.Authorization(h.GetSubSystemsByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)

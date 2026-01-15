@@ -18,6 +18,15 @@ definitions:
       totalCount:
         type: integer
     type: object
+  helpers.PaginationResult-models_SystemCodesResult:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.SystemCodesResult'
+        type: array
+      totalCount:
+        type: integer
+    type: object
   models.AssignSpareRequest:
     properties:
       newItemLocation:
@@ -776,6 +785,34 @@ definitions:
         type: string
       zoneUid:
         type: string
+    type: object
+  models.SystemCodesRequest:
+    properties:
+      batch:
+        type: integer
+      systemType:
+        $ref: '#/definitions/models.Codebook'
+      zone:
+        $ref: '#/definitions/models.Codebook'
+    type: object
+  models.SystemCodesResult:
+    properties:
+      code:
+        type: string
+      createdBy:
+        type: string
+      lastUpdateBy:
+        type: string
+      location:
+        $ref: '#/definitions/models.Codebook'
+      name:
+        type: string
+      parentPath:
+        items:
+          $ref: '#/definitions/models.SystemSimpleResponse'
+        type: array
+      zone:
+        $ref: '#/definitions/models.Codebook'
     type: object
   models.SystemDetailInfo:
     properties:
@@ -2223,6 +2260,106 @@ paths:
       security:
       - BearerAuth: []
       summary: Sync system locations by EUNs
+      tags:
+      - Systems
+  /v1/systems/system-codes:
+    get:
+      description: Returns a simplified paginated list of systems where `systemCode`
+        is filled; supports optional filtering by zone, system type, and search text.
+      parameters:
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        required: true
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: 'Column filter JSON (may contain ids: zone, systemType, searchText)'
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_SystemCodesResult'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems with system codes
+      tags:
+      - Systems
+    post:
+      consumes:
+      - application/json
+      description: Creates a batch of new systems with generated system codes for
+        the given system type and zone. System name is set to the generated system
+        code.
+      parameters:
+      - description: System codes request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemCodesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemCodesResult'
+            type: array
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create new systems with generated system codes
+      tags:
+      - Systems
+  /v1/systems/system-codes/preview:
+    get:
+      description: Generates a preview of the next N system codes for a given system
+        type and zone without creating any systems.
+      parameters:
+      - description: System type UID
+        in: query
+        name: systemTypeUid
+        required: true
+        type: string
+      - description: Zone UID
+        in: query
+        name: zoneUid
+        required: true
+        type: string
+      - description: How many codes to generate (default 1)
+        in: query
+        name: batch
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemCodesResult'
+            type: array
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Preview new system codes
       tags:
       - Systems
   /v1/systems/system-types:

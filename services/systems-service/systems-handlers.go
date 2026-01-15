@@ -28,6 +28,9 @@ type ISystemsHandlers interface {
 	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
+	GetSystemsForControlsSystems() echo.HandlerFunc
+	GetNewSystemCodesPreview() echo.HandlerFunc
+	SaveNewSystemCodes() echo.HandlerFunc
 	GetSystemsForRelationship() echo.HandlerFunc
 	GetSystemRelationships() echo.HandlerFunc
 	DeleteSystemRelationship() echo.HandlerFunc
@@ -331,6 +334,139 @@ func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// Swagger documentation for GetSystemsForControlsSystems
+// @Summary Get systems with system codes
+// @Description Returns a simplified paginated list of systems where `systemCode` is filled; supports optional filtering by zone, system type, and search text.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param pagination query string true "Pagination JSON (e.g. {\"page\":1,\"pageSize\":100})"
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Param columnFilter query string false "Column filter JSON (may contain ids: zone, systemType, searchText)"
+// @Success 200 {object} helpers.PaginationResult[models.SystemCodesResult]
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/system-codes [get]
+func (h *SystemsHandlers) GetSystemsForControlsSystems() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		pagination := c.QueryParam("pagination")
+		sorting := c.QueryParam("sorting")
+		facilityCode := c.Get("facilityCode").(string)
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		items, err := h.systemsService.GetSystemsForControlsSystems(facilityCode, pagingObject, sortingObject, filterObject)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
+	}
+}
+
+// Swagger documentation for GetNewSystemCodesPreview
+// @Summary Preview new system codes
+// @Description Generates a preview of the next N system codes for a given system type and zone without creating any systems.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param systemTypeUid query string true "System type UID"
+// @Param zoneUid query string true "Zone UID"
+// @Param batch query int false "How many codes to generate (default 1)"
+// @Success 200 {array} models.SystemCodesResult
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/system-codes/preview [get]
+func (h *SystemsHandlers) GetNewSystemCodesPreview() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		systemTypeUID := c.QueryParam("systemTypeUid")
+		if systemTypeUID == "" {
+			systemTypeUID = c.QueryParam("systemType")
+		}
+		zoneUID := c.QueryParam("zoneUid")
+		if zoneUID == "" {
+			zoneUID = c.QueryParam("zone")
+		}
+		if strings.TrimSpace(systemTypeUID) == "" || strings.TrimSpace(zoneUID) == "" {
+			return helpers.BadRequest("missing systemTypeUid/zoneUid")
+		}
+		batchStr := c.QueryParam("batch")
+		batch := 1
+		if strings.TrimSpace(batchStr) != "" {
+			parsed, err := strconv.Atoi(batchStr)
+			if err != nil {
+				return helpers.BadRequest("invalid batch")
+			}
+			batch = parsed
+		}
+
+		facilityCode := c.Get("facilityCode").(string)
+
+		result, err := h.systemsService.GetNewSystemCodesPreview(systemTypeUID, zoneUID, batch, facilityCode)
+		if err == nil {
+			return c.JSON(http.StatusOK, result)
+		}
+
+		log.Error().Msg(err.Error())
+		if err == helpers.ERR_INVALID_INPUT {
+			return helpers.BadRequest(err.Error())
+		}
+		return echo.ErrInternalServerError
+	}
+}
+
+// Swagger documentation for SaveNewSystemCodes
+// @Summary Create new systems with generated system codes
+// @Description Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.SystemCodesRequest true "System codes request"
+// @Success 201 {array} models.SystemCodesResult
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/system-codes [post]
+func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		request := new(models.SystemCodesRequest)
+		err := c.Bind(request)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
+		}
+
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+
+		result, err := h.systemsService.SaveNewSystemCodes(request, facilityCode, userUID)
+		if err == nil {
+			return c.JSON(http.StatusCreated, result)
+		}
+
+		log.Error().Msg(err.Error())
+		if err == helpers.ERR_INVALID_INPUT {
+			return helpers.BadRequest(err.Error())
+		}
+		return echo.ErrInternalServerError
 	}
 }
 
