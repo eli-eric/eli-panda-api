@@ -1082,6 +1082,264 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/researcher": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create researcher",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Create researcher",
+                "parameters": [
+                    {
+                        "description": "Researcher",
+                        "name": "researcher",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/researcher/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get researcher by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Get researcher by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update researcher",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Update researcher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Researcher",
+                        "name": "researcher",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete researcher by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Delete researcher by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/researchers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get researchers",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Get researchers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination",
+                        "name": "pagination",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_Researcher"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create multiple researchers at once",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Create multiple researchers",
+                "parameters": [
+                    {
+                        "description": "Researchers",
+                        "name": "researchers",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Researcher"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Researcher"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/room-card/layout/location/{code}": {
             "get": {
                 "security": [
@@ -1089,7 +1347,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get room card layout information for external systems to display scientific complex layout\n\nStatus values:\n- DIRTY_MODE: Room is dirty and needs cleaning\n- CLEAN_MODE: Room is clean and ready for use\n- IN_PREPARATION_MODE: Room is being prepared for use\n\nPurityClass values (ISO standards):\n- ISO_5: ISO Class 5 cleanroom\n- ISO_6: ISO Class 6 cleanroom\n- ISO_7: ISO Class 7 cleanroom\n- ISO_8: ISO Class 8 cleanroom\n\nStatusColor values (automatically assigned based on status):\n- DIRTY_MODE: #fecaca (light red)\n- CLEAN_MODE: #d9f99d (light green)\n- IN_PREPARATION_MODE: #fdba74 (light orange)\n- Unknown status: #808080 (gray)",
+                "description": "Get room card layout information for external systems to display scientific complex layout\n\nStatus values:\n- DIRTY_MODE: Room is dirty and needs cleaning\n- CLEAN_MODE: Room is clean and ready for use\n- IN_PREPARATION_MODE: Room is being prepared for use\n\nPurityClass values (ISO standards):\n- ISO_5: ISO Class 5 cleanroom\n- ISO_6: ISO Class 6 cleanroom\n- ISO_7: ISO Class 7 cleanroom\n- ISO_8: ISO Class 8 cleanroom\n\nStatusColor values (automatically assigned based on status):\n- DIRTY_MODE: #fecaca (light red)\n- CLEAN_MODE: #d9f99d (light green)\n- IN_PREPARATION_MODE: #fdba74 (light orange)\n- Unknown status: #808080 (gray)\n\nOperationalState: Codebook containing uid, name, and code of the operational state\n\nOperationalStateColor values (automatically assigned based on operationalState.code):\n- OS1: #22c55e (green)\n- OS2: #86efac (light green)\n- OS3: #facc15 (yellow)\n- OS4: #fb923c (orange)\n- OS5: #ef4444 (red)\n- OS6: #b91c1c (dark red)\n- Unknown/null: #9ca3af (gray)",
                 "produces": [
                     "application/json"
                 ],
@@ -1542,6 +1800,163 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/systems/system-codes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a simplified paginated list of systems where ` + "`" + `systemCode` + "`" + ` is filled; supports optional filtering by zone, system type, and search text.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get systems with system codes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination JSON (e.g. {\\",
+                        "name": "pagination",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON (may contain ids: zone, systemType, searchText; also accepts search)",
+                        "name": "columnFilter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alias for columnFilter (for older clients)",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_SystemCodesResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create new systems with generated system codes",
+                "parameters": [
+                    {
+                        "description": "System codes request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemCodesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemCodesResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/systems/system-codes/preview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates a preview of the next N system codes for a given system type and zone without creating any systems.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Preview new system codes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type UID",
+                        "name": "systemTypeUid",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Zone UID",
+                        "name": "zoneUid",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "How many codes to generate (default 1)",
+                        "name": "batch",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemCodesResult"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems/system-types": {
             "get": {
                 "security": [
@@ -1635,6 +2050,34 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.GlobalSearchResult"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "helpers.PaginationResult-models_Researcher": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Researcher"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "helpers.PaginationResult-models_SystemCodesResult": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemCodesResult"
                     }
                 },
                 "totalCount": {
@@ -2044,6 +2487,12 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "operationalState": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "operationalStateColor": {
+                    "type": "string"
+                },
                 "purityClass": {
                     "type": "string"
                 },
@@ -2334,6 +2783,13 @@ const docTemplate = `{
                     "description": "eliAuthorsCount is the eli authors count of the publication",
                     "type": "integer"
                 },
+                "eliResearchers": {
+                    "description": "eliResearchers are the connected researchers via HAS_RESEARCHER relationship",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ResearcherRef"
+                    }
+                },
                 "experimentalSystem": {
                     "description": "experimentalSystem is the experimental system of the publication",
                     "type": "string"
@@ -2460,6 +2916,65 @@ const docTemplate = `{
                 },
                 "yearOfPublication": {
                     "description": "yearOfPublication is the year of publication of the publication",
+                    "type": "string"
+                }
+            }
+        },
+        "models.Researcher": {
+            "type": "object",
+            "properties": {
+                "citizenship": {
+                    "description": "citizenship is the country of citizenship of the researcher",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "firstName": {
+                    "description": "firstName is the first name of the researcher",
+                    "type": "string"
+                },
+                "identificationNumber": {
+                    "description": "identificationNumber is the identification number of the researcher",
+                    "type": "string"
+                },
+                "lastName": {
+                    "description": "lastName is the last name of the researcher",
+                    "type": "string"
+                },
+                "orcid": {
+                    "description": "orcid is the ORCID identifier of the researcher",
+                    "type": "string"
+                },
+                "researcherId": {
+                    "description": "researcherId is the ResearcherID of the researcher",
+                    "type": "string"
+                },
+                "scopusId": {
+                    "description": "scopusId is the Scopus identifier of the researcher",
+                    "type": "string"
+                },
+                "uid": {
+                    "description": "uid is the unique identifier of the researcher",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "updatedAt is the time when the researcher was last updated",
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResearcherRef": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "uid": {
                     "type": "string"
                 }
             }
@@ -2704,6 +3219,52 @@ const docTemplate = `{
                 },
                 "zoneUid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemCodesRequest": {
+            "type": "object",
+            "properties": {
+                "batch": {
+                    "type": "integer"
+                },
+                "systemType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.Codebook"
+                }
+            }
+        },
+        "models.SystemCodesResult": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "createdBy": {
+                    "type": "string"
+                },
+                "lastUpdateBy": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentPath": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemSimpleResponse"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.Codebook"
                 }
             }
         },

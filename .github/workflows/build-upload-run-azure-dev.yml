@@ -1,0 +1,31 @@
+name: Build and Deploy to Azure DEV
+
+on:
+    push:
+        branches:
+            - "dev"
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: ecz-vm-panda-dev-gwc-01
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Login to Azure using managed identity
+              run: |
+                  az login --identity --allow-no-subscriptions
+
+            - name: Login to Azure Container Registry
+              run: |
+                  az acr login --name ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}
+
+            - name: Build and push Docker image
+              run: |
+                  docker build . -f ./Dockerfile.azure -t ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
+                  docker tag ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }} ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
+                  docker push ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
+                  docker push ${{ secrets.AZURE_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
+
+            # TODO: Add Azure Container Apps deployment

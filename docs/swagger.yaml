@@ -9,6 +9,24 @@ definitions:
       totalCount:
         type: integer
     type: object
+  helpers.PaginationResult-models_Researcher:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Researcher'
+        type: array
+      totalCount:
+        type: integer
+    type: object
+  helpers.PaginationResult-models_SystemCodesResult:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.SystemCodesResult'
+        type: array
+      totalCount:
+        type: integer
+    type: object
   models.AssignSpareRequest:
     properties:
       newItemLocation:
@@ -271,6 +289,10 @@ definitions:
         $ref: '#/definitions/models.Codebook'
       name:
         type: string
+      operationalState:
+        $ref: '#/definitions/models.Codebook'
+      operationalStateColor:
+        type: string
       purityClass:
         type: string
       status:
@@ -468,6 +490,12 @@ definitions:
       eliAuthorsCount:
         description: eliAuthorsCount is the eli authors count of the publication
         type: integer
+      eliResearchers:
+        description: eliResearchers are the connected researchers via HAS_RESEARCHER
+          relationship
+        items:
+          $ref: '#/definitions/models.ResearcherRef'
+        type: array
       experimentalSystem:
         description: experimentalSystem is the experimental system of the publication
         type: string
@@ -557,6 +585,46 @@ definitions:
         type: string
       yearOfPublication:
         description: yearOfPublication is the year of publication of the publication
+        type: string
+    type: object
+  models.Researcher:
+    properties:
+      citizenship:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: citizenship is the country of citizenship of the researcher
+      firstName:
+        description: firstName is the first name of the researcher
+        type: string
+      identificationNumber:
+        description: identificationNumber is the identification number of the researcher
+        type: string
+      lastName:
+        description: lastName is the last name of the researcher
+        type: string
+      orcid:
+        description: orcid is the ORCID identifier of the researcher
+        type: string
+      researcherId:
+        description: researcherId is the ResearcherID of the researcher
+        type: string
+      scopusId:
+        description: scopusId is the Scopus identifier of the researcher
+        type: string
+      uid:
+        description: uid is the unique identifier of the researcher
+        type: string
+      updatedAt:
+        description: updatedAt is the time when the researcher was last updated
+        type: string
+    type: object
+  models.ResearcherRef:
+    properties:
+      firstName:
+        type: string
+      lastName:
+        type: string
+      uid:
         type: string
     type: object
   models.ResponsiblePersonsInfo:
@@ -717,6 +785,36 @@ definitions:
         type: string
       zoneUid:
         type: string
+    type: object
+  models.SystemCodesRequest:
+    properties:
+      batch:
+        type: integer
+      systemType:
+        $ref: '#/definitions/models.Codebook'
+      zone:
+        $ref: '#/definitions/models.Codebook'
+    type: object
+  models.SystemCodesResult:
+    properties:
+      code:
+        type: string
+      createdBy:
+        type: string
+      lastUpdateBy:
+        type: string
+      location:
+        $ref: '#/definitions/models.Codebook'
+      name:
+        type: string
+      parentPath:
+        items:
+          $ref: '#/definitions/models.SystemSimpleResponse'
+        type: array
+      uid:
+        type: string
+      zone:
+        $ref: '#/definitions/models.Codebook'
     type: object
   models.SystemDetailInfo:
     properties:
@@ -1686,6 +1784,168 @@ paths:
       summary: Get publications as CSV
       tags:
       - Publications
+  /v1/researcher:
+    post:
+      consumes:
+      - application/json
+      description: Create researcher
+      parameters:
+      - description: Researcher
+        in: body
+        name: researcher
+        required: true
+        schema:
+          $ref: '#/definitions/models.Researcher'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create researcher
+      tags:
+      - Researchers
+  /v1/researcher/{uid}:
+    delete:
+      description: Delete researcher by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete researcher by uid
+      tags:
+      - Researchers
+    get:
+      description: Get researcher by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get researcher by uid
+      tags:
+      - Researchers
+    put:
+      consumes:
+      - application/json
+      description: Update researcher
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Researcher
+        in: body
+        name: researcher
+        required: true
+        schema:
+          $ref: '#/definitions/models.Researcher'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update researcher
+      tags:
+      - Researchers
+  /v1/researchers:
+    get:
+      description: Get researchers
+      parameters:
+      - description: search
+        in: query
+        name: search
+        type: string
+      - description: pagination
+        in: query
+        name: pagination
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_Researcher'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get researchers
+      tags:
+      - Researchers
+    post:
+      consumes:
+      - application/json
+      description: Create multiple researchers at once
+      parameters:
+      - description: Researchers
+        in: body
+        name: researchers
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.Researcher'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Researcher'
+            type: array
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create multiple researchers
+      tags:
+      - Researchers
   /v1/room-card/layout/location/{code}:
     get:
       description: |-
@@ -1707,6 +1967,17 @@ paths:
         - CLEAN_MODE: #d9f99d (light green)
         - IN_PREPARATION_MODE: #fdba74 (light orange)
         - Unknown status: #808080 (gray)
+
+        OperationalState: Codebook containing uid, name, and code of the operational state
+
+        OperationalStateColor values (automatically assigned based on operationalState.code):
+        - OS1: #22c55e (green)
+        - OS2: #86efac (light green)
+        - OS3: #facc15 (yellow)
+        - OS4: #fb923c (orange)
+        - OS5: #ef4444 (red)
+        - OS6: #b91c1c (dark red)
+        - Unknown/null: #9ca3af (gray)
       parameters:
       - description: Location code
         in: path
@@ -1991,6 +2262,111 @@ paths:
       security:
       - BearerAuth: []
       summary: Sync system locations by EUNs
+      tags:
+      - Systems
+  /v1/systems/system-codes:
+    get:
+      description: Returns a simplified paginated list of systems where `systemCode`
+        is filled; supports optional filtering by zone, system type, and search text.
+      parameters:
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        required: true
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: 'Column filter JSON (may contain ids: zone, systemType, searchText;
+          also accepts search)'
+        in: query
+        name: columnFilter
+        type: string
+      - description: Alias for columnFilter (for older clients)
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_SystemCodesResult'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems with system codes
+      tags:
+      - Systems
+    post:
+      consumes:
+      - application/json
+      description: Creates a batch of new systems with generated system codes for
+        the given system type and zone. System name is set to the generated system
+        code.
+      parameters:
+      - description: System codes request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemCodesRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemCodesResult'
+            type: array
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create new systems with generated system codes
+      tags:
+      - Systems
+  /v1/systems/system-codes/preview:
+    get:
+      description: Generates a preview of the next N system codes for a given system
+        type and zone without creating any systems.
+      parameters:
+      - description: System type UID
+        in: query
+        name: systemTypeUid
+        required: true
+        type: string
+      - description: Zone UID
+        in: query
+        name: zoneUid
+        required: true
+        type: string
+      - description: How many codes to generate (default 1)
+        in: query
+        name: batch
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemCodesResult'
+            type: array
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Preview new system codes
       tags:
       - Systems
   /v1/systems/system-types:

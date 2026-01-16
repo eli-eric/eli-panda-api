@@ -48,11 +48,18 @@ type Publication struct {
 	UserExperiment          *string                  `json:"userExperiment" neo4j:"prop,userExperiment"`                                         // userExperiment is the user experiment of the publication
 	ExperimentalSystem      *string                  `json:"experimentalSystem" neo4j:"prop,experimentalSystem"`                                 // experimentalSystem is the experimental system of the publication
 	UpdatedAt               *time.Time               `json:"updatedAt" neo4j:"prop,updatedAt"`                                                   // updatedAt is the time when the publication was last updated
+	EliResearchers          []ResearcherRef          `json:"eliResearchers"`                                                                     // eliResearchers are the connected researchers via HAS_RESEARCHER relationship
 }
 
 type AuthorsDepartment struct {
 	Department   codebookModels.Codebook `json:"department" neo4j:"rel,Department,HAS_DEPARTMENT,uid,department"` // department is the department of the publication
 	AuthorsCount int                     `json:"authorsCount" neo4j:"prop,authorsCount"`                          // authorsCount is the authors count of the publication
+}
+
+type ResearcherRef struct {
+	Uid       string `json:"uid"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
 }
 
 type WosAPIResponse struct {
