@@ -427,6 +427,9 @@ func (h *SystemsHandlers) GetNewSystemCodesPreview() echo.HandlerFunc {
 		if err == helpers.ERR_INVALID_INPUT {
 			return helpers.BadRequest(err.Error())
 		}
+		if strings.Contains(err.Error(), "missing default parent system") {
+			return helpers.BadRequest(err.Error())
+		}
 		return echo.ErrInternalServerError
 	}
 }

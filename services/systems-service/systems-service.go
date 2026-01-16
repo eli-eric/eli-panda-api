@@ -584,7 +584,15 @@ func (svc *SystemsService) SaveNewSystemCodes(request *models.SystemCodesRequest
 	}
 
 	query := SaveNewSystemCodesQuery(request.SystemType.UID, request.Zone.UID, prefix, serialLen, request.Batch, facilityCode, userUID)
-	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemCodesResult](session, query)
+	result, err = helpers.WriteNeo4jAndReturnArrayOfNodes[models.SystemCodesResult](session, query)
+	if err != nil {
+		//log the error
+		log.Error().Msg(fmt.Sprintf("Error saving new system codes: %v", err))
+		// translate APOC validation error into a stable message for API client
+		if strings.Contains(err.Error(), "missing default parent system for selected zone") {
+			return nil, errors.New("missing default parent system for selected zone")
+		}
+	}
 
 	helpers.ProcessArrayResult(&result, err)
 	return result, err

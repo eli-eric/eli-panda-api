@@ -873,15 +873,19 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 	MATCH(u:User{uid: $userUID})
 	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
 	MATCH(st:SystemType{uid: $systemTypeUID})
+	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System{deleted:false})
+	WITH f, u, z, st, parent
+	CALL apoc.util.validate(parent IS NULL, 'missing default parent system for selected zone', [])
+	MATCH(parent)-[:BELONGS_TO_FACILITY]->(f)
 	OPTIONAL MATCH(lastSys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE lastSys.systemCode STARTS WITH $systemCodePrefix
-	WITH f, u, z, st, lastSys
+	WITH f, u, z, st, parent, lastSys
 	ORDER BY lastSys.systemCode DESC
 	LIMIT 1
-	WITH f, u, z, st,
+	WITH f, u, z, st, parent,
 		CASE WHEN lastSys IS NOT NULL THEN toInteger(split(lastSys.systemCode, $systemCodePrefix)[1]) + 1 ELSE 1 END AS startSerial
 	UNWIND range(0, $batch - 1) AS i
-	WITH f, u, z, st, $systemCodePrefix + apoc.text.lpad(toString(startSerial + i), $serialNumberLength, "0") AS code
+	WITH f, u, z, st, parent, $systemCodePrefix + apoc.text.lpad(toString(startSerial + i), $serialNumberLength, "0") AS code
 	CREATE(sys:System{
 		uid: apoc.create.uuid(),
 		name: code,
@@ -892,6 +896,7 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 		isTechnologicalUnit: false,
 		systemLevel: "SUBSYSTEMS_AND_PARTS"
 	})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(parent)-[:HAS_SUBSYSTEM]->(sys)
 	CREATE(sys)-[:HAS_SYSTEM_TYPE]->(st)
 	CREATE(sys)-[:HAS_ZONE]->(z)
 	CREATE(sys)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)

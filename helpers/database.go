@@ -494,6 +494,38 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 	return resultArray, err
 }
 
+func WriteNeo4jAndReturnArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (resultArray []T, err error) {
+	results, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+
+		result, err := tx.Run(query.Query, query.Parameters)
+		if err != nil {
+			return nil, err
+		}
+
+		records, err := result.Collect()
+		if err != nil {
+			return nil, err
+		}
+
+		var txResults []T
+		for _, record := range records {
+			itm, _ := record.Get(query.ReturnAlias)
+			if itm != nil {
+				mappedItem, _ := MapStruct[T](itm.(map[string]interface{}))
+				txResults = append(txResults, mappedItem)
+			}
+		}
+
+		return txResults, nil
+	})
+
+	if err == nil {
+		resultArray = results.([]T)
+	}
+
+	return resultArray, err
+}
+
 // the objects has to be the same type
 // the object has to have neo4j struct Tags - look at the SystemForm for example
 // there has to be existing update query (dbQuery param) with one strict alias for the updated node - updateNodeAlias
