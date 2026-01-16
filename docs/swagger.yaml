@@ -811,6 +811,8 @@ definitions:
         items:
           $ref: '#/definitions/models.SystemSimpleResponse'
         type: array
+      uid:
+        type: string
       zone:
         $ref: '#/definitions/models.Codebook'
     type: object

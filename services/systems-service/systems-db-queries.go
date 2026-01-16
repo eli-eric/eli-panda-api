@@ -770,6 +770,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		LIMIT 1
 	}
 	RETURN DISTINCT {
+		uid: sys.uid,
 		name: sys.name,
 		code: sys.systemCode,
 		parentPath: parentPath,
@@ -850,6 +851,7 @@ func GetNewSystemCodesPreviewQuery(systemTypeUID string, zoneUID string, systemC
 	UNWIND range(0, $batch - 1) AS i
 	WITH z, st, $systemCodePrefix + apoc.text.lpad(toString(startSerial + i), $serialNumberLength, "0") AS code
 	RETURN {
+		uid: "",
 		name: code,
 		code: code,
 		parentPath: NULL,
@@ -909,6 +911,7 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 	CREATE(sys)-[:HAS_ZONE]->(z)
 	CREATE(sys)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
 	RETURN {
+		uid: sys.uid,
 		name: sys.name,
 		code: sys.systemCode,
 		parentPath: NULL,

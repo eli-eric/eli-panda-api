@@ -70,6 +70,7 @@ type SystemStatistics struct {
 // SystemCodesResult is a simplified view of systems for Control Systems users.
 // It includes only system name/code plus minimal navigation and audit info.
 type SystemCodesResult struct {
+	UID          string                 `json:"uid"`
 	Name         string                 `json:"name"`
 	Code         string                 `json:"code"`
 	ParentPath   []SystemSimpleResponse `json:"parentPath"`

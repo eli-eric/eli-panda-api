@@ -3260,6 +3260,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SystemSimpleResponse"
                     }
                 },
+                "uid": {
+                    "type": "string"
+                },
                 "zone": {
                     "$ref": "#/definitions/models.Codebook"
                 }
