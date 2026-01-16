@@ -345,7 +345,8 @@ func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 // @Security BearerAuth
 // @Param pagination query string true "Pagination JSON (e.g. {\"page\":1,\"pageSize\":100})"
 // @Param sorting query string false "Sorting JSON (array of {id, desc})"
-// @Param columnFilter query string false "Column filter JSON (may contain ids: zone, systemType, searchText)"
+// @Param columnFilter query string false "Column filter JSON (may contain ids: zone, systemType, searchText; also accepts search)"
+// @Param filter query string false "Alias for columnFilter (for older clients)"
 // @Success 200 {object} helpers.PaginationResult[models.SystemCodesResult]
 // @Failure 500 "Internal server error"
 // @Router /v1/systems/system-codes [get]
@@ -357,14 +358,30 @@ func (h *SystemsHandlers) GetSystemsForControlsSystems() echo.HandlerFunc {
 		sorting := c.QueryParam("sorting")
 		facilityCode := c.Get("facilityCode").(string)
 
-		pagingObject := new(helpers.Pagination)
-		json.Unmarshal([]byte(pagination), &pagingObject)
+		pagingObject := &helpers.Pagination{Page: 1, PageSize: 100}
+		if strings.TrimSpace(pagination) != "" {
+			json.Unmarshal([]byte(pagination), &pagingObject)
+		} else {
+			if pageStr := strings.TrimSpace(c.QueryParam("page")); pageStr != "" {
+				if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+					pagingObject.Page = page
+				}
+			}
+			if pageSizeStr := strings.TrimSpace(c.QueryParam("pageSize")); pageSizeStr != "" {
+				if pageSize, err := strconv.Atoi(pageSizeStr); err == nil && pageSize > 0 {
+					pagingObject.PageSize = pageSize
+				}
+			}
+		}
 
 		sortingObject := new([]helpers.Sorting)
 		json.Unmarshal([]byte(sorting), &sortingObject)
 
 		filterObject := new([]helpers.ColumnFilter)
 		filter := c.QueryParam("columnFilter")
+		if strings.TrimSpace(filter) == "" {
+			filter = c.QueryParam("filter")
+		}
 		json.Unmarshal([]byte(filter), &filterObject)
 
 		items, err := h.systemsService.GetSystemsForControlsSystems(facilityCode, pagingObject, sortingObject, filterObject)

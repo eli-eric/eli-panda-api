@@ -2276,9 +2276,14 @@ paths:
         in: query
         name: sorting
         type: string
-      - description: 'Column filter JSON (may contain ids: zone, systemType, searchText)'
+      - description: 'Column filter JSON (may contain ids: zone, systemType, searchText;
+          also accepts search)'
         in: query
         name: columnFilter
+        type: string
+      - description: Alias for columnFilter (for older clients)
+        in: query
+        name: filter
         type: string
       produces:
       - application/json

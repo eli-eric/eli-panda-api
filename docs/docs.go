@@ -1831,8 +1831,14 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Column filter JSON (may contain ids: zone, systemType, searchText)",
+                        "description": "Column filter JSON (may contain ids: zone, systemType, searchText; also accepts search)",
                         "name": "columnFilter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Alias for columnFilter (for older clients)",
+                        "name": "filter",
                         "in": "query"
                     }
                 ],
