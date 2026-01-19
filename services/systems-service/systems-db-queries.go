@@ -721,7 +721,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		filterVal = helpers.GetFilterValueString(filering, "search")
 	}
 	if filterVal != nil && *filterVal != "" {
-		result.Query += ` AND (toLower(sys.name) CONTAINS toLower($filterSearchText) OR toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
+		result.Query += ` AND (toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
 		result.Parameters["filterSearchText"] = *filterVal
 	}
 
@@ -807,7 +807,7 @@ func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]hel
 		filterVal = helpers.GetFilterValueString(filering, "search")
 	}
 	if filterVal != nil && *filterVal != "" {
-		result.Query += ` AND (toLower(sys.name) CONTAINS toLower($filterSearchText) OR toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
+		result.Query += ` AND (toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
 		result.Parameters["filterSearchText"] = *filterVal
 	}
 
