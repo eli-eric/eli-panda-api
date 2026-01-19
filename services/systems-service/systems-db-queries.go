@@ -69,10 +69,10 @@ func GetLocationsBySearchTextQuery(searchText string, limit int, facilityCode st
 func GetZonesCodebookQuery(facilityCode string, searchString string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(f:Facility{code:$facilityCode}) WITH f	
-	MATCH(z:Zone)-[:BELONGS_TO_FACILITY]->(f) where not ()-[:HAS_SUBZONE]->(z) AND ($searchString = '' OR toLower(z.code) contains $searchString) return {uid:z.uid, name:z.code + " - " +z.name } as zone order by z.code
+	MATCH(z:Zone)-[:BELONGS_TO_FACILITY]->(f) where not ()-[:HAS_SUBZONE]->(z) AND ($searchString = '' OR toLower(z.code) contains $searchString OR toLower(z.name) contains $searchString) return {uid:z.uid, name:z.code + " - " +z.name } as zone order by z.code
 	UNION
 	MATCH(f:Facility{code:$facilityCode}) WITH f
-	MATCH(z:Zone)-[:HAS_SUBZONE]->(sz)-[:BELONGS_TO_FACILITY]->(f) where ($searchString = '' OR toLower(sz.code) contains $searchString) return {uid:sz.uid, name: z.code+"-"+sz.code + " - " + sz.name + " ("+  z.name + ")"} as zone order by z.code, sz.code`
+	MATCH(z:Zone)-[:HAS_SUBZONE]->(sz)-[:BELONGS_TO_FACILITY]->(f) where ($searchString = '' OR toLower(sz.code) contains $searchString OR toLower(sz.name) contains $searchString OR toLower(z.name) contains $searchString) return {uid:sz.uid, name: z.code+"-"+sz.code + " - " + sz.name + " ("+  z.name + ")"} as zone order by z.code, sz.code`
 	result.ReturnAlias = "zone"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
