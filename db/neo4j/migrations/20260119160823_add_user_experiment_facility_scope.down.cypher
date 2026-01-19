@@ -1,6 +1,12 @@
-// Remove relationships (string property already exists for backward compatibility)
+// Remove relationships from publications (string property already exists for backward compatibility)
 MATCH (p:Publication)-[r:HAS_USER_EXPERIMENT]->(ue:UserExperiment)
 DELETE r;
 
-// Note: Not deleting UserExperiment nodes as they may have been created before this migration
-// Only removing the facility relationships and seed data added by this migration
+// Remove seeded UserExperiment nodes (by code) - these were added by this migration
+// UPM-* codes
+MATCH (ue:UserExperiment) WHERE ue.code STARTS WITH "UPM-" DETACH DELETE ue;
+// ELIUPM-* codes
+MATCH (ue:UserExperiment) WHERE ue.code STARTS WITH "ELIUPM" DETACH DELETE ue;
+
+// Note: Not removing constraints/indexes as UserExperiment may have existed before
+// Only removing the seed data added by this migration
