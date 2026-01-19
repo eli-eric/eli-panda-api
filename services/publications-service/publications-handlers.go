@@ -328,7 +328,9 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 		for _, item := range publications {
 
 			experimentalSystem := ""
-			if item.ExperimentalSystem != nil {
+			if item.ExperimentalSystemCb != nil {
+				experimentalSystem = item.ExperimentalSystemCb.Name
+			} else if item.ExperimentalSystem != nil {
 				experimentalSystem = *item.ExperimentalSystem
 			}
 			userCall := ""
@@ -336,7 +338,9 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				userCall = item.UserCall.Name
 			}
 			userExperiment := ""
-			if item.UserExperiment != nil {
+			if item.UserExperimentCb != nil {
+				userExperiment = item.UserExperimentCb.Name
+			} else if item.UserExperiment != nil {
 				userExperiment = *item.UserExperiment
 			}
 			openAccessType := ""
@@ -368,7 +372,9 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				oecdFord = *item.OecdFord
 			}
 			grant := ""
-			if item.Grant != nil {
+			if item.GrantCb != nil {
+				grant = item.GrantCb.Name
+			} else if item.Grant != nil {
 				grant = *item.Grant
 			}
 			wosNumber := ""

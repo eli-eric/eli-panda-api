@@ -6,6 +6,7 @@ import (
 	catalogueService "panda/apigateway/services/catalogue-service"
 	"panda/apigateway/services/codebook-service/models"
 	ordersService "panda/apigateway/services/orders-service"
+	publicationsservice "panda/apigateway/services/publications-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 	"panda/apigateway/shared"
@@ -16,11 +17,12 @@ import (
 )
 
 type CodebookService struct {
-	neo4jDriver      *neo4j.Driver
-	catalogueService catalogueService.ICatalogueService
-	securityService  securityService.ISecurityService
-	systemsService   systemsService.ISystemsService
-	ordersService    ordersService.IOrdersService
+	neo4jDriver         *neo4j.Driver
+	catalogueService    catalogueService.ICatalogueService
+	securityService     securityService.ISecurityService
+	systemsService      systemsService.ISystemsService
+	ordersService       ordersService.IOrdersService
+	publicationsService publicationsservice.IPublicationsService
 }
 
 type ICodebookService interface {
@@ -39,9 +41,10 @@ func NewCodebookService(settings *config.Config,
 	catalogueService catalogueService.ICatalogueService,
 	securityService securityService.ISecurityService,
 	systemsService systemsService.ISystemsService,
-	orderService ordersService.IOrdersService) ICodebookService {
+	orderService ordersService.IOrdersService,
+	publicationsService publicationsservice.IPublicationsService) ICodebookService {
 
-	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService}
+	return &CodebookService{neo4jDriver: driver, catalogueService: catalogueService, securityService: securityService, systemsService: systemsService, ordersService: orderService, publicationsService: publicationsService}
 }
 
 func (svc *CodebookService) GetCodebook(codebookCode string, searchString string, parentUID string, limit int, facilityCode string, filter *[]helpers.Filter, userUID string, userRoles []string) (codebookResponse models.CodebookResponse, err error) {
@@ -92,6 +95,12 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.securityService.GetContactPersonRolesAutocompleteCodebook(searchString, limit, facilityCode)
 		case "SYSTEM_ATTRIBUTE":
 			codebookList, err = svc.systemsService.GetSystemAttributesCodebook(facilityCode)
+		case "EXPERIMENTAL_SYSTEM":
+			codebookList, err = svc.publicationsService.GetExperimentalSystemsAutocomplete(searchString, limit, facilityCode)
+		case "GRANT":
+			codebookList, err = svc.publicationsService.GetGrantsAutocomplete(searchString, limit, facilityCode)
+		case "USER_EXPERIMENT":
+			codebookList, err = svc.publicationsService.GetUserExperimentsAutocomplete(searchString, limit, facilityCode)
 		default:
 			codebookList, err = getSimpleCodebookRecords(svc.neo4jDriver, codebookCode, facilityCode, userUID, userRoles)
 		}
@@ -311,6 +320,9 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.LANGUAGE_CODEBOOK,
 		models.USER_CALL_CODEBOOK,
 		models.USER_EXPERIMENT_CODEBOOK,
+		models.EXPERIMENTAL_SYSTEM_CODEBOOK,
+		models.GRANT_CODEBOOK,
+		models.MEDIA_TYPE_CODEBOOK,
 	}
 }
 
@@ -364,4 +376,7 @@ var codebooksMap = map[string]models.CodebookType{
 	"USER_CALL":                  models.USER_CALL_CODEBOOK,
 	"USER_EXPERIMENT":            models.USER_EXPERIMENT_CODEBOOK,
 	"COUNTRY":                    models.COUNTRY_CODEBOOK,
+	"EXPERIMENTAL_SYSTEM":        models.EXPERIMENTAL_SYSTEM_CODEBOOK,
+	"GRANT":                      models.GRANT_CODEBOOK,
+	"MEDIA_TYPE":                 models.MEDIA_TYPE_CODEBOOK,
 }

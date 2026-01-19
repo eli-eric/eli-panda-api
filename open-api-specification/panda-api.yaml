@@ -489,10 +489,20 @@ definitions:
         type: array
       experimentalSystem:
         description: experimentalSystem is the experimental system of the publication
+          (deprecated, use ExperimentalSystemCb)
         type: string
+      experimentalSystemCb:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: experimentalSystemCb is the experimental system codebook of the
+          publication
       grant:
-        description: grant is the grant of the publication
+        description: grant is the grant of the publication (deprecated, use GrantCb)
         type: string
+      grantCb:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: grantCb is the grant codebook of the publication
       impactFactor:
         description: impactFactor is the impact factor of the publication
         type: number
@@ -512,8 +522,13 @@ definitions:
         description: longJournalTitle is the long journal title of the publication
         type: string
       mediaType:
-        description: mediaType is the media type of the publication
+        description: mediaType is the media type of the publication (deprecated, use
+          MediaTypeCb)
         type: string
+      mediaTypeCb:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: mediaTypeCb is the media type codebook of the publication
       note:
         description: note is the note of the publication
         type: string
@@ -563,8 +578,13 @@ definitions:
         - $ref: '#/definitions/models.Codebook'
         description: userCall is the user call of the publication
       userExperiment:
-        description: userExperiment is the user experiment of the publication
+        description: userExperiment is the user experiment of the publication (deprecated,
+          use UserExperimentCb)
         type: string
+      userExperimentCb:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: userExperimentCb is the user experiment codebook of the publication
       volume:
         description: volume is the volume of the publication
         type: integer
