@@ -2788,12 +2788,28 @@
                     }
                 },
                 "experimentalSystem": {
-                    "description": "experimentalSystem is the experimental system of the publication",
+                    "description": "experimentalSystem is the experimental system of the publication (deprecated, use ExperimentalSystemCb)",
                     "type": "string"
                 },
+                "experimentalSystemCb": {
+                    "description": "experimentalSystemCb is the experimental system codebook of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
                 "grant": {
-                    "description": "grant is the grant of the publication",
+                    "description": "grant is the grant of the publication (deprecated, use GrantCb)",
                     "type": "string"
+                },
+                "grantCb": {
+                    "description": "grantCb is the grant codebook of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
                 "impactFactor": {
                     "description": "impactFactor is the impact factor of the publication",
@@ -2820,8 +2836,16 @@
                     "type": "string"
                 },
                 "mediaType": {
-                    "description": "mediaType is the media type of the publication",
+                    "description": "mediaType is the media type of the publication (deprecated, use MediaTypeCb)",
                     "type": "string"
+                },
+                "mediaTypeCb": {
+                    "description": "mediaTypeCb is the media type codebook of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
                 "note": {
                     "description": "note is the note of the publication",
@@ -2896,8 +2920,16 @@
                     ]
                 },
                 "userExperiment": {
-                    "description": "userExperiment is the user experiment of the publication",
+                    "description": "userExperiment is the user experiment of the publication (deprecated, use UserExperimentCb)",
                     "type": "string"
+                },
+                "userExperimentCb": {
+                    "description": "userExperimentCb is the user experiment codebook of the publication",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
                 },
                 "volume": {
                     "description": "volume is the volume of the publication",

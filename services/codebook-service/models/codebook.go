@@ -61,8 +61,11 @@ var SYSTEM_ATTRIBUTE_CODEBOOK CodebookType = CodebookType{Code: "SYSTEM_ATTRIBUT
 // publications related codebooks
 // UserCall, UserExperiment, PublicationCategory, OpenAccessType, Language, PublicationSupport, State
 var USER_CALL_CODEBOOK CodebookType = CodebookType{Code: "USER_CALL", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "UserCall"}
-var USER_EXPERIMENT_CODEBOOK CodebookType = CodebookType{Code: "USER_EXPERIMENT", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "UserExperiment"}
+var USER_EXPERIMENT_CODEBOOK CodebookType = CodebookType{Code: "USER_EXPERIMENT", Type: "AUTOCOMPLETE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "UserExperiment", FacilityRelation: "BELONGS_TO_FACILITY"}
 var OPEN_ACCESS_TYPE_CODEBOOK CodebookType = CodebookType{Code: "OPEN_ACCESS_TYPE", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "OpenAccessType"}
 var LANGUAGE_CODEBOOK CodebookType = CodebookType{Code: "LANGUAGE", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Language"}
-var COUNTRY_CODEBOOK CodebookType = CodebookType{Code: "COUNTRY", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Country"}
+var COUNTRY_CODEBOOK CodebookType = CodebookType{Code: "COUNTRY", Type: "AUTOCOMPLETE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Country"}
 var DEPARTMENT_CODEBOOK CodebookType = CodebookType{Code: "DEPARTMENT", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Department"}
+var EXPERIMENTAL_SYSTEM_CODEBOOK CodebookType = CodebookType{Code: "EXPERIMENTAL_SYSTEM", Type: "AUTOCOMPLETE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "ExperimentalSystem", FacilityRelation: "BELONGS_TO_FACILITY"}
+var GRANT_CODEBOOK CodebookType = CodebookType{Code: "GRANT", Type: "AUTOCOMPLETE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "Grant", FacilityRelation: "BELONGS_TO_FACILITY"}
+var MEDIA_TYPE_CODEBOOK CodebookType = CodebookType{Code: "MEDIA_TYPE", Type: "SIMPLE", RoleEdit: shared.ROLE_CODEBOOKS_ADMIN, NodeLabel: "MediaType"}
