@@ -478,7 +478,7 @@ func (svc *PublicationsService) GetExperimentalSystemsAutocomplete(searchText st
 		Query: `MATCH(f:Facility{code:$facilityCode})
 				MATCH(r:ExperimentalSystem)-[:BELONGS_TO_FACILITY]->(f)
 				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
-				RETURN {uid: r.uid, name: r.name} as result
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
 				ORDER BY result.name LIMIT $limit`,
 		ReturnAlias: "result",
 		Parameters: map[string]interface{}{
@@ -499,7 +499,7 @@ func (svc *PublicationsService) GetGrantsAutocomplete(searchText string, limit i
 		Query: `MATCH(f:Facility{code:$facilityCode})
 				MATCH(r:Grant)-[:BELONGS_TO_FACILITY]->(f)
 				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
-				RETURN {uid: r.uid, name: r.name} as result
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
 				ORDER BY result.name LIMIT $limit`,
 		ReturnAlias: "result",
 		Parameters: map[string]interface{}{
@@ -520,7 +520,7 @@ func (svc *PublicationsService) GetUserExperimentsAutocomplete(searchText string
 		Query: `MATCH(f:Facility{code:$facilityCode})
 				MATCH(r:UserExperiment)-[:BELONGS_TO_FACILITY]->(f)
 				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
-				RETURN {uid: r.uid, name: r.name} as result
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
 				ORDER BY result.name LIMIT $limit`,
 		ReturnAlias: "result",
 		Parameters: map[string]interface{}{
