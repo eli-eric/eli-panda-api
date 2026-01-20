@@ -101,6 +101,8 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.publicationsService.GetGrantsAutocomplete(searchString, limit, facilityCode)
 		case "USER_EXPERIMENT":
 			codebookList, err = svc.publicationsService.GetUserExperimentsAutocomplete(searchString, limit, facilityCode)
+		case "COUNTRY":
+			codebookList, err = svc.publicationsService.GetCountriesAutocomplete(searchString, limit)
 		default:
 			codebookList, err = getSimpleCodebookRecords(svc.neo4jDriver, codebookCode, facilityCode, userUID, userRoles)
 		}
