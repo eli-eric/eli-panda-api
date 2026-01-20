@@ -43,8 +43,14 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	ordersService.MapOrdersRoutes(e, ordersHandlers, jwtMiddleware)
 	log.Info().Msg("Orders    service initialized successfully.")
 
+	// publications service - initialized before codebook service as codebook depends on it
+	publicationsSvc := publicationsservice.NewPublicationsService(neo4jDriver, settings.ApiIntegrationBeamlinesWOSBaseUrl, settings.ApiIntegrationBeamlinesWOSBaseApiKey)
+	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc)
+	publicationsservice.MapPublicationsRoutes(e, publicationsHandlers, jwtMiddleware)
+	log.Info().Msg("Publications service initialized successfully.")
+
 	//security services used in handlers and maped in routes...
-	codebookSvc := codebookService.NewCodebookService(settings, neo4jDriver, catalogueSvc, securitySvc, systemsSvc, ordersSvc)
+	codebookSvc := codebookService.NewCodebookService(settings, neo4jDriver, catalogueSvc, securitySvc, systemsSvc, ordersSvc, publicationsSvc)
 	codebookHandlers := codebookService.NewCodebookHandlers(codebookSvc)
 	codebookService.MapCodebookRoutes(e, codebookHandlers, jwtMiddleware)
 	log.Info().Msg("Codebook  service initialized successfully.")
@@ -66,12 +72,6 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	generalHandlers := general.NewGeneralHandlers(generalSvc)
 	general.MapGeneralRoutes(e, generalHandlers, jwtMiddleware)
 	log.Info().Msg("General   service initialized successfully.")
-
-	// publications service
-	publicationsSvc := publicationsservice.NewPublicationsService(neo4jDriver, settings.ApiIntegrationBeamlinesWOSBaseUrl, settings.ApiIntegrationBeamlinesWOSBaseApiKey)
-	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc)
-	publicationsservice.MapPublicationsRoutes(e, publicationsHandlers, jwtMiddleware)
-	log.Info().Msg("Publications service initialized successfully.")
 
 	// room cards service
 	roomCardsSvc := roomcardsservice.NewRoomCardsService(neo4jDriver)

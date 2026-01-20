@@ -27,7 +27,7 @@ type ISystemsService interface {
 	GetItemUsagesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
-	GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error)
+	GetZonesCodebook(facilityCode string, searchString string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
@@ -136,11 +136,30 @@ func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, li
 	return result, err
 }
 
-func (svc *SystemsService) GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetZonesCodebook(facilityCode string, searchString string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetZonesCodebookQuery(facilityCode, searchString)
+	onlyRootElements := false
+	if filter != nil {
+		for _, f := range *filter {
+			if f.Key != "onlyRootElements" {
+				continue
+			}
+
+			switch v := f.Value.(type) {
+			case bool:
+				onlyRootElements = v
+			case string:
+				onlyRootElements = strings.EqualFold(v, "true") || v == "1"
+			case float64:
+				onlyRootElements = v != 0
+			}
+			break
+		}
+	}
+
+	query := GetZonesCodebookQuery(facilityCode, searchString, onlyRootElements)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err

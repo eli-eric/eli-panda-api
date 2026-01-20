@@ -11,7 +11,8 @@ type Publication struct {
 	Code                    string                   `json:"code" neo4j:"prop,code"`                                                             // code is the internal code of the publication
 	Title                   string                   `json:"title" neo4j:"prop,title"`                                                           // title is the title of the publication
 	Abstract                string                   `json:"abstract" neo4j:"prop,abstract"`                                                     // abstract is the abstract of the publication
-	MediaType               string                   `json:"mediaType" neo4j:"prop,mediaType"`                                                   // mediaType is the media type of the publication
+	MediaType               string                   `json:"mediaType" neo4j:"prop,mediaType"`                                                   // mediaType is the media type of the publication (deprecated, use MediaTypeCb)
+	MediaTypeCb             *codebookModels.Codebook `json:"mediaTypeCb" neo4j:"rel,MediaType,HAS_MEDIA_TYPE,uid,mediaTypeCb"`                   // mediaTypeCb is the media type codebook of the publication
 	LongJournalTitle        string                   `json:"longJournalTitle" neo4j:"prop,longJournalTitle"`                                     // longJournalTitle is the long journal title of the publication
 	ShortJournalTitle       *string                  `json:"shortJournalTitle" neo4j:"prop,shortJournalTitle"`                                   // shortJournalTitle is the short journal title of the publication
 	Volume                  int                      `json:"volume" neo4j:"prop,volume"`                                                         // volume is the volume of the publication
@@ -34,7 +35,8 @@ type Publication struct {
 	WebLink                 string                   `json:"webLink" neo4j:"prop,webLink"`                                                       // webLink is the web link of the publication
 	EidScopus               *string                  `json:"eidScopus" neo4j:"prop,eidScopus"`                                                   // eidScopus is the eid scopus of the publication
 	Language                string                   `json:"language" neo4j:"prop,language"`                                                     // language is the language of the publication
-	Grant                   *string                  `json:"grant" neo4j:"prop,grant"`                                                           // grant is the grant of the publication
+	Grant                   *string                  `json:"grant" neo4j:"prop,grant"`                                                           // grant is the grant of the publication (deprecated, use GrantCb)
+	GrantCb                 *codebookModels.Codebook `json:"grantCb" neo4j:"rel,Grant,HAS_GRANT,uid,grantCb"`                                     // grantCb is the grant codebook of the publication
 	Note                    *string                  `json:"note" neo4j:"prop,note"`                                                             // note is the note of the publication
 	AllAuthors              string                   `json:"allAuthors" neo4j:"prop,allAuthors"`                                                 // allAuthors is the all authors of the publication
 	AllAuthorsCount         int                      `json:"allAuthorsCount" neo4j:"prop,allAuthorsCount"`                                       // allAuthorsCount is the all authors count of the publication
@@ -45,8 +47,10 @@ type Publication struct {
 	OpenAccessType          *codebookModels.Codebook `json:"openAccessType" neo4j:"rel,OpenAccessType,HAS_OPEN_ACCESS_TYPE,uid,openAccessType"`  // openAccessType is the open access type of the publication
 	PublishingCountry       *codebookModels.Codebook `json:"publishingCountry" neo4j:"rel,Country,HAS_PUBLISHING_COUNTRY,uid,publishingCountry"` // publishingCountry is the publishing country of the publication
 	UserCall                *codebookModels.Codebook `json:"userCall" neo4j:"rel,UserCall,HAS_USER_CALL,uid,userCall"`                           // userCall is the user call of the publication
-	UserExperiment          *string                  `json:"userExperiment" neo4j:"prop,userExperiment"`                                         // userExperiment is the user experiment of the publication
-	ExperimentalSystem      *string                  `json:"experimentalSystem" neo4j:"prop,experimentalSystem"`                                 // experimentalSystem is the experimental system of the publication
+	UserExperiment          *string                  `json:"userExperiment" neo4j:"prop,userExperiment"`                                         // userExperiment is the user experiment of the publication (deprecated, use UserExperimentCb)
+	UserExperimentCb        *codebookModels.Codebook `json:"userExperimentCb" neo4j:"rel,UserExperiment,HAS_USER_EXPERIMENT,uid,userExperimentCb"` // userExperimentCb is the user experiment codebook of the publication
+	ExperimentalSystem      *string                  `json:"experimentalSystem" neo4j:"prop,experimentalSystem"`                                 // experimentalSystem is the experimental system of the publication (deprecated, use ExperimentalSystemCb)
+	ExperimentalSystemCb    *codebookModels.Codebook `json:"experimentalSystemCb" neo4j:"rel,ExperimentalSystem,HAS_EXPERIMENTAL_SYSTEM,uid,experimentalSystemCb"` // experimentalSystemCb is the experimental system codebook of the publication
 	UpdatedAt               *time.Time               `json:"updatedAt" neo4j:"prop,updatedAt"`                                                   // updatedAt is the time when the publication was last updated
 	EliResearchers          []ResearcherRef          `json:"eliResearchers"`                                                                     // eliResearchers are the connected researchers via HAS_RESEARCHER relationship
 }

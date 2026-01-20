@@ -32,6 +32,11 @@ type IPublicationsService interface {
 	CreateResearchers(researchers []models.Researcher, userUID string) (result []models.Researcher, err error)
 	UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
 	DeleteResearcher(uid string, userUID string) (err error)
+	// Codebook autocomplete methods
+	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
+	GetGrantsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
+	GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
+	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
 }
 
 func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
@@ -462,4 +467,88 @@ func (svc *PublicationsService) updatePublicationResearchers(pubUid string, newR
 	}
 
 	return nil
+}
+
+// Codebook autocomplete methods
+
+func (svc *PublicationsService) GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(f:Facility{code:$facilityCode})
+				MATCH(r:ExperimentalSystem)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText":   searchText,
+			"facilityCode": facilityCode,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) GetGrantsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(f:Facility{code:$facilityCode})
+				MATCH(r:Grant)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText":   searchText,
+			"facilityCode": facilityCode,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(f:Facility{code:$facilityCode})
+				MATCH(r:UserExperiment)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText":   searchText,
+			"facilityCode": facilityCode,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) GetCountriesAutocomplete(searchText string, limit int) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(r:Country)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText": searchText,
+			"limit":      limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
 }
