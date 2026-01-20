@@ -106,7 +106,7 @@ func GetTeamsAutocompleteCodebookQuery(searchText string, limit int, facilityCod
 	WITH f
 	MATCH(r:Team)-[:BELONGS_TO_FACILITY]->(f)
 	where apoc.text.clean(r.name) contains apoc.text.clean($searchText)
-	RETURN {uid: r.uid,name: r.name} as result
+	RETURN {uid: r.uid, name: r.name, code: r.code} as result
 	ORDER BY result.name limit $limit`
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
@@ -123,7 +123,7 @@ func GetContactPersonRolesAutocompleteCodebookQuery(searchText string, limit int
 	WITH f
 	MATCH(r:ContactPersonRole)-[:BELONGS_TO_FACILITY]->(f)
 	where apoc.text.clean(r.name) contains apoc.text.clean($searchText)
-	RETURN {uid: r.uid,name: r.name} as result
+	RETURN {uid: r.uid, name: r.name, code: r.code} as result
 	ORDER BY result.name limit $limit`
 	result.ReturnAlias = "result"
 	result.Parameters = make(map[string]interface{})
