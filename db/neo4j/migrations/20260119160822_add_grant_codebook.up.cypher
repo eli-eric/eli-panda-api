@@ -1,7 +1,3 @@
-// Create Grant constraint and index
-CREATE CONSTRAINT grant_uid_unique IF NOT EXISTS FOR (n:Grant) REQUIRE n.uid IS UNIQUE;
-CREATE INDEX grant_name_index IF NOT EXISTS FOR (n:Grant) ON (n.name);
-
 // Seed data for ELI-Beamlines facility (10 entries)
 // MSM - Ministerstvo skolstvi, mladeze a telovychovy
 MATCH (f:Facility {code: "B"})
@@ -16,7 +12,7 @@ MERGE (g)-[:BELONGS_TO_FACILITY]->(f);
 
 MATCH (f:Facility {code: "B"})
 MERGE (g:Grant {code: "MSM-EF16_019/0000789"})
-ON CREATE SET g.uid = apoc.create.uuid(), g.name = "EF16_019/0000789 - Pokrocily vyzkum s vyuzitim fotonu a castic vytvorenych vysoce intenzivnimi lasery (2018 - 2023) ADONIS"
+ON CREATE SET g.uid = apoc.create.uuid(), g.name = "EF16_019/0000789 - Pokroceny vyzkum s vyuzitim fotonu a castic vytvorenych vysoce intenzivnimi lasery (2018 - 2023) ADONIS"
 MERGE (g)-[:BELONGS_TO_FACILITY]->(f);
 
 // GA0 - Grantova agentura Ceske republiky
