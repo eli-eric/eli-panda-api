@@ -25,6 +25,18 @@ type IPublicationsService interface {
 	DeletePublication(uid string, userUID string) (err error)
 	GetPublications(searchText string, page, pageSize int) (result []models.Publication, totalCount int64, err error)
 	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
+	// Researcher methods
+	GetResearchers(searchText string, page, pageSize int) (result []models.Researcher, totalCount int64, err error)
+	GetResearcherByUid(uid string) (models.Researcher, error)
+	CreateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
+	CreateResearchers(researchers []models.Researcher, userUID string) (result []models.Researcher, err error)
+	UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
+	DeleteResearcher(uid string, userUID string) (err error)
+	// Codebook autocomplete methods
+	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
+	GetGrantsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
+	GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
+	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
 }
 
 func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
@@ -41,6 +53,8 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 
 	if err == nil {
 		decodeAuthorsDepartments(&result)
+		// Fetch connected researchers
+		result.EliResearchers, _ = svc.getPublicationResearchers(uid)
 	}
 
 	return result, err
@@ -98,7 +112,19 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 		updateQuery,
 		historyLog)
 
-	return *publication, err
+	if err != nil {
+		return result, err
+	}
+
+	// Connect researchers to the publication
+	if len(publication.EliResearchers) > 0 {
+		err = svc.connectPublicationResearchers(publication.Uid, publication.EliResearchers)
+		if err != nil {
+			return result, err
+		}
+	}
+
+	return *publication, nil
 }
 
 func (svc *PublicationsService) UpdatePublication(publication *models.Publication, userUID string) (result models.Publication, err error) {
@@ -129,7 +155,17 @@ func (svc *PublicationsService) UpdatePublication(publication *models.Publicatio
 		updateQuery,
 		historyLog)
 
-	return result, err
+	if err != nil {
+		return result, err
+	}
+
+	// Update researchers (diff-based: disconnect removed, connect new)
+	err = svc.updatePublicationResearchers(publication.Uid, publication.EliResearchers)
+	if err != nil {
+		return result, err
+	}
+
+	return *publication, nil
 }
 
 func (svc *PublicationsService) DeletePublication(uid string, userUID string) (err error) {
@@ -207,4 +243,312 @@ func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result m
 
 		return result, nil
 	}
+}
+
+// Researcher methods
+
+func (svc *PublicationsService) GetResearcherByUid(uid string) (result models.Researcher, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result.Uid = uid
+
+	err = helpers.GetSingleNode(session, &result)
+
+	return result, err
+}
+
+func (svc *PublicationsService) GetResearchers(searchText string, page, pageSize int) (result []models.Researcher, totalCount int64, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	skip := pageSize
+	limit := pageSize
+
+	if skip > 0 {
+		skip = (page - 1) * pageSize
+	} else {
+		skip = 0
+	}
+
+	if limit <= 0 {
+		limit = 10
+	}
+
+	result, totalCount, err = helpers.GetMultipleNodes[models.Researcher](session, skip, limit, searchText)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, totalCount, err
+}
+
+func (svc *PublicationsService) CreateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MERGE (n:Researcher {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = researcher.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *researcher, models.Researcher{}, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(researcher.Uid, "CREATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *researcher, err
+}
+
+func (svc *PublicationsService) CreateResearchers(researchers []models.Researcher, userUID string) (result []models.Researcher, err error) {
+
+	result = make([]models.Researcher, 0)
+
+	for i := range researchers {
+		researcher := &researchers[i]
+		createdResearcher, err := svc.CreateResearcher(researcher, userUID)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, createdResearcher)
+	}
+
+	return result, nil
+}
+
+func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	oldResearcher, err := svc.GetResearcherByUid(researcher.Uid)
+
+	if err != nil {
+		return result, err
+	}
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MATCH (n:Researcher {uid: $uid}) SET n.updatedAt = datetime() WITH n  `
+	updateQuery.Parameters["uid"] = researcher.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *researcher, oldResearcher, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(researcher.Uid, "UPDATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		updateQuery,
+		historyLog)
+
+	return *researcher, err
+}
+
+func (svc *PublicationsService) DeleteResearcher(uid string, userUID string) (err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		helpers.SoftDeleteNodeQuery(uid),
+		helpers.HistoryLogQuery(uid, "DELETE", userUID))
+
+	return err
+}
+
+// Publication-Researcher relationship helpers
+
+func (svc *PublicationsService) getPublicationResearchers(uid string) ([]models.ResearcherRef, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH (p:Publication {uid: $uid})-[:HAS_RESEARCHER]->(r:Researcher)
+				WHERE r.deleted IS NULL OR r.deleted = false
+				RETURN {uid: r.uid, firstName: r.firstName, lastName: r.lastName} as researcher`,
+		ReturnAlias: "researcher",
+		Parameters:  map[string]interface{}{"uid": uid},
+	}
+
+	result, err := helpers.GetNeo4jArrayOfNodes[models.ResearcherRef](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) connectPublicationResearchers(pubUid string, researchers []models.ResearcherRef) error {
+	if len(researchers) == 0 {
+		return nil
+	}
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	for _, res := range researchers {
+		query := helpers.DatabaseQuery{
+			Query: `MATCH (p:Publication {uid: $pubUid})
+					MATCH (r:Researcher {uid: $resUid})
+					WHERE r.deleted IS NULL OR r.deleted = false
+					MERGE (p)-[:HAS_RESEARCHER]->(r)`,
+			Parameters: map[string]interface{}{
+				"pubUid": pubUid,
+				"resUid": res.Uid,
+			},
+		}
+		err := helpers.WriteNeo4jAndReturnNothing(session, query)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (svc *PublicationsService) updatePublicationResearchers(pubUid string, newResearchers []models.ResearcherRef) error {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	// 1. Get current researchers
+	oldResearchers, err := svc.getPublicationResearchers(pubUid)
+	if err != nil {
+		return err
+	}
+
+	// Handle nil slices
+	if newResearchers == nil {
+		newResearchers = []models.ResearcherRef{}
+	}
+
+	// 2. Find researchers to disconnect (in old, not in new)
+	for _, oldRes := range oldResearchers {
+		found := false
+		for _, newRes := range newResearchers {
+			if oldRes.Uid == newRes.Uid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Disconnect: DELETE relationship only (not the Researcher node)
+			query := helpers.DatabaseQuery{
+				Query: `MATCH (p:Publication {uid: $pubUid})-[rel:HAS_RESEARCHER]->(r:Researcher {uid: $resUid})
+						DELETE rel`,
+				Parameters: map[string]interface{}{
+					"pubUid": pubUid,
+					"resUid": oldRes.Uid,
+				},
+			}
+			helpers.WriteNeo4jAndReturnNothing(session, query)
+		}
+	}
+
+	// 3. Find researchers to connect (in new, not in old)
+	for _, newRes := range newResearchers {
+		found := false
+		for _, oldRes := range oldResearchers {
+			if newRes.Uid == oldRes.Uid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			// Connect: CREATE relationship (only if researcher is not deleted)
+			query := helpers.DatabaseQuery{
+				Query: `MATCH (p:Publication {uid: $pubUid})
+						MATCH (r:Researcher {uid: $resUid})
+						WHERE r.deleted IS NULL OR r.deleted = false
+						MERGE (p)-[:HAS_RESEARCHER]->(r)`,
+				Parameters: map[string]interface{}{
+					"pubUid": pubUid,
+					"resUid": newRes.Uid,
+				},
+			}
+			helpers.WriteNeo4jAndReturnNothing(session, query)
+		}
+	}
+
+	return nil
+}
+
+// Codebook autocomplete methods
+
+func (svc *PublicationsService) GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(f:Facility{code:$facilityCode})
+				MATCH(r:ExperimentalSystem)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText":   searchText,
+			"facilityCode": facilityCode,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) GetGrantsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(f:Facility{code:$facilityCode})
+				MATCH(r:Grant)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText":   searchText,
+			"facilityCode": facilityCode,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(f:Facility{code:$facilityCode})
+				MATCH(r:UserExperiment)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText":   searchText,
+			"facilityCode": facilityCode,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
+}
+
+func (svc *PublicationsService) GetCountriesAutocomplete(searchText string, limit int) (result []codebookModels.Codebook, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH(r:Country)
+				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
+				RETURN {uid: r.uid, name: r.name, code: r.code} as result
+				ORDER BY result.name LIMIT $limit`,
+		ReturnAlias: "result",
+		Parameters: map[string]interface{}{
+			"searchText": searchText,
+			"limit":      limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+	return result, err
 }

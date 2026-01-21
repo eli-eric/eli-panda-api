@@ -67,6 +67,25 @@ type SystemStatistics struct {
 	Sp_coverage            *float32 `json:"sp_coverage" neo4j:"ignore"`
 }
 
+// SystemCodesResult is a simplified view of systems for Control Systems users.
+// It includes only system name/code plus minimal navigation and audit info.
+type SystemCodesResult struct {
+	UID          string                 `json:"uid"`
+	Name         string                 `json:"name"`
+	Code         string                 `json:"code"`
+	ParentPath   []SystemSimpleResponse `json:"parentPath"`
+	CreatedBy    string                 `json:"createdBy"`
+	LastUpdateBy string                 `json:"lastUpdateBy"`
+	Zone         *models.Codebook       `json:"zone,omitempty"`
+	Location     *models.Codebook       `json:"location,omitempty"`
+}
+
+type SystemCodesRequest struct {
+	SystemType *models.Codebook `json:"systemType"`
+	Zone       *models.Codebook `json:"zone"`
+	Batch      int              `json:"batch"`
+}
+
 type SystemRelationship struct {
 	Direction         string `json:"direction"`
 	RelationTypeCode  string `json:"relationTypeCode"`

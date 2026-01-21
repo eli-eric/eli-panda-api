@@ -27,7 +27,7 @@ type ISystemsService interface {
 	GetItemUsagesCodebook() (result []codebookModels.Codebook, err error)
 	GetItemConditionsCodebook() (result []codebookModels.Codebook, err error)
 	GetLocationAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
-	GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error)
+	GetZonesCodebook(facilityCode string, searchString string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
 	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
@@ -62,6 +62,9 @@ type ISystemsService interface {
 	GetAllSystemTypes() (result []codebookModels.Codebook, err error)
 	GetAllZones(facilityCode string) (result []codebookModels.Codebook, err error)
 	CreateNewSystemCode(parentUID, systemTypeUID, zoneUID, facilityCode, userUID string) (result models.System, err error)
+	GetSystemsForControlsSystems(facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.SystemCodesResult], err error)
+	GetNewSystemCodesPreview(systemTypeUID string, zoneUID string, batch int, facilityCode string) (result []models.SystemCodesResult, err error)
+	SaveNewSystemCodes(request *models.SystemCodesRequest, facilityCode string, userUID string) (result []models.SystemCodesResult, err error)
 	RecalculateSpareParts() (err error)
 	GetSystemsByUids(uids []string) (result []models.System, err error)
 	GetSystemsTreeByUids(trees []models.SystemTreeUid) (result []models.System, err error)
@@ -133,11 +136,30 @@ func (svc *SystemsService) GetLocationAutocompleteCodebook(searchText string, li
 	return result, err
 }
 
-func (svc *SystemsService) GetZonesCodebook(facilityCode string, searchString string) (result []codebookModels.Codebook, err error) {
+func (svc *SystemsService) GetZonesCodebook(facilityCode string, searchString string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetZonesCodebookQuery(facilityCode, searchString)
+	onlyRootElements := false
+	if filter != nil {
+		for _, f := range *filter {
+			if f.Key != "onlyRootElements" {
+				continue
+			}
+
+			switch v := f.Value.(type) {
+			case bool:
+				onlyRootElements = v
+			case string:
+				onlyRootElements = strings.EqualFold(v, "true") || v == "1"
+			case float64:
+				onlyRootElements = v != 0
+			}
+			break
+		}
+	}
+
+	query := GetZonesCodebookQuery(facilityCode, searchString, onlyRootElements)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
 
 	return result, err
@@ -449,6 +471,149 @@ func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, pa
 		return "", err
 	}
 
+	return result, err
+}
+
+func (svc *SystemsService) getSystemCodePrefixAndSerialLength(session neo4j.Session, systemTypeUid, zoneUID, locationUID, facilityCode string) (systemCodePrefix string, serialNumberLength int, err error) {
+
+	if systemTypeUid == "" {
+		return "", 0, errors.New("missing system type")
+	}
+
+	mask, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSystemTypeMask(systemTypeUid, facilityCode))
+	if err != nil {
+		return "", 0, err
+	}
+
+	if !strings.Contains(mask, SYSTEM_CODE_GENERATE_SERIAL_PREFIX) {
+		return "", 0, errors.New("missing serial number information")
+	}
+
+	systemTypeCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSystemTypeCode(systemTypeUid))
+	if err != nil {
+		return "", 0, err
+	}
+
+	mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_SYSTEM_TYPE_CODE, systemTypeCode)
+
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_CODE) || strings.Contains(mask, SYSTEM_CODE_GENERATE_ZONE_NAME) || strings.Contains(mask, SYSTEM_CODE_GENERATE_SUB_ZONE_CODE) {
+		if zoneUID == "" {
+			return "", 0, errors.New("missing zone")
+		}
+		zoneCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetZoneCode(zoneUID))
+		if err != nil {
+			return "", 0, err
+		}
+		zoneName, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetZoneName(zoneUID))
+		if err != nil {
+			return "", 0, err
+		}
+		subZoneCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSubZoneCode(zoneUID))
+		if err != nil {
+			return "", 0, err
+		}
+
+		mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_ZONE_CODE, zoneCode)
+		mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_ZONE_NAME, zoneName)
+		mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_SUB_ZONE_CODE, subZoneCode)
+	}
+
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_LOCATION_CODE) || strings.Contains(mask, SYSTEM_CODE_GENERATE_LOCATION_NAME) {
+		if locationUID == "" {
+			return "", 0, errors.New("missing location")
+		}
+		locationCode, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetLocationCode(locationUID))
+		if err != nil {
+			return "", 0, err
+		}
+		locationName, err := helpers.GetNeo4jSingleRecordSingleValue[string](session, GetLocationName(locationUID))
+		if err != nil {
+			return "", 0, err
+		}
+
+		mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_LOCATION_CODE, locationCode)
+		mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_LOCATION_NAME, locationName)
+	}
+
+	if strings.Contains(mask, SYSTEM_CODE_GENERATE_FACILITY_CODE) {
+		if facilityCode == "" {
+			return "", 0, errors.New("missing facility")
+		}
+		mask = strings.ReplaceAll(mask, SYSTEM_CODE_GENERATE_FACILITY_CODE, facilityCode)
+	}
+
+	serialPrefixIndex := strings.Index(mask, SYSTEM_CODE_GENERATE_SERIAL_PREFIX)
+	maskWithoutSerial := mask[:serialPrefixIndex]
+	serialNumberLengthString := mask[serialPrefixIndex+len(SYSTEM_CODE_GENERATE_SERIAL_PREFIX):]
+	serialNumberLengthString = serialNumberLengthString[:len(serialNumberLengthString)-2]
+	parsedSerialLength, err := strconv.ParseInt(serialNumberLengthString, 10, 64)
+	if err != nil {
+		return "", 0, err
+	}
+
+	return maskWithoutSerial, int(parsedSerialLength), nil
+}
+
+func (svc *SystemsService) GetSystemsForControlsSystems(facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.SystemCodesResult], err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemsForControlsSystemsQuery(facilityCode, pagination, sorting, filering)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.SystemCodesResult](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemsForControlsSystemsCountQuery(facilityCode, filering))
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
+	return result, err
+}
+
+func (svc *SystemsService) GetNewSystemCodesPreview(systemTypeUID string, zoneUID string, batch int, facilityCode string) (result []models.SystemCodesResult, err error) {
+
+	if batch <= 0 {
+		return nil, helpers.ERR_INVALID_INPUT
+	}
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	prefix, serialLen, err := svc.getSystemCodePrefixAndSerialLength(session, systemTypeUID, zoneUID, "", facilityCode)
+	if err != nil {
+		return nil, err
+	}
+
+	query := GetNewSystemCodesPreviewQuery(systemTypeUID, zoneUID, prefix, serialLen, batch, facilityCode)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemCodesResult](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+	return result, err
+}
+
+func (svc *SystemsService) SaveNewSystemCodes(request *models.SystemCodesRequest, facilityCode string, userUID string) (result []models.SystemCodesResult, err error) {
+
+	if request == nil || request.SystemType == nil || request.Zone == nil {
+		return nil, helpers.ERR_INVALID_INPUT
+	}
+	if request.Batch <= 0 {
+		return nil, helpers.ERR_INVALID_INPUT
+	}
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	prefix, serialLen, err := svc.getSystemCodePrefixAndSerialLength(session, request.SystemType.UID, request.Zone.UID, "", facilityCode)
+	if err != nil {
+		return nil, err
+	}
+
+	query := SaveNewSystemCodesQuery(request.SystemType.UID, request.Zone.UID, prefix, serialLen, request.Batch, facilityCode, userUID)
+	result, err = helpers.WriteNeo4jAndReturnArrayOfNodes[models.SystemCodesResult](session, query)
+	if err != nil {
+		//log the error
+		log.Error().Msg(fmt.Sprintf("Error saving new system codes: %v", err))
+		// translate APOC validation error into a stable message for API client
+		if strings.Contains(err.Error(), "missing default parent system for selected zone") {
+			return nil, errors.New("missing default parent system for selected zone")
+		}
+	}
+
+	helpers.ProcessArrayResult(&result, err)
 	return result, err
 }
 
