@@ -1630,6 +1630,66 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/systems/copy": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Copies system (or its children) under an existing destination parent system. Copies only Name, SystemLevel, HAS_SUBSYSTEM and HAS_SYSTEM_TYPE.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Copy system(s)",
+                "parameters": [
+                    {
+                        "description": "Copy system request model",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemCopyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created root system UID(s)",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Source or destination system not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/systems/locations-flat": {
             "get": {
                 "security": [
@@ -3297,6 +3357,23 @@ const docTemplate = `{
                 },
                 "zone": {
                     "$ref": "#/definitions/models.Codebook"
+                }
+            }
+        },
+        "models.SystemCopyRequest": {
+            "type": "object",
+            "properties": {
+                "copyOnlySourceSystemChildren": {
+                    "type": "boolean"
+                },
+                "copyRecursive": {
+                    "type": "boolean"
+                },
+                "destinationSystemUid": {
+                    "type": "string"
+                },
+                "sourceSystemUid": {
+                    "type": "string"
                 }
             }
         },

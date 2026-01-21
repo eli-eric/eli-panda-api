@@ -2262,6 +2262,83 @@ func MoveSystemsQuery(movementInfo *models.SystemsMovement, userUID string) (res
 	return result
 }
 
+func SystemExistsInFacilityQuery(systemUID string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (s:System{uid: $systemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+	RETURN count(s) > 0 as result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["systemUID"] = systemUID
+	result.Parameters["facilityCode"] = facilityCode
+	return result
+}
+
+func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["userUID"] = userUID
+	result.Parameters["sourceUid"] = request.SourceSystemUID
+	result.Parameters["destinationUid"] = request.DestinationSystemUID
+	result.Parameters["copyOnlyChildren"] = request.CopyOnlySourceSystemChildren
+	result.Parameters["copyRecursive"] = request.CopyRecursive
+
+	result.Query = `
+	MATCH (f:Facility{code:$facilityCode})
+	MATCH (u:User{uid:$userUID})
+	MATCH (source:System{uid:$sourceUid, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH (destination:System{uid:$destinationUid, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WITH source, destination, f, u
+	OPTIONAL MATCH (source)-[:HAS_SUBSYSTEM]->(child:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WITH source, destination, f, u, collect(DISTINCT child) AS children
+	WITH destination, f, u, CASE WHEN $copyOnlyChildren THEN children ELSE [source] END AS roots
+	UNWIND roots AS root
+	WITH destination, f, u, root
+	WHERE root IS NOT NULL
+	CALL {
+		WITH root, destination, f, u
+		CALL {
+			WITH root, f
+			WHERE $copyRecursive = true
+			MATCH (root)-[:HAS_SUBSYSTEM*0..50]->(n:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+			RETURN collect(DISTINCT n) AS nodes
+			UNION
+			WITH root, f
+			WHERE $copyRecursive = false
+			MATCH (root)-[:BELONGS_TO_FACILITY]->(f)
+			RETURN [root] AS nodes
+		}
+		WITH root, destination, f, u, nodes
+		UNWIND nodes AS n
+		WITH root, destination, f, u, n, apoc.create.uuid() AS newUid
+		CREATE (c:System{uid:newUid, deleted:false, lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
+		SET c.name = n.name,
+			c.systemLevel = n.systemLevel
+		WITH root, destination, collect({old: n.uid, new: c.uid}) AS pairs
+		UNWIND pairs AS p
+		MATCH (orig:System{uid:p.old})-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+		MATCH (copy:System{uid:p.new})
+		MERGE (copy)-[:HAS_SYSTEM_TYPE]->(st)
+		WITH root, destination, pairs
+		UNWIND pairs AS parentPair
+		MATCH (parentOrig:System{uid:parentPair.old})-[:HAS_SUBSYSTEM]->(childOrig:System)
+		WHERE any(x IN pairs WHERE x.old = childOrig.uid)
+		MATCH (parentCopy:System{uid:parentPair.new})
+		WITH root, destination, pairs, parentCopy, childOrig.uid AS childOldUid
+		UNWIND [x IN pairs WHERE x.old = childOldUid] AS childPair
+		MATCH (childCopy:System{uid:childPair.new})
+		MERGE (parentCopy)-[:HAS_SUBSYSTEM]->(childCopy)
+		WITH root, destination, pairs
+		WITH root.uid AS rootOldUid, destination, pairs, [x IN pairs WHERE x.old = rootOldUid][0].new AS rootNewUid
+		MATCH (rootCopy:System{uid: rootNewUid})
+		MERGE (destination)-[:HAS_SUBSYSTEM]->(rootCopy)
+		RETURN rootNewUid AS createdRootUid
+	}
+	RETURN {uids: collect(createdRootUid)} as result`
+
+	result.ReturnAlias = "result"
+	return result
+}
+
 func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode

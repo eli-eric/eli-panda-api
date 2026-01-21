@@ -836,6 +836,17 @@ definitions:
       zone:
         $ref: '#/definitions/models.Codebook'
     type: object
+  models.SystemCopyRequest:
+    properties:
+      copyOnlySourceSystemChildren:
+        type: boolean
+      copyRecursive:
+        type: boolean
+      destinationSystemUid:
+        type: string
+      sourceSystemUid:
+        type: string
+    type: object
   models.SystemDetailInfo:
     properties:
       description:
@@ -2178,6 +2189,45 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new system with code
+      tags:
+      - Systems
+  /v1/systems/copy:
+    put:
+      consumes:
+      - application/json
+      description: Copies system (or its children) under an existing destination parent
+        system. Copies only Name, SystemLevel, HAS_SUBSYSTEM and HAS_SYSTEM_TYPE.
+      parameters:
+      - description: Copy system request model
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemCopyRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created root system UID(s)
+          schema:
+            items:
+              type: string
+            type: array
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "404":
+          description: Source or destination system not found
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Copy system(s)
       tags:
       - Systems
   /v1/systems/locations-flat:
