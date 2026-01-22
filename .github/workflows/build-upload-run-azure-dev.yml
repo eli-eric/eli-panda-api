@@ -29,3 +29,38 @@ jobs:
                   docker push ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
 
             # TODO: Add Azure Container Apps deployment
+
+            - name: Ensure Azure Container Apps CLI
+              run: |
+                  az config set extension.use_dynamic_install=yes_without_prompt
+                  az extension add --name containerapp --upgrade
+
+            - name: Deploy to Azure Container Apps (update-only)
+              env:
+                  RG: ${{ secrets.AZURE_DEV_RESOURCE_GROUP }}
+                  APP_NAME: ${{ secrets.AZURE_DEV_CONTAINER_APP_NAME_BACKEND }}
+                  ACR_NAME: ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}
+              run: |
+                  set -euo pipefail
+
+                  if ! az containerapp show -g "${RG}" -n "${APP_NAME}" >/dev/null 2>&1; then
+                      echo "ERROR: Container App '${APP_NAME}' not found in RG '${RG}'. Refusing to create."
+                      exit 1
+                  fi
+
+                  ACR_SERVER="${ACR_NAME}.azurecr.io"
+                  IMAGE="${ACR_SERVER}/panda-api:${{ github.sha }}"
+
+                  ACR_USERNAME="$(az acr credential show -n "${ACR_NAME}" --query username -o tsv)"
+                  ACR_PASSWORD="$(az acr credential show -n "${ACR_NAME}" --query "passwords[0].value" -o tsv)"
+
+                  az containerapp registry set \
+                    -g "${RG}" \
+                    -n "${APP_NAME}" \
+                    --server "${ACR_SERVER}" \
+                    --username "${ACR_USERNAME}" \
+                    --password "${ACR_PASSWORD}"
+
+                  az containerapp update -g "${RG}" -n "${APP_NAME}" --image "${IMAGE}"
+                  az containerapp update -g "${RG}" -n "${APP_NAME}" --set-env-vars API_PORT=50200
+                  az containerapp ingress update -g "${RG}" -n "${APP_NAME}" --target-port 50200 --transport auto
