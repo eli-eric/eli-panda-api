@@ -385,6 +385,215 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/grant": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create grant",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Create grant",
+                "parameters": [
+                    {
+                        "description": "Grant",
+                        "name": "grant",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Grant"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Grant"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/grant/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get grant by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Get grant by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Grant"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update grant",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Update grant",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Grant",
+                        "name": "grant",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Grant"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Grant"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete grant by uid",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Delete grant by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/grants": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get grants with pagination and search",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Grants"
+                ],
+                "summary": "Get grants",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "search",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "pagination",
+                        "name": "pagination",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_Grant"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/order": {
             "put": {
                 "security": [
@@ -2117,6 +2326,20 @@ const docTemplate = `{
                 }
             }
         },
+        "helpers.PaginationResult-models_Grant": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Grant"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
         "helpers.PaginationResult-models_Researcher": {
             "type": "object",
             "properties": {
@@ -2425,6 +2648,40 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "nodeType": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Grant": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "grantGroup": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.GrantRef": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 },
                 "uid": {
@@ -2863,16 +3120,15 @@ const docTemplate = `{
                     ]
                 },
                 "grant": {
-                    "description": "grant is the grant of the publication (deprecated, use GrantCb)",
+                    "description": "grant is the grant of the publication (deprecated)",
                     "type": "string"
                 },
-                "grantCb": {
-                    "description": "grantCb is the grant codebook of the publication",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/models.Codebook"
-                        }
-                    ]
+                "grants": {
+                    "description": "grants are the connected grants via HAS_GRANT relationship",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.GrantRef"
+                    }
                 },
                 "impactFactor": {
                     "description": "impactFactor is the impact factor of the publication",

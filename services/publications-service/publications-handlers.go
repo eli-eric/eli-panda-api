@@ -1,13 +1,12 @@
 package publicationsservice
 
 import (
-	//"panda/apigateway/services/publications-service/models"
-
 	"encoding/csv"
 	"encoding/json"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,6 +33,12 @@ type IPublicationsHandlers interface {
 	CreateResearchers() echo.HandlerFunc
 	UpdateResearcher() echo.HandlerFunc
 	DeleteResearcher() echo.HandlerFunc
+	// Grant handlers
+	GetGrants() echo.HandlerFunc
+	GetGrant() echo.HandlerFunc
+	CreateGrant() echo.HandlerFunc
+	UpdateGrant() echo.HandlerFunc
+	DeleteGrant() echo.HandlerFunc
 }
 
 // NewPublicationsHandlers General handlers constructor
@@ -301,6 +306,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			"Authors Count",
 			"ELI Authors",
 			"ELI Authors Count",
+			"ELI Researchers",
 			"Journal Title",
 			"Volume",
 			"Issue",
@@ -371,9 +377,21 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			if item.OecdFord != nil {
 				oecdFord = *item.OecdFord
 			}
+			eliResearchers := ""
+			if len(item.EliResearchers) > 0 {
+				researcherNames := make([]string, len(item.EliResearchers))
+				for i, r := range item.EliResearchers {
+					researcherNames[i] = r.FirstName + " " + r.LastName
+				}
+				eliResearchers = strings.Join(researcherNames, "; ")
+			}
 			grant := ""
-			if item.GrantCb != nil {
-				grant = item.GrantCb.Name
+			if len(item.Grants) > 0 {
+				grantNames := make([]string, len(item.Grants))
+				for i, g := range item.Grants {
+					grantNames[i] = g.Name
+				}
+				grant = strings.Join(grantNames, "; ")
 			} else if item.Grant != nil {
 				grant = *item.Grant
 			}
@@ -411,6 +429,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				strconv.Itoa(item.AllAuthorsCount),
 				item.EliAuthors,
 				strconv.Itoa(item.EliAuthorsCount),
+				eliResearchers,
 				item.LongJournalTitle,
 				strconv.Itoa(item.Volume),
 				issue,
@@ -647,6 +666,167 @@ func (h *PublicationsHandlers) DeleteResearcher() echo.HandlerFunc {
 		err := h.PublicationsService.DeleteResearcher(uid, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error deleting researcher")
+			return echo.ErrInternalServerError
+		}
+
+		return c.NoContent(204)
+	}
+}
+
+// GetGrants Get grants godoc
+// @Summary Get grants
+// @Description Get grants with pagination and search
+// @Tags Grants
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} helpers.PaginationResult[models.Grant]
+// @Failure 500 "Internal Server Error"
+// @Router /v1/grants [get]
+// @Param search query string false "search"
+// @Param pagination query string false "pagination"
+func (h *PublicationsHandlers) GetGrants() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		search := c.QueryParam("search")
+		pagination := c.QueryParam("pagination")
+		facilityCode := c.Get("facilityCode").(string)
+
+		pagingObject := new(helpers.Pagination)
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		grants, totalCount, err := h.PublicationsService.GetGrants(search, pagingObject.Page, pagingObject.PageSize, facilityCode)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting grants")
+			return echo.ErrInternalServerError
+		}
+
+		paginationResult := helpers.PaginationResult[models.Grant]{
+			TotalCount: totalCount,
+			Data:       grants,
+		}
+
+		return c.JSON(200, paginationResult)
+	}
+}
+
+// GetGrant Get grant by uid godoc
+// @Summary Get grant by uid
+// @Description Get grant by uid
+// @Tags Grants
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 200 {object} models.Grant
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/grant/{uid} [get]
+func (h *PublicationsHandlers) GetGrant() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+
+		grant, err := h.PublicationsService.GetGrantByUid(uid)
+		if err != nil {
+			if err.Error() == "Result contains no more records" {
+				return echo.ErrNotFound
+			}
+			log.Error().Err(err).Msg("Error getting grant")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, grant)
+	}
+}
+
+// CreateGrant Create grant godoc
+// @Summary Create grant
+// @Description Create grant
+// @Tags Grants
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param grant body models.Grant true "Grant"
+// @Success 200 {object} models.Grant
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/grant [post]
+func (h *PublicationsHandlers) CreateGrant() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		grant := new(models.Grant)
+		if err := c.Bind(grant); err != nil {
+			log.Error().Err(err).Msg("Error binding grant")
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+		facilityCode := c.Get("facilityCode").(string)
+
+		if grant.Uid == "" {
+			grant.Uid = uuid.New().String()
+		}
+
+		_, err := h.PublicationsService.CreateGrant(grant, userUID, facilityCode)
+		if err != nil {
+			log.Error().Err(err).Msg("Error creating grant")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, grant)
+	}
+}
+
+// UpdateGrant Update grant godoc
+// @Summary Update grant
+// @Description Update grant
+// @Tags Grants
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "uid"
+// @Param grant body models.Grant true "Grant"
+// @Success 200 {object} models.Grant
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/grant/{uid} [put]
+func (h *PublicationsHandlers) UpdateGrant() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+
+		grant := new(models.Grant)
+		if err := c.Bind(grant); err != nil {
+			log.Error().Err(err).Msg("Error binding grant")
+			return helpers.BadRequest(err.Error())
+		}
+
+		grant.Uid = uid
+		userUID := c.Get("userUID").(string)
+
+		_, err := h.PublicationsService.UpdateGrant(grant, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error updating grant")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, grant)
+	}
+}
+
+// DeleteGrant Delete grant by uid godoc
+// @Summary Delete grant by uid
+// @Description Delete grant by uid
+// @Tags Grants
+// @Security BearerAuth
+// @Produce json
+// @Param uid path string true "uid"
+// @Success 204 "No Content"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/grant/{uid} [delete]
+func (h *PublicationsHandlers) DeleteGrant() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.PublicationsService.DeleteGrant(uid, userUID)
+		if err != nil {
+			log.Error().Err(err).Msg("Error deleting grant")
 			return echo.ErrInternalServerError
 		}
 

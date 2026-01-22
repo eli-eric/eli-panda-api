@@ -9,6 +9,15 @@ definitions:
       totalCount:
         type: integer
     type: object
+  helpers.PaginationResult-models_Grant:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Grant'
+        type: array
+      totalCount:
+        type: integer
+    type: object
   helpers.PaginationResult-models_Researcher:
     properties:
       data:
@@ -210,6 +219,28 @@ definitions:
       name:
         type: string
       nodeType:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.Grant:
+    properties:
+      code:
+        type: string
+      grantGroup:
+        $ref: '#/definitions/models.Codebook'
+      name:
+        type: string
+      uid:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  models.GrantRef:
+    properties:
+      code:
+        type: string
+      name:
         type: string
       uid:
         type: string
@@ -506,12 +537,13 @@ definitions:
         description: experimentalSystemCb is the experimental system codebook of the
           publication
       grant:
-        description: grant is the grant of the publication (deprecated, use GrantCb)
+        description: grant is the grant of the publication (deprecated)
         type: string
-      grantCb:
-        allOf:
-        - $ref: '#/definitions/models.Codebook'
-        description: grantCb is the grant codebook of the publication
+      grants:
+        description: grants are the connected grants via HAS_GRANT relationship
+        items:
+          $ref: '#/definitions/models.GrantRef'
+        type: array
       impactFactor:
         description: impactFactor is the impact factor of the publication
         type: number
@@ -1374,6 +1406,137 @@ paths:
       summary: Global search
       tags:
       - General
+  /v1/grant:
+    post:
+      consumes:
+      - application/json
+      description: Create grant
+      parameters:
+      - description: Grant
+        in: body
+        name: grant
+        required: true
+        schema:
+          $ref: '#/definitions/models.Grant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Grant'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create grant
+      tags:
+      - Grants
+  /v1/grant/{uid}:
+    delete:
+      description: Delete grant by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete grant by uid
+      tags:
+      - Grants
+    get:
+      description: Get grant by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Grant'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get grant by uid
+      tags:
+      - Grants
+    put:
+      consumes:
+      - application/json
+      description: Update grant
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Grant
+        in: body
+        name: grant
+        required: true
+        schema:
+          $ref: '#/definitions/models.Grant'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Grant'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update grant
+      tags:
+      - Grants
+  /v1/grants:
+    get:
+      description: Get grants with pagination and search
+      parameters:
+      - description: search
+        in: query
+        name: search
+        type: string
+      - description: pagination
+        in: query
+        name: pagination
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_Grant'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get grants
+      tags:
+      - Grants
   /v1/order:
     post:
       consumes:

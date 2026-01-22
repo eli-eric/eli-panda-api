@@ -32,9 +32,14 @@ type IPublicationsService interface {
 	CreateResearchers(researchers []models.Researcher, userUID string) (result []models.Researcher, err error)
 	UpdateResearcher(researcher *models.Researcher, userUID string) (result models.Researcher, err error)
 	DeleteResearcher(uid string, userUID string) (err error)
+	// Grant methods
+	GetGrants(searchText string, page, pageSize int, facilityCode string) (result []models.Grant, totalCount int64, err error)
+	GetGrantByUid(uid string) (models.Grant, error)
+	CreateGrant(grant *models.Grant, userUID string, facilityCode string) (result models.Grant, err error)
+	UpdateGrant(grant *models.Grant, userUID string) (result models.Grant, err error)
+	DeleteGrant(uid string, userUID string) (err error)
 	// Codebook autocomplete methods
 	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
-	GetGrantsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
 }
@@ -55,6 +60,8 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 		decodeAuthorsDepartments(&result)
 		// Fetch connected researchers
 		result.EliResearchers, _ = svc.getPublicationResearchers(uid)
+		// Fetch connected grants
+		result.Grants, _ = svc.getPublicationGrants(uid)
 	}
 
 	return result, err
@@ -124,6 +131,14 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 		}
 	}
 
+	// Connect grants to the publication
+	if len(publication.Grants) > 0 {
+		err = svc.connectPublicationGrants(publication.Uid, publication.Grants)
+		if err != nil {
+			return result, err
+		}
+	}
+
 	return *publication, nil
 }
 
@@ -165,6 +180,12 @@ func (svc *PublicationsService) UpdatePublication(publication *models.Publicatio
 		return result, err
 	}
 
+	// Update grants (diff-based: disconnect removed, connect new)
+	err = svc.updatePublicationGrants(publication.Uid, publication.Grants)
+	if err != nil {
+		return result, err
+	}
+
 	return *publication, nil
 }
 
@@ -184,17 +205,14 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	skip := pageSize
 	limit := pageSize
-
-	if skip > 0 {
-		skip = (page - 1) * pageSize
-	} else {
-		skip = 0
-	}
-
 	if limit <= 0 {
 		limit = 10
+	}
+
+	skip := 0
+	if page > 1 {
+		skip = (page - 1) * limit
 	}
 
 	result, totalCount, err = helpers.GetMultipleNodes[models.Publication](session, skip, limit, searchText)
@@ -203,6 +221,10 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 
 	for i := 0; i < len(result); i++ {
 		decodeAuthorsDepartments(&result[i])
+		// Fetch connected researchers
+		result[i].EliResearchers, _ = svc.getPublicationResearchers(result[i].Uid)
+		// Fetch connected grants
+		result[i].Grants, _ = svc.getPublicationGrants(result[i].Uid)
 	}
 
 	return result, totalCount, err
@@ -262,17 +284,14 @@ func (svc *PublicationsService) GetResearchers(searchText string, page, pageSize
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	skip := pageSize
 	limit := pageSize
-
-	if skip > 0 {
-		skip = (page - 1) * pageSize
-	} else {
-		skip = 0
-	}
-
 	if limit <= 0 {
 		limit = 10
+	}
+
+	skip := 0
+	if page > 1 {
+		skip = (page - 1) * limit
 	}
 
 	result, totalCount, err = helpers.GetMultipleNodes[models.Researcher](session, skip, limit, searchText)
@@ -469,6 +488,244 @@ func (svc *PublicationsService) updatePublicationResearchers(pubUid string, newR
 	return nil
 }
 
+// Publication-Grant relationship helpers
+
+func (svc *PublicationsService) getPublicationGrants(uid string) ([]models.GrantRef, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH (p:Publication {uid: $uid})-[:HAS_GRANT]->(g:Grant)
+				WHERE g.deleted IS NULL OR g.deleted = false
+				RETURN {uid: g.uid, code: g.code, name: g.name} as grant`,
+		ReturnAlias: "grant",
+		Parameters: map[string]interface{}{
+			"uid": uid,
+		},
+	}
+
+	result, err := helpers.GetNeo4jArrayOfNodes[models.GrantRef](session, query)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (svc *PublicationsService) connectPublicationGrants(pubUid string, grants []models.GrantRef) error {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	for _, grant := range grants {
+		query := helpers.DatabaseQuery{
+			Query: `MATCH (p:Publication {uid: $pubUid})
+					MATCH (g:Grant {uid: $grantUid})
+					WHERE g.deleted IS NULL OR g.deleted = false
+					MERGE (p)-[:HAS_GRANT]->(g)`,
+			Parameters: map[string]interface{}{
+				"pubUid":   pubUid,
+				"grantUid": grant.Uid,
+			},
+		}
+		err := helpers.WriteNeo4jAndReturnNothing(session, query)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (svc *PublicationsService) updatePublicationGrants(pubUid string, newGrants []models.GrantRef) error {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	// 1. Get current grants
+	oldGrants, err := svc.getPublicationGrants(pubUid)
+	if err != nil {
+		return err
+	}
+
+	// Handle nil slices
+	if newGrants == nil {
+		newGrants = []models.GrantRef{}
+	}
+
+	// 2. Find grants to disconnect (in old, not in new)
+	for _, oldGrant := range oldGrants {
+		found := false
+		for _, newGrant := range newGrants {
+			if oldGrant.Uid == newGrant.Uid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			query := helpers.DatabaseQuery{
+				Query: `MATCH (p:Publication {uid: $pubUid})-[rel:HAS_GRANT]->(g:Grant {uid: $grantUid})
+						DELETE rel`,
+				Parameters: map[string]interface{}{
+					"pubUid":   pubUid,
+					"grantUid": oldGrant.Uid,
+				},
+			}
+			helpers.WriteNeo4jAndReturnNothing(session, query)
+		}
+	}
+
+	// 3. Find grants to connect (in new, not in old)
+	for _, newGrant := range newGrants {
+		found := false
+		for _, oldGrant := range oldGrants {
+			if newGrant.Uid == oldGrant.Uid {
+				found = true
+				break
+			}
+		}
+		if !found {
+			query := helpers.DatabaseQuery{
+				Query: `MATCH (p:Publication {uid: $pubUid})
+						MATCH (g:Grant {uid: $grantUid})
+						WHERE g.deleted IS NULL OR g.deleted = false
+						MERGE (p)-[:HAS_GRANT]->(g)`,
+				Parameters: map[string]interface{}{
+					"pubUid":   pubUid,
+					"grantUid": newGrant.Uid,
+				},
+			}
+			helpers.WriteNeo4jAndReturnNothing(session, query)
+		}
+	}
+
+	return nil
+}
+
+// Grant CRUD methods
+
+func (svc *PublicationsService) GetGrantByUid(uid string) (result models.Grant, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	result.Uid = uid
+	err = helpers.GetSingleNode(session, &result)
+	return result, err
+}
+
+func (svc *PublicationsService) GetGrants(searchText string, page, pageSize int, facilityCode string) (result []models.Grant, totalCount int64, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	limit := pageSize
+	if limit <= 0 {
+		limit = 10
+	}
+
+	skip := 0
+	if page > 1 {
+		skip = (page - 1) * limit
+	}
+
+	query := helpers.DatabaseQuery{
+		Query: `MATCH (f:Facility {code: $facilityCode})
+				MATCH (g:Grant)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE (g.deleted IS NULL OR g.deleted = false)
+				AND (toLower(g.code) CONTAINS toLower($search) OR toLower(g.name) CONTAINS toLower($search))
+				OPTIONAL MATCH (g)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
+				RETURN {uid: g.uid, code: g.code, name: g.name, updatedAt: g.updatedAt, grantGroup: CASE WHEN gg IS NOT NULL THEN {uid: gg.uid, name: gg.name, code: gg.code} ELSE null END} as grant
+				ORDER BY grant.name
+				SKIP $skip LIMIT $limit`,
+		ReturnAlias: "grant",
+		Parameters: map[string]interface{}{
+			"facilityCode": facilityCode,
+			"search":       searchText,
+			"skip":         skip,
+			"limit":        limit,
+		},
+	}
+
+	result, err = helpers.GetNeo4jArrayOfNodes[models.Grant](session, query)
+	helpers.ProcessArrayResult(&result, err)
+
+	if err != nil {
+		return result, totalCount, err
+	}
+
+	countQuery := helpers.DatabaseQuery{
+		Query: `MATCH (f:Facility {code: $facilityCode})
+				MATCH (g:Grant)-[:BELONGS_TO_FACILITY]->(f)
+				WHERE (g.deleted IS NULL OR g.deleted = false)
+				AND (toLower(g.code) CONTAINS toLower($search) OR toLower(g.name) CONTAINS toLower($search))
+				RETURN count(g) as totalCount`,
+		ReturnAlias: "totalCount",
+		Parameters: map[string]interface{}{
+			"facilityCode": facilityCode,
+			"search":       searchText,
+		},
+	}
+	totalCount, err = helpers.GetNeo4jSingleRecordSingleValue[int64](session, countQuery)
+
+	return result, totalCount, err
+}
+
+func (svc *PublicationsService) CreateGrant(grant *models.Grant, userUID string, facilityCode string) (result models.Grant, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MATCH (f:Facility {code: $facilityCode})
+						 MERGE (n:Grant {uid: $uid})
+						 SET n.updatedAt = datetime(), n.code = $code, n.name = $name
+						 MERGE (n)-[:BELONGS_TO_FACILITY]->(f)
+						 WITH n `
+	updateQuery.Parameters["uid"] = grant.Uid
+	updateQuery.Parameters["code"] = grant.Code
+	updateQuery.Parameters["name"] = grant.Name
+	updateQuery.Parameters["facilityCode"] = facilityCode
+
+	if grant.GrantGroup != nil && grant.GrantGroup.UID != "" {
+		updateQuery.Query += `MATCH (gg:GrantGroup {uid: $grantGroupUid})
+							  MERGE (n)-[:BELONGS_TO_GROUP]->(gg)
+							  WITH n `
+		updateQuery.Parameters["grantGroupUid"] = grant.GrantGroup.UID
+	}
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(grant.Uid, "CREATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, updateQuery, historyLog)
+
+	return *grant, err
+}
+
+func (svc *PublicationsService) UpdateGrant(grant *models.Grant, userUID string) (result models.Grant, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	oldGrant, err := svc.GetGrantByUid(grant.Uid)
+	if err != nil {
+		return result, err
+	}
+
+	updateQuery := helpers.DatabaseQuery{}
+	updateQuery.Parameters = make(map[string]interface{})
+	updateQuery.Query = `MATCH (n:Grant {uid: $uid}) SET n.updatedAt = datetime() WITH n `
+	updateQuery.Parameters["uid"] = grant.Uid
+
+	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *grant, oldGrant, "n")
+
+	updateQuery.Query += ` RETURN n.uid as uid `
+	updateQuery.ReturnAlias = "uid"
+
+	historyLog := helpers.HistoryLogQuery(grant.Uid, "UPDATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, updateQuery, historyLog)
+
+	return *grant, err
+}
+
+func (svc *PublicationsService) DeleteGrant(uid string, userUID string) (err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
+		helpers.SoftDeleteNodeQuery(uid),
+		helpers.HistoryLogQuery(uid, "DELETE", userUID))
+
+	return err
+}
+
 // Codebook autocomplete methods
 
 func (svc *PublicationsService) GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
@@ -477,27 +734,6 @@ func (svc *PublicationsService) GetExperimentalSystemsAutocomplete(searchText st
 	query := helpers.DatabaseQuery{
 		Query: `MATCH(f:Facility{code:$facilityCode})
 				MATCH(r:ExperimentalSystem)-[:BELONGS_TO_FACILITY]->(f)
-				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
-				RETURN {uid: r.uid, name: r.name, code: r.code} as result
-				ORDER BY result.name LIMIT $limit`,
-		ReturnAlias: "result",
-		Parameters: map[string]interface{}{
-			"searchText":   searchText,
-			"facilityCode": facilityCode,
-			"limit":        limit,
-		},
-	}
-
-	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
-	return result, err
-}
-
-func (svc *PublicationsService) GetGrantsAutocomplete(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error) {
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	query := helpers.DatabaseQuery{
-		Query: `MATCH(f:Facility{code:$facilityCode})
-				MATCH(r:Grant)-[:BELONGS_TO_FACILITY]->(f)
 				WHERE apoc.text.clean(r.name) CONTAINS apoc.text.clean($searchText)
 				RETURN {uid: r.uid, name: r.name, code: r.code} as result
 				ORDER BY result.name LIMIT $limit`,

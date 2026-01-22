@@ -321,7 +321,6 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.USER_CALL_CODEBOOK,
 		models.USER_EXPERIMENT_CODEBOOK,
 		models.EXPERIMENTAL_SYSTEM_CODEBOOK,
-		models.GRANT_GROUP_CODEBOOK,
 		models.MEDIA_TYPE_CODEBOOK,
 	}
 }
