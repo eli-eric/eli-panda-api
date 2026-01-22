@@ -488,3 +488,338 @@ func TestUpdatePublicationReplaceResearchers(t *testing.T) {
 	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
 	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
+
+// ==================== Grant Tests ====================
+
+func TestGetGrantByUid(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	testUid := "test-grant-" + uuid.New().String()
+
+	// Insert test data
+	_, err := testsetup.TestSession.Run(
+		`CREATE (g:Grant {uid: $uid, code: "TEST-001", name: "Test Grant"}) RETURN g`,
+		map[string]interface{}{"uid": testUid},
+	)
+	assert.NoError(t, err)
+
+	// Run the actual test
+	result, err := service.GetGrantByUid(testUid)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, testUid, result.Uid)
+	assert.Equal(t, "TEST-001", result.Code)
+	assert.Equal(t, "Test Grant", result.Name)
+
+	// Clean up
+	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	assert.NoError(t, err)
+}
+
+func TestGetGrantByUidNotFound(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	testUid := "non-existent-grant-" + uuid.New().String()
+
+	// Run the actual test
+	_, err := service.GetGrantByUid(testUid)
+
+	// Assertions
+	assert.Error(t, err)
+}
+
+func TestCreateGrant(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	testUid := "test-grant-create-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+	facilityCode := "B" // ELI facility
+
+	grant := &models.Grant{
+		Uid:  testUid,
+		Code: "TEST-CREATE-001",
+		Name: "Test Create Grant",
+	}
+
+	// Run the actual test
+	result, err := service.CreateGrant(grant, userUid, facilityCode)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, testUid, result.Uid)
+	assert.Equal(t, "TEST-CREATE-001", result.Code)
+	assert.Equal(t, "Test Create Grant", result.Name)
+
+	// Verify in database
+	dbResult, err := service.GetGrantByUid(testUid)
+	assert.NoError(t, err)
+	assert.Equal(t, "TEST-CREATE-001", dbResult.Code)
+
+	// Clean up
+	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	assert.NoError(t, err)
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+}
+
+func TestUpdateGrant(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	testUid := "test-grant-update-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Insert test data
+	_, err := testsetup.TestSession.Run(
+		`CREATE (g:Grant {uid: $uid, code: "ORIG-001", name: "Original Grant"}) RETURN g`,
+		map[string]interface{}{"uid": testUid},
+	)
+	assert.NoError(t, err)
+
+	// Update grant
+	updatedGrant := &models.Grant{
+		Uid:  testUid,
+		Code: "UPDATED-001",
+		Name: "Updated Grant",
+	}
+
+	result, err := service.UpdateGrant(updatedGrant, userUid)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, "UPDATED-001", result.Code)
+	assert.Equal(t, "Updated Grant", result.Name)
+
+	// Verify in database
+	dbResult, err := service.GetGrantByUid(testUid)
+	assert.NoError(t, err)
+	assert.Equal(t, "UPDATED-001", dbResult.Code)
+
+	// Clean up
+	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	assert.NoError(t, err)
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+}
+
+func TestDeleteGrant(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	testUid := "test-grant-delete-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Insert test data
+	_, err := testsetup.TestSession.Run(
+		`CREATE (g:Grant {uid: $uid, code: "DELETE-001", name: "To Delete Grant"}) RETURN g`,
+		map[string]interface{}{"uid": testUid},
+	)
+	assert.NoError(t, err)
+
+	// Run the actual test (soft delete)
+	err = service.DeleteGrant(testUid, userUid)
+
+	// Assertions
+	assert.NoError(t, err)
+
+	// Verify soft delete (deleted flag should be true)
+	verifyResult, _ := testsetup.TestSession.Run(
+		`MATCH (g:Grant {uid: $uid}) RETURN g.deleted as deleted`,
+		map[string]interface{}{"uid": testUid},
+	)
+	if verifyResult.Next() {
+		deleted, _ := verifyResult.Record().Get("deleted")
+		assert.Equal(t, true, deleted)
+	}
+
+	// Clean up
+	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	assert.NoError(t, err)
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+}
+
+func TestGetGrants(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	testPrefix := "test-grants-list-" + uuid.New().String()
+	facilityCode := "B"
+
+	// Insert test data with facility relationship
+	for i := 1; i <= 3; i++ {
+		_, err := testsetup.TestSession.Run(
+			`MATCH (f:Facility {code: $facilityCode})
+			 CREATE (g:Grant {uid: $uid, code: $code, name: $name})
+			 CREATE (g)-[:BELONGS_TO_FACILITY]->(f)
+			 RETURN g`,
+			map[string]interface{}{
+				"uid":          testPrefix + "-" + string(rune('0'+i)),
+				"code":         "LIST-00" + string(rune('0'+i)),
+				"name":         "Test Grant " + string(rune('0'+i)),
+				"facilityCode": facilityCode,
+			},
+		)
+		assert.NoError(t, err)
+	}
+
+	// Run the actual test
+	results, totalCount, err := service.GetGrants("Test Grant", 1, 10, facilityCode)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, totalCount, int64(3))
+	assert.GreaterOrEqual(t, len(results), 3)
+
+	// Clean up
+	_, err = testsetup.TestSession.Run(`MATCH (g:Grant) WHERE g.uid STARTS WITH $prefix DETACH DELETE g`, map[string]interface{}{"prefix": testPrefix})
+	assert.NoError(t, err)
+}
+
+// ==================== Publication-Grant Connection Tests ====================
+
+func TestCreatePublicationWithGrants(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-with-grants-" + uuid.New().String()
+	grant1Uid := "test-grant1-" + uuid.New().String()
+	grant2Uid := "test-grant2-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create grants first
+	_, err := testsetup.TestSession.Run(
+		`CREATE (g1:Grant {uid: $uid1, code: "G1", name: "Grant One"})
+		 CREATE (g2:Grant {uid: $uid2, code: "G2", name: "Grant Two"})`,
+		map[string]interface{}{"uid1": grant1Uid, "uid2": grant2Uid},
+	)
+	assert.NoError(t, err)
+
+	// Create publication with grants
+	publication := &models.Publication{
+		Uid:   pubUid,
+		Title: "Test Publication with Grants",
+		Grants: []models.GrantRef{
+			{Uid: grant1Uid, Code: "G1", Name: "Grant One"},
+			{Uid: grant2Uid, Code: "G2", Name: "Grant Two"},
+		},
+	}
+
+	result, err := service.CreatePublication(publication, userUid)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, pubUid, result.Uid)
+	assert.Equal(t, 2, len(result.Grants))
+
+	// Verify relationships in database
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(dbResult.Grants))
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant) WHERE g.uid IN [$uid1, $uid2] DETACH DELETE g`, map[string]interface{}{"uid1": grant1Uid, "uid2": grant2Uid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
+
+func TestGetPublicationWithGrants(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-get-grants-" + uuid.New().String()
+	grantUid := "test-grant-get-" + uuid.New().String()
+
+	// Insert test data with HAS_GRANT relationship
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (g:Grant {uid: $grantUid, code: "TEST-G", name: "Test Grant"})
+		 CREATE (p)-[:HAS_GRANT]->(g)`,
+		map[string]interface{}{"pubUid": pubUid, "grantUid": grantUid},
+	)
+	assert.NoError(t, err)
+
+	// Run the actual test
+	result, err := service.GetPublicationByUid(pubUid)
+
+	// Assertions
+	assert.NoError(t, err)
+	assert.Equal(t, pubUid, result.Uid)
+	assert.Equal(t, 1, len(result.Grants))
+	assert.Equal(t, grantUid, result.Grants[0].Uid)
+	assert.Equal(t, "TEST-G", result.Grants[0].Code)
+	assert.Equal(t, "Test Grant", result.Grants[0].Name)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
+}
+
+func TestUpdatePublicationAddGrants(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-add-grants-" + uuid.New().String()
+	grantUid := "test-grant-add-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create publication without grants
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (g:Grant {uid: $grantUid, code: "NEW-G", name: "New Grant"})`,
+		map[string]interface{}{"pubUid": pubUid, "grantUid": grantUid},
+	)
+	assert.NoError(t, err)
+
+	// Update publication to add grants
+	publication := &models.Publication{
+		Uid:   pubUid,
+		Title: "Test Publication",
+		Grants: []models.GrantRef{
+			{Uid: grantUid, Code: "NEW-G", Name: "New Grant"},
+		},
+	}
+
+	_, err = service.UpdatePublication(publication, userUid)
+	assert.NoError(t, err)
+
+	// Verify relationships in database
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(dbResult.Grants))
+	assert.Equal(t, grantUid, dbResult.Grants[0].Uid)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
+
+func TestUpdatePublicationRemoveGrants(t *testing.T) {
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+	pubUid := "test-pub-remove-grants-" + uuid.New().String()
+	grantUid := "test-grant-remove-" + uuid.New().String()
+	userUid := "test-user-" + uuid.New().String()
+
+	// Create publication with grant
+	_, err := testsetup.TestSession.Run(
+		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
+		 CREATE (g:Grant {uid: $grantUid, code: "REMOVE-G", name: "To Remove Grant"})
+		 CREATE (p)-[:HAS_GRANT]->(g)`,
+		map[string]interface{}{"pubUid": pubUid, "grantUid": grantUid},
+	)
+	assert.NoError(t, err)
+
+	// Verify grant is connected
+	dbResult, err := service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(dbResult.Grants))
+
+	// Update publication to remove all grants
+	publication := &models.Publication{
+		Uid:    pubUid,
+		Title:  "Test Publication",
+		Grants: []models.GrantRef{}, // empty list
+	}
+
+	_, err = service.UpdatePublication(publication, userUid)
+	assert.NoError(t, err)
+
+	// Verify no grants connected
+	dbResult, err = service.GetPublicationByUid(pubUid)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(dbResult.Grants))
+
+	// Verify grant still exists (only relationship deleted)
+	grantResult, err := service.GetGrantByUid(grantUid)
+	assert.NoError(t, err)
+	assert.Equal(t, grantUid, grantResult.Uid)
+
+	// Clean up
+	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
+	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+}
