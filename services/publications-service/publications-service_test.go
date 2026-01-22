@@ -205,7 +205,7 @@ func TestGetResearchers(t *testing.T) {
 	}
 
 	// Run the actual test
-	results, totalCount, err := service.GetResearchers("TestLastName", 1, 10)
+	results, totalCount, err := service.GetResearchers("TestLastName", 1, 10, nil)
 
 	// Assertions
 	assert.NoError(t, err)

@@ -130,31 +130,31 @@ func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		search := c.QueryParam("search")
-		pagination := c.QueryParam("pagination")
-		sorting := c.QueryParam("sorting")
 
 		pagingObject := new(helpers.Pagination)
+		pagination := c.QueryParam("pagination")
 		json.Unmarshal([]byte(pagination), &pagingObject)
 
 		sortingObject := new([]helpers.Sorting)
+		sorting := c.QueryParam("sorting")
 		json.Unmarshal([]byte(sorting), &sortingObject)
 
 		filterObject := new([]helpers.ColumnFilter)
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		publications, totalCount, err := h.PublicationsService.GetPublications(search, pagingObject.Page, pagingObject.PageSize)
+		publications, totalCount, err := h.PublicationsService.GetPublications(search, pagingObject.Page, pagingObject.PageSize, sortingObject, filterObject)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting publications")
 			return echo.ErrInternalServerError
 		}
 
-		pagiantionResult := helpers.PaginationResult[models.Publication]{
+		paginationResult := helpers.PaginationResult[models.Publication]{
 			TotalCount: totalCount,
 			Data:       publications,
 		}
 
-		return c.JSON(200, pagiantionResult)
+		return c.JSON(200, paginationResult)
 	}
 }
 
@@ -273,7 +273,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		publications, _, err := h.PublicationsService.GetPublications(search, 1, 1_000_000)
+		publications, _, err := h.PublicationsService.GetPublications(search, 1, 1_000_000, sortingObject, filterObject)
 
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting publications")
@@ -477,12 +477,16 @@ func (h *PublicationsHandlers) GetResearchers() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
 		search := c.QueryParam("search")
-		pagination := c.QueryParam("pagination")
 
 		pagingObject := new(helpers.Pagination)
+		pagination := c.QueryParam("pagination")
 		json.Unmarshal([]byte(pagination), &pagingObject)
 
-		researchers, totalCount, err := h.PublicationsService.GetResearchers(search, pagingObject.Page, pagingObject.PageSize)
+		sortingObject := new([]helpers.Sorting)
+		sorting := c.QueryParam("sorting")
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		researchers, totalCount, err := h.PublicationsService.GetResearchers(search, pagingObject.Page, pagingObject.PageSize, sortingObject)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting researchers")
 			return echo.ErrInternalServerError
