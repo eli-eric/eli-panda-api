@@ -35,8 +35,7 @@ type Publication struct {
 	WebLink                 string                   `json:"webLink" neo4j:"prop,webLink"`                                                       // webLink is the web link of the publication
 	EidScopus               *string                  `json:"eidScopus" neo4j:"prop,eidScopus"`                                                   // eidScopus is the eid scopus of the publication
 	Language                string                   `json:"language" neo4j:"prop,language"`                                                     // language is the language of the publication
-	Grant                   *string                  `json:"grant" neo4j:"prop,grant"`                                                           // grant is the grant of the publication (deprecated, use GrantCb)
-	GrantCb                 *codebookModels.Codebook `json:"grantCb" neo4j:"rel,Grant,HAS_GRANT,uid,grantCb"`                                     // grantCb is the grant codebook of the publication
+	Grant                   *string                  `json:"grant" neo4j:"prop,grant"`                                                           // grant is the grant of the publication (deprecated)
 	Note                    *string                  `json:"note" neo4j:"prop,note"`                                                             // note is the note of the publication
 	AllAuthors              string                   `json:"allAuthors" neo4j:"prop,allAuthors"`                                                 // allAuthors is the all authors of the publication
 	AllAuthorsCount         int                      `json:"allAuthorsCount" neo4j:"prop,allAuthorsCount"`                                       // allAuthorsCount is the all authors count of the publication
@@ -53,6 +52,7 @@ type Publication struct {
 	ExperimentalSystemCb    *codebookModels.Codebook `json:"experimentalSystemCb" neo4j:"rel,ExperimentalSystem,HAS_EXPERIMENTAL_SYSTEM,uid,experimentalSystemCb"` // experimentalSystemCb is the experimental system codebook of the publication
 	UpdatedAt               *time.Time               `json:"updatedAt" neo4j:"prop,updatedAt"`                                                   // updatedAt is the time when the publication was last updated
 	EliResearchers          []ResearcherRef          `json:"eliResearchers"`                                                                     // eliResearchers are the connected researchers via HAS_RESEARCHER relationship
+	Grants                  []GrantRef               `json:"grants"`                                                                             // grants are the connected grants via HAS_GRANT relationship
 }
 
 type AuthorsDepartment struct {
@@ -64,6 +64,12 @@ type ResearcherRef struct {
 	Uid       string `json:"uid"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
+}
+
+type GrantRef struct {
+	Uid  string `json:"uid"`
+	Code string `json:"code"`
+	Name string `json:"name"`
 }
 
 type WosAPIResponse struct {

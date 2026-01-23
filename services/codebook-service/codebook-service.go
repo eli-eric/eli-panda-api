@@ -97,8 +97,6 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 			codebookList, err = svc.systemsService.GetSystemAttributesCodebook(facilityCode)
 		case "EXPERIMENTAL_SYSTEM":
 			codebookList, err = svc.publicationsService.GetExperimentalSystemsAutocomplete(searchString, limit, facilityCode)
-		case "GRANT":
-			codebookList, err = svc.publicationsService.GetGrantsAutocomplete(searchString, limit, facilityCode)
 		case "USER_EXPERIMENT":
 			codebookList, err = svc.publicationsService.GetUserExperimentsAutocomplete(searchString, limit, facilityCode)
 		case "COUNTRY":
@@ -323,7 +321,7 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.USER_CALL_CODEBOOK,
 		models.USER_EXPERIMENT_CODEBOOK,
 		models.EXPERIMENTAL_SYSTEM_CODEBOOK,
-		models.GRANT_CODEBOOK,
+		models.GRANT_GROUP_CODEBOOK,
 		models.MEDIA_TYPE_CODEBOOK,
 	}
 }
@@ -379,6 +377,6 @@ var codebooksMap = map[string]models.CodebookType{
 	"USER_EXPERIMENT":            models.USER_EXPERIMENT_CODEBOOK,
 	"COUNTRY":                    models.COUNTRY_CODEBOOK,
 	"EXPERIMENTAL_SYSTEM":        models.EXPERIMENTAL_SYSTEM_CODEBOOK,
-	"GRANT":                      models.GRANT_CODEBOOK,
+	"GRANT_GROUP":                models.GRANT_GROUP_CODEBOOK,
 	"MEDIA_TYPE":                 models.MEDIA_TYPE_CODEBOOK,
 }

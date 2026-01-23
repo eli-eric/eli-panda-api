@@ -34,4 +34,15 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 	e.PUT("/v1/researcher/:uid", m.Authorization(h.UpdateResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.DELETE("/v1/researcher/:uid", m.Authorization(h.DeleteResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+
+	// Grants CRUD
+	e.GET("/v1/grants", m.Authorization(h.GetGrants(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
+
+	e.GET("/v1/grant/:uid", m.Authorization(h.GetGrant(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
+
+	e.POST("/v1/grant", m.Authorization(h.CreateGrant(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+
+	e.PUT("/v1/grant/:uid", m.Authorization(h.UpdateGrant(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+
+	e.DELETE("/v1/grant/:uid", m.Authorization(h.DeleteGrant(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 }
