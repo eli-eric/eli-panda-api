@@ -304,7 +304,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			"Title",
 			"Authors",
 			"Authors Count",
-			"ELI Authors",
+			"ELI Authors(old)",
 			"ELI Authors Count",
 			"ELI Researchers",
 			"Journal Title",
@@ -321,7 +321,9 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			"Abstract",
 			"Keywords",
 			"OECD Ford",
-			"Grant",
+			"Grant(old)",
+			"Grants",
+			"Other Grants",
 			"WOS Number",
 			"ISSN",
 			"E-ISSN",
@@ -386,30 +388,38 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				eliResearchers = strings.Join(researcherNames, "; ")
 			}
 			grant := ""
-			if len(item.Grants) > 0 {
-				grantNames := make([]string, len(item.Grants))
-				for i, g := range item.Grants {
-					grantNames[i] = g.Name
-				}
-				grant = strings.Join(grantNames, "; ")
-			} else if item.Grant != nil {
+			if item.Grant != nil {
 				grant = *item.Grant
+			}
+			grants := ""
+			if len(item.Grants) > 0 {
+				grantCodes := make([]string, len(item.Grants))
+				for i, g := range item.Grants {
+					grantCodes[i] = g.Code
+				}
+				grants = strings.Join(grantCodes, "; ")
+			} else if item.Grant != nil {
+				grants = *item.Grant
+			}
+			otherGrants := ""
+			if item.OtherGrants != nil {
+				otherGrants = *item.OtherGrants
 			}
 			wosNumber := ""
 			if item.WosNumber != nil {
-				wosNumber = *item.WosNumber
+				wosNumber = "=\"" + *item.WosNumber + "\""
 			}
 			issn := ""
 			if item.Issn != nil {
-				issn = *item.Issn
+				issn = "=\"" + *item.Issn + "\""
 			}
 			eIssn := ""
 			if item.EIssn != nil {
-				eIssn = *item.EIssn
+				eIssn = "=\"" + *item.EIssn + "\""
 			}
 			eidScopus := ""
 			if item.EidScopus != nil {
-				eidScopus = *item.EidScopus
+				eidScopus = "=\"" + *item.EidScopus + "\""
 			}
 			note := ""
 			if item.Note != nil {
@@ -445,6 +455,8 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				item.Keywords,
 				oecdFord,
 				grant,
+				grants,
+				otherGrants,
 				wosNumber,
 				issn,
 				eIssn,

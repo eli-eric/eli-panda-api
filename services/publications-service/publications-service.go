@@ -324,6 +324,7 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 			userExperimentCb: CASE WHEN userExperimentCb IS NOT NULL THEN {uid: userExperimentCb.uid, name: userExperimentCb.name, code: userExperimentCb.code} ELSE null END,
 			experimentalSystem: n.experimentalSystem,
 			experimentalSystemCb: CASE WHEN experimentalSystemCb IS NOT NULL THEN {uid: experimentalSystemCb.uid, name: experimentalSystemCb.name, code: experimentalSystemCb.code} ELSE null END,
+			otherGrants: n.otherGrants,
 			updatedAt: n.updatedAt
 		} as n
 	`
