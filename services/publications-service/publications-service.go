@@ -488,12 +488,12 @@ func buildResearchersQuery(searchText string, skip, limit int, sorting *[]helper
 
 	if searchText != "" {
 		query.Query += `
-			AND (toLower(n.firstName) CONTAINS toLower($search)
-				OR toLower(n.lastName) CONTAINS toLower($search)
-				OR toLower(n.identificationNumber) CONTAINS toLower($search)
-				OR toLower(n.orcid) CONTAINS toLower($search)
-				OR toLower(n.scopusId) CONTAINS toLower($search)
-				OR toLower(n.researcherId) CONTAINS toLower($search))
+			AND (apoc.text.clean(n.firstName) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.lastName) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.identificationNumber) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.orcid) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.scopusId) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.researcherId) CONTAINS apoc.text.clean($search))
 		`
 		query.Parameters["search"] = searchText
 	}
@@ -537,12 +537,12 @@ func buildResearchersCountQuery(searchText string) helpers.DatabaseQuery {
 
 	if searchText != "" {
 		query.Query += `
-			AND (toLower(n.firstName) CONTAINS toLower($search)
-				OR toLower(n.lastName) CONTAINS toLower($search)
-				OR toLower(n.identificationNumber) CONTAINS toLower($search)
-				OR toLower(n.orcid) CONTAINS toLower($search)
-				OR toLower(n.scopusId) CONTAINS toLower($search)
-				OR toLower(n.researcherId) CONTAINS toLower($search))
+			AND (apoc.text.clean(n.firstName) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.lastName) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.identificationNumber) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.orcid) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.scopusId) CONTAINS apoc.text.clean($search)
+				OR apoc.text.clean(n.researcherId) CONTAINS apoc.text.clean($search))
 		`
 		query.Parameters["search"] = searchText
 	}
