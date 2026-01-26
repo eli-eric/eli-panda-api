@@ -158,6 +158,13 @@ type SystemsMovement struct {
 	SystemsToMoveUids     []string `json:"systemsToMoveUids"`
 }
 
+type SystemCopyRequest struct {
+	SourceSystemUID              string `json:"sourceSystemUid"`
+	DestinationSystemUID         string `json:"destinationSystemUid"`
+	CopyOnlySourceSystemChildren bool   `json:"copyOnlySourceSystemChildren"`
+	CopyRecursive                bool   `json:"copyRecursive"`
+}
+
 type JiraSystemImportRequest struct {
 	Name            string `json:"name"`
 	Code            string `json:"code"`

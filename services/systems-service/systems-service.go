@@ -72,9 +72,15 @@ type ISystemsService interface {
 	MovePhysicalItem(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 	ReplacePhysicalItems(movement *models.PhysicalItemMovement, userUID, facilityCode string) (destinationSystemUid string, err error)
 	MoveSystems(movement *models.SystemsMovement, userUID string) (destinationSystemUid string, err error)
+	CopySystem(request *models.SystemCopyRequest, facilityCode string, userUID string) (createdRootUids []string, err error)
 	GetPhysicalItemsBySystemUidRecursive(systemUid string) (result []models.SystemPhysicalItemInfo, err error)
 	AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error)
 }
+
+var (
+	errSourceSystemNotFound      = errors.New("source system not found")
+	errDestinationSystemNotFound = errors.New("destination system not found")
+)
 
 // Create new security service instance
 func NewSystemsService(settings *config.Config, driver *neo4j.Driver) ISystemsService {
@@ -1129,6 +1135,63 @@ func ValidateSystemsMovement(movement *models.SystemsMovement) error {
 		return errors.New(resultErr)
 	}
 
+	return nil
+}
+
+func (svc *SystemsService) CopySystem(request *models.SystemCopyRequest, facilityCode string, userUID string) (createdRootUids []string, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	err = ValidateSystemCopyRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// safety checks: both source and destination must exist in the same facility
+	sourceExists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, SystemExistsInFacilityQuery(request.SourceSystemUID, facilityCode))
+	if err != nil {
+		return nil, err
+	}
+	if !sourceExists {
+		return nil, errSourceSystemNotFound
+	}
+
+	destinationExists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, SystemExistsInFacilityQuery(request.DestinationSystemUID, facilityCode))
+	if err != nil {
+		return nil, err
+	}
+	if !destinationExists {
+		return nil, errDestinationSystemNotFound
+	}
+
+	type copyResult struct {
+		UIDs []string `json:"uids"`
+	}
+
+	res, err := helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[copyResult](session, CopySystemsQuery(request, facilityCode, userUID))
+	if err != nil {
+		return nil, err
+	}
+
+	return res.UIDs, nil
+}
+
+func ValidateSystemCopyRequest(request *models.SystemCopyRequest) error {
+	erros := make([]string, 0)
+	if request == nil {
+		return errors.New("missing request")
+	}
+	request.SourceSystemUID = strings.TrimSpace(request.SourceSystemUID)
+	request.DestinationSystemUID = strings.TrimSpace(request.DestinationSystemUID)
+
+	if request.SourceSystemUID == "" {
+		erros = append(erros, "missing source system")
+	}
+	if request.DestinationSystemUID == "" {
+		erros = append(erros, "missing destination parent system")
+	}
+	if len(erros) > 0 {
+		return errors.New(strings.Join(erros[:], ", "))
+	}
 	return nil
 }
 

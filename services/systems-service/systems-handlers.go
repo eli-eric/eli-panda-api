@@ -60,6 +60,7 @@ type ISystemsHandlers interface {
 	MovePhysicalItem() echo.HandlerFunc
 	ReplacePhysicalItems() echo.HandlerFunc
 	MoveSystems() echo.HandlerFunc
+	CopySystem() echo.HandlerFunc
 	AssignSpareItem() echo.HandlerFunc
 	GetSystemSparePartsDetail() echo.HandlerFunc
 }
@@ -1427,6 +1428,57 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return helpers.BadRequest(err.Error())
+	}
+}
+
+// Swagger documentation for CopySystem
+// @Summary Copy system(s)
+// @Description Copies system (or its children) under an existing destination parent system. Copies only Name, SystemLevel, HAS_SUBSYSTEM and HAS_SYSTEM_TYPE.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.SystemCopyRequest true "Copy system request model"
+// @Success 201 {array} string "Created root system UID(s)"
+// @Failure 400 {string} string "Bad request"
+// @Failure 404 {string} string "Source or destination system not found"
+// @Failure 500 {string} string "Internal server error"
+// @Router /v1/systems/copy [put]
+func (h *SystemsHandlers) CopySystem() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		request := new(models.SystemCopyRequest)
+		err := c.Bind(request)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
+		}
+
+		request.SourceSystemUID = strings.TrimSpace(request.SourceSystemUID)
+		request.DestinationSystemUID = strings.TrimSpace(request.DestinationSystemUID)
+
+		if request.SourceSystemUID == "" {
+			return helpers.BadRequest("sourceSystemUid is required")
+		}
+		if request.DestinationSystemUID == "" {
+			return helpers.BadRequest("destinationSystemUid is required")
+		}
+
+		userUID := c.Get("userUID").(string)
+		facilityCode := c.Get("facilityCode").(string)
+
+		createdRootUids, err := h.systemsService.CopySystem(request, facilityCode, userUID)
+		if err == nil {
+			return c.JSON(http.StatusCreated, createdRootUids)
+		}
+
+		log.Error().Msg(err.Error())
+		if err == errSourceSystemNotFound || err == errDestinationSystemNotFound {
+			return c.String(http.StatusNotFound, err.Error())
+		}
+		if strings.Contains(err.Error(), "missing") {
+			return c.String(http.StatusBadRequest, err.Error())
+		}
+		return echo.ErrInternalServerError
 	}
 }
 
