@@ -105,5 +105,8 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.POST("/v1/systems/move", m.Authorization(h.MoveSystems(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
+	// copy system(s) under an existing destination parent system
+	e.PUT("/v1/systems/copy", m.Authorization(h.CopySystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
 	e.POST("/v1/system/:systemUid/assign-spare", m.Authorization(h.AssignSpareItem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 }
