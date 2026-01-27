@@ -122,6 +122,21 @@ type SystemType struct {
 	SystemAttribute *models.Codebook `json:"systemAttribute,omitempty" neo4j:"rel,SystemAttribute,HAS_SYSTEM_ATTRIBUTE,uid,systemAttribute"`
 }
 
+// SystemTypeTreeItem represents a system type in the tree response
+type SystemTypeTreeItem struct {
+	UID  string `json:"uid"`
+	Name string `json:"name"`
+	Code string `json:"code"`
+}
+
+// SystemTypeGroupTreeItem represents a system type group with its children in tree response
+type SystemTypeGroupTreeItem struct {
+	UID      string               `json:"uid"`
+	Name     string               `json:"name"`
+	Code     string               `json:"code"`
+	Children []SystemTypeTreeItem `json:"children"`
+}
+
 type SystemWithAllDetails struct {
 	System
 	ParentSystem SystemSimpleResponse `json:"parentSystem"`
