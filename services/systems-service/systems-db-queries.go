@@ -672,6 +672,7 @@ func GetControlSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 	allowed := map[string]string{
 		"name":         "result.name",
 		"code":         "result.code",
+		"systemType":   "result.systemType.name",
 		"createdBy":    "result.createdBy",
 		"lastUpdateBy": "result.lastUpdateBy",
 		"zone":         "result.zone.code",
@@ -777,6 +778,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		parentPath: parentPath,
 		createdBy: createdBy,
 		lastUpdateBy: lastUpdateBy,
+		systemType: case when st is not null then {uid: st.uid, name: st.name, code: st.code} else null end,
 		zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 		location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end
 	} AS result
@@ -858,6 +860,7 @@ func GetNewSystemCodesPreviewQuery(systemTypeUID string, zoneUID string, systemC
 		parentPath: NULL,
 		createdBy: "",
 		lastUpdateBy: "",
+		systemType: {uid: st.uid, name: st.name, code: st.code},
 		zone: {uid: z.uid, name: z.name, code: z.code},
 		location: NULL
 	} AS result
@@ -918,6 +921,7 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 		parentPath: NULL,
 		createdBy: coalesce(u.username, u.uid, ""),
 		lastUpdateBy: coalesce(u.username, u.uid, ""),
+		systemType: {uid: st.uid, name: st.name, code: st.code},
 		zone: {uid: z.uid, name: z.name, code: z.code},
 		location: NULL
 	} AS result

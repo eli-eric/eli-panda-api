@@ -76,6 +76,7 @@ type SystemCodesResult struct {
 	ParentPath   []SystemSimpleResponse `json:"parentPath"`
 	CreatedBy    string                 `json:"createdBy"`
 	LastUpdateBy string                 `json:"lastUpdateBy"`
+	SystemType   *models.Codebook       `json:"systemType,omitempty"`
 	Zone         *models.Codebook       `json:"zone,omitempty"`
 	Location     *models.Codebook       `json:"location,omitempty"`
 }

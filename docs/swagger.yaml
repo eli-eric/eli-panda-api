@@ -866,6 +866,8 @@ definitions:
         items:
           $ref: '#/definitions/models.SystemSimpleResponse'
         type: array
+      systemType:
+        $ref: '#/definitions/models.Codebook'
       uid:
         type: string
       zone:

@@ -3654,6 +3654,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SystemSimpleResponse"
                     }
                 },
+                "systemType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
                 "uid": {
                     "type": "string"
                 },
