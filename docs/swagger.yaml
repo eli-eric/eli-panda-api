@@ -580,6 +580,9 @@ definitions:
         allOf:
         - $ref: '#/definitions/models.Codebook'
         description: openAccessType is the open access type of the publication
+      otherGrants:
+        description: otherGrants are the other grants of the publication
+        type: string
       pages:
         description: pages is the pages of the publication
         type: string
@@ -1000,6 +1003,28 @@ definitions:
         items:
           $ref: '#/definitions/models.SystemTreeUid'
         type: array
+      uid:
+        type: string
+    type: object
+  models.SystemTypeGroupTreeItem:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.SystemTypeTreeItem'
+        type: array
+      code:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SystemTypeTreeItem:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
       uid:
         type: string
     type: object
@@ -2352,6 +2377,32 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new system with code
+      tags:
+      - Systems
+  /v1/system/system-type-groups/tree:
+    get:
+      description: Returns system type groups with their system types as a tree structure
+      parameters:
+      - description: Search filter for name or code (case-insensitive)
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemTypeGroupTreeItem'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            type: string
+      security:
+      - BearerAuth: []
+      summary: Get system type groups as tree
       tags:
       - Systems
   /v1/systems/copy:

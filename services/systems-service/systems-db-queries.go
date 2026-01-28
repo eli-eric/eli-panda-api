@@ -1701,6 +1701,41 @@ func GetSystemTypesBySystemTypeGroupQuery(systemTypeGroupUid, facilityCode strin
 	return result
 }
 
+func GetSystemTypeGroupsTreeQuery(facilityCode string, search string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (f:Facility{code: $facilityCode})
+	MATCH (g:SystemTypeGroup)-[:BELONGS_TO_FACILITY]->(f)
+	OPTIONAL MATCH (g)-[:CONTAINS_SYSTEM_TYPE]->(st:SystemType)
+
+	WITH g, collect(st) as systemTypes
+
+	// Filter children: search in code (priority) and name
+	WITH g, [st IN systemTypes WHERE st IS NOT NULL AND (
+		$search = ''
+		OR toLower(coalesce(st.code, '')) CONTAINS $search
+		OR toLower(st.name) CONTAINS $search
+	) | {uid: st.uid, name: st.name, code: st.code}] as children
+
+	// Only return groups that have matching children (or all groups if no search)
+	WHERE $search = '' OR size(children) > 0
+
+	RETURN {
+		uid: g.uid,
+		name: g.name,
+		code: coalesce(g.code, ''),
+		children: children
+	} as result
+	ORDER BY result.name
+	`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["search"] = strings.ToLower(search)
+
+	return result
+}
+
 func DeleteSystemTypeGroupQuery(systemTypeGroupUid string) (result helpers.DatabaseQuery) {
 	result.Query = `MATCH(n:SystemTypeGroup{uid: $systemTypeGroupUid}) DETACH DELETE n RETURN true as result`
 	result.Parameters = make(map[string]interface{})

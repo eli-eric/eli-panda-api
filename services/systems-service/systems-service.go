@@ -47,6 +47,7 @@ type ISystemsService interface {
 	GetSystemHistory(uid string) (result []models.SystemHistory, err error)
 	GetSystemSparePartsDetail(systemId string, facilityCode string) (result models.SystemSparePartsDetail, err error)
 	GetSystemTypeGroups(facilityCode string) (result []codebookModels.Codebook, err error)
+	GetSystemTypeGroupsTree(facilityCode string, search string) (result []models.SystemTypeGroupTreeItem, err error)
 	GetSystemTypesBySystemTypeGroup(systemTypeGroupUid, facilityCode string) (result []models.SystemType, err error)
 	DeleteSystemTypeGroup(systemTypeGroupUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount)
 	DeleteSystemType(systemTypeUid string) (err error, relatedNodeLabels []helpers.RelatedNodeLabelAmount)
@@ -670,6 +671,17 @@ func (svc *SystemsService) GetSystemTypeGroups(facilityCode string) (result []co
 
 	query := GetSystemTypeGroupsQuery(facilityCode)
 	result, err = helpers.GetNeo4jArrayOfNodes[codebookModels.Codebook](session, query)
+
+	helpers.ProcessArrayResult(&result, err)
+
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemTypeGroupsTree(facilityCode string, search string) (result []models.SystemTypeGroupTreeItem, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemTypeGroupsTreeQuery(facilityCode, search)
+	result, err = helpers.GetNeo4jArrayOfNodes[models.SystemTypeGroupTreeItem](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
 
