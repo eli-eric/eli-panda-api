@@ -40,6 +40,7 @@ type ISystemsHandlers interface {
 	UpdatePhysicalItemProperties() echo.HandlerFunc
 	GetSystemHistory() echo.HandlerFunc
 	GetSystemTypeGroups() echo.HandlerFunc
+	GetSystemTypeGroupsTree() echo.HandlerFunc
 	GetSystemTypesBySystemTypeGroup() echo.HandlerFunc
 	DeleteSystemTypeGroup() echo.HandlerFunc
 	DeleteSystemType() echo.HandlerFunc
@@ -685,6 +686,33 @@ func (h *SystemsHandlers) GetSystemTypeGroups() echo.HandlerFunc {
 		facilityCode := c.Get("facilityCode").(string)
 
 		items, err := h.systemsService.GetSystemTypeGroups(facilityCode)
+
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		} else {
+			log.Error().Msg(err.Error())
+			return echo.ErrInternalServerError
+		}
+	}
+}
+
+// @Summary Get system type groups as tree
+// @Description Returns system type groups with their system types as a tree structure
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param search query string false "Search filter for name or code (case-insensitive)"
+// @Success 200 {array} models.SystemTypeGroupTreeItem
+// @Failure 500 {string} string "Internal server error"
+// @Router /v1/system/system-type-groups/tree [get]
+func (h *SystemsHandlers) GetSystemTypeGroupsTree() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		facilityCode := c.Get("facilityCode").(string)
+		search := c.QueryParam("search")
+
+		items, err := h.systemsService.GetSystemTypeGroupsTree(facilityCode, search)
 
 		if err == nil {
 			return c.JSON(http.StatusOK, items)

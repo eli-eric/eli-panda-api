@@ -1730,6 +1730,48 @@
                 }
             }
         },
+        "/v1/system/system-type-groups/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns system type groups with their system types as a tree structure",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system type groups as tree",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search filter for name or code (case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemTypeGroupTreeItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/system/{systemUid}/assign-spare": {
             "post": {
                 "security": [
@@ -3179,6 +3221,10 @@
                         }
                     ]
                 },
+                "otherGrants": {
+                    "description": "otherGrants are the other grants of the publication",
+                    "type": "string"
+                },
                 "pages": {
                     "description": "pages is the pages of the publication",
                     "type": "string"
@@ -3605,6 +3651,9 @@
                         "$ref": "#/definitions/models.SystemSimpleResponse"
                     }
                 },
+                "systemType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
                 "uid": {
                     "type": "string"
                 },
@@ -3814,6 +3863,40 @@
                     "items": {
                         "$ref": "#/definitions/models.SystemTreeUid"
                     }
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemTypeGroupTreeItem": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemTypeTreeItem"
+                    }
+                },
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemTypeTreeItem": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
                 },
                 "uid": {
                     "type": "string"
