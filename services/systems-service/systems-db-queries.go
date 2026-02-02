@@ -1119,6 +1119,211 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	return result
 }
 
+// GetSystemsHierarchyNodesQuery returns all systems that have subsystems (parents-only hierarchy nodes)
+// along with the UIDs of their child nodes that are also parents.
+func GetSystemsHierarchyNodesQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+
+	result.Query = `
+	MATCH (f:Facility{code:$facilityCode})
+	MATCH (p:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE (p)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
+	OPTIONAL MATCH (p)-[:HAS_SUBSYSTEM]->(cp:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE (cp)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
+	WITH p, collect(DISTINCT cp.uid) as childUids
+	WITH p, childUids,
+		exists {
+			MATCH (p)-[:HAS_SUBSYSTEM]->(leaf:System{deleted:false})
+			WHERE NOT (leaf)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
+		} as hasLeafChildren
+	RETURN {uid: p.uid, name: p.name, systemCode: p.systemCode, hasLeafChildren: hasLeafChildren, childUids: childUids} as result
+	ORDER BY toLower(result.name)
+	`
+	result.ReturnAlias = "result"
+	return result
+}
+
+func GetSystemLeavesOrderByClauses(sorting *[]helpers.Sorting) string {
+	if sorting == nil || len(*sorting) == 0 {
+		return " ORDER BY toLower(systems.name) ASC "
+	}
+
+	allowed := map[string]string{
+		"name":       "toLower(systems.name)",
+		"systemCode": "toLower(systems.systemCode)",
+		"code":       "toLower(systems.systemCode)",
+		"systemType": "toLower(systems.systemType.name)",
+		"zone":       "toLower(systems.zone.code)",
+		"location":   "toLower(systems.location.name)",
+		"eun":        "toLower(systems.physicalItem.eun)",
+	}
+
+	clauses := make([]string, 0, len(*sorting))
+	for _, s := range *sorting {
+		expr, ok := allowed[s.ID]
+		if !ok {
+			continue
+		}
+		clauses = append(clauses, fmt.Sprintf("%s %s", expr, helpers.GetSortingDirectionString(s.DESC)))
+	}
+
+	if len(clauses) == 0 {
+		return " ORDER BY toLower(systems.name) ASC "
+	}
+	return " ORDER BY " + strings.Join(clauses, ", ") + " "
+}
+
+func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["parentUID"] = parentUID
+	result.Parameters["search"] = strings.ToLower(strings.TrimSpace(searchString))
+
+	if pagination == nil {
+		pagination = &helpers.Pagination{Page: 1, PageSize: 100}
+	}
+	if pagination.Page <= 0 {
+		pagination.Page = 1
+	}
+	if pagination.PageSize <= 0 {
+		pagination.PageSize = 100
+	}
+	result.Parameters["limit"] = pagination.PageSize
+	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
+
+	result.Query = `
+	MATCH(f:Facility{code:$facilityCode})
+	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
+	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search)
+	`
+
+	// Optional filters (kept intentionally small for this endpoint)
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "zone"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_ZONE]->(zone:Zone{uid:$filterZoneUID}) `
+		result.Parameters["filterZoneUID"] = (*filterVal).UID
+	} else {
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone) `
+	}
+
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "systemType"); filterVal != nil {
+		result.Query += ` WITH sys, zone MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st:SystemType{uid:$filterSystemTypeUID}) `
+		result.Parameters["filterSystemTypeUID"] = (*filterVal).UID
+	} else {
+		result.Query += ` WITH sys, zone OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st) `
+	}
+
+	result.Query += `
+	WITH sys, zone, st
+	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
+	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)
+	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
+	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
+	CALL {
+		WITH sys
+		OPTIONAL MATCH fullPath = (root{deleted: false})-[:HAS_SUBSYSTEM*1..50]->(sys)
+		WHERE NOT (root)<-[:HAS_SUBSYSTEM]-()
+		RETURN CASE
+			WHEN fullPath IS NOT NULL
+			THEN [n in nodes(fullPath)[..-1] | {uid: n.uid, name: n.name}]
+			ELSE NULL
+		END as parentPath
+	}
+	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
+	OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order)
+
+	RETURN DISTINCT {
+		uid: sys.uid,
+		description: sys.description,
+		name: sys.name,
+		parentPath: parentPath,
+		hasSubsystems: case when subsys is not null then true else false end,
+		sparesIn: count(distinct spareIN),
+		sparesOut: count(distinct spareOUT),
+		systemCode: sys.systemCode,
+		systemAlias: sys.systemAlias,
+		systemLevel: sys.systemLevel,
+		minimalSpareParstCount: sys.minimalSpareParstCount,
+		sparePartsCoverageSum: sys.sparePartsCoverageSum,
+		sp_coverage: sys.sp_coverage,
+		miniImageUrl: split(sys.miniImageUrl, ";"),
+		systemLevelOrder: case sys.systemLevel WHEN 'TECHNOLOGY_UNIT' THEN 1 WHEN 'KEY_SYSTEMS' THEN 2 ELSE 3 END,
+		isTechnologicalUnit: sys.isTechnologicalUnit,
+		location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end,
+		zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
+		systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
+		responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+		importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,
+		lastUpdateTime: sys.lastUpdateTime,
+		lastUpdateBy: sys.lastUpdateBy,
+		physicalItem: case when physicalItem is not null then {
+			uid: physicalItem.uid,
+			eun: physicalItem.eun,
+			serialNumber: physicalItem.serialNumber,
+			orderNumber: case when order is not null then order.orderNumber else null end,
+			orderUid: case when order is not null then order.uid else null end,
+			price: case when ol is not null then apoc.number.format(ol.price, '#,##0') else null end,
+			currency: physicalItem.currency,
+			itemUsage: case when itemUsage is not null then {uid: itemUsage.uid, name: itemUsage.name} else null end,
+			catalogueItem: case when catalogueItem is not null then {
+				uid: catalogueItem.uid,
+				name: catalogueItem.name,
+				catalogueNumber: catalogueItem.catalogueNumber,
+				category: case when ciCategory is not null then {uid: ciCategory.uid, name: ciCategory.name} else null end,
+				supplier: case when supplier is not null then {uid: supplier.uid, name: supplier.name} else null end
+			} else null end
+		} else null end,
+		statistics: {
+			subsystemsCount: count(DISTINCT subsys),
+			minimalSpareParstCount: sys.minimalSpareParstCount,
+			sparePartsCoverageSum: sys.sparePartsCoverageSum,
+			sp_coverage: sys.sp_coverage
+		}
+	} AS systems
+	`
+
+	result.Query += GetSystemLeavesOrderByClauses(sorting)
+	result.Query += ` SKIP $skip LIMIT $limit `
+
+	result.ReturnAlias = "systems"
+	return result
+}
+
+func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string, searchString string, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["parentUID"] = parentUID
+	result.Parameters["search"] = strings.ToLower(strings.TrimSpace(searchString))
+
+	result.Query = `
+	MATCH(f:Facility{code:$facilityCode})
+	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
+	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search)
+	`
+
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "zone"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_ZONE]->(:Zone{uid:$filterZoneUID}) `
+		result.Parameters["filterZoneUID"] = (*filterVal).UID
+	}
+
+	if filterVal := helpers.GetFilterValueCodebook(filtering, "systemType"); filterVal != nil {
+		result.Query += ` MATCH (sys)-[:HAS_SYSTEM_TYPE]->(:SystemType{uid:$filterSystemTypeUID}) `
+		result.Parameters["filterSystemTypeUID"] = (*filterVal).UID
+	}
+
+	result.Query += ` RETURN COUNT(DISTINCT sys) as count `
+	result.ReturnAlias = "count"
+	return result
+}
+
 func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})

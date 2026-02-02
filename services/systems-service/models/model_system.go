@@ -36,6 +36,26 @@ type SystemTreeUid struct {
 	Children *[]SystemTreeUid `json:"children"`
 }
 
+// SystemHierarchyNode is a lightweight node used by the System Hierarchy Explorer.
+// It intentionally contains only navigation fields.
+type SystemHierarchyNode struct {
+	UID             string                `json:"uid"`
+	Name            string                `json:"name"`
+	SystemCode      *string               `json:"systemCode,omitempty"`
+	HasLeafChildren bool                  `json:"hasLeafChildren"`
+	Children        []SystemHierarchyNode `json:"children"`
+}
+
+// SystemHierarchyNodeRow is an internal DTO for mapping Neo4j query results.
+// It represents a single hierarchy node with the UIDs of its child nodes (only parents).
+type SystemHierarchyNodeRow struct {
+	UID             string   `json:"uid"`
+	Name            string   `json:"name"`
+	SystemCode      *string  `json:"systemCode,omitempty"`
+	HasLeafChildren bool     `json:"hasLeafChildren"`
+	ChildUids       []string `json:"childUids"`
+}
+
 type PhysicalItem struct {
 	UID           string                        `json:"uid"`
 	ItemUsage     *models.Codebook              `json:"itemUsage,omitempty"`

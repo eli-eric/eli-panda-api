@@ -4367,6 +4367,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/leaves": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a paginated list of leaf systems (systems without subsystems) directly under the given parent system.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get leaf systems for a parent",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent system UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination JSON (e.g. {\\",
+                        "name": "pagination",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/{uid}/relationships": {
             "get": {
                 "security": [
@@ -4683,6 +4745,37 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/systems/hierarchy": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a hierarchy tree containing only systems that have subsystems (no leaves).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get systems hierarchy (parents only)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemHierarchyNode"
+                            }
                         }
                     },
                     "500": {
@@ -6889,6 +6982,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "systemLevel": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemHierarchyNode": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemHierarchyNode"
+                    }
+                },
+                "hasLeafChildren": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "systemCode": {
                     "type": "string"
                 },
                 "uid": {
