@@ -46,6 +46,17 @@ func NewCatalogueHandlers(catalogueSvc ICatalogueService) ICatalogueHandlers {
 	return &CatalogueHandlers{catalogueService: catalogueSvc}
 }
 
+// GetCataloguecategoriesByParentPath godoc
+// @Summary Get catalogue categories by parent path
+// @Description Returns catalogue categories under the provided parent path (optional).
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param path path string false "Parent path (wildcard)"
+// @Success 200 {array} models.CatalogueCategory
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/categories [get]
+// @Router /v1/catalogue/categories/{path} [get]
 func (h *CatalogueHandlers) GetCataloguecategoriesByParentPath() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -63,6 +74,21 @@ func (h *CatalogueHandlers) GetCataloguecategoriesByParentPath() echo.HandlerFun
 	}
 }
 
+// GetCatalogueItems godoc
+// @Summary Get catalogue items
+// @Description Returns a paginated list of catalogue items.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param search query string false "Search text"
+// @Param categoryUID query string false "Category UID"
+// @Param page query int false "Page"
+// @Param pageSize query int false "Page size"
+// @Param columnFilter query string false "Column filter JSON"
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Success 200 {object} helpers.PaginationResult[models.CatalogueItemSimple]
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/items [get]
 func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -96,6 +122,16 @@ func (h *CatalogueHandlers) GetCatalogueItems() echo.HandlerFunc {
 	}
 }
 
+// GetCatalogueItemWithDetailsByUid godoc
+// @Summary Get catalogue item detail
+// @Description Returns catalogue item with details by UID.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Catalogue item UID"
+// @Success 200 {object} models.CatalogueItem
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item/{uid} [get]
 func (h *CatalogueHandlers) GetCatalogueItemWithDetailsByUid() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -116,6 +152,16 @@ func (h *CatalogueHandlers) GetCatalogueItemWithDetailsByUid() echo.HandlerFunc 
 	}
 }
 
+// GetCatalogueCategoryWithDetailsByUid godoc
+// @Summary Get catalogue category detail
+// @Description Returns catalogue category with details by UID.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Success 200 {object} models.CatalogueCategory
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid} [get]
 func (h *CatalogueHandlers) GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -136,6 +182,17 @@ func (h *CatalogueHandlers) GetCatalogueCategoryWithDetailsByUid() echo.HandlerF
 	}
 }
 
+// DeleteCatalogueCategory godoc
+// @Summary Delete catalogue category
+// @Description Deletes a catalogue category by UID.
+// @Tags Catalogue
+// @Produce plain
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Success 200 {string} string
+// @Failure 403 "Forbidden"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid} [delete]
 func (h *CatalogueHandlers) DeleteCatalogueCategory() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -159,6 +216,16 @@ func (h *CatalogueHandlers) DeleteCatalogueCategory() echo.HandlerFunc {
 	}
 }
 
+// CopyCatalogueCategoryRecursive godoc
+// @Summary Copy catalogue category recursively
+// @Description Copies a catalogue category (including descendants) and returns the new root UID.
+// @Tags Catalogue
+// @Produce plain
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Success 201 {string} string
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/copy [post]
 func (h *CatalogueHandlers) CopyCatalogueCategoryRecursive() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -179,6 +246,18 @@ func (h *CatalogueHandlers) CopyCatalogueCategoryRecursive() echo.HandlerFunc {
 	}
 }
 
+// UpdateCatalogueCategory godoc
+// @Summary Update catalogue category
+// @Description Updates an existing catalogue category.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param body body models.CatalogueCategory true "Catalogue category"
+// @Success 200 {object} models.CatalogueCategory
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid} [put]
 func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -203,6 +282,17 @@ func (h *CatalogueHandlers) UpdateCatalogueCategory() echo.HandlerFunc {
 	}
 }
 
+// CreateCatalogueCategory godoc
+// @Summary Create catalogue category
+// @Description Creates a new catalogue category.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.CatalogueCategory true "Catalogue category"
+// @Success 200 {object} models.CatalogueCategory
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category [post]
 func (h *CatalogueHandlers) CreateCatalogueCategory() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -227,6 +317,17 @@ func (h *CatalogueHandlers) CreateCatalogueCategory() echo.HandlerFunc {
 	}
 }
 
+// GetCatalogueItemImage godoc
+// @Summary Get catalogue item image
+// @Description Returns base64-encoded image string for the catalogue item.
+// @Tags Catalogue
+// @Produce plain
+// @Security BearerAuth
+// @Param uid path string true "Catalogue item UID"
+// @Success 200 {string} string
+// @Failure 404 "Not found"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item/{uid}/image [get]
 func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -246,6 +347,16 @@ func (h *CatalogueHandlers) GetCatalogueItemImage() echo.HandlerFunc {
 	}
 }
 
+// GetCatalogueCategoryImageByUid godoc
+// @Summary Get catalogue category image
+// @Description Returns base64-encoded image string for the catalogue category.
+// @Tags Catalogue
+// @Produce plain
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Success 200 {string} string
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/image [get]
 func (h *CatalogueHandlers) GetCatalogueCategoryImageByUid() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
@@ -280,6 +391,17 @@ func (h *CatalogueHandlers) GetCatalogueCategoryImageByUid() echo.HandlerFunc {
 	}
 }
 
+// CreateNewCatalogueItem godoc
+// @Summary Create catalogue item
+// @Description Creates a new catalogue item.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.CatalogueItem true "Catalogue item"
+// @Success 200 {object} models.CatalogueItem
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item [post]
 func (h *CatalogueHandlers) CreateNewCatalogueItem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -306,6 +428,17 @@ func (h *CatalogueHandlers) CreateNewCatalogueItem() echo.HandlerFunc {
 	}
 }
 
+// GetCatalogueCategoryPropertiesByUid godoc
+// @Summary Get catalogue category properties
+// @Description Returns category properties; optionally enriched for a given item UID.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param itemUid query string false "Item UID"
+// @Success 200 {array} models.CatalogueItemDetail
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/properties [get]
 func (h *CatalogueHandlers) GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -328,6 +461,16 @@ func (h *CatalogueHandlers) GetCatalogueCategoryPropertiesByUid() echo.HandlerFu
 	}
 }
 
+// GetCatalogueCategoryPhysicalItemPropertiesByUid godoc
+// @Summary Get catalogue category physical item properties
+// @Description Returns physical item properties defined for a catalogue category.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Success 200 {array} models.CatalogueItemDetail
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/physical-item-properties [get]
 func (h *CatalogueHandlers) GetCatalogueCategoryPhysicalItemPropertiesByUid() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -347,6 +490,19 @@ func (h *CatalogueHandlers) GetCatalogueCategoryPhysicalItemPropertiesByUid() ec
 	}
 }
 
+// UpdateCatalogueItem godoc
+// @Summary Update catalogue item
+// @Description Updates a catalogue item by UID.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Catalogue item UID"
+// @Param body body models.CatalogueItem true "Catalogue item"
+// @Success 200 {object} models.CatalogueItem
+// @Failure 409 "Conflict"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item/{uid} [put]
 func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -380,6 +536,16 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 	}
 }
 
+// DeleteCatalogueItem godoc
+// @Summary Delete catalogue item
+// @Description Deletes a catalogue item by UID.
+// @Tags Catalogue
+// @Security BearerAuth
+// @Param uid path string true "Catalogue item UID"
+// @Success 204 "No content"
+// @Failure 409 "Conflict"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item/{uid} [delete]
 func (h *CatalogueHandlers) DeleteCatalogueItem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -405,6 +571,16 @@ func (h *CatalogueHandlers) DeleteCatalogueItem() echo.HandlerFunc {
 	}
 }
 
+// GetCatalogueItemStatistics godoc
+// @Summary Get catalogue item statistics
+// @Description Returns statistics for a given catalogue item.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Catalogue item UID"
+// @Success 200 {array} models.CatalogueStatistics
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item/{uid}/statistics [get]
 func (h *CatalogueHandlers) GetCatalogueItemStatistics() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -425,6 +601,15 @@ func (h *CatalogueHandlers) GetCatalogueItemStatistics() echo.HandlerFunc {
 	}
 }
 
+// CatalogueItemsOverallStatistics godoc
+// @Summary Get catalogue items statistics
+// @Description Returns overall catalogue item statistics.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.CatalogueStatistics
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/items/statistics [get]
 func (h *CatalogueHandlers) CatalogueItemsOverallStatistics() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

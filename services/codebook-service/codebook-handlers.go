@@ -42,6 +42,21 @@ func contains(s []string, str string) bool {
 	return false
 }
 
+// GetCodebook godoc
+// @Summary Get codebook
+// @Description Returns codebook items and metadata for the given codebook code.
+// @Tags Codebooks
+// @Produce json
+// @Security BearerAuth
+// @Param codebookCode path string true "Codebook code"
+// @Param parentUID query string false "Parent UID filter"
+// @Param searchText query string false "Search text"
+// @Param limit query int false "Max number of items"
+// @Param filter query string false "Filter JSON"
+// @Success 200 {object} models.CodebookResponse
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal server error"
+// @Router /v1/codebook/{codebookCode} [get]
 func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -87,6 +102,17 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 	}
 }
 
+// GetCodebookTree godoc
+// @Summary Get codebook tree
+// @Description Returns codebook tree structure for the given codebook code.
+// @Tags Codebooks
+// @Produce json
+// @Security BearerAuth
+// @Param codebookCode path string true "Codebook code"
+// @Param columnFilter query string false "Column filter JSON"
+// @Success 200 {array} models.CodebookTreeItem
+// @Failure 500 "Internal server error"
+// @Router /v1/codebook/{codebookCode}/tree [get]
 func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -113,6 +139,16 @@ func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 const autocompleteMaxLimit int = 100
 const autocompleteDefaultLimit int = 10
 
+// GetListOfCodebooks godoc
+// @Summary Get list of codebooks
+// @Description Returns a list of all codebooks (or only editable ones if requested).
+// @Tags Codebooks
+// @Produce json
+// @Security BearerAuth
+// @Param editable query bool false "If true, return only editable codebooks"
+// @Success 200 {array} models.CodebookType
+// @Failure 500 "Internal server error"
+// @Router /v1/codebooks [get]
 func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -134,6 +170,20 @@ func (h *CodebookHandlers) GetListOfCodebooks() echo.HandlerFunc {
 	}
 }
 
+// CreateNewCodebook godoc
+// @Summary Create new codebook item
+// @Description Creates a new item in the specified codebook.
+// @Tags Codebooks
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param codebookCode path string true "Codebook code"
+// @Param body body models.Codebook true "Codebook item"
+// @Success 200 {object} models.Codebook
+// @Failure 401 "Unauthorized"
+// @Failure 409 "Conflict"
+// @Failure 500 "Internal server error"
+// @Router /v1/codebook/{codebookCode} [post]
 func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -164,6 +214,19 @@ func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
 	}
 }
 
+// UpdateCodebook godoc
+// @Summary Update codebook item
+// @Description Updates an existing item in the specified codebook.
+// @Tags Codebooks
+// @Accept json
+// @Security BearerAuth
+// @Param codebookCode path string true "Codebook code"
+// @Param uid path string true "Codebook item UID"
+// @Param body body models.Codebook true "Codebook item"
+// @Success 204 "No content"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal server error"
+// @Router /v1/codebook/{codebookCode}/{uid} [put]
 func (h *CodebookHandlers) UpdateCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -191,6 +254,17 @@ func (h *CodebookHandlers) UpdateCodebook() echo.HandlerFunc {
 	}
 }
 
+// DeleteCodebook godoc
+// @Summary Delete codebook item
+// @Description Deletes an item from the specified codebook.
+// @Tags Codebooks
+// @Security BearerAuth
+// @Param codebookCode path string true "Codebook code"
+// @Param uid path string true "Codebook item UID"
+// @Success 204 "No content"
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal server error"
+// @Router /v1/codebook/{codebookCode}/{uid} [delete]
 func (h *CodebookHandlers) DeleteCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
