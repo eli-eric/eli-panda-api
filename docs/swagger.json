@@ -15,6 +15,482 @@
     "host": "localhost:50000",
     "basePath": "/",
     "paths": {
+        "/v1/authenticate": {
+            "post": {
+                "description": "Authenticates user using username and password and returns user info with access token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Security"
+                ],
+                "summary": "Authenticate user",
+                "parameters": [
+                    {
+                        "description": "User credentials",
+                        "name": "credentials",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.UserCredentials"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.UserAuthInfo"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/categories": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns catalogue categories under the provided parent path (optional).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue categories by parent path",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CatalogueCategory"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/categories/{path}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns catalogue categories under the provided parent path (optional).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue categories by parent path",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent path (wildcard)",
+                        "name": "path",
+                        "in": "path"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CatalogueCategory"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new catalogue category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue category",
+                "parameters": [
+                    {
+                        "description": "Catalogue category",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns catalogue category with details by UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue category detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing catalogue category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Catalogue category",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a catalogue category by UID.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/copy": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Copies a catalogue category (including descendants) and returns the new root UID.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Copy catalogue category recursively",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/image": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns base64-encoded image string for the catalogue category.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue category image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/physical-item-properties": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns physical item properties defined for a catalogue category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue category physical item properties",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/properties": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns category properties; optionally enriched for a given item UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue category properties",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Item UID",
+                        "name": "itemUid",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/item": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new catalogue item.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue item",
+                "parameters": [
+                    {
+                        "description": "Catalogue item",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/catalogue/item/catalogue-number/unique": {
             "get": {
                 "security": [
@@ -67,6 +543,302 @@
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/item/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns catalogue item with details by UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue item detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates a catalogue item by UID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Catalogue item",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a catalogue item by UID.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "409": {
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/item/{uid}/image": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns base64-encoded image string for the catalogue item.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue item image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/item/{uid}/statistics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns statistics for a given catalogue item.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue item statistics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CatalogueStatistics"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/items": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a paginated list of catalogue items.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "categoryUID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_CatalogueItemSimple"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/items/statistics": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns overall catalogue item statistics.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get catalogue items statistics",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CatalogueStatistics"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -259,6 +1031,603 @@
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/{catalogueItemUid}/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns orders that reference the specified catalogue item.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get orders for catalogue item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "catalogueItemUid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.OrderListItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/codebook/{codebookCode}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns codebook items and metadata for the given codebook code.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Codebooks"
+                ],
+                "summary": "Get codebook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Codebook code",
+                        "name": "codebookCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Parent UID filter",
+                        "name": "parentUID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "searchText",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max number of items",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter JSON",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CodebookResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new item in the specified codebook.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Codebooks"
+                ],
+                "summary": "Create new codebook item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Codebook code",
+                        "name": "codebookCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Codebook item",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/codebook/{codebookCode}/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns codebook tree structure for the given codebook code.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Codebooks"
+                ],
+                "summary": "Get codebook tree",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Codebook code",
+                        "name": "codebookCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CodebookTreeItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/codebook/{codebookCode}/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing item in the specified codebook.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Codebooks"
+                ],
+                "summary": "Update codebook item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Codebook code",
+                        "name": "codebookCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Codebook item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Codebook item",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an item from the specified codebook.",
+                "tags": [
+                    "Codebooks"
+                ],
+                "summary": "Delete codebook item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Codebook code",
+                        "name": "codebookCode",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Codebook item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/codebooks": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a list of all codebooks (or only editable ones if requested).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Codebooks"
+                ],
+                "summary": "Get list of codebooks",
+                "parameters": [
+                    {
+                        "type": "boolean",
+                        "description": "If true, return only editable codebooks",
+                        "name": "editable",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CodebookType"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/cron/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns cron job execution history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Get cron job history",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.CronJobHistory"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/files/link/{parentUid}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new file link under the given parent UID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Create file link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent UID",
+                        "name": "parentUid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "File link",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.FileLink"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.FileLink"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/files/link/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing file link.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Update file link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File link UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "File link",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.FileLink"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.FileLink"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a file link by its UID.",
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Delete file link",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File link UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/files/links/{parentUid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns file links associated with the given parent UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Get file links by parent UID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent UID",
+                        "name": "parentUid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.FileLink"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/files/node/{uid}/mini-image-url": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Stores a mini image URL list on a node identified by UID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Files"
+                ],
+                "summary": "Set mini image URL to node",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Node UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Neo4j node label",
+                        "name": "nodeLabel",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Mini image link payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.MiniImageLinks"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.MiniImageLinks"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -679,7 +2048,74 @@
                 }
             }
         },
+        "/v1/order-uid-by-order-number/{orderNumber}": {
+            "get": {
+                "description": "Returns order UID for the provided order number.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get order UID by order number",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order number",
+                        "name": "orderNumber",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/order/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns order detail with order lines by order UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get order detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.OrderDetail"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -709,6 +2145,62 @@
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/order/{uid}/orderline/{itemUid}/delivery": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates delivery status and optional serial/EUN for a single order line item.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Update order line delivery",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Order UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Order line item UID",
+                        "name": "itemUid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Order line delivery payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.OrderLineDelivery"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.OrderLine"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -897,6 +2389,61 @@
                 }
             }
         },
+        "/v1/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a paginated list of orders with optional search/sorting/filtering.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get orders",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination JSON (e.g. {\\",
+                        "name": "pagination",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_OrderListItem"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/orders/eun-for-print": {
             "get": {
                 "security": [
@@ -939,6 +2486,106 @@
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/orders/eun-for-print/{eun}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Sets whether the given EUN should be printed.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Set EUN print flag",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "EUN",
+                        "name": "eun",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Print flag",
+                        "name": "printEUN",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/orders/order-lines/min-max-prices": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns minimum and maximum order line price for the current facility.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get min/max order line prices",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.OrderLineMinMax"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/orders/statuses": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns order statuses codebook.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Orders"
+                ],
+                "summary": "Get order statuses",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Codebook"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -1008,6 +2655,133 @@
                     },
                     "400": {
                         "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/physical-item/{uid}/properties": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns physical item properties by physical item UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get physical item properties",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Physical item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.PhysicalItemDetail"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates physical item properties by physical item UID.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Update physical item properties",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Physical item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Physical item properties",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.PhysicalItemDetail"
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.PhysicalItemDetail"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/physical-items/euns": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns list of physical item EUNs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get EUNs",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.EUN"
+                            }
+                        }
                     },
                     "500": {
                         "description": "Internal server error"
@@ -1640,6 +3414,43 @@
                 }
             }
         },
+        "/v1/system/by-eun/{eun}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns system by EUN.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system by EUN",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "EUN",
+                        "name": "eun",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/jira-import": {
             "post": {
                 "security": [
@@ -1691,6 +3502,87 @@
                 }
             }
         },
+        "/v1/system/relationship/{uid}": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new relationship between systems.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create new system relationship",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Unused route parameter (reserved)",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Relationship request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemRelationshipRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created relationship UID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a system relationship by relationship UID.",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Delete system relationship",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Relationship UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/system-code": {
             "post": {
                 "security": [
@@ -1723,6 +3615,320 @@
                     },
                     "400": {
                         "description": "Bad request - missing required fields"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type-group": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new system type group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create system type group",
+                "parameters": [
+                    {
+                        "description": "System type group",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type-group/{grpUid}/system-type/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing system type.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Update system type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type group UID",
+                        "name": "grpUid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "System type UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "System type",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemType"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type-group/{uid}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing system type group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Update system type group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type group UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "System type group",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a system type group.",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Delete system type group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type group UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.ConflictErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type-group/{uid}/system-type": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new system type under a system type group.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create system type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type group UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "System type",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemType"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemType"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type-group/{uid}/system-types": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns system types for the given system type group UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system types by group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type group UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemType"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type-groups": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns system type groups for the current facility.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system type groups",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Codebook"
+                            }
+                        }
                     },
                     "500": {
                         "description": "Internal server error"
@@ -1768,6 +3974,145 @@
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        },
+        "/v1/system/system-type/{uid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a system type.",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Delete system type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.ConflictErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/systemCode": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates a new unique system code based on system type and zone/location/parent.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get next system code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System type UID",
+                        "name": "systemTypeUID",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Zone UID",
+                        "name": "zoneUID",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Location UID",
+                        "name": "locationUID",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Parent system UID",
+                        "name": "parentUID",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{parentUID}/subsystems": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns subsystems for the given parent system UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get subsystems by parent UID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent system UID",
+                        "name": "parentUID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.System"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -1823,6 +4168,242 @@
                 }
             }
         },
+        "/v1/system/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns system detail by UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system detail",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates an existing system.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Update system",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "System",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.System"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes a system and its subsystems. If physical items are attached, returns 409 with details.",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Delete system recursively",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemPhysicalItemInfo"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/history": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns system history events by system UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemHistory"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/image": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns base64-encoded image string for the system.",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system image",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/relationships": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns relationships for a given system UID.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system relationships",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.SystemRelationship"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/{uid}/spare-parts-detail": {
             "get": {
                 "security": [
@@ -1874,6 +4455,61 @@
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        },
+        "/v1/systems": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a paginated list of systems with optional search/sorting/filtering.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get systems",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Pagination JSON (e.g. {\\",
+                        "name": "pagination",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -1934,6 +4570,120 @@
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        },
+        "/v1/systems/export-to-csv": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Exports systems list to CSV using the same filtering/sorting/search as the systems table.",
+                "produces": [
+                    "text/csv"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Export systems to CSV",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/systems/for-relationship": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a paginated list of systems for relationship creation; supports optional filtering.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get systems for relationship",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination JSON (e.g. {\\",
+                        "name": "pagination",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sorting JSON (array of {id, desc})",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Source system UID",
+                        "name": "systemFromUid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relation type code",
+                        "name": "relationTypeCode",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/helpers.PaginationResult-models_System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 }
             }
@@ -2351,6 +5101,34 @@
         }
     },
     "definitions": {
+        "helpers.ConflictErrorResponse": {
+            "type": "object",
+            "properties": {
+                "errorMessage": {
+                    "type": "string"
+                },
+                "relatedNodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/helpers.RelatedNodeLabelAmount"
+                    }
+                }
+            }
+        },
+        "helpers.PaginationResult-models_CatalogueItemSimple": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CatalogueItemSimple"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
         "helpers.PaginationResult-models_GlobalSearchResult": {
             "type": "object",
             "properties": {
@@ -2379,6 +5157,20 @@
                 }
             }
         },
+        "helpers.PaginationResult-models_OrderListItem": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.OrderListItem"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
         "helpers.PaginationResult-models_Researcher": {
             "type": "object",
             "properties": {
@@ -2386,6 +5178,20 @@
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.Researcher"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "helpers.PaginationResult-models_System": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.System"
                     }
                 },
                 "totalCount": {
@@ -2404,6 +5210,17 @@
                 },
                 "totalCount": {
                     "type": "integer"
+                }
+            }
+        },
+        "helpers.RelatedNodeLabelAmount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
                 }
             }
         },
@@ -2470,6 +5287,50 @@
                 }
             }
         },
+        "models.CatalogueCategory": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                    }
+                },
+                "image": {
+                    "type": "string"
+                },
+                "miniImageUrl": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentPath": {
+                    "type": "string"
+                },
+                "parentUID": {
+                    "type": "string"
+                },
+                "physicalItemProperties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                    }
+                },
+                "systemType": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CatalogueCategoryProperty": {
             "type": "object",
             "properties": {
@@ -2493,6 +5354,23 @@
                 },
                 "unit": {
                     "$ref": "#/definitions/models.Codebook"
+                }
+            }
+        },
+        "models.CatalogueCategoryPropertyGroup": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                    }
+                },
+                "uid": {
+                    "type": "string"
                 }
             }
         },
@@ -2592,6 +5470,53 @@
                 }
             }
         },
+        "models.CatalogueItemSimple": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "category": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
+                    }
+                },
+                "lastUpdateBy": {
+                    "type": "string"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "manufacturerNumber": {
+                    "type": "string"
+                },
+                "manufacturerUrl": {
+                    "type": "string"
+                },
+                "miniImageUrl": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "supplier": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CatalogueServiceType": {
             "type": "object",
             "properties": {
@@ -2612,6 +5537,35 @@
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.CatalogueStatistics": {
+            "type": "object",
+            "properties": {
+                "experimentalLoanPoolPartsCount": {
+                    "type": "integer"
+                },
+                "facilityName": {
+                    "type": "string"
+                },
+                "inSystemPartsCount": {
+                    "type": "integer"
+                },
+                "othersCount": {
+                    "type": "integer"
+                },
+                "sparePartsCount": {
+                    "type": "integer"
+                },
+                "stockItemsCount": {
+                    "type": "integer"
+                },
+                "testAndMeasurementPartsCount": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -2646,6 +5600,91 @@
                 }
             }
         },
+        "models.CodebookResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Codebook"
+                    }
+                },
+                "metadata": {
+                    "$ref": "#/definitions/models.CodebookType"
+                }
+            }
+        },
+        "models.CodebookTreeItem": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CodebookTreeItem"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CodebookType": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "roleEdit": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CronJobHistory": {
+            "type": "object",
+            "properties": {
+                "endTime": {
+                    "type": "integer"
+                },
+                "jobMessage": {
+                    "type": "string"
+                },
+                "jobName": {
+                    "type": "string"
+                },
+                "jobStatus": {
+                    "type": "string"
+                },
+                "jobType": {
+                    "type": "string"
+                },
+                "jobUid": {
+                    "type": "string"
+                },
+                "startTime": {
+                    "type": "integer"
+                },
+                "totalTimeMs": {
+                    "type": "integer"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EUN": {
+            "type": "object",
+            "properties": {
+                "eun": {
+                    "type": "string"
+                }
+            }
+        },
         "models.EmployeeInfo": {
             "type": "object",
             "properties": {
@@ -2673,6 +5712,26 @@
                     "type": "string"
                 },
                 "location_uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.FileLink": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "url": {
                     "type": "string"
                 }
             }
@@ -2863,6 +5922,29 @@
                 }
             }
         },
+        "models.MiniImageLinks": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
         "models.OrderDetail": {
             "type": "object",
             "properties": {
@@ -2975,6 +6057,79 @@
                 }
             }
         },
+        "models.OrderLineDelivery": {
+            "type": "object",
+            "properties": {
+                "eun": {
+                    "type": "string"
+                },
+                "isDelivered": {
+                    "type": "boolean"
+                },
+                "serialNumber": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.OrderLineMinMax": {
+            "type": "object",
+            "properties": {
+                "max": {
+                    "type": "integer"
+                },
+                "min": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.OrderListItem": {
+            "type": "object",
+            "properties": {
+                "contractNumber": {
+                    "type": "string"
+                },
+                "deliveryStatus": {
+                    "description": "0 - none delivered, 1 - partially delivered, 2 - delivered",
+                    "type": "integer"
+                },
+                "lastUpdateBy": {
+                    "type": "string"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "orderDate": {
+                    "type": "string"
+                },
+                "orderNumber": {
+                    "type": "string"
+                },
+                "orderStatus": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "procurementResponsible": {
+                    "type": "string"
+                },
+                "requestNumber": {
+                    "type": "string"
+                },
+                "requestor": {
+                    "type": "string"
+                },
+                "supplier": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.PhysicalItem": {
             "type": "object",
             "properties": {
@@ -3003,6 +6158,15 @@
                 "uid": {
                     "type": "string"
                 }
+            }
+        },
+        "models.PhysicalItemDetail": {
+            "type": "object",
+            "properties": {
+                "property": {
+                    "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                },
+                "value": {}
             }
         },
         "models.PhysicalItemDetailExtended": {
@@ -3766,6 +6930,54 @@
                 }
             }
         },
+        "models.SystemPhysicalItemInfo": {
+            "type": "object",
+            "properties": {
+                "itemName": {
+                    "type": "string"
+                },
+                "itemUid": {
+                    "type": "string"
+                },
+                "systemName": {
+                    "type": "string"
+                },
+                "systemUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemRelationship": {
+            "type": "object",
+            "properties": {
+                "direction": {
+                    "type": "string"
+                },
+                "foreignSystemName": {
+                    "type": "string"
+                },
+                "relationTypeCode": {
+                    "type": "string"
+                },
+                "relationUid": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.SystemRelationshipRequest": {
+            "type": "object",
+            "properties": {
+                "relationTypeCode": {
+                    "type": "string"
+                },
+                "systemFromUid": {
+                    "type": "string"
+                },
+                "systemToUid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemSimpleInfo": {
             "type": "object",
             "properties": {
@@ -3869,6 +7081,26 @@
                 }
             }
         },
+        "models.SystemType": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "mask": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "systemAttribute": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemTypeGroupTreeItem": {
             "type": "object",
             "properties": {
@@ -3951,6 +7183,17 @@
                     }
                 },
                 "uid": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.UserCredentials": {
+            "type": "object",
+            "properties": {
+                "password": {
                     "type": "string"
                 },
                 "username": {

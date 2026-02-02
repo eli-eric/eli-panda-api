@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"net/http"
 	"panda/apigateway/helpers"
+	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/orders-service/models"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
 )
+
+var _ = codebookModels.Codebook{}
 
 type OrdersHandlers struct {
 	ordersService IOrdersService
@@ -38,6 +41,15 @@ func NewOrdersHandlers(ordersSvc IOrdersService) IOrdersHandlers {
 	return &OrdersHandlers{ordersService: ordersSvc}
 }
 
+// GetOrderStatusesCodebook godoc
+// @Summary Get order statuses
+// @Description Returns order statuses codebook.
+// @Tags Orders
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} codebookModels.Codebook
+// @Failure 500 "Internal server error"
+// @Router /v1/orders/statuses [get]
 func (h *OrdersHandlers) GetOrderStatusesCodebook() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -53,6 +65,19 @@ func (h *OrdersHandlers) GetOrderStatusesCodebook() echo.HandlerFunc {
 	}
 }
 
+// GetOrdersWithSearchAndPagination godoc
+// @Summary Get orders
+// @Description Returns a paginated list of orders with optional search/sorting/filtering.
+// @Tags Orders
+// @Produce json
+// @Security BearerAuth
+// @Param pagination query string true "Pagination JSON (e.g. {\"page\":1,\"pageSize\":100})"
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Param search query string false "Search text"
+// @Param columnFilter query string false "Column filter JSON"
+// @Success 200 {object} helpers.PaginationResult[models.OrderListItem]
+// @Failure 500 "Internal server error"
+// @Router /v1/orders [get]
 func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -85,6 +110,16 @@ func (h *OrdersHandlers) GetOrdersWithSearchAndPagination() echo.HandlerFunc {
 	}
 }
 
+// GetOrderWithOrderLinesByUid godoc
+// @Summary Get order detail
+// @Description Returns order detail with order lines by order UID.
+// @Tags Orders
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Order UID"
+// @Success 200 {object} models.OrderDetail
+// @Failure 500 "Internal server error"
+// @Router /v1/order/{uid} [get]
 func (h *OrdersHandlers) GetOrderWithOrderLinesByUid() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -231,6 +266,19 @@ func (h *OrdersHandlers) DeleteOrder() echo.HandlerFunc {
 	}
 }
 
+// UpdateOrderLineDelivery godoc
+// @Summary Update order line delivery
+// @Description Updates delivery status and optional serial/EUN for a single order line item.
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Order UID"
+// @Param itemUid path string true "Order line item UID"
+// @Param body body models.OrderLineDelivery true "Order line delivery payload"
+// @Success 200 {object} models.OrderLine
+// @Failure 500 "Internal server error"
+// @Router /v1/order/{uid}/orderline/{itemUid}/delivery [put]
 func (h *OrdersHandlers) UpdateOrderLineDelivery() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -317,7 +365,7 @@ func (h *OrdersHandlers) UpdateServiceLineDelivery() echo.HandlerFunc {
 		serviceItemUID := c.Param("serviceItemUid")
 		userUID := c.Get("userUID").(string)
 		facilityCode := c.Get("facilityCode").(string)
-		
+
 		// get the delivery info from the request body
 		serviceLineDelivery := new(models.ServiceLineDelivery)
 		err := c.Bind(serviceLineDelivery)
@@ -356,7 +404,7 @@ func (h *OrdersHandlers) UpdateMultipleServiceLineDelivery() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		userUID := c.Get("userUID").(string)
 		facilityCode := c.Get("facilityCode").(string)
-		
+
 		// get the service item UIDs from the request body
 		serviceItemUids := new([]string)
 		err := c.Bind(serviceItemUids)
@@ -410,6 +458,17 @@ func (h *OrdersHandlers) GetItemsForEunPrint() echo.HandlerFunc {
 	}
 }
 
+// SetItemPrintEUN godoc
+// @Summary Set EUN print flag
+// @Description Sets whether the given EUN should be printed.
+// @Tags Orders
+// @Produce plain
+// @Security BearerAuth
+// @Param eun path string true "EUN"
+// @Param printEUN query bool true "Print flag"
+// @Success 204 "No content"
+// @Failure 500 "Internal server error"
+// @Router /v1/orders/eun-for-print/{eun} [put]
 func (h *OrdersHandlers) SetItemPrintEUN() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -432,6 +491,15 @@ func (h *OrdersHandlers) SetItemPrintEUN() echo.HandlerFunc {
 	}
 }
 
+// GetOrderUidByOrderNumber godoc
+// @Summary Get order UID by order number
+// @Description Returns order UID for the provided order number.
+// @Tags Orders
+// @Produce json
+// @Param orderNumber path string true "Order number"
+// @Success 200 {string} string
+// @Failure 500 "Internal server error"
+// @Router /v1/order-uid-by-order-number/{orderNumber} [get]
 func (h *OrdersHandlers) GetOrderUidByOrderNumber() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -450,6 +518,16 @@ func (h *OrdersHandlers) GetOrderUidByOrderNumber() echo.HandlerFunc {
 	}
 }
 
+// GetOrdersForCatalogueItem godoc
+// @Summary Get orders for catalogue item
+// @Description Returns orders that reference the specified catalogue item.
+// @Tags Orders
+// @Produce json
+// @Security BearerAuth
+// @Param catalogueItemUid path string true "Catalogue item UID"
+// @Success 200 {array} models.OrderListItem
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/{catalogueItemUid}/orders [get]
 func (h *OrdersHandlers) GetOrdersForCatalogueItem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -469,6 +547,15 @@ func (h *OrdersHandlers) GetOrdersForCatalogueItem() echo.HandlerFunc {
 	}
 }
 
+// GetMinAndMaxOrderLinePrice godoc
+// @Summary Get min/max order line prices
+// @Description Returns minimum and maximum order line price for the current facility.
+// @Tags Orders
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.OrderLineMinMax
+// @Failure 500 "Internal server error"
+// @Router /v1/orders/order-lines/min-max-prices [get]
 func (h *OrdersHandlers) GetMinAndMaxOrderLinePrice() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -486,4 +573,3 @@ func (h *OrdersHandlers) GetMinAndMaxOrderLinePrice() echo.HandlerFunc {
 
 	}
 }
-

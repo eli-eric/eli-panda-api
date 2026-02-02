@@ -110,6 +110,16 @@ func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
 	}
 }
 
+// GetSubSystemsByParentUID godoc
+// @Summary Get subsystems by parent UID
+// @Description Returns subsystems for the given parent system UID.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param parentUID path string true "Parent system UID"
+// @Success 200 {array} models.System
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{parentUID}/subsystems [get]
 func (h *SystemsHandlers) GetSubSystemsByParentUID() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -128,6 +138,16 @@ func (h *SystemsHandlers) GetSubSystemsByParentUID() echo.HandlerFunc {
 	}
 }
 
+// GetSystemImageByUid godoc
+// @Summary Get system image
+// @Description Returns base64-encoded image string for the system.
+// @Tags Systems
+// @Produce plain
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 200 {string} string
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid}/image [get]
 func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 	return func(c echo.Context) error {
 
@@ -147,6 +167,16 @@ func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 	}
 }
 
+// GetSystemDetail godoc
+// @Summary Get system detail
+// @Description Returns system detail by UID.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 200 {object} models.System
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid} [get]
 func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -250,6 +280,18 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 	}
 }
 
+// UpdateSystem godoc
+// @Summary Update system
+// @Description Updates an existing system.
+// @Tags Systems
+// @Accept json
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Param body body models.System true "System"
+// @Success 204 "No content"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid} [put]
 func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -276,6 +318,16 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 	}
 }
 
+// DeleteSystemRecursive godoc
+// @Summary Delete system recursively
+// @Description Deletes a system and its subsystems. If physical items are attached, returns 409 with details.
+// @Tags Systems
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 204 "No content"
+// @Failure 409 {array} models.SystemPhysicalItemInfo
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid} [delete]
 func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -309,6 +361,19 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 	}
 }
 
+// GetSystemsWithSearchAndPagination godoc
+// @Summary Get systems
+// @Description Returns a paginated list of systems with optional search/sorting/filtering.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param pagination query string true "Pagination JSON (e.g. {\"page\":1,\"pageSize\":100})"
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Param search query string false "Search text"
+// @Param columnFilter query string false "Column filter JSON"
+// @Success 200 {object} helpers.PaginationResult[models.System]
+// @Failure 500 "Internal server error"
+// @Router /v1/systems [get]
 func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -492,6 +557,21 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 	}
 }
 
+// GetSystemsForRelationship godoc
+// @Summary Get systems for relationship
+// @Description Returns a paginated list of systems for relationship creation; supports optional filtering.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param search query string false "Search text"
+// @Param pagination query string false "Pagination JSON (e.g. {\"page\":1,\"pageSize\":100})"
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Param columnFilter query string false "Column filter JSON"
+// @Param systemFromUid query string false "Source system UID"
+// @Param relationTypeCode query string false "Relation type code"
+// @Success 200 {object} helpers.PaginationResult[models.System]
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/for-relationship [get]
 func (h *SystemsHandlers) GetSystemsForRelationship() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -525,6 +605,16 @@ func (h *SystemsHandlers) GetSystemsForRelationship() echo.HandlerFunc {
 	}
 }
 
+// GetSystemRelationships godoc
+// @Summary Get system relationships
+// @Description Returns relationships for a given system UID.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 200 {array} models.SystemRelationship
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid}/relationships [get]
 func (h *SystemsHandlers) GetSystemRelationships() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -542,6 +632,15 @@ func (h *SystemsHandlers) GetSystemRelationships() echo.HandlerFunc {
 	}
 }
 
+// DeleteSystemRelationship godoc
+// @Summary Delete system relationship
+// @Description Deletes a system relationship by relationship UID.
+// @Tags Systems
+// @Security BearerAuth
+// @Param uid path string true "Relationship UID"
+// @Success 204 "No content"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/relationship/{uid} [delete]
 func (h *SystemsHandlers) DeleteSystemRelationship() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -568,6 +667,19 @@ func (h *SystemsHandlers) DeleteSystemRelationship() echo.HandlerFunc {
 	}
 }
 
+// CreateNewSystemRelationship godoc
+// @Summary Create new system relationship
+// @Description Creates a new relationship between systems.
+// @Tags Systems
+// @Accept json
+// @Produce plain
+// @Security BearerAuth
+// @Param uid path string true "Unused route parameter (reserved)"
+// @Param body body models.SystemRelationshipRequest true "Relationship request"
+// @Success 201 {string} string "Created relationship UID"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/relationship/{uid} [post]
 func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -595,6 +707,20 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 	}
 }
 
+// GetSystemCode godoc
+// @Summary Get next system code
+// @Description Generates a new unique system code based on system type and zone/location/parent.
+// @Tags Systems
+// @Produce plain
+// @Security BearerAuth
+// @Param systemTypeUID query string true "System type UID"
+// @Param zoneUID query string true "Zone UID"
+// @Param locationUID query string false "Location UID"
+// @Param parentUID query string false "Parent system UID"
+// @Success 200 {string} string
+// @Failure 400 {string} string "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/systemCode [get]
 func (h *SystemsHandlers) GetSystemCode() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -618,6 +744,16 @@ func (h *SystemsHandlers) GetSystemCode() echo.HandlerFunc {
 	}
 }
 
+// GetPhysicalItemProperties godoc
+// @Summary Get physical item properties
+// @Description Returns physical item properties by physical item UID.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Physical item UID"
+// @Success 200 {array} models.PhysicalItemDetail
+// @Failure 500 "Internal server error"
+// @Router /v1/physical-item/{uid}/properties [get]
 func (h *SystemsHandlers) GetPhysicalItemProperties() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -635,6 +771,19 @@ func (h *SystemsHandlers) GetPhysicalItemProperties() echo.HandlerFunc {
 	}
 }
 
+// UpdatePhysicalItemProperties godoc
+// @Summary Update physical item properties
+// @Description Updates physical item properties by physical item UID.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Physical item UID"
+// @Param body body []models.PhysicalItemDetail true "Physical item properties"
+// @Success 200 {array} models.PhysicalItemDetail
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/physical-item/{uid}/properties [put]
 func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -662,6 +811,16 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 	}
 }
 
+// GetSystemHistory godoc
+// @Summary Get system history
+// @Description Returns system history events by system UID.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 200 {array} models.SystemHistory
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid}/history [get]
 func (h *SystemsHandlers) GetSystemHistory() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -679,6 +838,15 @@ func (h *SystemsHandlers) GetSystemHistory() echo.HandlerFunc {
 	}
 }
 
+// GetSystemTypeGroups godoc
+// @Summary Get system type groups
+// @Description Returns system type groups for the current facility.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} codebookModels.Codebook
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-groups [get]
 func (h *SystemsHandlers) GetSystemTypeGroups() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -723,6 +891,16 @@ func (h *SystemsHandlers) GetSystemTypeGroupsTree() echo.HandlerFunc {
 	}
 }
 
+// GetSystemTypesBySystemTypeGroup godoc
+// @Summary Get system types by group
+// @Description Returns system types for the given system type group UID.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System type group UID"
+// @Success 200 {array} models.SystemType
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-group/{uid}/system-types [get]
 func (h *SystemsHandlers) GetSystemTypesBySystemTypeGroup() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -741,6 +919,16 @@ func (h *SystemsHandlers) GetSystemTypesBySystemTypeGroup() echo.HandlerFunc {
 	}
 }
 
+// DeleteSystemTypeGroup godoc
+// @Summary Delete system type group
+// @Description Deletes a system type group.
+// @Tags Systems
+// @Security BearerAuth
+// @Param uid path string true "System type group UID"
+// @Success 204 "No content"
+// @Failure 409 {object} helpers.ConflictErrorResponse
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-group/{uid} [delete]
 func (h *SystemsHandlers) DeleteSystemTypeGroup() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -766,6 +954,16 @@ func (h *SystemsHandlers) DeleteSystemTypeGroup() echo.HandlerFunc {
 	}
 }
 
+// DeleteSystemType godoc
+// @Summary Delete system type
+// @Description Deletes a system type.
+// @Tags Systems
+// @Security BearerAuth
+// @Param uid path string true "System type UID"
+// @Success 204 "No content"
+// @Failure 409 {object} helpers.ConflictErrorResponse
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type/{uid} [delete]
 func (h *SystemsHandlers) DeleteSystemType() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -791,6 +989,18 @@ func (h *SystemsHandlers) DeleteSystemType() echo.HandlerFunc {
 	}
 }
 
+// CreateSystemTypeGroup godoc
+// @Summary Create system type group
+// @Description Creates a new system type group.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body codebookModels.Codebook true "System type group"
+// @Success 201 {object} codebookModels.Codebook
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-group [post]
 func (h *SystemsHandlers) CreateSystemTypeGroup() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -819,6 +1029,19 @@ func (h *SystemsHandlers) CreateSystemTypeGroup() echo.HandlerFunc {
 	}
 }
 
+// UpdateSystemTypeGroup godoc
+// @Summary Update system type group
+// @Description Updates an existing system type group.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System type group UID"
+// @Param body body codebookModels.Codebook true "System type group"
+// @Success 200 {object} codebookModels.Codebook
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-group/{uid} [put]
 func (h *SystemsHandlers) UpdateSystemTypeGroup() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -848,6 +1071,19 @@ func (h *SystemsHandlers) UpdateSystemTypeGroup() echo.HandlerFunc {
 	}
 }
 
+// CreateSystemType godoc
+// @Summary Create system type
+// @Description Creates a new system type under a system type group.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System type group UID"
+// @Param body body models.SystemType true "System type"
+// @Success 201 {object} models.SystemType
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-group/{uid}/system-type [post]
 func (h *SystemsHandlers) CreateSystemType() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -876,6 +1112,20 @@ func (h *SystemsHandlers) CreateSystemType() echo.HandlerFunc {
 	}
 }
 
+// UpdateSystemType godoc
+// @Summary Update system type
+// @Description Updates an existing system type.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param grpUid path string true "System type group UID"
+// @Param uid path string true "System type UID"
+// @Param body body models.SystemType true "System type"
+// @Success 200 {object} models.SystemType
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/system-type-group/{grpUid}/system-type/{uid} [put]
 func (h *SystemsHandlers) UpdateSystemType() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -906,6 +1156,16 @@ func (h *SystemsHandlers) UpdateSystemType() echo.HandlerFunc {
 	}
 }
 
+// GetSystemByEun godoc
+// @Summary Get system by EUN
+// @Description Returns system by EUN.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param eun path string true "EUN"
+// @Success 200 {object} models.System
+// @Failure 500 "Internal server error"
+// @Router /v1/system/by-eun/{eun} [get]
 func (h *SystemsHandlers) GetSystemByEun() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -923,6 +1183,18 @@ func (h *SystemsHandlers) GetSystemByEun() echo.HandlerFunc {
 	}
 }
 
+// GetSystemAsCsv godoc
+// @Summary Export systems to CSV
+// @Description Exports systems list to CSV using the same filtering/sorting/search as the systems table.
+// @Tags Systems
+// @Produce text/csv
+// @Security BearerAuth
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Param search query string false "Search text"
+// @Param columnFilter query string false "Column filter JSON"
+// @Success 200 {file} file
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/export-to-csv [get]
 func (h *SystemsHandlers) GetSystemAsCsv() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -1101,6 +1373,15 @@ func (h *SystemsHandlers) GetSystemAsCsv() echo.HandlerFunc {
 	}
 }
 
+// GetEuns godoc
+// @Summary Get EUNs
+// @Description Returns list of physical item EUNs.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.EUN
+// @Failure 500 "Internal server error"
+// @Router /v1/physical-items/euns [get]
 func (h *SystemsHandlers) GetEuns() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
