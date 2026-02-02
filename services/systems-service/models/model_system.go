@@ -47,16 +47,6 @@ type SystemHierarchyNode struct {
 	Children        []SystemHierarchyNode `json:"children"`
 }
 
-// SystemHierarchyNodeRow is an internal DTO for mapping Neo4j query results.
-// It represents a single hierarchy node with the UIDs of its child nodes (only parents).
-type SystemHierarchyNodeRow struct {
-	UID             string   `json:"uid"`
-	Name            string   `json:"name"`
-	SystemCode      *string  `json:"systemCode,omitempty"`
-	HasLeafChildren bool     `json:"hasLeafChildren"`
-	ChildUids       []string `json:"childUids"`
-}
-
 type PhysicalItem struct {
 	UID           string                        `json:"uid"`
 	ItemUsage     *models.Codebook              `json:"itemUsage,omitempty"`
