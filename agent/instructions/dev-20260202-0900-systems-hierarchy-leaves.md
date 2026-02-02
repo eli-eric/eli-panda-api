@@ -28,6 +28,7 @@ Provide two lightweight read endpoints for the new System Hierarchy Explorer UI:
 - `uid` (string)
 - `name` (string)
 - `systemCode` (string, optional)
+- `systemLevel` (string, optional)
 - `hasLeafChildren` (bool)
 - `children` (`[]SystemHierarchyNode`) — **contains only parent nodes**
 
@@ -36,6 +37,14 @@ Notes:
 - The tree includes only systems that have at least one subsystem.
 - `children` only contains children that are also parents (i.e., themselves have subsystems).
 - `hasLeafChildren=true` indicates the node has at least one direct child that is a leaf; the UI can use this to show that leaf systems are available even if `children` is empty.
+
+#### Backend implementation note (minimal transfer)
+
+The Neo4j query returns only **paths** (`RETURN path`) so the server can build the JSON tree in Go by iterating `neo4j.Path.Nodes` and adding edges between consecutive nodes.
+
+The response DTO is still minimal (only `uid`, `name`, `systemCode`, `systemLevel`, `hasLeafChildren`, `children`), but note that `RETURN path` may cause Neo4j to return full node objects; the server intentionally reads only the few navigation properties it needs.
+
+`hasLeafChildren` is computed via a separate lightweight query by UID list, so the hierarchy query itself stays exactly as required.
 
 ### 2) Leaves for parent
 

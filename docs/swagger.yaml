@@ -1199,6 +1199,8 @@ definitions:
         type: string
       systemCode:
         type: string
+      systemLevel:
+        type: string
       uid:
         type: string
     type: object

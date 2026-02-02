@@ -7007,6 +7007,9 @@ const docTemplate = `{
                 "systemCode": {
                     "type": "string"
                 },
+                "systemLevel": {
+                    "type": "string"
+                },
                 "uid": {
                     "type": "string"
                 }

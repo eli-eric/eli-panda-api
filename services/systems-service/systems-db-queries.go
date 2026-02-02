@@ -1119,28 +1119,48 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	return result
 }
 
-// GetSystemsHierarchyNodesQuery returns all systems that have subsystems (parents-only hierarchy nodes)
-// along with the UIDs of their child nodes that are also parents.
-func GetSystemsHierarchyNodesQuery(facilityCode string) (result helpers.DatabaseQuery) {
+// GetSystemsHierarchyPathsQuery returns hierarchy structure as Neo4j paths.
+// NOTE: The Cypher is intentionally kept identical to the requested reference query
+// (only the Facility code is parameterized).
+func GetSystemsHierarchyPathsQuery(facilityCode string) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 
 	result.Query = `
-	MATCH (f:Facility{code:$facilityCode})
-	MATCH (p:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	WHERE (p)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
-	OPTIONAL MATCH (p)-[:HAS_SUBSYSTEM]->(cp:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	WHERE (cp)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
-	WITH p, collect(DISTINCT cp.uid) as childUids
-	WITH p, childUids,
-		exists {
-			MATCH (p)-[:HAS_SUBSYSTEM]->(leaf:System{deleted:false})
-			WHERE NOT (leaf)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
-		} as hasLeafChildren
-	RETURN {uid: p.uid, name: p.name, systemCode: p.systemCode, hasLeafChildren: hasLeafChildren, childUids: childUids} as result
-	ORDER BY toLower(result.name)
+	MATCH (root:System)-[:BELONGS_TO_FACILITY]->(:Facility {code: $facilityCode})
+	WHERE NOT ()-[:HAS_SUBSYSTEM]->(root)
+		AND root.deleted <> TRUE
+		AND (root)-[:HAS_SUBSYSTEM]->()
+
+	MATCH path = (root)-[:HAS_SUBSYSTEM*]->(s:System)
+	WHERE s.deleted <> TRUE
+		AND (s)-[:HAS_SUBSYSTEM]->()
+
+	RETURN path
 	`
-	result.ReturnAlias = "result"
+	result.ReturnAlias = "path"
+	return result
+}
+
+// GetSystemsHasLeafChildrenByUidsQuery returns UIDs of systems that have at least one direct leaf child.
+// This is used to enrich the hierarchy response without modifying the main hierarchy query.
+func GetSystemsHasLeafChildrenByUidsQuery(facilityCode string, uids []string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["uids"] = uids
+
+	result.Query = `
+	MATCH (p:System)-[:BELONGS_TO_FACILITY]->(:Facility {code: $facilityCode})
+	WHERE p.uid IN $uids
+		AND p.deleted <> TRUE
+		AND exists {
+			MATCH (p)-[:HAS_SUBSYSTEM]->(leaf:System)
+			WHERE leaf.deleted <> TRUE
+				AND NOT (leaf)-[:HAS_SUBSYSTEM]->()
+		}
+	RETURN p.uid as uid
+	`
+	result.ReturnAlias = "uid"
 	return result
 }
 

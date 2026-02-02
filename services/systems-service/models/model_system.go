@@ -42,6 +42,7 @@ type SystemHierarchyNode struct {
 	UID             string                `json:"uid"`
 	Name            string                `json:"name"`
 	SystemCode      *string               `json:"systemCode,omitempty"`
+	SystemLevel     *string               `json:"systemLevel,omitempty"`
 	HasLeafChildren bool                  `json:"hasLeafChildren"`
 	Children        []SystemHierarchyNode `json:"children"`
 }

@@ -327,48 +327,136 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	rows, err := helpers.GetNeo4jArrayOfNodes[models.SystemHierarchyNodeRow](session, GetSystemsHierarchyNodesQuery(facilityCode))
-	helpers.ProcessArrayResult(&rows, err)
+	query := GetSystemsHierarchyPathsQuery(facilityCode)
+	rows, err := session.Run(query.Query, query.Parameters)
 	if err != nil {
 		return nil, err
 	}
 
-	nodesByUID := make(map[string]*models.SystemHierarchyNode, len(rows))
-	childrenByUID := make(map[string][]string, len(rows))
-	childSet := make(map[string]struct{}, len(rows))
+	nodesByUID := make(map[string]*models.SystemHierarchyNode)
+	childrenByUID := make(map[string]map[string]struct{})
+	rootSet := make(map[string]struct{})
+	allUids := make(map[string]struct{})
 
-	for _, r := range rows {
-		nodesByUID[r.UID] = &models.SystemHierarchyNode{
-			UID:             r.UID,
-			Name:            r.Name,
-			SystemCode:      r.SystemCode,
-			HasLeafChildren: r.HasLeafChildren,
-			Children:        []models.SystemHierarchyNode{},
+	addEdge := func(parentUID, childUID string) {
+		if strings.TrimSpace(parentUID) == "" || strings.TrimSpace(childUID) == "" {
+			return
 		}
-		childrenByUID[r.UID] = append([]string(nil), r.ChildUids...)
-		for _, childUID := range r.ChildUids {
-			childSet[childUID] = struct{}{}
+		set, ok := childrenByUID[parentUID]
+		if !ok {
+			set = make(map[string]struct{})
+			childrenByUID[parentUID] = set
 		}
+		set[childUID] = struct{}{}
 	}
 
-	// Stable child ordering (by child name) for nicer UI diffs.
-	for parentUID, childUids := range childrenByUID {
-		sort.SliceStable(childUids, func(i, j int) bool {
-			ci := nodesByUID[childUids[i]]
-			cj := nodesByUID[childUids[j]]
-			if ci == nil || cj == nil {
-				return childUids[i] < childUids[j]
+	getPropStringPtr := func(props map[string]interface{}, key string) *string {
+		v, ok := props[key]
+		if !ok || v == nil {
+			return nil
+		}
+		s, ok := v.(string)
+		if !ok {
+			return nil
+		}
+		if strings.TrimSpace(s) == "" {
+			return nil
+		}
+		return &s
+	}
+
+	for rows.Next() {
+		rec := rows.Record()
+		val, ok := rec.Get(query.ReturnAlias)
+		if !ok {
+			continue
+		}
+		p, ok := val.(neo4j.Path)
+		if !ok || len(p.Nodes) == 0 {
+			continue
+		}
+
+		pathUIDs := make([]string, 0, len(p.Nodes))
+		for _, n := range p.Nodes {
+			uid, _ := n.Props["uid"].(string)
+			name, _ := n.Props["name"].(string)
+			if strings.TrimSpace(uid) == "" {
+				continue
 			}
-			return strings.ToLower(ci.Name) < strings.ToLower(cj.Name)
-		})
-		childrenByUID[parentUID] = childUids
+
+			existing := nodesByUID[uid]
+			if existing == nil {
+				existing = &models.SystemHierarchyNode{
+					UID:             uid,
+					Name:            name,
+					SystemCode:      getPropStringPtr(n.Props, "systemCode"),
+					SystemLevel:     getPropStringPtr(n.Props, "systemLevel"),
+					HasLeafChildren: false,
+					Children:        []models.SystemHierarchyNode{},
+				}
+				nodesByUID[uid] = existing
+			} else {
+				if strings.TrimSpace(existing.Name) == "" {
+					existing.Name = name
+				}
+				if existing.SystemCode == nil {
+					existing.SystemCode = getPropStringPtr(n.Props, "systemCode")
+				}
+				if existing.SystemLevel == nil {
+					existing.SystemLevel = getPropStringPtr(n.Props, "systemLevel")
+				}
+			}
+
+			allUids[uid] = struct{}{}
+			pathUIDs = append(pathUIDs, uid)
+		}
+
+		if len(pathUIDs) == 0 {
+			continue
+		}
+		rootSet[pathUIDs[0]] = struct{}{}
+		for i := 0; i < len(pathUIDs)-1; i++ {
+			addEdge(pathUIDs[i], pathUIDs[i+1])
+		}
 	}
 
-	roots := make([]string, 0, len(nodesByUID))
-	for uid := range nodesByUID {
-		if _, isChild := childSet[uid]; !isChild {
-			roots = append(roots, uid)
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Determine which returned parent nodes have at least one direct leaf child.
+	if len(allUids) > 0 {
+		uids := make([]string, 0, len(allUids))
+		for uid := range allUids {
+			uids = append(uids, uid)
 		}
+		leafQuery := GetSystemsHasLeafChildrenByUidsQuery(facilityCode, uids)
+		leafRows, qErr := session.Run(leafQuery.Query, leafQuery.Parameters)
+		if qErr != nil {
+			return nil, qErr
+		}
+		for leafRows.Next() {
+			rec := leafRows.Record()
+			uidVal, ok := rec.Get(leafQuery.ReturnAlias)
+			if !ok {
+				continue
+			}
+			uid, _ := uidVal.(string)
+			if n := nodesByUID[uid]; n != nil {
+				n.HasLeafChildren = true
+			}
+		}
+		if qErr := leafRows.Err(); qErr != nil {
+			return nil, qErr
+		}
+	}
+
+	roots := make([]string, 0, len(rootSet))
+	for uid := range rootSet {
+		if nodesByUID[uid] == nil {
+			continue
+		}
+		roots = append(roots, uid)
 	}
 	sort.SliceStable(roots, func(i, j int) bool {
 		return strings.ToLower(nodesByUID[roots[i]].Name) < strings.ToLower(nodesByUID[roots[j]].Name)
@@ -381,7 +469,6 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 			return models.SystemHierarchyNode{Children: []models.SystemHierarchyNode{}}
 		}
 		if visiting[uid] {
-			// Defensive: prevent cycles from blowing the stack.
 			return *base
 		}
 		visiting[uid] = true
@@ -390,13 +477,26 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 			UID:             base.UID,
 			Name:            base.Name,
 			SystemCode:      base.SystemCode,
+			SystemLevel:     base.SystemLevel,
 			HasLeafChildren: base.HasLeafChildren,
 			Children:        []models.SystemHierarchyNode{},
 		}
-		for _, childUID := range childrenByUID[uid] {
+
+		childSet := childrenByUID[uid]
+		if len(childSet) == 0 {
+			return out
+		}
+		childUIDs := make([]string, 0, len(childSet))
+		for childUID := range childSet {
 			if nodesByUID[childUID] == nil {
 				continue
 			}
+			childUIDs = append(childUIDs, childUID)
+		}
+		sort.SliceStable(childUIDs, func(i, j int) bool {
+			return strings.ToLower(nodesByUID[childUIDs[i]].Name) < strings.ToLower(nodesByUID[childUIDs[j]].Name)
+		})
+		for _, childUID := range childUIDs {
 			out.Children = append(out.Children, build(childUID, visiting))
 		}
 		return out
