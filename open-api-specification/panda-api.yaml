@@ -1187,6 +1187,23 @@ definitions:
       uid:
         type: string
     type: object
+  models.SystemHierarchyNode:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.SystemHierarchyNode'
+        type: array
+      hasLeafChildren:
+        type: boolean
+      name:
+        type: string
+      systemCode:
+        type: string
+      systemLevel:
+        type: string
+      uid:
+        type: string
+    type: object
   models.SystemHistory:
     properties:
       action:
@@ -3880,6 +3897,47 @@ paths:
       summary: Get system image
       tags:
       - Systems
+  /v1/system/{uid}/leaves:
+    get:
+      description: Returns a paginated list of leaf systems (systems without subsystems)
+        directly under the given parent system.
+      parameters:
+      - description: Parent system UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        required: true
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_System'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get leaf systems for a parent
+      tags:
+      - Systems
   /v1/system/{uid}/relationships:
     get:
       description: Returns relationships for a given system UID.
@@ -4505,6 +4563,26 @@ paths:
       security:
       - BearerAuth: []
       summary: Get systems for relationship
+      tags:
+      - Systems
+  /v1/systems/hierarchy:
+    get:
+      description: Returns a hierarchy tree containing only systems that have subsystems
+        (no leaves).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemHierarchyNode'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems hierarchy (parents only)
       tags:
       - Systems
   /v1/systems/locations-flat:

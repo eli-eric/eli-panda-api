@@ -28,6 +28,8 @@ type ISystemsHandlers interface {
 	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
+	GetSystemsHierarchy() echo.HandlerFunc
+	GetSystemLeavesByParentUID() echo.HandlerFunc
 	GetSystemsForControlsSystems() echo.HandlerFunc
 	GetNewSystemCodesPreview() echo.HandlerFunc
 	SaveNewSystemCodes() echo.HandlerFunc
@@ -401,6 +403,85 @@ func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 			return echo.ErrInternalServerError
 		}
+	}
+}
+
+// GetSystemsHierarchy godoc
+// @Summary Get systems hierarchy (parents only)
+// @Description Returns a hierarchy tree containing only systems that have subsystems (no leaves).
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {array} models.SystemHierarchyNode
+// @Failure 500 "Internal server error"
+// @Router /v1/systems/hierarchy [get]
+func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		facilityCode := c.Get("facilityCode").(string)
+
+		items, err := h.systemsService.GetSystemsHierarchy(facilityCode)
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetSystemLeavesByParentUID godoc
+// @Summary Get leaf systems for a parent
+// @Description Returns a paginated list of leaf systems (systems without subsystems) directly under the given parent system.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Parent system UID"
+// @Param pagination query string true "Pagination JSON (e.g. {\"page\":1,\"pageSize\":100})"
+// @Param sorting query string false "Sorting JSON (array of {id, desc})"
+// @Param search query string false "Search text"
+// @Param columnFilter query string false "Column filter JSON"
+// @Success 200 {object} helpers.PaginationResult[models.System]
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid}/leaves [get]
+func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		parentUID := c.Param("uid")
+		facilityCode := c.Get("facilityCode").(string)
+
+		pagination := c.QueryParam("pagination")
+		sorting := c.QueryParam("sorting")
+		search := c.QueryParam("search")
+
+		pagingObject := &helpers.Pagination{Page: 1, PageSize: 100}
+		if strings.TrimSpace(pagination) != "" {
+			json.Unmarshal([]byte(pagination), &pagingObject)
+		} else {
+			if pageStr := strings.TrimSpace(c.QueryParam("page")); pageStr != "" {
+				if page, err := strconv.Atoi(pageStr); err == nil && page > 0 {
+					pagingObject.Page = page
+				}
+			}
+			if pageSizeStr := strings.TrimSpace(c.QueryParam("pageSize")); pageSizeStr != "" {
+				if pageSize, err := strconv.Atoi(pageSizeStr); err == nil && pageSize > 0 {
+					pagingObject.PageSize = pageSize
+				}
+			}
+		}
+
+		sortingObject := new([]helpers.Sorting)
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject)
+		if err == nil {
+			return c.JSON(http.StatusOK, items)
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
 	}
 }
 
