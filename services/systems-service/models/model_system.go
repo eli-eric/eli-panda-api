@@ -76,6 +76,7 @@ type SystemCodesResult struct {
 	ParentPath   []SystemSimpleResponse `json:"parentPath"`
 	CreatedBy    string                 `json:"createdBy"`
 	LastUpdateBy string                 `json:"lastUpdateBy"`
+	SystemType   *models.Codebook       `json:"systemType,omitempty"`
 	Zone         *models.Codebook       `json:"zone,omitempty"`
 	Location     *models.Codebook       `json:"location,omitempty"`
 }
@@ -120,6 +121,21 @@ type SystemType struct {
 	Code            string           `json:"code"`
 	Mask            string           `json:"mask"`
 	SystemAttribute *models.Codebook `json:"systemAttribute,omitempty" neo4j:"rel,SystemAttribute,HAS_SYSTEM_ATTRIBUTE,uid,systemAttribute"`
+}
+
+// SystemTypeTreeItem represents a system type in the tree response
+type SystemTypeTreeItem struct {
+	UID  string `json:"uid"`
+	Name string `json:"name"`
+	Code string `json:"code"`
+}
+
+// SystemTypeGroupTreeItem represents a system type group with its children in tree response
+type SystemTypeGroupTreeItem struct {
+	UID      string               `json:"uid"`
+	Name     string               `json:"name"`
+	Code     string               `json:"code"`
+	Children []SystemTypeTreeItem `json:"children"`
 }
 
 type SystemWithAllDetails struct {
