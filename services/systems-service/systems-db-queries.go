@@ -772,7 +772,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		LIMIT 1
 	}
 	WITH sys, zone, st, loc, parentPath, createdBy, lastUpdateBy,
-		coalesce(head([g IN apoc.text.regexGroups(sys.systemCode, '(\\d+)$') | g[0]]), "") AS serialSuffix
+		coalesce(head([g IN apoc.text.regexGroups(sys.systemCode, '(\\d+)$') | g[1]]), "") AS serialSuffix
 	WITH sys, zone, st, loc, parentPath, createdBy, lastUpdateBy,
 		CASE
 			WHEN st IS NOT NULL AND st.code IS NOT NULL AND serialSuffix <> "" THEN st.code + serialSuffix
