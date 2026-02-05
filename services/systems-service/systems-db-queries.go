@@ -665,13 +665,13 @@ func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 func GetControlSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY result.code ASC `
+		return `ORDER BY computedShortCode ASC `
 	}
 
 	// allow a limited set of sortable columns to avoid Cypher injection
 	allowed := map[string]string{
 		"name":         "result.name",
-		"code":         "result.code",
+		"code":         "computedShortCode",
 		"systemType":   "result.systemType.name",
 		"createdBy":    "result.createdBy",
 		"lastUpdateBy": "result.lastUpdateBy",
@@ -700,7 +700,7 @@ func GetControlSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 	}
 
 	if added == 0 {
-		return `ORDER BY result.code ASC `
+		return `ORDER BY computedShortCode ASC `
 	}
 
 	return result
@@ -771,6 +771,13 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		ORDER BY lastUpdateAt DESC
 		LIMIT 1
 	}
+	WITH sys, zone, st, loc, parentPath, createdBy, lastUpdateBy,
+		coalesce(head([g IN apoc.text.regexGroups(sys.systemCode, '(\\d+)$') | g[0]]), "") AS serialSuffix
+	WITH sys, zone, st, loc, parentPath, createdBy, lastUpdateBy,
+		CASE
+			WHEN st IS NOT NULL AND st.code IS NOT NULL AND serialSuffix <> "" THEN st.code + serialSuffix
+			ELSE sys.systemCode
+		END AS computedShortCode
 	RETURN DISTINCT {
 		uid: sys.uid,
 		name: sys.name,
@@ -781,7 +788,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		systemType: case when st is not null then {uid: st.uid, name: st.name, code: st.code} else null end,
 		zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 		location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end
-	} AS result
+	} AS result, computedShortCode AS computedShortCode
 	` + GetControlSystemsOrderByClauses(sorting) + `
 	SKIP $skip
 	LIMIT $limit
