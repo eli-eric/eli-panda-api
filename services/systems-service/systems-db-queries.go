@@ -665,13 +665,13 @@ func GetSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 func GetControlSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 
 	if sorting == nil || len(*sorting) == 0 {
-		return `ORDER BY computedShortCode ASC `
+		return `ORDER BY result.code ASC `
 	}
 
 	// allow a limited set of sortable columns to avoid Cypher injection
 	allowed := map[string]string{
 		"name":         "result.name",
-		"code":         "computedShortCode",
+		"code":         "result.code",
 		"systemType":   "result.systemType.name",
 		"createdBy":    "result.createdBy",
 		"lastUpdateBy": "result.lastUpdateBy",
@@ -700,7 +700,7 @@ func GetControlSystemsOrderByClauses(sorting *[]helpers.Sorting) string {
 	}
 
 	if added == 0 {
-		return `ORDER BY computedShortCode ASC `
+		return `ORDER BY result.code ASC `
 	}
 
 	return result
@@ -723,8 +723,22 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		filterVal = helpers.GetFilterValueString(filering, "search")
 	}
 	if filterVal != nil && *filterVal != "" {
-		result.Query += ` AND (toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
-		result.Parameters["filterSearchText"] = *filterVal
+		search := strings.TrimSpace(*filterVal)
+		startsWithWildcard := strings.HasPrefix(search, "*")
+		endsWithWildcard := strings.HasSuffix(search, "*")
+		search = strings.Trim(search, "*")
+		search = strings.TrimSpace(search)
+		if search != "" {
+			operator := "STARTS WITH"
+			switch {
+			case startsWithWildcard && endsWithWildcard:
+				operator = "CONTAINS"
+			case startsWithWildcard:
+				operator = "ENDS WITH"
+			}
+			result.Query += fmt.Sprintf(" AND (toLower(sys.systemCode) %s toLower($filterSearchText)) ", operator)
+			result.Parameters["filterSearchText"] = search
+		}
 	}
 
 	// Zone filter
@@ -771,13 +785,6 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		ORDER BY lastUpdateAt DESC
 		LIMIT 1
 	}
-	WITH sys, zone, st, loc, parentPath, createdBy, lastUpdateBy,
-		coalesce(head([g IN apoc.text.regexGroups(sys.systemCode, '(\\d+)$') | g[1]]), "") AS serialSuffix
-	WITH sys, zone, st, loc, parentPath, createdBy, lastUpdateBy,
-		CASE
-			WHEN st IS NOT NULL AND st.code IS NOT NULL AND serialSuffix <> "" THEN st.code + serialSuffix
-			ELSE sys.systemCode
-		END AS computedShortCode
 	RETURN DISTINCT {
 		uid: sys.uid,
 		name: sys.name,
@@ -788,7 +795,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 		systemType: case when st is not null then {uid: st.uid, name: st.name, code: st.code} else null end,
 		zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 		location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end
-	} AS result, computedShortCode AS computedShortCode
+	} AS result
 	` + GetControlSystemsOrderByClauses(sorting) + `
 	SKIP $skip
 	LIMIT $limit
@@ -817,8 +824,22 @@ func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]hel
 		filterVal = helpers.GetFilterValueString(filering, "search")
 	}
 	if filterVal != nil && *filterVal != "" {
-		result.Query += ` AND (toLower(sys.systemCode) CONTAINS toLower($filterSearchText)) `
-		result.Parameters["filterSearchText"] = *filterVal
+		search := strings.TrimSpace(*filterVal)
+		startsWithWildcard := strings.HasPrefix(search, "*")
+		endsWithWildcard := strings.HasSuffix(search, "*")
+		search = strings.Trim(search, "*")
+		search = strings.TrimSpace(search)
+		if search != "" {
+			operator := "STARTS WITH"
+			switch {
+			case startsWithWildcard && endsWithWildcard:
+				operator = "CONTAINS"
+			case startsWithWildcard:
+				operator = "ENDS WITH"
+			}
+			result.Query += fmt.Sprintf(" AND (toLower(sys.systemCode) %s toLower($filterSearchText)) ", operator)
+			result.Parameters["filterSearchText"] = search
+		}
 	}
 
 	if filterVal := helpers.GetFilterValueCodebook(filering, "zone"); filterVal != nil && (*filterVal).UID != "" {
