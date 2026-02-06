@@ -325,9 +325,12 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 }
 
 func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error) {
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	session := (*svc.neo4jDriver).NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer func() {
+		_ = session.Close()
+	}()
 
-	query := GetSystemsHierarchyPathsQuery(facilityCode)
+	query := GetSystemsHierarchyEdgesQuery(facilityCode)
 	rows, err := session.Run(query.Query, query.Parameters)
 	if err != nil {
 		return nil, err
@@ -350,73 +353,70 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 		set[childUID] = struct{}{}
 	}
 
-	getPropStringPtr := func(props map[string]interface{}, key string) *string {
-		v, ok := props[key]
-		if !ok || v == nil {
-			return nil
-		}
-		s, ok := v.(string)
-		if !ok {
-			return nil
-		}
-		if strings.TrimSpace(s) == "" {
-			return nil
-		}
-		return &s
-	}
-
 	for rows.Next() {
 		rec := rows.Record()
-		val, ok := rec.Get(query.ReturnAlias)
+
+		uidVal, ok := rec.Get("uid")
 		if !ok {
 			continue
 		}
-		p, ok := val.(neo4j.Path)
-		if !ok || len(p.Nodes) == 0 {
+		uid, _ := uidVal.(string)
+		if strings.TrimSpace(uid) == "" {
 			continue
 		}
 
-		pathUIDs := make([]string, 0, len(p.Nodes))
-		for _, n := range p.Nodes {
-			uid, _ := n.Props["uid"].(string)
-			name, _ := n.Props["name"].(string)
-			if strings.TrimSpace(uid) == "" {
-				continue
-			}
+		parentUidVal, _ := rec.Get("parentUid")
+		parentUID, _ := parentUidVal.(string)
 
-			existing := nodesByUID[uid]
-			if existing == nil {
-				existing = &models.SystemHierarchyNode{
-					UID:             uid,
-					Name:            name,
-					SystemCode:      getPropStringPtr(n.Props, "systemCode"),
-					SystemLevel:     getPropStringPtr(n.Props, "systemLevel"),
-					HasLeafChildren: false,
-					Children:        []models.SystemHierarchyNode{},
-				}
-				nodesByUID[uid] = existing
-			} else {
-				if strings.TrimSpace(existing.Name) == "" {
-					existing.Name = name
-				}
-				if existing.SystemCode == nil {
-					existing.SystemCode = getPropStringPtr(n.Props, "systemCode")
-				}
-				if existing.SystemLevel == nil {
-					existing.SystemLevel = getPropStringPtr(n.Props, "systemLevel")
-				}
-			}
-
-			allUids[uid] = struct{}{}
-			pathUIDs = append(pathUIDs, uid)
+		hasAnyParentVal, _ := rec.Get("hasAnyParent")
+		hasAnyParent, _ := hasAnyParentVal.(bool)
+		if !hasAnyParent {
+			rootSet[uid] = struct{}{}
 		}
 
-		if len(pathUIDs) == 0 {
-			continue
+		nameVal, _ := rec.Get("name")
+		name, _ := nameVal.(string)
+
+		var systemCodePtr *string
+		if scVal, ok := rec.Get("systemCode"); ok {
+			if sc, ok := scVal.(string); ok && strings.TrimSpace(sc) != "" {
+				systemCodePtr = &sc
+			}
 		}
-		rootSet[pathUIDs[0]] = struct{}{}
-		for i := 0; i < len(pathUIDs)-1; i++ {
-			addEdge(pathUIDs[i], pathUIDs[i+1])
+		var systemLevelPtr *string
+		if slVal, ok := rec.Get("systemLevel"); ok {
+			if sl, ok := slVal.(string); ok && strings.TrimSpace(sl) != "" {
+				systemLevelPtr = &sl
+			}
+		}
+
+		existing := nodesByUID[uid]
+		if existing == nil {
+			existing = &models.SystemHierarchyNode{
+				UID:             uid,
+				Name:            name,
+				SystemCode:      systemCodePtr,
+				SystemLevel:     systemLevelPtr,
+				HasLeafChildren: false,
+				Children:        []models.SystemHierarchyNode{},
+			}
+			nodesByUID[uid] = existing
+		} else {
+			if strings.TrimSpace(existing.Name) == "" {
+				existing.Name = name
+			}
+			if existing.SystemCode == nil {
+				existing.SystemCode = systemCodePtr
+			}
+			if existing.SystemLevel == nil {
+				existing.SystemLevel = systemLevelPtr
+			}
+		}
+
+		allUids[uid] = struct{}{}
+		if strings.TrimSpace(parentUID) != "" {
+			allUids[parentUID] = struct{}{}
+			addEdge(parentUID, uid)
 		}
 	}
 

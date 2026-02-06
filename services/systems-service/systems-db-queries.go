@@ -1170,6 +1170,39 @@ func GetSystemsHierarchyPathsQuery(facilityCode string) (result helpers.Database
 	return result
 }
 
+// GetSystemsHierarchyEdgesQuery returns hierarchy as lightweight rows (parentUid -> uid)
+// for systems that have subsystems (parents only).
+//
+// This avoids returning Neo4j PATH objects, which can be extremely large for deep/wide hierarchies
+// and may lead to connection pool exhaustion/timeouts in dev.
+func GetSystemsHierarchyEdgesQuery(facilityCode string) (result helpers.DatabaseQuery) {
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["facilityCode"] = facilityCode
+
+	result.Query = `
+	MATCH (n:System)-[:BELONGS_TO_FACILITY]->(:Facility {code: $facilityCode})
+	WHERE n.deleted <> TRUE
+		AND (n)-[:HAS_SUBSYSTEM]->()
+	OPTIONAL MATCH (anyParent:System)-[:HAS_SUBSYSTEM]->(n)
+	WITH n, count(anyParent) > 0 AS hasAnyParent
+
+	OPTIONAL MATCH (p:System)-[:HAS_SUBSYSTEM]->(n)
+	WHERE p.deleted <> TRUE
+		AND (p)-[:HAS_SUBSYSTEM]->()
+		AND (p)-[:BELONGS_TO_FACILITY]->(:Facility {code: $facilityCode})
+
+	RETURN DISTINCT
+		CASE WHEN hasAnyParent THEN p.uid ELSE null END as parentUid,
+		n.uid as uid,
+		n.name as name,
+		n.systemCode as systemCode,
+		n.systemLevel as systemLevel,
+		hasAnyParent as hasAnyParent
+	`
+	result.ReturnAlias = "uid"
+	return result
+}
+
 // GetSystemsHasLeafChildrenByUidsQuery returns UIDs of systems that have at least one direct leaf child.
 // This is used to enrich the hierarchy response without modifying the main hierarchy query.
 func GetSystemsHasLeafChildrenByUidsQuery(facilityCode string, uids []string) (result helpers.DatabaseQuery) {
