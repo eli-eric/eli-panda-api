@@ -24,7 +24,17 @@ func NewSecurityHandlers(securitySvc ISecurityService) ISecurityHandlers {
 	return &SecurityHandlers{securityService: securitySvc}
 }
 
-// Login with username and password and get jwt token to play with rest of API
+// AuthenticateByUsernameAndPassword godoc
+// @Summary Authenticate user
+// @Description Authenticates user using username and password and returns user info with access token.
+// @Tags Security
+// @Accept json
+// @Produce json
+// @Param credentials body models.UserCredentials true "User credentials"
+// @Success 200 {object} models.UserAuthInfo
+// @Failure 401 "Unauthorized"
+// @Failure 500 "Internal server error"
+// @Router /v1/authenticate [post]
 func (h *SecurityHandlers) AuthenticateByUsernameAndPassword() echo.HandlerFunc {
 
 	return func(c echo.Context) error {

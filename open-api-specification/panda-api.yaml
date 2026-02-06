@@ -1,5 +1,23 @@
 basePath: /
 definitions:
+  helpers.ConflictErrorResponse:
+    properties:
+      errorMessage:
+        type: string
+      relatedNodes:
+        items:
+          $ref: '#/definitions/helpers.RelatedNodeLabelAmount'
+        type: array
+    type: object
+  helpers.PaginationResult-models_CatalogueItemSimple:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.CatalogueItemSimple'
+        type: array
+      totalCount:
+        type: integer
+    type: object
   helpers.PaginationResult-models_GlobalSearchResult:
     properties:
       data:
@@ -18,11 +36,29 @@ definitions:
       totalCount:
         type: integer
     type: object
+  helpers.PaginationResult-models_OrderListItem:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.OrderListItem'
+        type: array
+      totalCount:
+        type: integer
+    type: object
   helpers.PaginationResult-models_Researcher:
     properties:
       data:
         items:
           $ref: '#/definitions/models.Researcher'
+        type: array
+      totalCount:
+        type: integer
+    type: object
+  helpers.PaginationResult-models_System:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.System'
         type: array
       totalCount:
         type: integer
@@ -35,6 +71,13 @@ definitions:
         type: array
       totalCount:
         type: integer
+    type: object
+  helpers.RelatedNodeLabelAmount:
+    properties:
+      count:
+        type: integer
+      label:
+        type: string
     type: object
   models.AssignSpareRequest:
     properties:
@@ -77,6 +120,35 @@ definitions:
         - $ref: '#/definitions/models.Codebook'
         description: department is the department of the publication
     type: object
+  models.CatalogueCategory:
+    properties:
+      code:
+        type: string
+      groups:
+        items:
+          $ref: '#/definitions/models.CatalogueCategoryPropertyGroup'
+        type: array
+      image:
+        type: string
+      miniImageUrl:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      parentPath:
+        type: string
+      parentUID:
+        type: string
+      physicalItemProperties:
+        items:
+          $ref: '#/definitions/models.CatalogueCategoryProperty'
+        type: array
+      systemType:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
   models.CatalogueCategoryProperty:
     properties:
       defaultValue:
@@ -93,6 +165,17 @@ definitions:
         type: string
       unit:
         $ref: '#/definitions/models.Codebook'
+    type: object
+  models.CatalogueCategoryPropertyGroup:
+    properties:
+      name:
+        type: string
+      properties:
+        items:
+          $ref: '#/definitions/models.CatalogueCategoryProperty'
+        type: array
+      uid:
+        type: string
     type: object
   models.CatalogueCategoryPropertyType:
     properties:
@@ -157,6 +240,37 @@ definitions:
       uid:
         type: string
     type: object
+  models.CatalogueItemSimple:
+    properties:
+      catalogueNumber:
+        type: string
+      category:
+        $ref: '#/definitions/models.Codebook'
+      description:
+        type: string
+      details:
+        items:
+          $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
+        type: array
+      lastUpdateBy:
+        type: string
+      lastUpdateTime:
+        type: string
+      manufacturerNumber:
+        type: string
+      manufacturerUrl:
+        type: string
+      miniImageUrl:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      supplier:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
   models.CatalogueServiceType:
     properties:
       category:
@@ -171,6 +285,25 @@ definitions:
         type: array
       uid:
         type: string
+    type: object
+  models.CatalogueStatistics:
+    properties:
+      experimentalLoanPoolPartsCount:
+        type: integer
+      facilityName:
+        type: string
+      inSystemPartsCount:
+        type: integer
+      othersCount:
+        type: integer
+      sparePartsCount:
+        type: integer
+      stockItemsCount:
+        type: integer
+      testAndMeasurementPartsCount:
+        type: integer
+      total:
+        type: integer
     type: object
   models.Codebook:
     properties:
@@ -192,6 +325,61 @@ definitions:
       uid:
         type: string
     type: object
+  models.CodebookResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Codebook'
+        type: array
+      metadata:
+        $ref: '#/definitions/models.CodebookType'
+    type: object
+  models.CodebookTreeItem:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.CodebookTreeItem'
+        type: array
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.CodebookType:
+    properties:
+      code:
+        type: string
+      roleEdit:
+        type: string
+      type:
+        type: string
+    type: object
+  models.CronJobHistory:
+    properties:
+      endTime:
+        type: integer
+      jobMessage:
+        type: string
+      jobName:
+        type: string
+      jobStatus:
+        type: string
+      jobType:
+        type: string
+      jobUid:
+        type: string
+      startTime:
+        type: integer
+      totalTimeMs:
+        type: integer
+      uid:
+        type: string
+    type: object
+  models.EUN:
+    properties:
+      eun:
+        type: string
+    type: object
   models.EmployeeInfo:
     properties:
       email:
@@ -210,6 +398,19 @@ definitions:
       eun:
         type: string
       location_uid:
+        type: string
+    type: object
+  models.FileLink:
+    properties:
+      name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
+      url:
         type: string
     type: object
   models.GlobalSearchResult:
@@ -333,6 +534,21 @@ definitions:
       uid:
         type: string
     type: object
+  models.MiniImageLinks:
+    properties:
+      name:
+        type: string
+      tags:
+        items:
+          type: string
+        type: array
+      uid:
+        type: string
+      url:
+        items:
+          type: string
+        type: array
+    type: object
   models.OrderDetail:
     properties:
       contractNumber:
@@ -407,6 +623,54 @@ definitions:
       uid:
         type: string
     type: object
+  models.OrderLineDelivery:
+    properties:
+      eun:
+        type: string
+      isDelivered:
+        type: boolean
+      serialNumber:
+        type: string
+    type: object
+  models.OrderLineMinMax:
+    properties:
+      max:
+        type: integer
+      min:
+        type: integer
+    type: object
+  models.OrderListItem:
+    properties:
+      contractNumber:
+        type: string
+      deliveryStatus:
+        description: 0 - none delivered, 1 - partially delivered, 2 - delivered
+        type: integer
+      lastUpdateBy:
+        type: string
+      lastUpdateTime:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      orderDate:
+        type: string
+      orderNumber:
+        type: string
+      orderStatus:
+        $ref: '#/definitions/models.Codebook'
+      procurementResponsible:
+        type: string
+      requestNumber:
+        type: string
+      requestor:
+        type: string
+      supplier:
+        type: string
+      uid:
+        type: string
+    type: object
   models.PhysicalItem:
     properties:
       catalogueItem:
@@ -426,6 +690,12 @@ definitions:
         type: string
       uid:
         type: string
+    type: object
+  models.PhysicalItemDetail:
+    properties:
+      property:
+        $ref: '#/definitions/models.CatalogueCategoryProperty'
+      value: {}
     type: object
   models.PhysicalItemDetailExtended:
     properties:
@@ -917,6 +1187,23 @@ definitions:
       uid:
         type: string
     type: object
+  models.SystemHierarchyNode:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/models.SystemHierarchyNode'
+        type: array
+      hasLeafChildren:
+        type: boolean
+      name:
+        type: string
+      systemCode:
+        type: string
+      systemLevel:
+        type: string
+      uid:
+        type: string
+    type: object
   models.SystemHistory:
     properties:
       action:
@@ -939,6 +1226,37 @@ definitions:
       systemName:
         type: string
       systemUid:
+        type: string
+    type: object
+  models.SystemPhysicalItemInfo:
+    properties:
+      itemName:
+        type: string
+      itemUid:
+        type: string
+      systemName:
+        type: string
+      systemUid:
+        type: string
+    type: object
+  models.SystemRelationship:
+    properties:
+      direction:
+        type: string
+      foreignSystemName:
+        type: string
+      relationTypeCode:
+        type: string
+      relationUid:
+        type: integer
+    type: object
+  models.SystemRelationshipRequest:
+    properties:
+      relationTypeCode:
+        type: string
+      systemFromUid:
+        type: string
+      systemToUid:
         type: string
     type: object
   models.SystemSimpleInfo:
@@ -1008,6 +1326,19 @@ definitions:
       uid:
         type: string
     type: object
+  models.SystemType:
+    properties:
+      code:
+        type: string
+      mask:
+        type: string
+      name:
+        type: string
+      systemAttribute:
+        $ref: '#/definitions/models.Codebook'
+      uid:
+        type: string
+    type: object
   models.SystemTypeGroupTreeItem:
     properties:
       children:
@@ -1062,6 +1393,13 @@ definitions:
           type: string
         type: array
       uid:
+        type: string
+      username:
+        type: string
+    type: object
+  models.UserCredentials:
+    properties:
+      password:
         type: string
       username:
         type: string
@@ -1201,6 +1539,457 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/authenticate:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates user using username and password and returns user
+        info with access token.
+      parameters:
+      - description: User credentials
+        in: body
+        name: credentials
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserCredentials'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserAuthInfo'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+      summary: Authenticate user
+      tags:
+      - Security
+  /v1/catalogue/{catalogueItemUid}/orders:
+    get:
+      description: Returns orders that reference the specified catalogue item.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: catalogueItemUid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.OrderListItem'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get orders for catalogue item
+      tags:
+      - Orders
+  /v1/catalogue/categories:
+    get:
+      description: Returns catalogue categories under the provided parent path (optional).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CatalogueCategory'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue categories by parent path
+      tags:
+      - Catalogue
+  /v1/catalogue/categories/{path}:
+    get:
+      description: Returns catalogue categories under the provided parent path (optional).
+      parameters:
+      - description: Parent path (wildcard)
+        in: path
+        name: path
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CatalogueCategory'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue categories by parent path
+      tags:
+      - Catalogue
+  /v1/catalogue/category:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new catalogue category.
+      parameters:
+      - description: Catalogue category
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueCategory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategory'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create catalogue category
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}:
+    delete:
+      description: Deletes a catalogue category by UID.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "403":
+          description: Forbidden
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete catalogue category
+      tags:
+      - Catalogue
+    get:
+      description: Returns catalogue category with details by UID.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategory'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue category detail
+      tags:
+      - Catalogue
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing catalogue category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Catalogue category
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueCategory'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategory'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update catalogue category
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/copy:
+    post:
+      description: Copies a catalogue category (including descendants) and returns
+        the new root UID.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: Created
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Copy catalogue category recursively
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/image:
+    get:
+      description: Returns base64-encoded image string for the catalogue category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue category image
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/physical-item-properties:
+    get:
+      description: Returns physical item properties defined for a catalogue category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue category physical item properties
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/properties:
+    get:
+      description: Returns category properties; optionally enriched for a given item
+        UID.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Item UID
+        in: query
+        name: itemUid
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue category properties
+      tags:
+      - Catalogue
+  /v1/catalogue/item:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new catalogue item.
+      parameters:
+      - description: Catalogue item
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueItem'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create catalogue item
+      tags:
+      - Catalogue
+  /v1/catalogue/item/{uid}:
+    delete:
+      description: Deletes a catalogue item by UID.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "409":
+          description: Conflict
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete catalogue item
+      tags:
+      - Catalogue
+    get:
+      description: Returns catalogue item with details by UID.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueItem'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue item detail
+      tags:
+      - Catalogue
+    put:
+      consumes:
+      - application/json
+      description: Updates a catalogue item by UID.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Catalogue item
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CatalogueItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueItem'
+        "409":
+          description: Conflict
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update catalogue item
+      tags:
+      - Catalogue
+  /v1/catalogue/item/{uid}/image:
+    get:
+      description: Returns base64-encoded image string for the catalogue item.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "404":
+          description: Not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue item image
+      tags:
+      - Catalogue
+  /v1/catalogue/item/{uid}/statistics:
+    get:
+      description: Returns statistics for a given catalogue item.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CatalogueStatistics'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue item statistics
+      tags:
+      - Catalogue
   /v1/catalogue/item/catalogue-number/unique:
     get:
       consumes:
@@ -1235,6 +2024,67 @@ paths:
       security:
       - BearerAuth: []
       summary: Check if catalogue number is unique
+      tags:
+      - Catalogue
+  /v1/catalogue/items:
+    get:
+      description: Returns a paginated list of catalogue items.
+      parameters:
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Category UID
+        in: query
+        name: categoryUID
+        type: string
+      - description: Page
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: pageSize
+        type: integer
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_CatalogueItemSimple'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue items
+      tags:
+      - Catalogue
+  /v1/catalogue/items/statistics:
+    get:
+      description: Returns overall catalogue item statistics.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CatalogueStatistics'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get catalogue items statistics
       tags:
       - Catalogue
   /v1/catalogue/service/type:
@@ -1357,6 +2207,359 @@ paths:
       summary: Get catalogue service types
       tags:
       - Catalogue
+  /v1/codebook/{codebookCode}:
+    get:
+      description: Returns codebook items and metadata for the given codebook code.
+      parameters:
+      - description: Codebook code
+        in: path
+        name: codebookCode
+        required: true
+        type: string
+      - description: Parent UID filter
+        in: query
+        name: parentUID
+        type: string
+      - description: Search text
+        in: query
+        name: searchText
+        type: string
+      - description: Max number of items
+        in: query
+        name: limit
+        type: integer
+      - description: Filter JSON
+        in: query
+        name: filter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CodebookResponse'
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get codebook
+      tags:
+      - Codebooks
+    post:
+      consumes:
+      - application/json
+      description: Creates a new item in the specified codebook.
+      parameters:
+      - description: Codebook code
+        in: path
+        name: codebookCode
+        required: true
+        type: string
+      - description: Codebook item
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Codebook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Codebook'
+        "401":
+          description: Unauthorized
+        "409":
+          description: Conflict
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create new codebook item
+      tags:
+      - Codebooks
+  /v1/codebook/{codebookCode}/{uid}:
+    delete:
+      description: Deletes an item from the specified codebook.
+      parameters:
+      - description: Codebook code
+        in: path
+        name: codebookCode
+        required: true
+        type: string
+      - description: Codebook item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete codebook item
+      tags:
+      - Codebooks
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing item in the specified codebook.
+      parameters:
+      - description: Codebook code
+        in: path
+        name: codebookCode
+        required: true
+        type: string
+      - description: Codebook item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Codebook item
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Codebook'
+      responses:
+        "204":
+          description: No content
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update codebook item
+      tags:
+      - Codebooks
+  /v1/codebook/{codebookCode}/tree:
+    get:
+      description: Returns codebook tree structure for the given codebook code.
+      parameters:
+      - description: Codebook code
+        in: path
+        name: codebookCode
+        required: true
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CodebookTreeItem'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get codebook tree
+      tags:
+      - Codebooks
+  /v1/codebooks:
+    get:
+      description: Returns a list of all codebooks (or only editable ones if requested).
+      parameters:
+      - description: If true, return only editable codebooks
+        in: query
+        name: editable
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CodebookType'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get list of codebooks
+      tags:
+      - Codebooks
+  /v1/cron/history:
+    get:
+      description: Returns cron job execution history.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.CronJobHistory'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get cron job history
+      tags:
+      - Cron
+  /v1/files/link/{parentUid}:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new file link under the given parent UID.
+      parameters:
+      - description: Parent UID
+        in: path
+        name: parentUid
+        required: true
+        type: string
+      - description: File link
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.FileLink'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.FileLink'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create file link
+      tags:
+      - Files
+  /v1/files/link/{uid}:
+    delete:
+      description: Deletes a file link by its UID.
+      parameters:
+      - description: File link UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete file link
+      tags:
+      - Files
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing file link.
+      parameters:
+      - description: File link UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: File link
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.FileLink'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.FileLink'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update file link
+      tags:
+      - Files
+  /v1/files/links/{parentUid}:
+    get:
+      description: Returns file links associated with the given parent UID.
+      parameters:
+      - description: Parent UID
+        in: path
+        name: parentUid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.FileLink'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get file links by parent UID
+      tags:
+      - Files
+  /v1/files/node/{uid}/mini-image-url:
+    post:
+      consumes:
+      - application/json
+      description: Stores a mini image URL list on a node identified by UID.
+      parameters:
+      - description: Node UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Neo4j node label
+        in: query
+        name: nodeLabel
+        required: true
+        type: string
+      - description: Mini image link payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.MiniImageLinks'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.MiniImageLinks'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Set mini image URL to node
+      tags:
+      - Files
   /v1/general/{uid}/graph:
     get:
       description: Get graph by uid
@@ -1619,6 +2822,27 @@ paths:
       summary: Update an order
       tags:
       - Orders
+  /v1/order-uid-by-order-number/{orderNumber}:
+    get:
+      description: Returns order UID for the provided order number.
+      parameters:
+      - description: Order number
+        in: path
+        name: orderNumber
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+      summary: Get order UID by order number
+      tags:
+      - Orders
   /v1/order/{uid}:
     delete:
       description: Delete an order by order UID
@@ -1638,6 +2862,65 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete an order
+      tags:
+      - Orders
+    get:
+      description: Returns order detail with order lines by order UID.
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrderDetail'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get order detail
+      tags:
+      - Orders
+  /v1/order/{uid}/orderline/{itemUid}/delivery:
+    put:
+      consumes:
+      - application/json
+      description: Updates delivery status and optional serial/EUN for a single order
+        line item.
+      parameters:
+      - description: Order UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Order line item UID
+        in: path
+        name: itemUid
+        required: true
+        type: string
+      - description: Order line delivery payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.OrderLineDelivery'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrderLine'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update order line delivery
       tags:
       - Orders
   /v1/order/{uid}/orderlines/delivery:
@@ -1758,6 +3041,41 @@ paths:
       summary: Update multiple service line delivery
       tags:
       - Orders
+  /v1/orders:
+    get:
+      description: Returns a paginated list of orders with optional search/sorting/filtering.
+      parameters:
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        required: true
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_OrderListItem'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get orders
+      tags:
+      - Orders
   /v1/orders/eun-for-print:
     get:
       consumes:
@@ -1787,6 +3105,129 @@ paths:
       summary: Get items for EUN print
       tags:
       - Orders
+  /v1/orders/eun-for-print/{eun}:
+    put:
+      description: Sets whether the given EUN should be printed.
+      parameters:
+      - description: EUN
+        in: path
+        name: eun
+        required: true
+        type: string
+      - description: Print flag
+        in: query
+        name: printEUN
+        required: true
+        type: boolean
+      produces:
+      - text/plain
+      responses:
+        "204":
+          description: No content
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Set EUN print flag
+      tags:
+      - Orders
+  /v1/orders/order-lines/min-max-prices:
+    get:
+      description: Returns minimum and maximum order line price for the current facility.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.OrderLineMinMax'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get min/max order line prices
+      tags:
+      - Orders
+  /v1/orders/statuses:
+    get:
+      description: Returns order statuses codebook.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Codebook'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get order statuses
+      tags:
+      - Orders
+  /v1/physical-item/{uid}/properties:
+    get:
+      description: Returns physical item properties by physical item UID.
+      parameters:
+      - description: Physical item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PhysicalItemDetail'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get physical item properties
+      tags:
+      - Systems
+    put:
+      consumes:
+      - application/json
+      description: Updates physical item properties by physical item UID.
+      parameters:
+      - description: Physical item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Physical item properties
+        in: body
+        name: body
+        required: true
+        schema:
+          items:
+            $ref: '#/definitions/models.PhysicalItemDetail'
+          type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PhysicalItemDetail'
+            type: array
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update physical item properties
+      tags:
+      - Systems
   /v1/physical-item/move:
     post:
       description: Move physical item from one system to another
@@ -1829,6 +3270,25 @@ paths:
       security:
       - BearerAuth: []
       summary: Replace physical item
+      tags:
+      - Systems
+  /v1/physical-items/euns:
+    get:
+      description: Returns list of physical item EUNs.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.EUN'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get EUNs
       tags:
       - Systems
   /v1/publication:
@@ -2255,6 +3715,31 @@ paths:
       summary: Create new system
       tags:
       - Systems
+  /v1/system/{parentUID}/subsystems:
+    get:
+      description: Returns subsystems for the given parent system UID.
+      parameters:
+      - description: Parent system UID
+        in: path
+        name: parentUID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.System'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get subsystems by parent UID
+      tags:
+      - Systems
   /v1/system/{systemUid}/assign-spare:
     post:
       consumes:
@@ -2286,6 +3771,196 @@ paths:
       security:
       - BearerAuth: []
       summary: Assign spare item to system
+      tags:
+      - Systems
+  /v1/system/{uid}:
+    delete:
+      description: Deletes a system and its subsystems. If physical items are attached,
+        returns 409 with details.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "409":
+          description: Conflict
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemPhysicalItemInfo'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete system recursively
+      tags:
+      - Systems
+    get:
+      description: Returns system detail by UID.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.System'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system detail
+      tags:
+      - Systems
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing system.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: System
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.System'
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update system
+      tags:
+      - Systems
+  /v1/system/{uid}/history:
+    get:
+      description: Returns system history events by system UID.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemHistory'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system history
+      tags:
+      - Systems
+  /v1/system/{uid}/image:
+    get:
+      description: Returns base64-encoded image string for the system.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system image
+      tags:
+      - Systems
+  /v1/system/{uid}/leaves:
+    get:
+      description: Returns a paginated list of leaf systems (systems without subsystems)
+        directly under the given parent system.
+      parameters:
+      - description: Parent system UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        required: true
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_System'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get leaf systems for a parent
+      tags:
+      - Systems
+  /v1/system/{uid}/relationships:
+    get:
+      description: Returns relationships for a given system UID.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemRelationship'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system relationships
       tags:
       - Systems
   /v1/system/{uid}/spare-parts-detail:
@@ -2324,6 +3999,29 @@ paths:
       summary: Get system spare parts detail
       tags:
       - Systems
+  /v1/system/by-eun/{eun}:
+    get:
+      description: Returns system by EUN.
+      parameters:
+      - description: EUN
+        in: path
+        name: eun
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.System'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system by EUN
+      tags:
+      - Systems
   /v1/system/jira-import:
     post:
       consumes:
@@ -2356,6 +4054,57 @@ paths:
       summary: Create new system from Jira import request
       tags:
       - Systems
+  /v1/system/relationship/{uid}:
+    delete:
+      description: Deletes a system relationship by relationship UID.
+      parameters:
+      - description: Relationship UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete system relationship
+      tags:
+      - Systems
+    post:
+      consumes:
+      - application/json
+      description: Creates a new relationship between systems.
+      parameters:
+      - description: Unused route parameter (reserved)
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Relationship request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemRelationshipRequest'
+      produces:
+      - text/plain
+      responses:
+        "201":
+          description: Created relationship UID
+          schema:
+            type: string
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create new system relationship
+      tags:
+      - Systems
   /v1/system/system-code:
     post:
       description: Create new system with new unique system code based on system type
@@ -2379,6 +4128,204 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new system with code
+      tags:
+      - Systems
+  /v1/system/system-type-group:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new system type group.
+      parameters:
+      - description: System type group
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Codebook'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Codebook'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create system type group
+      tags:
+      - Systems
+  /v1/system/system-type-group/{grpUid}/system-type/{uid}:
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing system type.
+      parameters:
+      - description: System type group UID
+        in: path
+        name: grpUid
+        required: true
+        type: string
+      - description: System type UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: System type
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemType'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SystemType'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update system type
+      tags:
+      - Systems
+  /v1/system/system-type-group/{uid}:
+    delete:
+      description: Deletes a system type group.
+      parameters:
+      - description: System type group UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/helpers.ConflictErrorResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete system type group
+      tags:
+      - Systems
+    put:
+      consumes:
+      - application/json
+      description: Updates an existing system type group.
+      parameters:
+      - description: System type group UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: System type group
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Codebook'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Codebook'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update system type group
+      tags:
+      - Systems
+  /v1/system/system-type-group/{uid}/system-type:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new system type under a system type group.
+      parameters:
+      - description: System type group UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: System type
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.SystemType'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SystemType'
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create system type
+      tags:
+      - Systems
+  /v1/system/system-type-group/{uid}/system-types:
+    get:
+      description: Returns system types for the given system type group UID.
+      parameters:
+      - description: System type group UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemType'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system types by group
+      tags:
+      - Systems
+  /v1/system/system-type-groups:
+    get:
+      description: Returns system type groups for the current facility.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Codebook'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system type groups
       tags:
       - Systems
   /v1/system/system-type-groups/tree:
@@ -2405,6 +4352,104 @@ paths:
       security:
       - BearerAuth: []
       summary: Get system type groups as tree
+      tags:
+      - Systems
+  /v1/system/system-type/{uid}:
+    delete:
+      description: Deletes a system type.
+      parameters:
+      - description: System type UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/helpers.ConflictErrorResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete system type
+      tags:
+      - Systems
+  /v1/system/systemCode:
+    get:
+      description: Generates a new unique system code based on system type and zone/location/parent.
+      parameters:
+      - description: System type UID
+        in: query
+        name: systemTypeUID
+        required: true
+        type: string
+      - description: Zone UID
+        in: query
+        name: zoneUID
+        required: true
+        type: string
+      - description: Location UID
+        in: query
+        name: locationUID
+        type: string
+      - description: Parent system UID
+        in: query
+        name: parentUID
+        type: string
+      produces:
+      - text/plain
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad request
+          schema:
+            type: string
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get next system code
+      tags:
+      - Systems
+  /v1/systems:
+    get:
+      description: Returns a paginated list of systems with optional search/sorting/filtering.
+      parameters:
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        required: true
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_System'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems
       tags:
       - Systems
   /v1/systems/copy:
@@ -2444,6 +4489,100 @@ paths:
       security:
       - BearerAuth: []
       summary: Copy system(s)
+      tags:
+      - Systems
+  /v1/systems/export-to-csv:
+    get:
+      description: Exports systems list to CSV using the same filtering/sorting/search
+        as the systems table.
+      parameters:
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - text/csv
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Export systems to CSV
+      tags:
+      - Systems
+  /v1/systems/for-relationship:
+    get:
+      description: Returns a paginated list of systems for relationship creation;
+        supports optional filtering.
+      parameters:
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Pagination JSON (e.g. {\
+        in: query
+        name: pagination
+        type: string
+      - description: Sorting JSON (array of {id, desc})
+        in: query
+        name: sorting
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      - description: Source system UID
+        in: query
+        name: systemFromUid
+        type: string
+      - description: Relation type code
+        in: query
+        name: relationTypeCode
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/helpers.PaginationResult-models_System'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems for relationship
+      tags:
+      - Systems
+  /v1/systems/hierarchy:
+    get:
+      description: Returns a hierarchy tree containing only systems that have subsystems
+        (no leaves).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.SystemHierarchyNode'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get systems hierarchy (parents only)
       tags:
       - Systems
   /v1/systems/locations-flat:

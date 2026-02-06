@@ -7,6 +7,7 @@ import (
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/systems-service/models"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -37,6 +38,8 @@ type ISystemsService interface {
 	DeleteSystemRecursive(uid, userUid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
+	GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error)
+	GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
 	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
 	DeleteSystemRelationship(uid int64, userUID string) (err error)
@@ -318,6 +321,202 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 
+	return result, err
+}
+
+func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemsHierarchyPathsQuery(facilityCode)
+	rows, err := session.Run(query.Query, query.Parameters)
+	if err != nil {
+		return nil, err
+	}
+
+	nodesByUID := make(map[string]*models.SystemHierarchyNode)
+	childrenByUID := make(map[string]map[string]struct{})
+	rootSet := make(map[string]struct{})
+	allUids := make(map[string]struct{})
+
+	addEdge := func(parentUID, childUID string) {
+		if strings.TrimSpace(parentUID) == "" || strings.TrimSpace(childUID) == "" {
+			return
+		}
+		set, ok := childrenByUID[parentUID]
+		if !ok {
+			set = make(map[string]struct{})
+			childrenByUID[parentUID] = set
+		}
+		set[childUID] = struct{}{}
+	}
+
+	getPropStringPtr := func(props map[string]interface{}, key string) *string {
+		v, ok := props[key]
+		if !ok || v == nil {
+			return nil
+		}
+		s, ok := v.(string)
+		if !ok {
+			return nil
+		}
+		if strings.TrimSpace(s) == "" {
+			return nil
+		}
+		return &s
+	}
+
+	for rows.Next() {
+		rec := rows.Record()
+		val, ok := rec.Get(query.ReturnAlias)
+		if !ok {
+			continue
+		}
+		p, ok := val.(neo4j.Path)
+		if !ok || len(p.Nodes) == 0 {
+			continue
+		}
+
+		pathUIDs := make([]string, 0, len(p.Nodes))
+		for _, n := range p.Nodes {
+			uid, _ := n.Props["uid"].(string)
+			name, _ := n.Props["name"].(string)
+			if strings.TrimSpace(uid) == "" {
+				continue
+			}
+
+			existing := nodesByUID[uid]
+			if existing == nil {
+				existing = &models.SystemHierarchyNode{
+					UID:             uid,
+					Name:            name,
+					SystemCode:      getPropStringPtr(n.Props, "systemCode"),
+					SystemLevel:     getPropStringPtr(n.Props, "systemLevel"),
+					HasLeafChildren: false,
+					Children:        []models.SystemHierarchyNode{},
+				}
+				nodesByUID[uid] = existing
+			} else {
+				if strings.TrimSpace(existing.Name) == "" {
+					existing.Name = name
+				}
+				if existing.SystemCode == nil {
+					existing.SystemCode = getPropStringPtr(n.Props, "systemCode")
+				}
+				if existing.SystemLevel == nil {
+					existing.SystemLevel = getPropStringPtr(n.Props, "systemLevel")
+				}
+			}
+
+			allUids[uid] = struct{}{}
+			pathUIDs = append(pathUIDs, uid)
+		}
+
+		if len(pathUIDs) == 0 {
+			continue
+		}
+		rootSet[pathUIDs[0]] = struct{}{}
+		for i := 0; i < len(pathUIDs)-1; i++ {
+			addEdge(pathUIDs[i], pathUIDs[i+1])
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Determine which returned parent nodes have at least one direct leaf child.
+	if len(allUids) > 0 {
+		uids := make([]string, 0, len(allUids))
+		for uid := range allUids {
+			uids = append(uids, uid)
+		}
+		leafQuery := GetSystemsHasLeafChildrenByUidsQuery(facilityCode, uids)
+		leafRows, qErr := session.Run(leafQuery.Query, leafQuery.Parameters)
+		if qErr != nil {
+			return nil, qErr
+		}
+		for leafRows.Next() {
+			rec := leafRows.Record()
+			uidVal, ok := rec.Get(leafQuery.ReturnAlias)
+			if !ok {
+				continue
+			}
+			uid, _ := uidVal.(string)
+			if n := nodesByUID[uid]; n != nil {
+				n.HasLeafChildren = true
+			}
+		}
+		if qErr := leafRows.Err(); qErr != nil {
+			return nil, qErr
+		}
+	}
+
+	roots := make([]string, 0, len(rootSet))
+	for uid := range rootSet {
+		if nodesByUID[uid] == nil {
+			continue
+		}
+		roots = append(roots, uid)
+	}
+	sort.SliceStable(roots, func(i, j int) bool {
+		return strings.ToLower(nodesByUID[roots[i]].Name) < strings.ToLower(nodesByUID[roots[j]].Name)
+	})
+
+	var build func(uid string, visiting map[string]bool) models.SystemHierarchyNode
+	build = func(uid string, visiting map[string]bool) models.SystemHierarchyNode {
+		base := nodesByUID[uid]
+		if base == nil {
+			return models.SystemHierarchyNode{Children: []models.SystemHierarchyNode{}}
+		}
+		if visiting[uid] {
+			return *base
+		}
+		visiting[uid] = true
+
+		out := models.SystemHierarchyNode{
+			UID:             base.UID,
+			Name:            base.Name,
+			SystemCode:      base.SystemCode,
+			SystemLevel:     base.SystemLevel,
+			HasLeafChildren: base.HasLeafChildren,
+			Children:        []models.SystemHierarchyNode{},
+		}
+
+		childSet := childrenByUID[uid]
+		if len(childSet) == 0 {
+			return out
+		}
+		childUIDs := make([]string, 0, len(childSet))
+		for childUID := range childSet {
+			if nodesByUID[childUID] == nil {
+				continue
+			}
+			childUIDs = append(childUIDs, childUID)
+		}
+		sort.SliceStable(childUIDs, func(i, j int) bool {
+			return strings.ToLower(nodesByUID[childUIDs[i]].Name) < strings.ToLower(nodesByUID[childUIDs[j]].Name)
+		})
+		for _, childUID := range childUIDs {
+			out.Children = append(out.Children, build(childUID, visiting))
+		}
+		return out
+	}
+
+	result = make([]models.SystemHierarchyNode, 0, len(roots))
+	for _, rootUID := range roots {
+		result = append(result, build(rootUID, make(map[string]bool, len(nodesByUID))))
+	}
+	return result, nil
+}
+
+func (svc *SystemsService) GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetSystemLeavesByParentUIDQuery(parentUID, facilityCode, search, pagination, sorting, filtering)
+	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemLeavesByParentUIDCountQuery(parentUID, facilityCode, search, filtering))
+
+	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 	return result, err
 }
 
