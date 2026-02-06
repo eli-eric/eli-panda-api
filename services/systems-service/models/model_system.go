@@ -36,6 +36,17 @@ type SystemTreeUid struct {
 	Children *[]SystemTreeUid `json:"children"`
 }
 
+// SystemHierarchyNode is a lightweight node used by the System Hierarchy Explorer.
+// It intentionally contains only navigation fields.
+type SystemHierarchyNode struct {
+	UID             string                `json:"uid"`
+	Name            string                `json:"name"`
+	SystemCode      *string               `json:"systemCode,omitempty"`
+	SystemLevel     *string               `json:"systemLevel,omitempty"`
+	HasLeafChildren bool                  `json:"hasLeafChildren"`
+	Children        []SystemHierarchyNode `json:"children"`
+}
+
 type PhysicalItem struct {
 	UID           string                        `json:"uid"`
 	ItemUsage     *models.Codebook              `json:"itemUsage,omitempty"`
