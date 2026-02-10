@@ -230,8 +230,9 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 				// Open a new Session
 				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-				normalizedCode := strings.TrimSpace(codebook.Code)
-				if normalizedCode != "" {
+				trimmedCode := strings.TrimSpace(codebook.Code)
+				normalizedCode := strings.ToLower(trimmedCode)
+				if trimmedCode != "" {
 					isDuplicate, duplicateErr := checkCodebookCodeExists(session, codebookDefinition.NodeLabel, codebook.UID, normalizedCode)
 					if duplicateErr != nil {
 						return result, duplicateErr
@@ -248,7 +249,7 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 					WITH n
 					SET n.name = $name`
 
-				if normalizedCode != "" {
+				if trimmedCode != "" {
 					dbquery.Query += `
 					WITH n
 					SET n.code = $code`
@@ -266,8 +267,8 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 					"userUID": userUID,
 				}
 
-				if normalizedCode != "" {
-					dbquery.Parameters["code"] = normalizedCode
+				if trimmedCode != "" {
+					dbquery.Parameters["code"] = trimmedCode
 				}
 				dbquery.ReturnAlias = "codebook"
 
@@ -281,17 +282,20 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 	return result, err
 }
 
-func checkCodebookCodeExists(session neo4j.Session, nodeLabel string, currentUID string, code string) (exists bool, err error) {
+func checkCodebookCodeExists(session neo4j.Session, nodeLabel string, currentUID string, normalizedCode string) (exists bool, err error) {
 	query := helpers.DatabaseQuery{}
 	query.Query = `
-	MATCH (n:` + nodeLabel + `)
-	WHERE n.uid <> $uid
-		AND toLower(trim(coalesce(n.code, ""))) = toLower(trim($code))
-	RETURN count(n) > 0 as exists`
+	RETURN EXISTS {
+		MATCH (n:` + nodeLabel + `)
+		WHERE n.uid <> $uid
+			AND toLower(trim(coalesce(n.code, ""))) = $normalizedCode
+		RETURN n
+		LIMIT 1
+	} as exists`
 	query.ReturnAlias = "exists"
 	query.Parameters = map[string]interface{}{
-		"uid":  currentUID,
-		"code": code,
+		"uid":            currentUID,
+		"normalizedCode": normalizedCode,
 	}
 
 	return helpers.GetNeo4jSingleRecordSingleValue[bool](session, query)
