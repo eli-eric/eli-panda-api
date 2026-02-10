@@ -225,6 +225,7 @@ func (h *CodebookHandlers) CreateNewCodebook() echo.HandlerFunc {
 // @Param body body models.Codebook true "Codebook item"
 // @Success 204 "No content"
 // @Failure 401 "Unauthorized"
+// @Failure 409 "Conflict"
 // @Failure 500 "Internal server error"
 // @Router /v1/codebook/{codebookCode}/{uid} [put]
 func (h *CodebookHandlers) UpdateCodebook() echo.HandlerFunc {
@@ -249,6 +250,14 @@ func (h *CodebookHandlers) UpdateCodebook() echo.HandlerFunc {
 			return c.NoContent(http.StatusNoContent)
 		} else {
 			log.Error().Msg(err.Error())
+			if err == helpers.ERR_UNAUTHORIZED {
+				return echo.ErrUnauthorized
+			}
+
+			if err == helpers.ERR_CONFLICT {
+				return echo.ErrConflict
+			}
+
 			return echo.ErrInternalServerError
 		}
 	}
