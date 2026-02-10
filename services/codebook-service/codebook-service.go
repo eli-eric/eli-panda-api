@@ -285,13 +285,12 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 func checkCodebookCodeExists(session neo4j.Session, nodeLabel string, currentUID string, normalizedCode string) (exists bool, err error) {
 	query := helpers.DatabaseQuery{}
 	query.Query = `
-	RETURN EXISTS {
-		MATCH (n:` + nodeLabel + `)
-		WHERE n.uid <> $uid
-			AND toLower(trim(coalesce(n.code, ""))) = $normalizedCode
-		RETURN n
-		LIMIT 1
-	} as exists`
+	MATCH (n:` + nodeLabel + `)
+	WHERE n.uid <> $uid
+		AND toLower(trim(coalesce(n.code, ""))) = $normalizedCode
+	WITH n
+	LIMIT 1
+	RETURN count(n) > 0 as exists`
 	query.ReturnAlias = "exists"
 	query.Parameters = map[string]interface{}{
 		"uid":            currentUID,
