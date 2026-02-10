@@ -2,6 +2,7 @@ package roomcardsservice
 
 import (
 	"net/http"
+	"panda/apigateway/helpers"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -54,6 +55,7 @@ func NewRoomCardsHandlers(service IRoomCardsService) IRoomCardsHandlers {
 // @Security BearerAuth
 // @Produce json
 // @Param code path string true "Location code"
+// @Param fields query string false "Comma-separated list of top-level response fields to return (e.g. uid,name). If provided, the response is a partial object."
 // @Success 200 {object} models.LayoutRoomCard
 // @Failure 400 "Bad Request"
 // @Failure 404 "Not Found"
@@ -62,7 +64,7 @@ func NewRoomCardsHandlers(service IRoomCardsService) IRoomCardsHandlers {
 func (h *RoomCardsHandlers) GetLayoutRoomCardInfo() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		locationCode := c.Param("code")
-		
+
 		if locationCode == "" {
 			return c.JSON(http.StatusBadRequest, map[string]string{"error": "Location code is required"})
 		}
@@ -77,6 +79,32 @@ func (h *RoomCardsHandlers) GetLayoutRoomCardInfo() echo.HandlerFunc {
 			return echo.ErrInternalServerError
 		}
 
-		return c.JSON(http.StatusOK, result)
+		fieldsParam := c.QueryParam("fields")
+		if fieldsParam == "" {
+			return c.JSON(http.StatusOK, result)
+		}
+
+		fields := helpers.ParseFieldsParam(fieldsParam)
+		if len(fields) == 0 {
+			return c.JSON(http.StatusBadRequest, map[string]any{"error": "fields parameter is empty"})
+		}
+		if len(fields) > 50 {
+			return c.JSON(http.StatusBadRequest, map[string]any{"error": "too many fields requested", "max": 50})
+		}
+
+		projected, err := helpers.ProjectJSONFields(result, fields)
+		if err != nil {
+			if projErr, ok := err.(*helpers.FieldProjectionError); ok {
+				return c.JSON(http.StatusBadRequest, map[string]any{
+					"error":         "invalid fields",
+					"invalidFields": projErr.InvalidFields,
+					"allowedFields": projErr.AllowedFields,
+				})
+			}
+			log.Error().Err(err).Msg("Error projecting room card response fields")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(http.StatusOK, projected)
 	}
 }
