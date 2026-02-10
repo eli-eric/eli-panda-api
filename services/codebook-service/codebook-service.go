@@ -10,6 +10,7 @@ import (
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 	"panda/apigateway/shared"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/gommon/log"
@@ -229,20 +230,44 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 				// Open a new Session
 				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
+				normalizedCode := strings.TrimSpace(codebook.Code)
+				if normalizedCode != "" {
+					isDuplicate, duplicateErr := checkCodebookCodeExists(session, codebookDefinition.NodeLabel, codebook.UID, normalizedCode)
+					if duplicateErr != nil {
+						return result, duplicateErr
+					}
+
+					if isDuplicate {
+						return result, helpers.ERR_CONFLICT
+					}
+				}
+
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
 				MATCH (n:` + codebookDefinition.NodeLabel + ` {uid: $uid }) 
 					WITH n
-					SET n.name = $name
+					SET n.name = $name`
+
+				if normalizedCode != "" {
+					dbquery.Query += `
+					WITH n
+					SET n.code = $code`
+				}
+
+				dbquery.Query += `
 					WITH n
 					MATCH (u:User {uid: $userUID})
 					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-				RETURN { uid: n.uid, name: n.name } as codebook`
+				RETURN { uid: n.uid, name: n.name, code: n.code } as codebook`
 
 				dbquery.Parameters = map[string]interface{}{
 					"uid":     codebook.UID,
 					"name":    codebook.Name,
 					"userUID": userUID,
+				}
+
+				if normalizedCode != "" {
+					dbquery.Parameters["code"] = normalizedCode
 				}
 				dbquery.ReturnAlias = "codebook"
 
@@ -254,6 +279,22 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 	}
 
 	return result, err
+}
+
+func checkCodebookCodeExists(session neo4j.Session, nodeLabel string, currentUID string, code string) (exists bool, err error) {
+	query := helpers.DatabaseQuery{}
+	query.Query = `
+	MATCH (n:` + nodeLabel + `)
+	WHERE n.uid <> $uid
+		AND toLower(trim(coalesce(n.code, ""))) = toLower(trim($code))
+	RETURN count(n) > 0 as exists`
+	query.ReturnAlias = "exists"
+	query.Parameters = map[string]interface{}{
+		"uid":  currentUID,
+		"code": code,
+	}
+
+	return helpers.GetNeo4jSingleRecordSingleValue[bool](session, query)
 }
 
 func (svc *CodebookService) DeleteCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebookUID string) (err error) {
