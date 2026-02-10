@@ -3667,6 +3667,11 @@ paths:
         name: code
         required: true
         type: string
+      - description: Comma-separated list of top-level response fields to return (e.g.
+          uid,name). If provided, the response is a partial object.
+        in: query
+        name: fields
+        type: string
       produces:
       - application/json
       responses:

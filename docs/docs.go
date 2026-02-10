@@ -3348,6 +3348,12 @@ const docTemplate = `{
                         "name": "code",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated list of top-level response fields to return (e.g. uid,name). If provided, the response is a partial object.",
+                        "name": "fields",
+                        "in": "query"
                     }
                 ],
                 "responses": {
