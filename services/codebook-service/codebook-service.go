@@ -231,17 +231,6 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 				trimmedCode := strings.TrimSpace(codebook.Code)
-				normalizedCode := strings.ToLower(trimmedCode)
-				if trimmedCode != "" {
-					isDuplicate, duplicateErr := checkCodebookCodeExists(session, codebookDefinition.NodeLabel, codebook.UID, normalizedCode)
-					if duplicateErr != nil {
-						return result, duplicateErr
-					}
-
-					if isDuplicate {
-						return result, helpers.ERR_CONFLICT
-					}
-				}
 
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
@@ -280,24 +269,6 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 	}
 
 	return result, err
-}
-
-func checkCodebookCodeExists(session neo4j.Session, nodeLabel string, currentUID string, normalizedCode string) (exists bool, err error) {
-	query := helpers.DatabaseQuery{}
-	query.Query = `
-	MATCH (n:` + nodeLabel + `)
-	WHERE n.uid <> $uid
-		AND toLower(trim(coalesce(n.code, ""))) = $normalizedCode
-	WITH n
-	LIMIT 1
-	RETURN count(n) > 0 as exists`
-	query.ReturnAlias = "exists"
-	query.Parameters = map[string]interface{}{
-		"uid":            currentUID,
-		"normalizedCode": normalizedCode,
-	}
-
-	return helpers.GetNeo4jSingleRecordSingleValue[bool](session, query)
 }
 
 func (svc *CodebookService) DeleteCodebook(codebookCode string, facilityCode string, userUID string, userRoles []string, codebookUID string) (err error) {

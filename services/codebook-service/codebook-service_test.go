@@ -6,32 +6,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 
-	"panda/apigateway/helpers"
 	"panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/testsetup"
 	"panda/apigateway/shared"
 )
-
-func TestUpdateCodebook_DuplicateCodeCaseInsensitive_ReturnsConflict(t *testing.T) {
-	svc := &CodebookService{neo4jDriver: &testsetup.TestDriver}
-	userUID := "test-user-" + uuid.New().String()
-	targetUID := "test-unit-target-" + uuid.New().String()
-	otherUID := "test-unit-other-" + uuid.New().String()
-
-	createTestUser(t, userUID)
-	createTestUnit(t, targetUID, "Target Unit", "UNIT-OLD")
-	createTestUnit(t, otherUID, "Other Unit", "UNIT-ABC")
-
-	_, err := svc.UpdateCodebook("UNIT", "", userUID, []string{shared.ROLE_CODEBOOKS_ADMIN}, &models.Codebook{
-		UID:  targetUID,
-		Name: "Target Unit Updated",
-		Code: " unit-abc ",
-	})
-
-	assert.ErrorIs(t, err, helpers.ERR_CONFLICT)
-
-	cleanupTestCodebookData(t, targetUID, otherUID, userUID)
-}
 
 func TestUpdateCodebook_SameUIDSameCode_AllowsUpdate(t *testing.T) {
 	svc := &CodebookService{neo4jDriver: &testsetup.TestDriver}
