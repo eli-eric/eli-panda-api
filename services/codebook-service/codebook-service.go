@@ -10,6 +10,7 @@ import (
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
 	"panda/apigateway/shared"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/labstack/gommon/log"
@@ -229,20 +230,34 @@ func (svc *CodebookService) UpdateCodebook(codebookCode string, facilityCode str
 				// Open a new Session
 				session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
+				trimmedCode := strings.TrimSpace(codebook.Code)
+
 				dbquery := helpers.DatabaseQuery{}
 				dbquery.Query = `				
 				MATCH (n:` + codebookDefinition.NodeLabel + ` {uid: $uid }) 
 					WITH n
-					SET n.name = $name
+					SET n.name = $name`
+
+				if trimmedCode != "" {
+					dbquery.Query += `
+					WITH n
+					SET n.code = $code`
+				}
+
+				dbquery.Query += `
 					WITH n
 					MATCH (u:User {uid: $userUID})
 					CREATE (n)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-				RETURN { uid: n.uid, name: n.name } as codebook`
+				RETURN { uid: n.uid, name: n.name, code: n.code } as codebook`
 
 				dbquery.Parameters = map[string]interface{}{
 					"uid":     codebook.UID,
 					"name":    codebook.Name,
 					"userUID": userUID,
+				}
+
+				if trimmedCode != "" {
+					dbquery.Parameters["code"] = trimmedCode
 				}
 				dbquery.ReturnAlias = "codebook"
 
