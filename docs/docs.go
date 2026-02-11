@@ -3042,7 +3042,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI Authors Count,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID",
+                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID",
                 "produces": [
                     "text/csv"
                 ],
@@ -6407,6 +6407,10 @@ const docTemplate = `{
                 "eliAuthorsCount": {
                     "description": "eliAuthorsCount is the eli authors count of the publication",
                     "type": "integer"
+                },
+                "eliPublication": {
+                    "description": "eliPublication indicates whether this is an ELI publication (YES/NO)",
+                    "type": "string"
                 },
                 "eliResearchers": {
                     "description": "eliResearchers are the connected researchers via HAS_RESEARCHER relationship",
