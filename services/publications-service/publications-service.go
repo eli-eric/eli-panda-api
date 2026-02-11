@@ -316,6 +316,7 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 			allAuthorsCount: n.allAuthorsCount,
 			eliAuthors: n.eliAuthors,
 			eliAuthorsCount: n.eliAuthorsCount,
+			eliPublication: n.eliPublication,
 			authorsDepartmentsArray: n.authorsDepartmentsArray,
 			openAccessType: CASE WHEN openAccessType IS NOT NULL THEN {uid: openAccessType.uid, name: openAccessType.name} ELSE null END,
 			publishingCountry: CASE WHEN publishingCountry IS NOT NULL THEN {uid: publishingCountry.uid, name: publishingCountry.name} ELSE null END,
