@@ -3,6 +3,7 @@ package publicationsservice
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
 	"strconv"
@@ -17,6 +18,11 @@ import (
 type PublicationsHandlers struct {
 	PublicationsService IPublicationsService
 }
+
+const (
+	eliPublicationYes = "YES"
+	eliPublicationNo  = "NO"
+)
 
 type IPublicationsHandlers interface {
 	CreatePublication() echo.HandlerFunc
@@ -46,6 +52,20 @@ func NewPublicationsHandlers(svc IPublicationsService) IPublicationsHandlers {
 	return &PublicationsHandlers{PublicationsService: svc}
 }
 
+func normalizeEliPublication(value string) (string, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return "", nil
+	}
+
+	normalized := strings.ToUpper(trimmed)
+	if normalized != eliPublicationYes && normalized != eliPublicationNo {
+		return "", fmt.Errorf("eliPublication must be YES or NO")
+	}
+
+	return normalized, nil
+}
+
 // CreatePublication Create publication godoc
 // @Summary Create publication
 // @Description Create publication
@@ -68,13 +88,19 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
+		normalized, err := normalizeEliPublication(publication.EliPublication)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		publication.EliPublication = normalized
+
 		userUID := c.Get("userUID").(string)
 
 		if publication.Uid == "" {
 			publication.Uid = uuid.New().String()
 		}
 
-		_, err := h.PublicationsService.CreatePublication(publication, userUID)
+		_, err = h.PublicationsService.CreatePublication(publication, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error creating publication")
 			return echo.ErrInternalServerError
@@ -182,11 +208,17 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
+		normalized, err := normalizeEliPublication(publication.EliPublication)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		publication.EliPublication = normalized
+
 		publication.Uid = uid
 
 		userUID := c.Get("userUID").(string)
 
-		_, err := h.PublicationsService.UpdatePublication(publication, userUID)
+		_, err = h.PublicationsService.UpdatePublication(publication, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error updating publication")
 			return echo.ErrInternalServerError
@@ -251,7 +283,7 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 
 // GetPublicationsAsCsv Get publications as CSV godoc
 // @Summary Get publications as CSV
-// @Description CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI Authors Count,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID
+// @Description CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI Researchers,Grants,Other Grants
 // @Tags Publications
 // @Security BearerAuth
 // @Param search query string false "search"
@@ -306,6 +338,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			"Authors Count",
 			"ELI Authors(old)",
 			"ELI Authors Count",
+			"ELI Publication",
 			"ELI Researchers",
 			"Journal Title",
 			"Volume",
@@ -439,6 +472,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				strconv.Itoa(item.AllAuthorsCount),
 				item.EliAuthors,
 				strconv.Itoa(item.EliAuthorsCount),
+				item.EliPublication,
 				eliResearchers,
 				item.LongJournalTitle,
 				strconv.Itoa(item.Volume),
