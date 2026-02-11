@@ -302,8 +302,9 @@ func TestCreatePublicationWithResearchers(t *testing.T) {
 
 	// Create publication with researchers
 	publication := &models.Publication{
-		Uid:   pubUid,
-		Title: "Test Publication",
+		Uid:            pubUid,
+		Title:          "Test Publication",
+		EliPublication: "YES",
 		EliResearchers: []models.ResearcherRef{
 			{Uid: res1Uid, FirstName: "John", LastName: "Doe"},
 			{Uid: res2Uid, FirstName: "Jane", LastName: "Smith"},
@@ -316,11 +317,13 @@ func TestCreatePublicationWithResearchers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, pubUid, result.Uid)
 	assert.Equal(t, 2, len(result.EliResearchers))
+	assert.Equal(t, "YES", result.EliPublication)
 
 	// Verify relationships in database
 	dbResult, err := service.GetPublicationByUid(pubUid)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(dbResult.EliResearchers))
+	assert.Equal(t, "YES", dbResult.EliPublication)
 
 	// Clean up
 	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
@@ -374,8 +377,9 @@ func TestUpdatePublicationAddResearchers(t *testing.T) {
 
 	// Update publication to add researchers
 	publication := &models.Publication{
-		Uid:   pubUid,
-		Title: "Test Publication",
+		Uid:            pubUid,
+		Title:          "Test Publication",
+		EliPublication: "NO",
 		EliResearchers: []models.ResearcherRef{
 			{Uid: resUid, FirstName: "New", LastName: "Researcher"},
 		},
@@ -389,6 +393,7 @@ func TestUpdatePublicationAddResearchers(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(dbResult.EliResearchers))
 	assert.Equal(t, resUid, dbResult.EliResearchers[0].Uid)
+	assert.Equal(t, "NO", dbResult.EliPublication)
 
 	// Clean up
 	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
