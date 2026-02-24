@@ -1,107 +1,123 @@
-# ELI - PANDA REST API
+# ELI PANDA REST API
 
-The only way how to access data in PANDA database.
+REST API for the ELI PANDA maintenance and operations platform.
 
-Using [Echo](https://echo.labstack.com/) - High performance, extensible, minimalist Go web framework - for now it is one classic REST API but we expect to switching to microservices in the future if it makes sens. Now the effort is to stick to the style of "Vertical sliced architecture" to make it easy to switch to microservices.
+The service is built with [Echo](https://echo.labstack.com/) and follows a vertical-slice service structure to keep domain logic grouped and maintainable.
 
-## How to run the development server
+**Production Swagger docs:** https://panda-api.eli-laser.eu/swagger/index.html
 
-### Using docker compose
+## Tech Stack
 
-Create import folder to import test data into the container:
+- Go `1.22`
+- Echo web framework
+- Neo4j as the primary datastore (with startup migrations)
+- JWT-based authentication and role-based authorization
+- Swagger / OpenAPI documentation generated via `swag`
 
-`mkdir db/neo4j/dev-instance/import`
+## Project Structure
 
-Copy test data to the import folder:
+- `server.go` – application entrypoint and middleware/bootstrap wiring
+- `services/` – domain slices (`systems`, `catalogue`, `orders`, `publications`, `room-cards`, `security`, etc.)
+- `middlewares/` – CORS, logging, recovery, auth middleware
+- `db/neo4j/` – migration and local data/import assets
+- `docs/` and `open-api-specification/` – generated API docs
 
-`cp db/neo4j/data-for-import/test-data.cypher db/neo4j/dev-instance/import`
+## Quick Start (Docker)
 
-Run database and API in docker:
+1. Prepare import folder and test data:
 
-`docker-compose -f docker-compose-local.yml up -d --build`
+   ```bash
+   mkdir -p db/neo4j/dev-instance/import
+   cp db/neo4j/data-for-import/test-data.cypher db/neo4j/dev-instance/import
+   ```
 
-It will run all necessary services including neo4j and REST API itself.
+2. Start API + Neo4j:
 
-Please be patient, neo4j takes some time to start due to additional plugins and then the API takes some time to apply migrations.
+   ```bash
+   docker-compose -f docker-compose-local.yml up -d --build
+   ```
 
-After startup you should reach the API docs on: [localhost:50000](http://localhost:50000)
+3. (Optional) Load test data:
 
-The REST API running on: [localhost:50000/v1](http://localhost:50000/v1)
+   ```bash
+   docker exec -it panda-dev-neo4j cypher-shell -u neo4j -p 'elipanda2022' -f import/test-data.cypher
+   ```
 
-Neo4j browser on: [localhost:7470](http://localhost:7470) (change Connect URL to: neo4j://localhost:7680, please) with credentials neo4j/elipanda2022
+4. Open services:
+   - Swagger UI: [http://localhost:50000/swagger/index.html](http://localhost:50000/swagger/index.html)
+   - API base path: [http://localhost:50000/v1](http://localhost:50000/v1)
+   - Neo4j Browser: [http://localhost:7470](http://localhost:7470) (connect using `neo4j://localhost:7680`)
 
-You can end the dev server and all the related docker services by running:
+Stop local stack:
 
-`docker-compose -f docker-compose-local.yml down`
+```bash
+docker-compose -f docker-compose-local.yml down
+```
 
-### Populate databse with test data
+## Local Development (without Docker)
 
-`docker exec -it panda-dev-neo4j cypher-shell -u neo4j -p 'elipanda2022' -f import/test-data.cypher`
+1. Copy environment file and update values if needed:
 
-### Runing localy
+   ```bash
+   cp example.env .env
+   ```
 
-comming soon :)
+2. Install dependencies:
 
-## HTTP Statuses
+   ```bash
+   make install
+   ```
 
-### Create
+3. Run API (includes Swagger generation):
 
-Success - 201 Created - Return created object
-Failure - 400 Invalid request - Return details about the failure
-Conflict - 409 - Return conflict message as a plain string
-Async fire and forget operation - 202 Accepted - Optionally return url for polling status
+   ```bash
+   make run
+   ```
 
-### Update
+## Useful Commands
 
-Success - 200 Ok - Return the updated object
-Success - 204 NoContent
-Failure - 404 NotFound - The targeted entity identifier does not exist
-Failure - 400 Invalid request - Return details about the failure
-Conflict - 409 - Return conflict message as a plain string
-Async fire and forget operation - 202 Accepted - Optionally return url for polling status
+- `make swagger` – regenerate Swagger and OpenAPI files
+- `make build` – build the API binary
+- `make test` – run all tests (`go test ./...`)
+- `make run` – generate docs and start the server
 
-### Patch
+## Authentication
 
-Success - 200 Ok - Return the patched object
-Success - 204 NoContent
-Failure - 404 NotFound - The targeted entity identifier does not exist
-Conflict - 409 - Return conflict message as a plain string
-Failure - 400 Invalid request - Return details about the failure
-Async fire and forget operation - 202 Accepted - Optionally return url for polling status
+Most endpoints under `/v1` are protected by JWT middleware and role checks.
+Use `/v1/authenticate` to obtain a token, then send it in the `Authorization` header as `Bearer <token>`.
 
-### Delete
+## Troubleshooting
 
-Success - 200 Ok - No content
-Success - 200 Ok - When element attempting to be deleted does not exist
-Conflict - 409 - Return conflict message as a plain string
-Async fire and forget operation - 202 Accepted - Optionally return url for polling status
+- **Neo4j is not ready yet:** first startup can take longer because plugins initialize and migrations run.
+- **Swagger not updated after handler changes:** run `make swagger` and restart the API.
+- **Cannot connect to local Neo4j Browser data:** in Neo4j Browser use `neo4j://localhost:7680` (not the default `7687` mapping from host).
+- **401/403 responses:** verify JWT token validity and that the user has required role permissions for the endpoint.
 
-### Get
+## Contributing
 
-Success - 200 Ok - With the list of resulting entities matching the search criteria
-Success - 200 Ok - With an empty array
+1. **Fork and clone** the repository.
+2. **Sync with `dev` branch** and create a feature branch from it:
 
-### Get specific
+   ```bash
+   git checkout dev
+   git pull origin dev
+   git checkout -b feat/short-description
+   ```
 
-Success - 200 Ok - The entity matching the identifier specified is returned as content
-Failure - 404 NotFound - No content
+3. Make your changes and run checks locally:
 
-### Action
+   ```bash
+   make test
+   make swagger
+   ```
 
-Success - 200 Ok - Return content where appropriate
-Success - 204 NoContent
-Failure - 400 - Return details about the failure
-Async fire and forget operation - 202 Accepted - Optionally return url for polling status
+4. Ensure touched Go files are formatted (`gofmt`) and commit with a clear message.
+5. Push your branch and open a Pull Request **to `dev`**.
+6. In the PR description, include:
+   - what changed and why,
+   - how you tested it,
+   - whether API docs (Swagger) were regenerated.
 
-### Generic results
+## License
 
-Authorization error 401 Unauthorized
-Authentication error 403 Forbidden
-For methods not supported 405
-Generic server error 500
-
-### debug mod
-
-Ensure has installed dlv `go install github.com/go-delve/delve/cmd/dlv@latest`
-Run in debug mode: `swag init -g server.go && dlv debug . --build-flags "-tags=dev"`
-type `c` to continue and server in debug mode
+See [LICENSE](LICENSE).
