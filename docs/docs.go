@@ -4438,6 +4438,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/leaves/count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns count of leaf systems (systems without subsystems) recursively under the given parent system.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get recursive leaf systems count for a parent",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent system UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search text",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Column filter JSON",
+                        "name": "columnFilter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/{uid}/relationships": {
             "get": {
                 "security": [

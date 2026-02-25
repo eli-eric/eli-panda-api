@@ -3949,6 +3949,40 @@ paths:
       summary: Get leaf systems for a parent
       tags:
       - Systems
+  /v1/system/{uid}/leaves/count:
+    get:
+      description: Returns count of leaf systems (systems without subsystems) recursively
+        under the given parent system.
+      parameters:
+      - description: Parent system UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get recursive leaf systems count for a parent
+      tags:
+      - Systems
   /v1/system/{uid}/relationships:
     get:
       description: Returns relationships for a given system UID.
