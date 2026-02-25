@@ -67,6 +67,7 @@ type ISystemsHandlers interface {
 	CopySystem() echo.HandlerFunc
 	AssignSpareItem() echo.HandlerFunc
 	GetSystemSparePartsDetail() echo.HandlerFunc
+	CreateBatchRelationships() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -818,6 +819,34 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return helpers.BadRequest(err.Error())
+	}
+}
+
+func (h *SystemsHandlers) CreateBatchRelationships() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		request := new(models.BatchRelationshipRequest)
+		err := c.Bind(request)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
+		}
+
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+
+		result, err := h.systemsService.CreateBatchRelationships(request, facilityCode, userUID)
+		if err == nil {
+			return c.JSON(http.StatusOK, result)
+		}
+
+		log.Error().Msg(err.Error())
+		if strings.Contains(err.Error(), "not allowed") ||
+			strings.Contains(err.Error(), "not found") ||
+			strings.Contains(err.Error(), "cannot be the same") ||
+			err == helpers.ERR_INVALID_INPUT {
+			return helpers.BadRequest(err.Error())
+		}
+		return echo.ErrInternalServerError
 	}
 }
 
