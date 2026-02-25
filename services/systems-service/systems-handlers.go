@@ -431,7 +431,7 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 
 // GetSystemLeavesByParentUID godoc
 // @Summary Get leaf systems for a parent
-// @Description Returns a paginated list of leaf systems (systems without subsystems) directly under the given parent system.
+// @Description Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth

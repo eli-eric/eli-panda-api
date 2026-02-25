@@ -3449,10 +3449,11 @@ paths:
   /v1/publications/export:
     get:
       description: 'CSV header: Media Type,Code,Experimental System,User Call,User
-        Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI
+        Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI
         Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite
         As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD
-        Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID'
+        Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI
+        Researchers,Grants,Other Grants'
       parameters:
       - description: search
         in: query
@@ -3910,7 +3911,7 @@ paths:
   /v1/system/{uid}/leaves:
     get:
       description: Returns a paginated list of leaf systems (systems without subsystems)
-        directly under the given parent system.
+        recursively under the given parent system.
       parameters:
       - description: Parent system UID
         in: path

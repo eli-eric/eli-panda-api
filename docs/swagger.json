@@ -3039,7 +3039,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),ELI Researchers,Grants,Other Grants,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID",
+                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI Researchers,Grants,Other Grants",
                 "produces": [
                     "text/csv"
                 ],
@@ -4380,7 +4380,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of leaf systems (systems without subsystems) directly under the given parent system.",
+                "description": "Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.",
                 "produces": [
                     "application/json"
                 ],

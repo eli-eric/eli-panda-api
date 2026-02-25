@@ -1276,9 +1276,10 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	result.Query = `
 	MATCH(f:Facility{code:$facilityCode})
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
 	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
+	WITH DISTINCT sys
 	`
 
 	// Optional filters (kept intentionally small for this endpoint)
@@ -1385,9 +1386,10 @@ func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string,
 	result.Query = `
 	MATCH(f:Facility{code:$facilityCode})
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
 	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
+	WITH DISTINCT sys
 	`
 
 	if filterVal := helpers.GetFilterValueCodebook(filtering, "zone"); filterVal != nil {

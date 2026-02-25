@@ -4383,7 +4383,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a paginated list of leaf systems (systems without subsystems) directly under the given parent system.",
+                "description": "Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.",
                 "produces": [
                     "application/json"
                 ],
