@@ -415,7 +415,7 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 	//system code
 	if filterVal := helpers.GetFilterValueString(filering, "systemCode"); filterVal != nil {
-		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode `
+		result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory WHERE toLower(sys.systemCode) CONTAINS $filterSystemCode OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $filterSystemCode `
 		result.Parameters["filterSystemCode"] = strings.ToLower(*filterVal)
 	}
 
@@ -736,7 +736,7 @@ func GetSystemsForControlsSystemsQuery(facilityCode string, pagination *helpers.
 			case startsWithWildcard:
 				operator = "ENDS WITH"
 			}
-			result.Query += fmt.Sprintf(" AND (toLower(sys.systemCode) %s toLower($filterSearchText)) ", operator)
+			result.Query += fmt.Sprintf(" AND (toLower(sys.systemCode) %s toLower($filterSearchText) OR toLower(coalesce(sys.systemCodeOld, '')) %s toLower($filterSearchText)) ", operator, operator)
 			result.Parameters["filterSearchText"] = search
 		}
 	}
@@ -837,7 +837,7 @@ func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]hel
 			case startsWithWildcard:
 				operator = "ENDS WITH"
 			}
-			result.Query += fmt.Sprintf(" AND (toLower(sys.systemCode) %s toLower($filterSearchText)) ", operator)
+			result.Query += fmt.Sprintf(" AND (toLower(sys.systemCode) %s toLower($filterSearchText) OR toLower(coalesce(sys.systemCodeOld, '')) %s toLower($filterSearchText)) ", operator, operator)
 			result.Parameters["filterSearchText"] = search
 		}
 	}
@@ -1278,7 +1278,7 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
-	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search)
+	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
 	`
 
 	// Optional filters (kept intentionally small for this endpoint)
@@ -1387,7 +1387,7 @@ func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string,
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	MATCH(parent)-[:HAS_SUBSYSTEM]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
-	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search)
+	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
 	`
 
 	if filterVal := helpers.GetFilterValueCodebook(filtering, "zone"); filterVal != nil {
