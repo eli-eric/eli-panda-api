@@ -1110,10 +1110,10 @@ func (svc *SystemsService) RecalculateSpareParts() (err error) {
 }
 
 var allowedBatchRelationshipTypes = map[string]bool{
-	"IS_SPARE_FOR":    true,
-	"IS_COOLED_BY":    true,
-	"IS_POWERED_BY":   true,
-	"IS_CONTROLED_BY": true,
+	"IS_SPARE_FOR":     true,
+	"IS_COOLED_BY":     true,
+	"IS_POWERED_BY":    true,
+	"IS_CONTROLLED_BY": true,
 }
 
 func (svc *SystemsService) CreateBatchRelationships(request *models.BatchRelationshipRequest, facilityCode, userUID string) (models.BatchRelationshipResponse, error) {
