@@ -1,7 +1,9 @@
 package securityService
 
 import (
+	m "panda/apigateway/middlewares"
 	"panda/apigateway/services/security-service/models"
+	"panda/apigateway/shared"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
@@ -33,4 +35,6 @@ func MapSecurityRoutes(e *echo.Echo, h ISecurityHandlers, jwtMiddleware echo.Mid
 	}, jwtMiddleware)
 
 	e.GET("/v1/getuserbyazureidtoken", h.GetUserByAzureIdToken())
+
+	e.POST("/v1/auth/cache/invalidate/:userUID", m.Authorization(h.InvalidateUserStatusCache(), shared.ROLE_ADMIN), jwtMiddleware)
 }

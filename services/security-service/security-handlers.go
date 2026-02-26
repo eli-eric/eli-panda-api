@@ -2,6 +2,7 @@ package securityService
 
 import (
 	"net/http"
+	"panda/apigateway/middlewares"
 	"panda/apigateway/services/security-service/models"
 
 	"github.com/labstack/echo/v4"
@@ -9,7 +10,8 @@ import (
 )
 
 type SecurityHandlers struct {
-	securityService ISecurityService
+	securityService     ISecurityService
+	userStatusValidator middlewares.IUserStatusValidator
 }
 
 type ISecurityHandlers interface {
@@ -17,11 +19,12 @@ type ISecurityHandlers interface {
 	//ChangeUserPassword() echo.HandlerFunc
 
 	GetUserByAzureIdToken() echo.HandlerFunc
+	InvalidateUserStatusCache() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
-func NewSecurityHandlers(securitySvc ISecurityService) ISecurityHandlers {
-	return &SecurityHandlers{securityService: securitySvc}
+func NewSecurityHandlers(securitySvc ISecurityService, userStatusValidator middlewares.IUserStatusValidator) ISecurityHandlers {
+	return &SecurityHandlers{securityService: securitySvc, userStatusValidator: userStatusValidator}
 }
 
 // AuthenticateByUsernameAndPassword godoc
@@ -84,5 +87,32 @@ func (h *SecurityHandlers) GetUserByAzureIdToken() echo.HandlerFunc {
 		}
 
 		return c.JSON(http.StatusOK, user)
+	}
+}
+
+// Invalidate user status cache godoc
+// @Summary Invalidate user status cache
+// @Description Invalidates cached auth status for selected user UID.
+// @Tags Security
+// @Security BearerAuth
+// @Param userUID path string true "User UID"
+// @Success 200 {string} string
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal server error"
+// @Router /v1/auth/cache/invalidate/{userUID} [post]
+func (h *SecurityHandlers) InvalidateUserStatusCache() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userUID := c.Param("userUID")
+		if userUID == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "userUID is required")
+		}
+
+		if h.userStatusValidator == nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "user status validator is not configured")
+		}
+
+		h.userStatusValidator.InvalidateUser(userUID)
+
+		return c.JSON(http.StatusOK, "OK")
 	}
 }
