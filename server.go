@@ -77,9 +77,6 @@ func main() {
 	//register recover middleware
 	e.Use(middlewares.RecoverMiddleware())
 
-	//JWT middleware - Configure middleware with the custom claims type
-	jwtMiddleware := middlewares.JwtMiddleware(settings.JwtSecret)
-
 	// Middlewares END **********************************************************************************
 
 	// NEO4J ********************************************************************************************
@@ -90,8 +87,13 @@ func main() {
 	neo4jDriver := db.CreateNeo4jMainInstanceOrPanics(settings.Neo4jUsername, settings.Neo4jPassword, settings.Neo4jHost, settings.Neo4jPort, settings.Neo4jSchema)
 	// NEO4J END ****************************************************************************************
 
+	userStatusValidator := middlewares.NewUserStatusValidator(neo4jDriver, settings.AuthUserStatusCacheTTLSeconds)
+
+	//JWT middleware - Configure middleware with the custom claims type
+	jwtMiddleware := middlewares.JwtMiddleware(settings.JwtSecret, userStatusValidator)
+
 	//Init all services
-	services.InitializeServicesAndMapRoutes(e, settings, neo4jDriver, jwtMiddleware)
+	services.InitializeServicesAndMapRoutes(e, settings, neo4jDriver, jwtMiddleware, userStatusValidator)
 
 	// Start server
 	go func() {

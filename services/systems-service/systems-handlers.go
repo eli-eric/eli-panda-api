@@ -30,6 +30,7 @@ type ISystemsHandlers interface {
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
 	GetSystemsHierarchy() echo.HandlerFunc
 	GetSystemLeavesByParentUID() echo.HandlerFunc
+	GetSystemLeavesByParentUIDCount() echo.HandlerFunc
 	GetSystemsForControlsSystems() echo.HandlerFunc
 	GetNewSystemCodesPreview() echo.HandlerFunc
 	SaveNewSystemCodes() echo.HandlerFunc
@@ -66,6 +67,7 @@ type ISystemsHandlers interface {
 	CopySystem() echo.HandlerFunc
 	AssignSpareItem() echo.HandlerFunc
 	GetSystemSparePartsDetail() echo.HandlerFunc
+	CreateBatchRelationships() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -431,7 +433,7 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 
 // GetSystemLeavesByParentUID godoc
 // @Summary Get leaf systems for a parent
-// @Description Returns a paginated list of leaf systems (systems without subsystems) directly under the given parent system.
+// @Description Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth
@@ -478,6 +480,38 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject)
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetSystemLeavesByParentUIDCount godoc
+// @Summary Get recursive leaf systems count for a parent
+// @Description Returns count of leaf systems (systems without subsystems) recursively under the given parent system.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Parent system UID"
+// @Param search query string false "Search text"
+// @Param columnFilter query string false "Column filter JSON"
+// @Success 200 {object} map[string]int64
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid}/leaves/count [get]
+func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		parentUID := c.Param("uid")
+		facilityCode := c.Get("facilityCode").(string)
+		search := c.QueryParam("search")
+
+		filterObject := new([]helpers.ColumnFilter)
+		filter := c.QueryParam("columnFilter")
+		json.Unmarshal([]byte(filter), &filterObject)
+
+		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject)
+		if err == nil {
+			return c.JSON(http.StatusOK, map[string]int64{"count": count})
 		}
 
 		log.Error().Msg(err.Error())
@@ -785,6 +819,46 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 			log.Error().Msg(err.Error())
 		}
 		return helpers.BadRequest(err.Error())
+	}
+}
+
+// CreateBatchRelationships godoc
+// @Summary Create batch system relationships
+// @Description Create multiple system relationships in a single request
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.BatchRelationshipRequest true "Batch relationship request"
+// @Success 200 {object} interface{} "Batch relationship creation result"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/relationship/batch [post]
+func (h *SystemsHandlers) CreateBatchRelationships() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		request := new(models.BatchRelationshipRequest)
+		err := c.Bind(request)
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
+		}
+
+		facilityCode := c.Get("facilityCode").(string)
+		userUID := c.Get("userUID").(string)
+
+		result, err := h.systemsService.CreateBatchRelationships(request, facilityCode, userUID)
+		if err == nil {
+			return c.JSON(http.StatusOK, result)
+		}
+
+		log.Error().Msg(err.Error())
+		if strings.Contains(err.Error(), "not allowed") ||
+			strings.Contains(err.Error(), "not found") ||
+			strings.Contains(err.Error(), "cannot be the same") ||
+			err == helpers.ERR_INVALID_INPUT {
+			return helpers.BadRequest(err.Error())
+		}
+		return echo.ErrInternalServerError
 	}
 }
 

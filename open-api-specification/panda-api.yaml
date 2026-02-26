@@ -120,6 +120,19 @@ definitions:
         - $ref: '#/definitions/models.Codebook'
         description: department is the department of the publication
     type: object
+  models.BatchRelationshipRequest:
+    properties:
+      relationshipType:
+        type: string
+      sourceUids:
+        items:
+          type: string
+        type: array
+      targetUids:
+        items:
+          type: string
+        type: array
+    type: object
   models.CatalogueCategory:
     properties:
       code:
@@ -1407,6 +1420,22 @@ definitions:
       username:
         type: string
     type: object
+  models.UserStatusCacheItem:
+    properties:
+      expiresAt:
+        type: string
+      isEnabled:
+        type: boolean
+      userUID:
+        type: string
+    type: object
+  models.UserStatusResponse:
+    properties:
+      isEnabled:
+        type: boolean
+      userUID:
+        type: string
+    type: object
   models.WosAPIResponse:
     properties:
       hits:
@@ -1542,6 +1571,46 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/auth/cache:
+    get:
+      description: Returns current users stored in auth status cache.
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.UserStatusCacheItem'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get user status cache
+      tags:
+      - Security
+  /v1/auth/cache/invalidate/{userUID}:
+    post:
+      description: Invalidates cached auth status for selected user UID.
+      parameters:
+      - description: User UID
+        in: path
+        name: userUID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Invalidate user status cache
+      tags:
+      - Security
   /v1/authenticate:
     post:
       consumes:
@@ -3449,10 +3518,11 @@ paths:
   /v1/publications/export:
     get:
       description: 'CSV header: Media Type,Code,Experimental System,User Call,User
-        Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors,ELI
+        Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI
         Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite
         As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD
-        Ford,Grant,WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID'
+        Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI
+        Researchers,Grants,Other Grants'
       parameters:
       - description: search
         in: query
@@ -3910,7 +3980,7 @@ paths:
   /v1/system/{uid}/leaves:
     get:
       description: Returns a paginated list of leaf systems (systems without subsystems)
-        directly under the given parent system.
+        recursively under the given parent system.
       parameters:
       - description: Parent system UID
         in: path
@@ -3946,6 +4016,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Get leaf systems for a parent
+      tags:
+      - Systems
+  /v1/system/{uid}/leaves/count:
+    get:
+      description: Returns count of leaf systems (systems without subsystems) recursively
+        under the given parent system.
+      parameters:
+      - description: Parent system UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Search text
+        in: query
+        name: search
+        type: string
+      - description: Column filter JSON
+        in: query
+        name: columnFilter
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get recursive leaf systems count for a parent
       tags:
       - Systems
   /v1/system/{uid}/relationships:
@@ -4113,6 +4217,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new system relationship
+      tags:
+      - Systems
+  /v1/system/relationship/batch:
+    post:
+      consumes:
+      - application/json
+      description: Create multiple system relationships in a single request
+      parameters:
+      - description: Batch relationship request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.BatchRelationshipRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batch relationship creation result
+          schema:
+            type: object
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create batch system relationships
       tags:
       - Systems
   /v1/system/system-code:
@@ -4838,6 +4970,52 @@ paths:
       summary: Get all zones
       tags:
       - Systems
+  /v1/users/{userUID}/disable:
+    post:
+      description: Disables user account and invalidates auth status cache.
+      parameters:
+      - description: User UID
+        in: path
+        name: userUID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserStatusResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Disable user
+      tags:
+      - Security
+  /v1/users/{userUID}/enable:
+    post:
+      description: Enables user account and invalidates auth status cache.
+      parameters:
+      - description: User UID
+        in: path
+        name: userUID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserStatusResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Enable user
+      tags:
+      - Security
   /v1/uuid/v4:
     get:
       description: Get UUID v4 string

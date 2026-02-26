@@ -29,6 +29,7 @@ type ISecurityService interface {
 	GetUsersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetUsersAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
 	ChangeUserPassword(userName string, userUID string, passwords *models.ChangePasswordRequest) (err error)
+	SetUserEnabled(userUID string, isEnabled bool) (updatedUserUID string, err error)
 	GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (result []codebookModels.Codebook, err error)
 	GetProcurementersCodebook(facilityCode string) (result []codebookModels.Codebook, err error)
 	GetTeamsAutocompleteCodebook(searchText string, limit int, facilityCode string) (result []codebookModels.Codebook, err error)
@@ -148,6 +149,14 @@ func (svc *SecurityService) ChangeUserPassword(userName string, userUID string, 
 	}
 
 	return err
+}
+
+func (svc *SecurityService) SetUserEnabled(userUID string, isEnabled bool) (updatedUserUID string, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	updatedUserUID, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, SetUserEnabledQuery(userUID, isEnabled))
+
+	return updatedUserUID, err
 }
 
 func (svc *SecurityService) GetEmployeesAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter, isAdmin bool) (result []codebookModels.Codebook, err error) {
