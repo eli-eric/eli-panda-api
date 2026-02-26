@@ -183,15 +183,19 @@ func (h *SecurityHandlers) setUserEnabledHandler(isEnabled bool) echo.HandlerFun
 			return echo.NewHTTPError(http.StatusBadRequest, "userUID is required")
 		}
 
+		if h.userStatusValidator == nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "user status validator is not configured")
+		}
+
+		// First invalidate any existing cached state before updating the database
+		h.userStatusValidator.InvalidateUser(userUID)
+
 		updatedUserUID, err := h.securityService.SetUserEnabled(userUID, isEnabled)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
-		if h.userStatusValidator == nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, "user status validator is not configured")
-		}
-
+		// Invalidate again after the database update to avoid caching a stale state
 		h.userStatusValidator.InvalidateUser(updatedUserUID)
 
 		return c.JSON(http.StatusOK, models.UserStatusResponse{
