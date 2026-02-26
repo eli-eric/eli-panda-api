@@ -92,13 +92,13 @@ func (v *UserStatusValidator) InvalidateUser(userUID string) {
 func (v *UserStatusValidator) GetCacheEntries() []UserStatusCacheEntry {
 	now := time.Now()
 
-	v.cacheMux.Lock()
-	defer v.cacheMux.Unlock()
+	v.cacheMux.RLock()
+	defer v.cacheMux.RUnlock()
 
 	result := make([]UserStatusCacheEntry, 0, len(v.cache))
 	for userUID, cacheEntry := range v.cache {
 		if cacheEntry.expiresAt.Before(now) {
-			delete(v.cache, userUID)
+			// Skip expired entries; do not modify the cache during a read operation.
 			continue
 		}
 
