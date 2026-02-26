@@ -118,8 +118,12 @@ func (v *UserStatusValidator) GetCacheEntries() []UserStatusCacheEntry {
 
 func UserEnabledByUIDQuery(userUID string) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH(u:User{uid: $userUID})
-	RETURN coalesce(u.isEnabled, false) AS result`
+	WITH $userUID AS userUID
+	OPTIONAL MATCH (u:User {uid: userUID})
+	RETURN CASE
+		WHEN u IS NULL THEN false
+		ELSE coalesce(u.isEnabled, false)
+	END AS result`
 
 	result.ReturnAlias = "result"
 	result.Parameters = map[string]interface{}{
