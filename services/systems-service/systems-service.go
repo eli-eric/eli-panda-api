@@ -80,6 +80,7 @@ type ISystemsService interface {
 	CopySystem(request *models.SystemCopyRequest, facilityCode string, userUID string) (createdRootUids []string, err error)
 	GetPhysicalItemsBySystemUidRecursive(systemUid string) (result []models.SystemPhysicalItemInfo, err error)
 	AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error)
+	CreateBatchRelationships(request *models.BatchRelationshipRequest, facilityCode, userUID string) (models.BatchRelationshipResponse, error)
 }
 
 var (
@@ -1106,6 +1107,118 @@ func (svc *SystemsService) RecalculateSpareParts() (err error) {
 	}
 
 	return err
+}
+
+var allowedBatchRelationshipTypes = map[string]bool{
+	"IS_SPARE_FOR":     true,
+	"IS_COOLED_BY":     true,
+	"IS_POWERED_BY":    true,
+	"IS_CONTROLLED_BY": true,
+}
+
+func (svc *SystemsService) CreateBatchRelationships(request *models.BatchRelationshipRequest, facilityCode, userUID string) (models.BatchRelationshipResponse, error) {
+	var response models.BatchRelationshipResponse
+
+	// validate relationship type
+	if !allowedBatchRelationshipTypes[request.RelationshipType] {
+		return response, fmt.Errorf("relationship type '%s' is not allowed", request.RelationshipType)
+	}
+
+	// validate non-empty arrays
+	if len(request.SourceUids) == 0 || len(request.TargetUids) == 0 {
+		return response, helpers.ERR_INVALID_INPUT
+	}
+
+	// check self-relationships in cross-product
+	for _, src := range request.SourceUids {
+		for _, tgt := range request.TargetUids {
+			if src == tgt {
+				return response, fmt.Errorf("source and target cannot be the same system: %s", src)
+			}
+		}
+	}
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	// validate all UIDs exist - deduplicate
+	uidSet := make(map[string]bool)
+	for _, uid := range request.SourceUids {
+		uidSet[uid] = true
+	}
+	for _, uid := range request.TargetUids {
+		uidSet[uid] = true
+	}
+	allUids := make([]string, 0, len(uidSet))
+	for uid := range uidSet {
+		allUids = append(allUids, uid)
+	}
+
+	foundUids, err := helpers.GetNeo4jSingleRecordSingleValue[[]interface{}](session, ValidateSystemUidsExistQuery(allUids, facilityCode))
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return response, err
+	}
+
+	foundSet := make(map[string]bool)
+	for _, uid := range foundUids {
+		foundSet[uid.(string)] = true
+	}
+
+	var missingUids []string
+	for _, uid := range allUids {
+		if !foundSet[uid] {
+			missingUids = append(missingUids, uid)
+		}
+	}
+	if len(missingUids) > 0 {
+		return response, fmt.Errorf("system(s) not found: %s", strings.Join(missingUids, ", "))
+	}
+
+	// build cross-product pairs
+	var pairs []map[string]interface{}
+	for _, src := range request.SourceUids {
+		for _, tgt := range request.TargetUids {
+			pairs = append(pairs, map[string]interface{}{
+				"sourceUid": src,
+				"targetUid": tgt,
+			})
+		}
+	}
+
+	// execute batch query
+	results, err := helpers.WriteNeo4jAndReturnArrayOfNodes[models.BatchRelPairResult](
+		session,
+		CreateBatchRelationshipsQuery(pairs, request.RelationshipType, facilityCode, userUID),
+	)
+	if err != nil {
+		log.Error().Msg(err.Error())
+		return response, err
+	}
+
+	// process results
+	for _, r := range results {
+		if r.Created {
+			response.Created++
+		} else {
+			response.Skipped++
+			response.SkippedDetails = append(response.SkippedDetails, models.BatchRelationshipSkipped{
+				SourceUid: r.SourceUid,
+				TargetUid: r.TargetUid,
+				Reason:    "already_exists",
+			})
+		}
+	}
+
+	// recalculate spare parts if IS_SPARE_FOR
+	if request.RelationshipType == "IS_SPARE_FOR" && response.Created > 0 {
+		err = svc.RecalculateSpareParts()
+		if err != nil {
+			log.Error().Msg(err.Error())
+			return response, err
+		}
+	}
+
+	return response, nil
 }
 
 func (svc *SystemsService) GetSystemsByUids(uids []string) (result []models.System, err error) {

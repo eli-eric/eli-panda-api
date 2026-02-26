@@ -1722,6 +1722,50 @@ func DeleteSystemRelationshipQuery(uid int64, userUID string) (result helpers.Da
 	return result
 }
 
+func ValidateSystemUidsExistQuery(uids []string, facilityCode string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `
+		MATCH (s:System)-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+		WHERE s.uid IN $uids AND s.deleted = false
+		RETURN collect(s.uid) as result`,
+		Parameters: map[string]interface{}{
+			"uids":         uids,
+			"facilityCode": facilityCode,
+		},
+		ReturnAlias: "result",
+	}
+}
+
+func CreateBatchRelationshipsQuery(pairs []map[string]interface{}, relationshipType, facilityCode, userUID string) helpers.DatabaseQuery {
+	query := `
+	MATCH (f:Facility{code: $facilityCode})
+	MATCH (u:User{uid: $userUID})
+	WITH f, u
+	UNWIND $pairs AS pair
+	MATCH (source:System {uid: pair.sourceUid, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH (target:System {uid: pair.targetUid, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	OPTIONAL MATCH (source)-[existFwd:` + relationshipType + `]->(target)
+	OPTIONAL MATCH (target)-[existRev:` + relationshipType + `]->(source)
+	WITH source, target, pair, u,
+		CASE WHEN existFwd IS NULL AND existRev IS NULL THEN true ELSE false END AS shouldCreate
+	FOREACH (_ IN CASE WHEN shouldCreate THEN [1] ELSE [] END |
+		CREATE (source)-[:` + relationshipType + `]->(target)
+		CREATE (source)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+		CREATE (target)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	)
+	RETURN {sourceUid: pair.sourceUid, targetUid: pair.targetUid, created: shouldCreate} as result`
+
+	return helpers.DatabaseQuery{
+		Query: query,
+		Parameters: map[string]interface{}{
+			"facilityCode": facilityCode,
+			"userUID":      userUID,
+			"pairs":        pairs,
+		},
+		ReturnAlias: "result",
+	}
+}
+
 func GetSystemTypeMask(systemTypeUID, facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Query = `MATCH (st:SystemType{uid: $systemTypeUID}) `

@@ -111,6 +111,30 @@ type SystemRelationshipRequest struct {
 	SystemToUID      string `json:"systemToUid"`
 }
 
+type BatchRelationshipRequest struct {
+	SourceUids       []string `json:"sourceUids"`
+	TargetUids       []string `json:"targetUids"`
+	RelationshipType string   `json:"relationshipType"`
+}
+
+type BatchRelationshipResponse struct {
+	Created        int                        `json:"created"`
+	Skipped        int                        `json:"skipped"`
+	SkippedDetails []BatchRelationshipSkipped `json:"skippedDetails"`
+}
+
+type BatchRelationshipSkipped struct {
+	SourceUid string `json:"sourceUid"`
+	TargetUid string `json:"targetUid"`
+	Reason    string `json:"reason"`
+}
+
+type BatchRelPairResult struct {
+	SourceUid string `json:"sourceUid"`
+	TargetUid string `json:"targetUid"`
+	Created   bool   `json:"created"`
+}
+
 type SystemHistory struct {
 	Uid         string               `json:"uid"`
 	ChangedAt   time.Time            `json:"changedAt"`
