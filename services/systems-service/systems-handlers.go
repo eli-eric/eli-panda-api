@@ -822,6 +822,18 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 	}
 }
 
+// CreateBatchRelationships godoc
+// @Summary Create batch system relationships
+// @Description Create multiple system relationships in a single request
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body models.BatchRelationshipRequest true "Batch relationship request"
+// @Success 200 {object} interface{} "Batch relationship creation result"
+// @Failure 400 "Bad request"
+// @Failure 500 "Internal server error"
+// @Router /v1/system/relationship/batch [post]
 func (h *SystemsHandlers) CreateBatchRelationships() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		request := new(models.BatchRelationshipRequest)
