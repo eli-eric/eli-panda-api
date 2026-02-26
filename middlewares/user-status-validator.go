@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"fmt"
+	"sort"
 	"sync"
 	"time"
 
@@ -13,6 +14,13 @@ import (
 type IUserStatusValidator interface {
 	ValidateUserEnabled(userUID string) (isEnabled bool, err error)
 	InvalidateUser(userUID string)
+	GetCacheEntries() []UserStatusCacheEntry
+}
+
+type UserStatusCacheEntry struct {
+	UserUID   string    `json:"userUID"`
+	IsEnabled bool      `json:"isEnabled"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
 type userStatusCacheEntry struct {
@@ -79,6 +87,33 @@ func (v *UserStatusValidator) InvalidateUser(userUID string) {
 	v.cacheMux.Lock()
 	delete(v.cache, userUID)
 	v.cacheMux.Unlock()
+}
+
+func (v *UserStatusValidator) GetCacheEntries() []UserStatusCacheEntry {
+	now := time.Now()
+
+	v.cacheMux.Lock()
+	defer v.cacheMux.Unlock()
+
+	result := make([]UserStatusCacheEntry, 0, len(v.cache))
+	for userUID, cacheEntry := range v.cache {
+		if cacheEntry.expiresAt.Before(now) {
+			delete(v.cache, userUID)
+			continue
+		}
+
+		result = append(result, UserStatusCacheEntry{
+			UserUID:   userUID,
+			IsEnabled: cacheEntry.isEnabled,
+			ExpiresAt: cacheEntry.expiresAt,
+		})
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].UserUID < result[j].UserUID
+	})
+
+	return result
 }
 
 func UserEnabledByUIDQuery(userUID string) (result helpers.DatabaseQuery) {

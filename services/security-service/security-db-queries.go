@@ -63,6 +63,18 @@ func ChangeUserPasswordQuery(userUID string, newPasswordHash string) (result hel
 	return result
 }
 
+func SetUserEnabledQuery(userUID string, isEnabled bool) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH(u:User{uid:$userUID})
+	SET u.isEnabled = $isEnabled
+	RETURN u.uid AS result`
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["userUID"] = userUID
+	result.Parameters["isEnabled"] = isEnabled
+	return result
+}
+
 func GetEmployeesAutocompleteCodebookQuery(searchText string, limit int, facilityCode string, getAllEmployees bool, flags ...string) (result helpers.DatabaseQuery) {
 
 	if getAllEmployees {

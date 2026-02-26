@@ -36,5 +36,8 @@ func MapSecurityRoutes(e *echo.Echo, h ISecurityHandlers, jwtMiddleware echo.Mid
 
 	e.GET("/v1/getuserbyazureidtoken", h.GetUserByAzureIdToken())
 
+	e.GET("/v1/auth/cache", m.Authorization(h.GetUserStatusCache(), shared.ROLE_ADMIN), jwtMiddleware)
 	e.POST("/v1/auth/cache/invalidate/:userUID", m.Authorization(h.InvalidateUserStatusCache(), shared.ROLE_ADMIN), jwtMiddleware)
+	e.POST("/v1/users/:userUID/enable", m.Authorization(h.EnableUser(), shared.ROLE_ADMIN), jwtMiddleware)
+	e.POST("/v1/users/:userUID/disable", m.Authorization(h.DisableUser(), shared.ROLE_ADMIN), jwtMiddleware)
 }

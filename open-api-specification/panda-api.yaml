@@ -1407,6 +1407,22 @@ definitions:
       username:
         type: string
     type: object
+  models.UserStatusCacheItem:
+    properties:
+      expiresAt:
+        type: string
+      isEnabled:
+        type: boolean
+      userUID:
+        type: string
+    type: object
+  models.UserStatusResponse:
+    properties:
+      isEnabled:
+        type: boolean
+      userUID:
+        type: string
+    type: object
   models.WosAPIResponse:
     properties:
       hits:
@@ -1542,6 +1558,23 @@ info:
   title: PANDA REST API - localhost
   version: "1.0"
 paths:
+  /v1/auth/cache:
+    get:
+      description: Returns current users stored in auth status cache.
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.UserStatusCacheItem'
+            type: array
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get user status cache
+      tags:
+      - Security
   /v1/auth/cache/invalidate/{userUID}:
     post:
       description: Invalidates cached auth status for selected user UID.
@@ -4896,6 +4929,52 @@ paths:
       summary: Get all zones
       tags:
       - Systems
+  /v1/users/{userUID}/disable:
+    post:
+      description: Disables user account and invalidates auth status cache.
+      parameters:
+      - description: User UID
+        in: path
+        name: userUID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserStatusResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Disable user
+      tags:
+      - Security
+  /v1/users/{userUID}/enable:
+    post:
+      description: Enables user account and invalidates auth status cache.
+      parameters:
+      - description: User UID
+        in: path
+        name: userUID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.UserStatusResponse'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Enable user
+      tags:
+      - Security
   /v1/uuid/v4:
     get:
       description: Get UUID v4 string

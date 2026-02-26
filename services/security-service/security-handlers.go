@@ -19,7 +19,10 @@ type ISecurityHandlers interface {
 	//ChangeUserPassword() echo.HandlerFunc
 
 	GetUserByAzureIdToken() echo.HandlerFunc
+	GetUserStatusCache() echo.HandlerFunc
 	InvalidateUserStatusCache() echo.HandlerFunc
+	EnableUser() echo.HandlerFunc
+	DisableUser() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -90,6 +93,34 @@ func (h *SecurityHandlers) GetUserByAzureIdToken() echo.HandlerFunc {
 	}
 }
 
+// Get user status cache godoc
+// @Summary Get user status cache
+// @Description Returns current users stored in auth status cache.
+// @Tags Security
+// @Security BearerAuth
+// @Success 200 {array} models.UserStatusCacheItem
+// @Failure 500 "Internal server error"
+// @Router /v1/auth/cache [get]
+func (h *SecurityHandlers) GetUserStatusCache() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if h.userStatusValidator == nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "user status validator is not configured")
+		}
+
+		cacheEntries := h.userStatusValidator.GetCacheEntries()
+		response := make([]models.UserStatusCacheItem, 0, len(cacheEntries))
+		for _, cacheEntry := range cacheEntries {
+			response = append(response, models.UserStatusCacheItem{
+				UserUID:   cacheEntry.UserUID,
+				IsEnabled: cacheEntry.IsEnabled,
+				ExpiresAt: cacheEntry.ExpiresAt,
+			})
+		}
+
+		return c.JSON(http.StatusOK, response)
+	}
+}
+
 // Invalidate user status cache godoc
 // @Summary Invalidate user status cache
 // @Description Invalidates cached auth status for selected user UID.
@@ -114,5 +145,58 @@ func (h *SecurityHandlers) InvalidateUserStatusCache() echo.HandlerFunc {
 		h.userStatusValidator.InvalidateUser(userUID)
 
 		return c.JSON(http.StatusOK, "OK")
+	}
+}
+
+// Enable user godoc
+// @Summary Enable user
+// @Description Enables user account and invalidates auth status cache.
+// @Tags Security
+// @Security BearerAuth
+// @Param userUID path string true "User UID"
+// @Success 200 {object} models.UserStatusResponse
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal server error"
+// @Router /v1/users/{userUID}/enable [post]
+func (h *SecurityHandlers) EnableUser() echo.HandlerFunc {
+	return h.setUserEnabledHandler(true)
+}
+
+// Disable user godoc
+// @Summary Disable user
+// @Description Disables user account and invalidates auth status cache.
+// @Tags Security
+// @Security BearerAuth
+// @Param userUID path string true "User UID"
+// @Success 200 {object} models.UserStatusResponse
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal server error"
+// @Router /v1/users/{userUID}/disable [post]
+func (h *SecurityHandlers) DisableUser() echo.HandlerFunc {
+	return h.setUserEnabledHandler(false)
+}
+
+func (h *SecurityHandlers) setUserEnabledHandler(isEnabled bool) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		userUID := c.Param("userUID")
+		if userUID == "" {
+			return echo.NewHTTPError(http.StatusBadRequest, "userUID is required")
+		}
+
+		updatedUserUID, err := h.securityService.SetUserEnabled(userUID, isEnabled)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		if h.userStatusValidator == nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, "user status validator is not configured")
+		}
+
+		h.userStatusValidator.InvalidateUser(updatedUserUID)
+
+		return c.JSON(http.StatusOK, models.UserStatusResponse{
+			UserUID:   updatedUserUID,
+			IsEnabled: isEnabled,
+		})
 	}
 }
