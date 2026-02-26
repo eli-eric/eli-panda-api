@@ -34,6 +34,7 @@ func MapSecurityRoutes(e *echo.Echo, h ISecurityHandlers, jwtMiddleware echo.Mid
 		return c.JSON(200, userInfo)
 	}, jwtMiddleware)
 
+	// This endpoint is intended for internal use by the API Gateway to retrieve user information based on an Azure ID token.
 	e.GET("/v1/getuserbyazureidtoken", h.GetUserByAzureIdToken())
 
 	// NOTE: User status cache is currently process-local. In multi-instance deployments,
