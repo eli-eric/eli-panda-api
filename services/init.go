@@ -2,6 +2,7 @@ package services
 
 import (
 	"panda/apigateway/config"
+	"panda/apigateway/middlewares"
 	catalogueService "panda/apigateway/services/catalogue-service"
 	codebookService "panda/apigateway/services/codebook-service"
 	cronservice "panda/apigateway/services/cron-service"
@@ -19,11 +20,11 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4jDriver *neo4j.Driver, jwtMiddleware echo.MiddlewareFunc) {
+func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4jDriver *neo4j.Driver, jwtMiddleware echo.MiddlewareFunc, userStatusValidator middlewares.IUserStatusValidator) {
 
 	//security services used in handlers and maped in routes...
 	securitySvc := securityService.NewSecurityService(settings, neo4jDriver)
-	securityHandlers := securityService.NewSecurityHandlers(securitySvc)
+	securityHandlers := securityService.NewSecurityHandlers(securitySvc, userStatusValidator)
 	securityService.MapSecurityRoutes(e, securityHandlers, jwtMiddleware)
 	log.Info().Msg("Security  service initialized successfully.")
 

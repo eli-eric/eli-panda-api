@@ -30,6 +30,8 @@ func LoadConfiguraion() (*Config, error) {
 	config.ApiIntegrationBeamlinesWOSBaseUrl = os.Getenv("API_INTEGRATION_B_WOS_STARTER_API_URL")
 	config.ApiIntegrationBeamlinesWOSBaseApiKey = os.Getenv("API_INTEGRATION_B_WOS_STARTER_API_KEY")
 
+	config.AuthUserStatusCacheTTLSeconds = parseIntWithDefaultValue(os.Getenv("AUTH_USER_STATUS_CACHE_TTL_SECONDS"), 60)
+
 	return &config, nil
 }
 
@@ -50,9 +52,10 @@ type Config struct {
 	Neo4jPassword string
 	Neo4jSchema   string
 
-	Port       string
-	JwtSecret  string
-	SaltRounds int
+	Port                          string
+	JwtSecret                     string
+	SaltRounds                    int
+	AuthUserStatusCacheTTLSeconds int
 
 	// API integrations
 	// Beamlines OKBase

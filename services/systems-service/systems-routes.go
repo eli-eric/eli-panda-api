@@ -15,8 +15,9 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	// systems hierarchy explorer
 	// hierarchy tree contains only systems that have subsystems
 	e.GET("/v1/systems/hierarchy", m.Authorization(h.GetSystemsHierarchy(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
-	// leaf systems (systems without subsystems) directly under the given parent
+	// leaf systems (systems without subsystems) recursively under the given parent
 	e.GET("/v1/system/:uid/leaves", m.Authorization(h.GetSystemLeavesByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+	e.GET("/v1/system/:uid/leaves/count", m.Authorization(h.GetSystemLeavesByParentUIDCount(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	// control systems - simplified systems view (only systems with systemCode)
 	e.GET("/v1/systems/system-codes", m.Authorization(h.GetSystemsForControlsSystems(), shared.ROLE_CONTROL_SYSTEMS_VIEW), jwtMiddleware)
@@ -54,6 +55,9 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	// create new system relationship
 	e.POST("/v1/system/relationship/:uid", m.Authorization(h.CreateNewSystemRelationship(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+
+	// batch create system relationships
+	e.POST("/v1/system/relationships/batch", m.Authorization(h.CreateBatchRelationships(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/system/systemCode", m.Authorization(h.GetSystemCode(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
