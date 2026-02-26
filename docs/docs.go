@@ -3579,6 +3579,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/relationship/batch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create multiple system relationships in a single request",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create batch system relationships",
+                "parameters": [
+                    {
+                        "description": "Batch relationship request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.BatchRelationshipRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Batch relationship creation result",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/relationship/{uid}": {
             "post": {
                 "security": [
@@ -5580,6 +5625,26 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.Codebook"
                         }
                     ]
+                }
+            }
+        },
+        "models.BatchRelationshipRequest": {
+            "type": "object",
+            "properties": {
+                "relationshipType": {
+                    "type": "string"
+                },
+                "sourceUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "targetUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

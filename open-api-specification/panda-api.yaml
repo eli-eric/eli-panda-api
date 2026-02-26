@@ -120,6 +120,19 @@ definitions:
         - $ref: '#/definitions/models.Codebook'
         description: department is the department of the publication
     type: object
+  models.BatchRelationshipRequest:
+    properties:
+      relationshipType:
+        type: string
+      sourceUids:
+        items:
+          type: string
+        type: array
+      targetUids:
+        items:
+          type: string
+        type: array
+    type: object
   models.CatalogueCategory:
     properties:
       code:
@@ -4204,6 +4217,34 @@ paths:
       security:
       - BearerAuth: []
       summary: Create new system relationship
+      tags:
+      - Systems
+  /v1/system/relationship/batch:
+    post:
+      consumes:
+      - application/json
+      description: Create multiple system relationships in a single request
+      parameters:
+      - description: Batch relationship request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.BatchRelationshipRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Batch relationship creation result
+          schema:
+            type: object
+        "400":
+          description: Bad request
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create batch system relationships
       tags:
       - Systems
   /v1/system/system-code:
