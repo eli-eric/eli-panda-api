@@ -856,7 +856,7 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 // @Produce json
 // @Security BearerAuth
 // @Param body body models.BatchRelationshipRequest true "Batch relationship request"
-// @Success 200 {object} interface{} "Batch relationship creation result"
+// @Success 200 {object} models.BatchRelationshipResponse "Batch relationship creation result"
 // @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/relationship/batch [post]

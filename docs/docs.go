@@ -3611,7 +3611,9 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Batch relationship creation result",
-                        "schema": {}
+                        "schema": {
+                            "$ref": "#/definitions/models.BatchRelationshipResponse"
+                        }
                     },
                     "400": {
                         "description": "Bad request"
@@ -5680,6 +5682,37 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.BatchRelationshipResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "skippedDetails": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BatchRelationshipSkipped"
+                    }
+                }
+            }
+        },
+        "models.BatchRelationshipSkipped": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "sourceUid": {
+                    "type": "string"
+                },
+                "targetUid": {
+                    "type": "string"
                 }
             }
         },

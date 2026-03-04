@@ -133,6 +133,26 @@ definitions:
           type: string
         type: array
     type: object
+  models.BatchRelationshipResponse:
+    properties:
+      created:
+        type: integer
+      skipped:
+        type: integer
+      skippedDetails:
+        items:
+          $ref: '#/definitions/models.BatchRelationshipSkipped'
+        type: array
+    type: object
+  models.BatchRelationshipSkipped:
+    properties:
+      reason:
+        type: string
+      sourceUid:
+        type: string
+      targetUid:
+        type: string
+    type: object
   models.CatalogueCategory:
     properties:
       code:
@@ -4293,7 +4313,8 @@ paths:
       responses:
         "200":
           description: Batch relationship creation result
-          schema: {}
+          schema:
+            $ref: '#/definitions/models.BatchRelationshipResponse'
         "400":
           description: Bad request
         "500":

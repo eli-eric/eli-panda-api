@@ -540,7 +540,10 @@ var allowedSystemGraphRelationshipTypes = []string{
 }
 
 func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string) (result models.SystemGraphResponse, err error) {
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	if err != nil {
+		return result, err
+	}
 
 	nodesQuery := GetSystemGraphNodesByUidQuery(uid, facilityCode, allowedSystemGraphRelationshipTypes)
 	nodes, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphNode](session, nodesQuery)

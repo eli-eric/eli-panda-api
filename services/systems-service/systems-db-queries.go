@@ -1622,8 +1622,31 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	return result
 }
 
+func buildSystemGraphRelationshipPattern(relationTypes []string) string {
+	cleaned := make([]string, 0, len(relationTypes))
+
+	for _, relType := range relationTypes {
+		relType = strings.TrimSpace(relType)
+		if relType == "" {
+			continue
+		}
+		if strings.ContainsAny(relType, "`|:") {
+			continue
+		}
+		cleaned = append(cleaned, relType)
+	}
+
+	if len(cleaned) == 0 {
+		return "HAS_SUBSYSTEM"
+	}
+
+	return strings.Join(cleaned, "|")
+}
+
 func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
-	result.Query = `
+	relationshipPattern := buildSystemGraphRelationshipPattern(relationTypes)
+
+	result.Query = fmt.Sprintf(`
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	RETURN DISTINCT {
 		uid: center.uid,
@@ -1637,8 +1660,7 @@ func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationType
 	} as nodes
 	UNION
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	MATCH (center)-[r]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	WHERE type(r) IN $relationTypes
+	MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	RETURN DISTINCT {
 		uid: other.uid,
 		name: other.name,
@@ -1651,8 +1673,7 @@ func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationType
 	} as nodes
 	UNION
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	MATCH (center)<-[r]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	WHERE type(r) IN $relationTypes
+	MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	RETURN DISTINCT {
 		uid: other.uid,
 		name: other.name,
@@ -1662,22 +1683,22 @@ func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationType
 			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
 			| [k, coalesce(toString(properties(other)[k]), "")]
 		])
-	} as nodes`
+	} as nodes`, relationshipPattern, relationshipPattern)
 
 	result.ReturnAlias = "nodes"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["facilityCode"] = facilityCode
-	result.Parameters["relationTypes"] = relationTypes
 
 	return result
 }
 
 func GetSystemGraphLinksByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
-	result.Query = `
+	relationshipPattern := buildSystemGraphRelationshipPattern(relationTypes)
+
+	result.Query = fmt.Sprintf(`
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	MATCH (center)-[r]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	WHERE type(r) IN $relationTypes
+	MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	RETURN DISTINCT {
 		source: center.uid,
 		target: other.uid,
@@ -1685,19 +1706,17 @@ func GetSystemGraphLinksByUidQuery(uid string, facilityCode string, relationType
 	} as links
 	UNION
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	MATCH (center)<-[r]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	WHERE type(r) IN $relationTypes
+	MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	RETURN DISTINCT {
 		source: other.uid,
 		target: center.uid,
 		relationship: type(r)
-	} as links`
+	} as links`, relationshipPattern, relationshipPattern)
 
 	result.ReturnAlias = "links"
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["facilityCode"] = facilityCode
-	result.Parameters["relationTypes"] = relationTypes
 
 	return result
 }
