@@ -1721,6 +1721,99 @@ func GetSystemGraphLinksByUidQuery(uid string, facilityCode string, relationType
 	return result
 }
 
+func GetSystemGraphLinksByUidAndTypeQuery(uid string, facilityCode string, relationType string, offset int, limit int) (result helpers.DatabaseQuery) {
+	relationshipPattern := buildSystemGraphRelationshipPattern([]string{relationType})
+
+	result.Query = fmt.Sprintf(`
+	CALL {
+		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		RETURN {
+			uid: toString(id(r)),
+			relId: id(r),
+			source: center.uid,
+			target: other.uid,
+			relationship: type(r)
+		} as link
+		UNION
+		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		RETURN {
+			uid: toString(id(r)),
+			relId: id(r),
+			source: other.uid,
+			target: center.uid,
+			relationship: type(r)
+		} as link
+	}
+	WITH link
+	ORDER BY link.relId ASC
+	SKIP $offset
+	LIMIT $limit
+	RETURN {
+		uid: link.uid,
+		source: link.source,
+		target: link.target,
+		relationship: link.relationship
+	} as links`, relationshipPattern, relationshipPattern)
+
+	result.ReturnAlias = "links"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["offset"] = offset
+	result.Parameters["limit"] = limit
+
+	return result
+}
+
+func GetSystemGraphLinksByUidAndTypeCountQuery(uid string, facilityCode string, relationType string) (result helpers.DatabaseQuery) {
+	relationshipPattern := buildSystemGraphRelationshipPattern([]string{relationType})
+
+	result.Query = fmt.Sprintf(`
+	CALL {
+		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		RETURN id(r) as relationId
+		UNION
+		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+		RETURN id(r) as relationId
+	}
+	RETURN count(DISTINCT relationId) as totalCount`, relationshipPattern, relationshipPattern)
+
+	result.ReturnAlias = "totalCount"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
+func GetSystemGraphNodesByUidsQuery(uids []string, facilityCode string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (sys:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	WHERE sys.uid IN $uids
+	RETURN DISTINCT {
+		uid: sys.uid,
+		name: sys.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(sys))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(sys)[k]), "")]
+		])
+	} as nodes
+	ORDER BY nodes.uid ASC`
+
+	result.ReturnAlias = "nodes"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uids"] = uids
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
 func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(sys:System{uid: $uid, deleted: false})

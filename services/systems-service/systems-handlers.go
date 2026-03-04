@@ -3,6 +3,7 @@ package systemsService
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
@@ -675,12 +676,19 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 
 // GetSystemGraphByUid godoc
 // @Summary Get system graph by UID
-// @Description Returns one-hop system graph for the given UID. Includes only allowed relationships.
+// @Description Returns system graph for the given UID. Supports legacy mode, per-type initial limiting, and load-more for one relationship type.
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth
 // @Param uid path string true "System UID"
+// @Param limitPerRelationshipType query int false "Max links per relationship type (initial mode)"
+// @Param includeRelationshipStats query bool false "Include relationship stats meta for initial mode"
+// @Param relationshipType query string false "Relationship type for load-more mode"
+// @Param offset query int false "Offset for load-more mode (default 0)"
+// @Param limit query int false "Limit for load-more mode (default 10, max 100)"
 // @Success 200 {object} models.SystemGraphResponse
+// @Failure 400 "Bad request"
+// @Failure 404 "System not found"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/graph [get]
 func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
@@ -688,14 +696,81 @@ func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
 		systemUid := c.Param("uid")
 		facilityCode := c.Get("facilityCode").(string)
 
-		graph, err := h.systemsService.GetSystemGraphByUid(systemUid, facilityCode)
+		options, err := parseSystemGraphQueryOptions(c)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		graph, err := h.systemsService.GetSystemGraphByUid(systemUid, facilityCode, options)
 		if err == nil {
 			return c.JSON(http.StatusOK, graph)
+		}
+
+		if err == helpers.ERR_INVALID_INPUT {
+			return helpers.BadRequest("invalid relationshipType/offset/limit")
+		}
+
+		if err == helpers.ERR_NOT_FOUND {
+			return c.String(http.StatusNotFound, "system not found")
 		}
 
 		log.Error().Msg(err.Error())
 		return echo.ErrInternalServerError
 	}
+}
+
+func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQueryOptions, err error) {
+	relationshipType := strings.TrimSpace(c.QueryParam("relationshipType"))
+	limitPerRelationshipTypeString := strings.TrimSpace(c.QueryParam("limitPerRelationshipType"))
+	offsetString := strings.TrimSpace(c.QueryParam("offset"))
+	limitString := strings.TrimSpace(c.QueryParam("limit"))
+	includeRelationshipStatsString := strings.TrimSpace(c.QueryParam("includeRelationshipStats"))
+
+	if includeRelationshipStatsString != "" {
+		parsed, err := strconv.ParseBool(includeRelationshipStatsString)
+		if err != nil {
+			return options, errors.New("invalid includeRelationshipStats")
+		}
+		options.IncludeRelationshipStats = parsed
+	}
+
+	if relationshipType != "" {
+		options.RelationshipType = relationshipType
+		options.Offset = 0
+		options.Limit = 10
+
+		if offsetString != "" {
+			offset, err := strconv.Atoi(offsetString)
+			if err != nil || offset < 0 {
+				return options, errors.New("invalid offset")
+			}
+			options.Offset = offset
+		}
+
+		if limitString != "" {
+			limit, err := strconv.Atoi(limitString)
+			if err != nil || limit <= 0 || limit > 100 {
+				return options, errors.New("invalid limit")
+			}
+			options.Limit = limit
+		}
+
+		return options, nil
+	}
+
+	if offsetString != "" || limitString != "" {
+		return options, errors.New("offset and limit require relationshipType")
+	}
+
+	if limitPerRelationshipTypeString != "" {
+		limitPerRelationshipType, err := strconv.Atoi(limitPerRelationshipTypeString)
+		if err != nil || limitPerRelationshipType <= 0 || limitPerRelationshipType > 100 {
+			return options, errors.New("invalid limitPerRelationshipType")
+		}
+		options.LimitPerRelationshipType = &limitPerRelationshipType
+	}
+
+	return options, nil
 }
 
 // GetSystemsForRelationship godoc

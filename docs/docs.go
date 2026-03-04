@@ -4416,7 +4416,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns one-hop system graph for the given UID. Includes only allowed relationships.",
+                "description": "Returns system graph for the given UID. Supports legacy mode, per-type initial limiting, and load-more for one relationship type.",
                 "produces": [
                     "application/json"
                 ],
@@ -4431,6 +4431,36 @@ const docTemplate = `{
                         "name": "uid",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max links per relationship type (initial mode)",
+                        "name": "limitPerRelationshipType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include relationship stats meta for initial mode",
+                        "name": "includeRelationshipStats",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relationship type for load-more mode",
+                        "name": "relationshipType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for load-more mode (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit for load-more mode (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4439,6 +4469,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.SystemGraphResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "System not found"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -7337,6 +7373,23 @@ const docTemplate = `{
                 },
                 "target": {
                     "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphMeta": {
+            "type": "object",
+            "properties": {
+                "hiddenLinksTotal": {
+                    "type": "integer"
+                },
+                "relationshipStats": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.SystemGraphRelationshipStat"
+                    }
                 }
             }
         },
@@ -7360,6 +7413,43 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemGraphPage": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "returned": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphRelationshipStat": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "returned": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.SystemGraphResponse": {
             "type": "object",
             "properties": {
@@ -7369,11 +7459,17 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SystemGraphLink"
                     }
                 },
+                "meta": {
+                    "$ref": "#/definitions/models.SystemGraphMeta"
+                },
                 "nodes": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.SystemGraphNode"
                     }
+                },
+                "page": {
+                    "$ref": "#/definitions/models.SystemGraphPage"
                 }
             }
         },

@@ -106,14 +106,45 @@ type SystemGraphNode struct {
 }
 
 type SystemGraphLink struct {
+	Uid          string `json:"uid,omitempty"`
 	Target       string `json:"target"`
 	Relationship string `json:"relationship"`
 	Source       string `json:"source"`
 }
 
+type SystemGraphRelationshipStat struct {
+	Total    int64 `json:"total"`
+	Returned int64 `json:"returned"`
+	HasMore  bool  `json:"hasMore"`
+}
+
+type SystemGraphMeta struct {
+	RelationshipStats map[string]SystemGraphRelationshipStat `json:"relationshipStats,omitempty"`
+	HiddenLinksTotal  int64                                  `json:"hiddenLinksTotal"`
+}
+
+type SystemGraphPage struct {
+	Type     string `json:"type"`
+	Offset   int    `json:"offset"`
+	Limit    int    `json:"limit"`
+	Returned int64  `json:"returned"`
+	Total    int64  `json:"total"`
+	HasMore  bool   `json:"hasMore"`
+}
+
 type SystemGraphResponse struct {
 	Nodes []SystemGraphNode `json:"nodes"`
 	Links []SystemGraphLink `json:"links"`
+	Meta  *SystemGraphMeta  `json:"meta,omitempty"`
+	Page  *SystemGraphPage  `json:"page,omitempty"`
+}
+
+type SystemGraphQueryOptions struct {
+	LimitPerRelationshipType *int
+	IncludeRelationshipStats bool
+	RelationshipType         string
+	Offset                   int
+	Limit                    int
 }
 
 type SystemRelationship struct {
