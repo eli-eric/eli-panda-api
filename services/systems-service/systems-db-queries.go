@@ -1622,6 +1622,105 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	return result
 }
 
+func buildSystemGraphRelationshipPattern(relationTypes []string) string {
+	cleaned := make([]string, 0, len(relationTypes))
+
+	for _, relType := range relationTypes {
+		relType = strings.TrimSpace(relType)
+		if relType == "" {
+			continue
+		}
+		if strings.ContainsAny(relType, "`|:") {
+			continue
+		}
+		cleaned = append(cleaned, relType)
+	}
+
+	if len(cleaned) == 0 {
+		return "HAS_SUBSYSTEM"
+	}
+
+	return strings.Join(cleaned, "|")
+}
+
+func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
+	relationshipPattern := buildSystemGraphRelationshipPattern(relationTypes)
+
+	result.Query = fmt.Sprintf(`
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	RETURN DISTINCT {
+		uid: center.uid,
+		name: center.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(center))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(center)[k]), "")]
+		])
+	} as nodes
+	UNION
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	RETURN DISTINCT {
+		uid: other.uid,
+		name: other.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(other))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(other)[k]), "")]
+		])
+	} as nodes
+	UNION
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	RETURN DISTINCT {
+		uid: other.uid,
+		name: other.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(other))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(other)[k]), "")]
+		])
+	} as nodes`, relationshipPattern, relationshipPattern)
+
+	result.ReturnAlias = "nodes"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
+func GetSystemGraphLinksByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
+	relationshipPattern := buildSystemGraphRelationshipPattern(relationTypes)
+
+	result.Query = fmt.Sprintf(`
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	RETURN DISTINCT {
+		source: center.uid,
+		target: other.uid,
+		relationship: type(r)
+	} as links
+	UNION
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	RETURN DISTINCT {
+		source: other.uid,
+		target: center.uid,
+		relationship: type(r)
+	} as links`, relationshipPattern, relationshipPattern)
+
+	result.ReturnAlias = "links"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+
+	return result
+}
+
 func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(sys:System{uid: $uid, deleted: false})

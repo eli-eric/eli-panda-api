@@ -133,6 +133,26 @@ definitions:
           type: string
         type: array
     type: object
+  models.BatchRelationshipResponse:
+    properties:
+      created:
+        type: integer
+      skipped:
+        type: integer
+      skippedDetails:
+        items:
+          $ref: '#/definitions/models.BatchRelationshipSkipped'
+        type: array
+    type: object
+  models.BatchRelationshipSkipped:
+    properties:
+      reason:
+        type: string
+      sourceUid:
+        type: string
+      targetUid:
+        type: string
+    type: object
   models.CatalogueCategory:
     properties:
       code:
@@ -1202,6 +1222,39 @@ definitions:
         type: string
       uid:
         type: string
+    type: object
+  models.SystemGraphLink:
+    properties:
+      relationship:
+        type: string
+      source:
+        type: string
+      target:
+        type: string
+    type: object
+  models.SystemGraphNode:
+    properties:
+      label:
+        type: string
+      name:
+        type: string
+      properties:
+        additionalProperties:
+          type: string
+        type: object
+      uid:
+        type: string
+    type: object
+  models.SystemGraphResponse:
+    properties:
+      links:
+        items:
+          $ref: '#/definitions/models.SystemGraphLink'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/models.SystemGraphNode'
+        type: array
     type: object
   models.SystemHierarchyNode:
     properties:
@@ -3929,6 +3982,30 @@ paths:
       summary: Update system
       tags:
       - Systems
+  /v1/system/{uid}/graph:
+    get:
+      description: Returns one-hop system graph for the given UID. Includes only allowed
+        relationships.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SystemGraphResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system graph by UID
+      tags:
+      - Systems
   /v1/system/{uid}/history:
     get:
       description: Returns system history events by system UID.
@@ -4237,7 +4314,7 @@ paths:
         "200":
           description: Batch relationship creation result
           schema:
-            type: object
+            $ref: '#/definitions/models.BatchRelationshipResponse'
         "400":
           description: Bad request
         "500":

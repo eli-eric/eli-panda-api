@@ -98,6 +98,24 @@ type SystemCodesRequest struct {
 	Batch      int              `json:"batch"`
 }
 
+type SystemGraphNode struct {
+	Uid        string            `json:"uid"`
+	Name       string            `json:"name"`
+	Label      string            `json:"label"`
+	Properties map[string]string `json:"properties"`
+}
+
+type SystemGraphLink struct {
+	Target       string `json:"target"`
+	Relationship string `json:"relationship"`
+	Source       string `json:"source"`
+}
+
+type SystemGraphResponse struct {
+	Nodes []SystemGraphNode `json:"nodes"`
+	Links []SystemGraphLink `json:"links"`
+}
+
 type SystemRelationship struct {
 	Direction         string `json:"direction"`
 	RelationTypeCode  string `json:"relationTypeCode"`

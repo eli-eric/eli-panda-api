@@ -35,6 +35,7 @@ type ISystemsHandlers interface {
 	GetNewSystemCodesPreview() echo.HandlerFunc
 	SaveNewSystemCodes() echo.HandlerFunc
 	GetSystemsForRelationship() echo.HandlerFunc
+	GetSystemGraphByUid() echo.HandlerFunc
 	GetSystemRelationships() echo.HandlerFunc
 	DeleteSystemRelationship() echo.HandlerFunc
 	CreateNewSystemRelationship() echo.HandlerFunc
@@ -672,6 +673,31 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 	}
 }
 
+// GetSystemGraphByUid godoc
+// @Summary Get system graph by UID
+// @Description Returns one-hop system graph for the given UID. Includes only allowed relationships.
+// @Tags Systems
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "System UID"
+// @Success 200 {object} models.SystemGraphResponse
+// @Failure 500 "Internal server error"
+// @Router /v1/system/{uid}/graph [get]
+func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		systemUid := c.Param("uid")
+		facilityCode := c.Get("facilityCode").(string)
+
+		graph, err := h.systemsService.GetSystemGraphByUid(systemUid, facilityCode)
+		if err == nil {
+			return c.JSON(http.StatusOK, graph)
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
+	}
+}
+
 // GetSystemsForRelationship godoc
 // @Summary Get systems for relationship
 // @Description Returns a paginated list of systems for relationship creation; supports optional filtering.
@@ -830,7 +856,7 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 // @Produce json
 // @Security BearerAuth
 // @Param body body models.BatchRelationshipRequest true "Batch relationship request"
-// @Success 200 {object} interface{} "Batch relationship creation result"
+// @Success 200 {object} models.BatchRelationshipResponse "Batch relationship creation result"
 // @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/relationship/batch [post]

@@ -48,6 +48,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	e.GET("/v1/system/:parentUID/subsystems/for-relationship", m.Authorization(h.GetSubSystemsByParentUID(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	// get system relationships
+	e.GET("/v1/system/:uid/graph", m.Authorization(h.GetSystemGraphByUid(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 	e.GET("/v1/system/:uid/relationships", m.Authorization(h.GetSystemRelationships(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
 	// delete system relationship
