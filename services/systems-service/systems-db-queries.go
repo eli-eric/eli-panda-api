@@ -1622,6 +1622,86 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	return result
 }
 
+func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	RETURN DISTINCT {
+		uid: center.uid,
+		name: center.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(center))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(center)[k]), "")]
+		])
+	} as nodes
+	UNION
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)-[r]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	WHERE type(r) IN $relationTypes
+	RETURN DISTINCT {
+		uid: other.uid,
+		name: other.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(other))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(other)[k]), "")]
+		])
+	} as nodes
+	UNION
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)<-[r]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	WHERE type(r) IN $relationTypes
+	RETURN DISTINCT {
+		uid: other.uid,
+		name: other.name,
+		label: "System",
+		properties: apoc.map.fromPairs([
+			k IN keys(properties(other))
+			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+			| [k, coalesce(toString(properties(other)[k]), "")]
+		])
+	} as nodes`
+
+	result.ReturnAlias = "nodes"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["relationTypes"] = relationTypes
+
+	return result
+}
+
+func GetSystemGraphLinksByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
+	result.Query = `
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)-[r]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	WHERE type(r) IN $relationTypes
+	RETURN DISTINCT {
+		source: center.uid,
+		target: other.uid,
+		relationship: type(r)
+	} as links
+	UNION
+	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	MATCH (center)<-[r]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
+	WHERE type(r) IN $relationTypes
+	RETURN DISTINCT {
+		source: other.uid,
+		target: center.uid,
+		relationship: type(r)
+	} as links`
+
+	result.ReturnAlias = "links"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["facilityCode"] = facilityCode
+	result.Parameters["relationTypes"] = relationTypes
+
+	return result
+}
+
 func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 	result.Query = `
 	MATCH(sys:System{uid: $uid, deleted: false})

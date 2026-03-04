@@ -3611,9 +3611,7 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Batch relationship creation result",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     },
                     "400": {
                         "description": "Bad request"
@@ -4401,6 +4399,43 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/models.SystemPhysicalItemInfo"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/graph": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns one-hop system graph for the given UID. Includes only allowed relationships.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system graph by UID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemGraphResponse"
                         }
                     },
                     "500": {
@@ -7255,6 +7290,57 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphLink": {
+            "type": "object",
+            "properties": {
+                "relationship": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphNode": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphResponse": {
+            "type": "object",
+            "properties": {
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemGraphLink"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemGraphNode"
+                    }
                 }
             }
         },

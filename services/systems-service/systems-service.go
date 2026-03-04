@@ -41,6 +41,7 @@ type ISystemsService interface {
 	GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error)
 	GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
 	GetSystemLeavesByParentUIDCount(parentUID string, facilityCode string, search string, filtering *[]helpers.ColumnFilter) (count int64, err error)
+	GetSystemGraphByUid(uid string, facilityCode string) (result models.SystemGraphResponse, err error)
 	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
 	DeleteSystemRelationship(uid int64, userUID string) (err error)
@@ -528,6 +529,38 @@ func (svc *SystemsService) GetSystemLeavesByParentUIDCount(parentUID string, fac
 	count, err = helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemLeavesByParentUIDCountQuery(parentUID, facilityCode, search, filtering))
 
 	return count, err
+}
+
+var allowedSystemGraphRelationshipTypes = []string{
+	"HAS_SUBSYSTEM",
+	"IS_COOLED_BY",
+	"IS_POWERED_BY",
+	"IS_SPARE_FOR",
+	"IS_CONTROLLED_BY",
+}
+
+func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string) (result models.SystemGraphResponse, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	nodesQuery := GetSystemGraphNodesByUidQuery(uid, facilityCode, allowedSystemGraphRelationshipTypes)
+	nodes, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphNode](session, nodesQuery)
+	if err != nil {
+		return result, err
+	}
+
+	linksQuery := GetSystemGraphLinksByUidQuery(uid, facilityCode, allowedSystemGraphRelationshipTypes)
+	links, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphLink](session, linksQuery)
+	if err != nil {
+		return result, err
+	}
+
+	helpers.ProcessArrayResult(&nodes, err)
+	helpers.ProcessArrayResult(&links, err)
+
+	result.Nodes = nodes
+	result.Links = links
+
+	return result, nil
 }
 
 func (svc *SystemsService) GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error) {
