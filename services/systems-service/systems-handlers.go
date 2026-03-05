@@ -678,6 +678,7 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 // @Summary Get system graph by UID
 // @Description Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.
 // @Description Filters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).
+// @Description Invalid values still return 400 (invalid relationship/system levels, malformed csv, invalid offset/limit).
 // @Description Root system node is always kept as context; node filters apply to related nodes.
 // @Description Examples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS&limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump&relationshipType=HAS_SUBSYSTEM&offset=20&limit=10 ; /v1/system/{uid}/graph?search=pump&systemLevels=TECHNOLOGY_UNIT
 // @Tags Systems

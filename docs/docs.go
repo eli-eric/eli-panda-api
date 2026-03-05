@@ -4416,7 +4416,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.\nFilters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).\nRoot system node is always kept as context; node filters apply to related nodes.\nExamples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS\u0026limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump\u0026relationshipType=HAS_SUBSYSTEM\u0026offset=20\u0026limit=10 ; /v1/system/{uid}/graph?search=pump\u0026systemLevels=TECHNOLOGY_UNIT",
+                "description": "Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.\nFilters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).\nInvalid values still return 400 (invalid relationship/system levels, malformed csv, invalid offset/limit).\nRoot system node is always kept as context; node filters apply to related nodes.\nExamples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS\u0026limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump\u0026relationshipType=HAS_SUBSYSTEM\u0026offset=20\u0026limit=10 ; /v1/system/{uid}/graph?search=pump\u0026systemLevels=TECHNOLOGY_UNIT",
                 "produces": [
                     "application/json"
                 ],

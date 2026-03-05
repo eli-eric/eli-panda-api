@@ -1823,11 +1823,13 @@ func GetSystemGraphFilteredLinksByUidQuery(uid string, facilityCode string, rela
 	CALL {
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH center, other, otherType, r
+		WITH center, other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN {
 			uid: toString(id(r)),
 			relId: id(r),
@@ -1838,11 +1840,13 @@ func GetSystemGraphFilteredLinksByUidQuery(uid string, facilityCode string, rela
 		UNION
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH center, other, otherType, r
+		WITH center, other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN {
 			uid: toString(id(r)),
 			relId: id(r),
@@ -1851,7 +1855,7 @@ func GetSystemGraphFilteredLinksByUidQuery(uid string, facilityCode string, rela
 			relationship: type(r)
 		} as link
 	}
-	WITH link
+	WITH DISTINCT link
 	ORDER BY link.relId ASC
 	RETURN {
 		uid: link.uid,
@@ -1881,11 +1885,13 @@ func GetSystemGraphLinksByUidAndTypeFilteredQuery(uid string, facilityCode strin
 	CALL {
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH center, other, otherType, r
+		WITH center, other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN {
 			uid: toString(id(r)),
 			relId: id(r),
@@ -1896,11 +1902,13 @@ func GetSystemGraphLinksByUidAndTypeFilteredQuery(uid string, facilityCode strin
 		UNION
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH center, other, otherType, r
+		WITH center, other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN {
 			uid: toString(id(r)),
 			relId: id(r),
@@ -1909,7 +1917,7 @@ func GetSystemGraphLinksByUidAndTypeFilteredQuery(uid string, facilityCode strin
 			relationship: type(r)
 		} as link
 	}
-	WITH link
+	WITH DISTINCT link
 	ORDER BY link.relId ASC
 	SKIP $offset
 	LIMIT $limit
@@ -1943,20 +1951,24 @@ func GetSystemGraphLinksByUidAndTypeFilteredCountQuery(uid string, facilityCode 
 	CALL {
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH center, other, otherType, r
+		WITH center, other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN id(r) as relationId
 		UNION
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH center, other, otherType, r
+		WITH center, other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN id(r) as relationId
 	}
 	RETURN count(DISTINCT relationId) as totalCount`, relationshipPattern, relationshipPattern)
@@ -1982,20 +1994,24 @@ func GetSystemGraphFilteredCountsByTypesQuery(uid string, facilityCode string, r
 	CALL {
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)-[r:%s]->(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH other, otherType, r
+		WITH other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN type(r) as relationship, id(r) as relationId
 		UNION
 		MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (center)<-[r:%s]-(other:System{deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-		OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]->(otherType:SystemType)
-		WITH other, otherType, r
+		WITH other, r
 		WHERE (NOT $hasSearch OR toLower(coalesce(other.name, "")) CONTAINS $searchLower OR toLower(coalesce(other.systemCode, "")) CONTAINS $searchLower)
 			AND (NOT $hasSystemLevels OR other.systemLevel IN $systemLevels)
-			AND (NOT $hasSystemType OR toLower(coalesce(otherType.name, "")) = $systemTypeLower)
+			AND (NOT $hasSystemType OR EXISTS {
+				MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+				WHERE toLower(st.name) = $systemTypeLower
+			})
 		RETURN type(r) as relationship, id(r) as relationId
 	}
 	WITH relationship, count(DISTINCT relationId) as total
