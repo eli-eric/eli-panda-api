@@ -665,6 +665,9 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 	}
 
 	if options.SystemType != "" {
+		// Intentional: validate systemType at facility scope.
+		// If type exists in facility but has no edges in current root graph scope,
+		// endpoint returns 200 with empty result instead of 400.
 		systemTypeExists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, SystemTypeNameExistsInFacilityQuery(options.SystemType, facilityCode))
 		if err != nil {
 			return result, err
@@ -799,6 +802,8 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			relationshipStats = make(map[string]models.SystemGraphRelationshipStat)
 		}
 
+		// One query per relationship type for deterministic per-type top-N paging.
+		// If latency grows, refactor to single-query builder (tracked in #355).
 		for _, relationshipType := range relationshipTypes {
 			linksQuery := GetSystemGraphLinksByUidAndTypeFilteredQuery(uid, facilityCode, relationshipType, options.Search, options.SystemLevels, options.SystemType, 0, *options.LimitPerRelationshipType)
 			typedLinks, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphLink](session, linksQuery)

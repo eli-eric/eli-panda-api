@@ -6,24 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetSystemGraphLinksByUidAndTypeQuery_HasStablePagingOrder(t *testing.T) {
-	query := GetSystemGraphLinksByUidAndTypeQuery("sys-1", "B", "IS_POWERED_BY", 20, 10)
-
-	assert.Equal(t, "links", query.ReturnAlias)
-	assert.Contains(t, query.Query, "ORDER BY link.relId ASC")
-	assert.Contains(t, query.Query, "SKIP $offset")
-	assert.Contains(t, query.Query, "LIMIT $limit")
-	assert.Equal(t, 20, query.Parameters["offset"])
-	assert.Equal(t, 10, query.Parameters["limit"])
-}
-
-func TestGetSystemGraphLinksByUidAndTypeCountQuery(t *testing.T) {
-	query := GetSystemGraphLinksByUidAndTypeCountQuery("sys-1", "B", "IS_POWERED_BY")
-
-	assert.Equal(t, "totalCount", query.ReturnAlias)
-	assert.Contains(t, query.Query, "count(DISTINCT relationId) as totalCount")
-}
-
 func TestGetSystemGraphNodesByUidsQuery(t *testing.T) {
 	query := GetSystemGraphNodesByUidsQuery([]string{"sys-1", "sys-2"}, "B")
 
@@ -40,8 +22,9 @@ func TestGetSystemGraphFilteredLinksByUidQuery(t *testing.T) {
 	assert.Contains(t, query.Query, "ORDER BY link.relId ASC")
 	assert.Contains(t, query.Query, "WITH DISTINCT link")
 	assert.Contains(t, query.Query, "other.systemLevel IN $systemLevels")
-	assert.Contains(t, query.Query, "EXISTS {")
-	assert.Contains(t, query.Query, "MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "size([(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.NotContains(t, query.Query, "EXISTS {")
 	assert.NotContains(t, query.Query, "OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]")
 	assert.NotContains(t, query.Query, "center.systemLevel IN $systemLevels")
 	assert.Equal(t, true, query.Parameters["hasSearch"])
@@ -58,8 +41,9 @@ func TestGetSystemGraphLinksByUidAndTypeFilteredQuery_HasStablePagingOrder(t *te
 	assert.Contains(t, query.Query, "SKIP $offset")
 	assert.Contains(t, query.Query, "LIMIT $limit")
 	assert.Contains(t, query.Query, "other.systemLevel IN $systemLevels")
-	assert.Contains(t, query.Query, "EXISTS {")
-	assert.Contains(t, query.Query, "MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "size([(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.NotContains(t, query.Query, "EXISTS {")
 	assert.NotContains(t, query.Query, "OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]")
 	assert.NotContains(t, query.Query, "center.systemLevel IN $systemLevels")
 	assert.Equal(t, 20, query.Parameters["offset"])
@@ -72,8 +56,9 @@ func TestGetSystemGraphLinksByUidAndTypeFilteredCountQuery(t *testing.T) {
 
 	assert.Equal(t, "totalCount", query.ReturnAlias)
 	assert.Contains(t, query.Query, "count(DISTINCT relationId) as totalCount")
-	assert.Contains(t, query.Query, "EXISTS {")
-	assert.Contains(t, query.Query, "MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "size([(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.NotContains(t, query.Query, "EXISTS {")
 	assert.NotContains(t, query.Query, "OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]")
 	assert.Equal(t, true, query.Parameters["hasSystemLevels"])
 	assert.Equal(t, true, query.Parameters["hasSystemType"])
@@ -84,8 +69,9 @@ func TestGetSystemGraphFilteredCountsByTypesQuery(t *testing.T) {
 
 	assert.Equal(t, "counts", query.ReturnAlias)
 	assert.Contains(t, query.Query, "WITH relationship, count(DISTINCT relationId) as total")
-	assert.Contains(t, query.Query, "EXISTS {")
-	assert.Contains(t, query.Query, "MATCH (other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "size([(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.Contains(t, query.Query, "(other)-[:HAS_SYSTEM_TYPE]->(st:SystemType)")
+	assert.NotContains(t, query.Query, "EXISTS {")
 	assert.NotContains(t, query.Query, "OPTIONAL MATCH (other)-[:HAS_SYSTEM_TYPE]")
 	assert.Equal(t, true, query.Parameters["hasSearch"])
 	assert.Equal(t, true, query.Parameters["hasSystemLevels"])
