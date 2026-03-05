@@ -4416,7 +4416,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns one-hop system graph for the given UID. Includes only allowed relationships.",
+                "description": "Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.\nFilters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).\nInvalid values still return 400 (invalid relationship/system levels, malformed csv, invalid offset/limit).\nRoot system node is always kept as context; node filters apply to related nodes.\nExamples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS\u0026limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump\u0026relationshipType=HAS_SUBSYSTEM\u0026offset=20\u0026limit=10 ; /v1/system/{uid}/graph?search=pump\u0026systemLevels=TECHNOLOGY_UNIT",
                 "produces": [
                     "application/json"
                 ],
@@ -4431,6 +4431,60 @@ const docTemplate = `{
                         "name": "uid",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max links per relationship type (initial mode)",
+                        "name": "limitPerRelationshipType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include relationship stats in response meta (all graph modes)",
+                        "name": "includeRelationshipStats",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relationship type for load-more mode",
+                        "name": "relationshipType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for load-more mode (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit for load-more mode (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node search by name/systemCode (contains, case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH",
+                        "name": "systemLevels",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "System type name (case-insensitive exact)",
+                        "name": "systemType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV relationship types",
+                        "name": "relationshipTypes",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4439,6 +4493,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.SystemGraphResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "System not found"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -7337,6 +7397,32 @@ const docTemplate = `{
                 },
                 "target": {
                     "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphMeta": {
+            "type": "object",
+            "properties": {
+                "filterApplied": {
+                    "type": "boolean"
+                },
+                "hiddenLinksTotal": {
+                    "type": "integer"
+                },
+                "isPartial": {
+                    "type": "boolean"
+                },
+                "relationshipStats": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.SystemGraphRelationshipStat"
+                    }
+                },
+                "totalMatchedLinks": {
+                    "type": "integer"
                 }
             }
         },
@@ -7360,6 +7446,43 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemGraphPage": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "returned": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphRelationshipStat": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "returned": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.SystemGraphResponse": {
             "type": "object",
             "properties": {
@@ -7369,11 +7492,17 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.SystemGraphLink"
                     }
                 },
+                "meta": {
+                    "$ref": "#/definitions/models.SystemGraphMeta"
+                },
                 "nodes": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.SystemGraphNode"
                     }
+                },
+                "page": {
+                    "$ref": "#/definitions/models.SystemGraphPage"
                 }
             }
         },

@@ -3,6 +3,7 @@ package systemsService
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
@@ -675,12 +676,27 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 
 // GetSystemGraphByUid godoc
 // @Summary Get system graph by UID
-// @Description Returns one-hop system graph for the given UID. Includes only allowed relationships.
+// @Description Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.
+// @Description Filters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).
+// @Description Invalid values still return 400 (invalid relationship/system levels, malformed csv, invalid offset/limit).
+// @Description Root system node is always kept as context; node filters apply to related nodes.
+// @Description Examples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS&limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump&relationshipType=HAS_SUBSYSTEM&offset=20&limit=10 ; /v1/system/{uid}/graph?search=pump&systemLevels=TECHNOLOGY_UNIT
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth
 // @Param uid path string true "System UID"
+// @Param limitPerRelationshipType query int false "Max links per relationship type (initial mode)"
+// @Param includeRelationshipStats query bool false "Include relationship stats in response meta (all graph modes)"
+// @Param relationshipType query string false "Relationship type for load-more mode"
+// @Param offset query int false "Offset for load-more mode (default 0)"
+// @Param limit query int false "Limit for load-more mode (default 10, max 100)"
+// @Param search query string false "Node search by name/systemCode (contains, case-insensitive)"
+// @Param systemLevels query string false "CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH"
+// @Param systemType query string false "System type name (case-insensitive exact)"
+// @Param relationshipTypes query string false "CSV relationship types"
 // @Success 200 {object} models.SystemGraphResponse
+// @Failure 400 "Bad request"
+// @Failure 404 "System not found"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/graph [get]
 func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
@@ -688,14 +704,164 @@ func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
 		systemUid := c.Param("uid")
 		facilityCode := c.Get("facilityCode").(string)
 
-		graph, err := h.systemsService.GetSystemGraphByUid(systemUid, facilityCode)
+		options, err := parseSystemGraphQueryOptions(c)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		graph, err := h.systemsService.GetSystemGraphByUid(systemUid, facilityCode, options)
 		if err == nil {
 			return c.JSON(http.StatusOK, graph)
+		}
+
+		if errors.Is(err, helpers.ERR_INVALID_INPUT) {
+			return helpers.BadRequest(systemGraphValidationErrorMessage(err))
+		}
+
+		if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return c.String(http.StatusNotFound, "system not found")
 		}
 
 		log.Error().Msg(err.Error())
 		return echo.ErrInternalServerError
 	}
+}
+
+func systemGraphValidationErrorMessage(err error) string {
+	if err == nil {
+		return "invalid graph query params"
+	}
+
+	message := err.Error()
+	if message == helpers.ERR_INVALID_INPUT.Error() {
+		return "invalid graph query params"
+	}
+
+	suffix := ": " + helpers.ERR_INVALID_INPUT.Error()
+	if strings.HasSuffix(message, suffix) {
+		return strings.TrimSuffix(message, suffix)
+	}
+
+	return "invalid graph query params"
+}
+
+func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQueryOptions, err error) {
+	relationshipType := strings.TrimSpace(c.QueryParam("relationshipType"))
+	limitPerRelationshipTypeString := strings.TrimSpace(c.QueryParam("limitPerRelationshipType"))
+	offsetString := strings.TrimSpace(c.QueryParam("offset"))
+	limitString := strings.TrimSpace(c.QueryParam("limit"))
+	includeRelationshipStatsString := strings.TrimSpace(c.QueryParam("includeRelationshipStats"))
+	search := strings.TrimSpace(c.QueryParam("search"))
+	systemLevelsString := strings.TrimSpace(c.QueryParam("systemLevels"))
+	systemType := strings.TrimSpace(c.QueryParam("systemType"))
+	relationshipTypesString := strings.TrimSpace(c.QueryParam("relationshipTypes"))
+
+	options.Search = search
+	options.SystemType = systemType
+
+	systemLevels, err := parseCSVUpperValues(systemLevelsString)
+	if err != nil {
+		return options, err
+	}
+	for _, level := range systemLevels {
+		if !isAllowedSystemGraphLevel(level) {
+			return options, errors.New("invalid systemLevels")
+		}
+	}
+	options.SystemLevels = systemLevels
+
+	relationshipTypes, err := parseCSVUpperValues(relationshipTypesString)
+	if err != nil {
+		return options, err
+	}
+	for _, relationship := range relationshipTypes {
+		if !isAllowedSystemGraphRelationshipType(relationship) {
+			return options, errors.New("invalid relationshipTypes")
+		}
+	}
+	options.RelationshipTypes = relationshipTypes
+
+	if includeRelationshipStatsString != "" {
+		parsed, err := strconv.ParseBool(includeRelationshipStatsString)
+		if err != nil {
+			return options, errors.New("invalid includeRelationshipStats")
+		}
+		options.IncludeRelationshipStats = parsed
+	}
+
+	if limitPerRelationshipTypeString != "" {
+		limitPerRelationshipType, err := strconv.Atoi(limitPerRelationshipTypeString)
+		if err != nil || limitPerRelationshipType <= 0 || limitPerRelationshipType > 100 {
+			return options, errors.New("invalid limitPerRelationshipType")
+		}
+		options.LimitPerRelationshipType = &limitPerRelationshipType
+	}
+
+	if relationshipType != "" {
+		relationshipType = strings.ToUpper(relationshipType)
+		if options.LimitPerRelationshipType != nil {
+			return options, errors.New("relationshipType cannot be combined with limitPerRelationshipType")
+		}
+
+		if !isAllowedSystemGraphRelationshipType(relationshipType) {
+			return options, errors.New("invalid relationshipType")
+		}
+
+		options.RelationshipType = relationshipType
+		options.Offset = 0
+		options.Limit = 10
+
+		if offsetString != "" {
+			offset, err := strconv.Atoi(offsetString)
+			if err != nil || offset < 0 {
+				return options, errors.New("invalid offset")
+			}
+			options.Offset = offset
+		}
+
+		if limitString != "" {
+			limit, err := strconv.Atoi(limitString)
+			if err != nil || limit <= 0 || limit > 100 {
+				return options, errors.New("invalid limit")
+			}
+			options.Limit = limit
+		}
+
+		return options, nil
+	}
+
+	if offsetString != "" || limitString != "" {
+		return options, errors.New("offset and limit require relationshipType")
+	}
+
+	return options, nil
+}
+
+func parseCSVUpperValues(value string) ([]string, error) {
+	if strings.TrimSpace(value) == "" {
+		return []string{}, nil
+	}
+
+	parts := strings.Split(value, ",")
+	seen := map[string]bool{}
+	result := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.ToUpper(strings.TrimSpace(part))
+		if trimmed == "" {
+			return nil, errors.New("invalid csv value")
+		}
+		if !seen[trimmed] {
+			seen[trimmed] = true
+			result = append(result, trimmed)
+		}
+	}
+
+	return result, nil
+}
+
+func isAllowedSystemGraphLevel(level string) bool {
+	return level == "TECHNOLOGY_UNIT" || level == "KEY_SYSTEMS" || level == "SUBSYSTEMS_AND_PARTS" || level == "TRASH"
 }
 
 // GetSystemsForRelationship godoc

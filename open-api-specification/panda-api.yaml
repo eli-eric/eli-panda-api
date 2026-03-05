@@ -1231,6 +1231,23 @@ definitions:
         type: string
       target:
         type: string
+      uid:
+        type: string
+    type: object
+  models.SystemGraphMeta:
+    properties:
+      filterApplied:
+        type: boolean
+      hiddenLinksTotal:
+        type: integer
+      isPartial:
+        type: boolean
+      relationshipStats:
+        additionalProperties:
+          $ref: '#/definitions/models.SystemGraphRelationshipStat'
+        type: object
+      totalMatchedLinks:
+        type: integer
     type: object
   models.SystemGraphNode:
     properties:
@@ -1245,16 +1262,44 @@ definitions:
       uid:
         type: string
     type: object
+  models.SystemGraphPage:
+    properties:
+      hasMore:
+        type: boolean
+      limit:
+        type: integer
+      offset:
+        type: integer
+      returned:
+        type: integer
+      total:
+        type: integer
+      type:
+        type: string
+    type: object
+  models.SystemGraphRelationshipStat:
+    properties:
+      hasMore:
+        type: boolean
+      returned:
+        type: integer
+      total:
+        type: integer
+    type: object
   models.SystemGraphResponse:
     properties:
       links:
         items:
           $ref: '#/definitions/models.SystemGraphLink'
         type: array
+      meta:
+        $ref: '#/definitions/models.SystemGraphMeta'
       nodes:
         items:
           $ref: '#/definitions/models.SystemGraphNode'
         type: array
+      page:
+        $ref: '#/definitions/models.SystemGraphPage'
     type: object
   models.SystemHierarchyNode:
     properties:
@@ -3984,13 +4029,53 @@ paths:
       - Systems
   /v1/system/{uid}/graph:
     get:
-      description: Returns one-hop system graph for the given UID. Includes only allowed
-        relationships.
+      description: |-
+        Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.
+        Filters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).
+        Invalid values still return 400 (invalid relationship/system levels, malformed csv, invalid offset/limit).
+        Root system node is always kept as context; node filters apply to related nodes.
+        Examples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS&limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump&relationshipType=HAS_SUBSYSTEM&offset=20&limit=10 ; /v1/system/{uid}/graph?search=pump&systemLevels=TECHNOLOGY_UNIT
       parameters:
       - description: System UID
         in: path
         name: uid
         required: true
+        type: string
+      - description: Max links per relationship type (initial mode)
+        in: query
+        name: limitPerRelationshipType
+        type: integer
+      - description: Include relationship stats in response meta (all graph modes)
+        in: query
+        name: includeRelationshipStats
+        type: boolean
+      - description: Relationship type for load-more mode
+        in: query
+        name: relationshipType
+        type: string
+      - description: Offset for load-more mode (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Limit for load-more mode (default 10, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Node search by name/systemCode (contains, case-insensitive)
+        in: query
+        name: search
+        type: string
+      - description: CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH
+        in: query
+        name: systemLevels
+        type: string
+      - description: System type name (case-insensitive exact)
+        in: query
+        name: systemType
+        type: string
+      - description: CSV relationship types
+        in: query
+        name: relationshipTypes
         type: string
       produces:
       - application/json
@@ -3999,6 +4084,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.SystemGraphResponse'
+        "400":
+          description: Bad request
+        "404":
+          description: System not found
         "500":
           description: Internal server error
       security:
