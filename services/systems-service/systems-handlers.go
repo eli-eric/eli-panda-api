@@ -713,11 +713,11 @@ func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, graph)
 		}
 
-		if err == helpers.ERR_INVALID_INPUT {
+		if errors.Is(err, helpers.ERR_INVALID_INPUT) {
 			return helpers.BadRequest("invalid graph query params")
 		}
 
-		if err == helpers.ERR_NOT_FOUND {
+		if errors.Is(err, helpers.ERR_NOT_FOUND) {
 			return c.String(http.StatusNotFound, "system not found")
 		}
 

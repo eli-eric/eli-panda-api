@@ -62,3 +62,23 @@ func TestBuildSystemGraphRelationshipStats(t *testing.T) {
 	assert.False(t, stats["HAS_SUBSYSTEM"].HasMore)
 	assert.Equal(t, int64(1), stats["IS_POWERED_BY"].Total)
 }
+
+func TestBuildSystemGraphRelationshipTotalMap(t *testing.T) {
+	relationshipTypes := []string{"HAS_SUBSYSTEM", "IS_POWERED_BY", "IS_COOLED_BY"}
+	counts := []systemGraphRelationshipCount{
+		{Relationship: "HAS_SUBSYSTEM", Total: 5},
+		{Relationship: "IS_POWERED_BY", Total: 2},
+	}
+
+	result := buildSystemGraphRelationshipTotalMap(relationshipTypes, counts)
+
+	assert.Equal(t, int64(5), result["HAS_SUBSYSTEM"])
+	assert.Equal(t, int64(2), result["IS_POWERED_BY"])
+	assert.Equal(t, int64(0), result["IS_COOLED_BY"])
+}
+
+func TestCalculateSystemGraphHiddenLinksTotal(t *testing.T) {
+	assert.Equal(t, int64(90), calculateSystemGraphHiddenLinksTotal(100, 10))
+	assert.Equal(t, int64(0), calculateSystemGraphHiddenLinksTotal(10, 10))
+	assert.Equal(t, int64(0), calculateSystemGraphHiddenLinksTotal(5, 10))
+}

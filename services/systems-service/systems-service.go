@@ -549,6 +549,11 @@ func isAllowedSystemGraphRelationshipType(relationType string) bool {
 	return false
 }
 
+type systemGraphRelationshipCount struct {
+	Relationship string `json:"relationship"`
+	Total        int64  `json:"total"`
+}
+
 func collectSystemGraphNodeUIDs(rootUID string, links []models.SystemGraphLink) []string {
 	uidSet := map[string]bool{rootUID: true}
 
@@ -616,6 +621,28 @@ func buildSystemGraphRelationshipStats(links []models.SystemGraphLink) map[strin
 	return stats
 }
 
+func buildSystemGraphRelationshipTotalMap(relationshipTypes []string, counts []systemGraphRelationshipCount) map[string]int64 {
+	result := make(map[string]int64, len(relationshipTypes))
+
+	for _, relationshipType := range relationshipTypes {
+		result[relationshipType] = 0
+	}
+
+	for _, count := range counts {
+		result[count.Relationship] = count.Total
+	}
+
+	return result
+}
+
+func calculateSystemGraphHiddenLinksTotal(total int64, returned int64) int64 {
+	if total <= returned {
+		return 0
+	}
+
+	return total - returned
+}
+
 func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, options models.SystemGraphQueryOptions) (result models.SystemGraphResponse, err error) {
 	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	if err != nil {
@@ -666,7 +693,7 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 				return result, err
 			}
 
-			helpers.ProcessArrayResult(&nodes, err)
+			helpers.ProcessArrayResult(&nodes, nil)
 
 			result.Nodes = nodes
 			result.Links = []models.SystemGraphLink{}
@@ -715,8 +742,8 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			return result, err
 		}
 
-		helpers.ProcessArrayResult(&nodes, err)
-		helpers.ProcessArrayResult(&links, err)
+		helpers.ProcessArrayResult(&nodes, nil)
+		helpers.ProcessArrayResult(&links, nil)
 
 		returned := int64(len(links))
 		result.Nodes = nodes
@@ -733,7 +760,7 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			IsPartial:         int64(options.Offset)+returned < totalCount || options.Offset > 0,
 			FilterApplied:     hasFilters,
 			TotalMatchedLinks: totalCount,
-			HiddenLinksTotal:  0,
+			HiddenLinksTotal:  calculateSystemGraphHiddenLinksTotal(totalCount, returned),
 		}
 
 		if options.IncludeRelationshipStats {
@@ -755,6 +782,14 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 		}
 
 		relationshipTypes := getSystemGraphRelationshipTypes(options)
+		totalCountsRaw, err := helpers.GetNeo4jArrayOfNodes[systemGraphRelationshipCount](session, GetSystemGraphFilteredCountsByTypesQuery(uid, facilityCode, relationshipTypes, options.Search, options.SystemLevels, options.SystemType))
+		if err != nil {
+			return result, err
+		}
+
+		helpers.ProcessArrayResult(&totalCountsRaw, nil)
+		totalCountsByType := buildSystemGraphRelationshipTotalMap(relationshipTypes, totalCountsRaw)
+
 		collectedLinks := make([]models.SystemGraphLink, 0)
 		var relationshipStats map[string]models.SystemGraphRelationshipStat
 		totalMatchedLinks := int64(0)
@@ -773,16 +808,11 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 
 			collectedLinks = append(collectedLinks, typedLinks...)
 
-			totalCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemGraphLinksByUidAndTypeFilteredCountQuery(uid, facilityCode, relationshipType, options.Search, options.SystemLevels, options.SystemType))
-			if err != nil {
-				return result, err
-			}
+			totalCount := totalCountsByType[relationshipType]
 			totalMatchedLinks += totalCount
 
 			returned := int64(len(typedLinks))
-			if totalCount > returned {
-				hiddenLinksTotal += totalCount - returned
-			}
+			hiddenLinksTotal += calculateSystemGraphHiddenLinksTotal(totalCount, returned)
 
 			if options.IncludeRelationshipStats {
 				relationshipStats[relationshipType] = models.SystemGraphRelationshipStat{
@@ -799,8 +829,8 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			return result, err
 		}
 
-		helpers.ProcessArrayResult(&nodes, err)
-		helpers.ProcessArrayResult(&collectedLinks, err)
+		helpers.ProcessArrayResult(&nodes, nil)
+		helpers.ProcessArrayResult(&collectedLinks, nil)
 
 		result.Nodes = nodes
 		result.Links = collectedLinks
@@ -833,8 +863,8 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			return result, err
 		}
 
-		helpers.ProcessArrayResult(&nodes, err)
-		helpers.ProcessArrayResult(&links, err)
+		helpers.ProcessArrayResult(&nodes, nil)
+		helpers.ProcessArrayResult(&links, nil)
 
 		result.Nodes = nodes
 		result.Links = links
@@ -864,8 +894,8 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 		return result, err
 	}
 
-	helpers.ProcessArrayResult(&nodes, err)
-	helpers.ProcessArrayResult(&links, err)
+	helpers.ProcessArrayResult(&nodes, nil)
+	helpers.ProcessArrayResult(&links, nil)
 
 	result.Nodes = nodes
 	result.Links = links
