@@ -4045,7 +4045,7 @@ paths:
         in: query
         name: limitPerRelationshipType
         type: integer
-      - description: Include relationship stats meta for initial mode
+      - description: Include relationship stats in response meta (all graph modes)
         in: query
         name: includeRelationshipStats
         type: boolean

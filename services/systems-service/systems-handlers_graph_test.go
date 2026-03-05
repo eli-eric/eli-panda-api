@@ -1,8 +1,10 @@
 package systemsService
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"panda/apigateway/helpers"
 	"testing"
 
 	"github.com/labstack/echo/v4"
@@ -131,4 +133,15 @@ func TestParseSystemGraphQueryOptions_InvalidRelationshipTypes(t *testing.T) {
 	_, err := parseSystemGraphQueryOptions(c)
 
 	assert.EqualError(t, err, "invalid relationshipTypes")
+}
+
+func TestSystemGraphValidationErrorMessage_GenericFallback(t *testing.T) {
+	assert.Equal(t, "invalid graph query params", systemGraphValidationErrorMessage(nil))
+	assert.Equal(t, "invalid graph query params", systemGraphValidationErrorMessage(helpers.ERR_INVALID_INPUT))
+}
+
+func TestSystemGraphValidationErrorMessage_SpecificWrappedMessage(t *testing.T) {
+	err := fmt.Errorf("invalid systemType: %w", helpers.ERR_INVALID_INPUT)
+
+	assert.Equal(t, "invalid systemType", systemGraphValidationErrorMessage(err))
 }

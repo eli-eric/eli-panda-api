@@ -4440,7 +4440,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "boolean",
-                        "description": "Include relationship stats meta for initial mode",
+                        "description": "Include relationship stats in response meta (all graph modes)",
                         "name": "includeRelationshipStats",
                         "in": "query"
                     },

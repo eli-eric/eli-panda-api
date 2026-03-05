@@ -643,6 +643,10 @@ func calculateSystemGraphHiddenLinksTotal(total int64, returned int64) int64 {
 	return total - returned
 }
 
+func invalidSystemGraphInput(message string) error {
+	return fmt.Errorf("%s: %w", message, helpers.ERR_INVALID_INPUT)
+}
+
 func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, options models.SystemGraphQueryOptions) (result models.SystemGraphResponse, err error) {
 	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	if err != nil {
@@ -661,7 +665,7 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 	hasFilters := hasSystemGraphFilters(options)
 
 	if options.RelationshipType != "" && options.LimitPerRelationshipType != nil {
-		return result, helpers.ERR_INVALID_INPUT
+		return result, invalidSystemGraphInput("relationshipType cannot be combined with limitPerRelationshipType")
 	}
 
 	if options.SystemType != "" {
@@ -673,21 +677,21 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			return result, err
 		}
 		if !systemTypeExists {
-			return result, helpers.ERR_INVALID_INPUT
+			return result, invalidSystemGraphInput("invalid systemType")
 		}
 	}
 
 	if options.RelationshipType != "" {
 		if !isAllowedSystemGraphRelationshipType(options.RelationshipType) {
-			return result, helpers.ERR_INVALID_INPUT
+			return result, invalidSystemGraphInput("invalid relationshipType")
 		}
 
 		if options.Offset < 0 {
-			return result, helpers.ERR_INVALID_INPUT
+			return result, invalidSystemGraphInput("invalid offset")
 		}
 
 		if options.Limit <= 0 || options.Limit > 100 {
-			return result, helpers.ERR_INVALID_INPUT
+			return result, invalidSystemGraphInput("invalid limit")
 		}
 
 		if !isSystemGraphRelationshipTypeAllowedByFilter(options.RelationshipType, options.RelationshipTypes) {
@@ -781,7 +785,7 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 
 	if options.LimitPerRelationshipType != nil {
 		if *options.LimitPerRelationshipType <= 0 || *options.LimitPerRelationshipType > 100 {
-			return result, helpers.ERR_INVALID_INPUT
+			return result, invalidSystemGraphInput("invalid limitPerRelationshipType")
 		}
 
 		relationshipTypes := getSystemGraphRelationshipTypes(options)

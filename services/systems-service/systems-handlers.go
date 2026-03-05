@@ -686,7 +686,7 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 // @Security BearerAuth
 // @Param uid path string true "System UID"
 // @Param limitPerRelationshipType query int false "Max links per relationship type (initial mode)"
-// @Param includeRelationshipStats query bool false "Include relationship stats meta for initial mode"
+// @Param includeRelationshipStats query bool false "Include relationship stats in response meta (all graph modes)"
 // @Param relationshipType query string false "Relationship type for load-more mode"
 // @Param offset query int false "Offset for load-more mode (default 0)"
 // @Param limit query int false "Limit for load-more mode (default 10, max 100)"
@@ -715,7 +715,7 @@ func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
 		}
 
 		if errors.Is(err, helpers.ERR_INVALID_INPUT) {
-			return helpers.BadRequest("invalid graph query params")
+			return helpers.BadRequest(systemGraphValidationErrorMessage(err))
 		}
 
 		if errors.Is(err, helpers.ERR_NOT_FOUND) {
@@ -725,6 +725,24 @@ func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
 		log.Error().Msg(err.Error())
 		return echo.ErrInternalServerError
 	}
+}
+
+func systemGraphValidationErrorMessage(err error) string {
+	if err == nil {
+		return "invalid graph query params"
+	}
+
+	message := err.Error()
+	if message == helpers.ERR_INVALID_INPUT.Error() {
+		return "invalid graph query params"
+	}
+
+	suffix := ": " + helpers.ERR_INVALID_INPUT.Error()
+	if strings.HasSuffix(message, suffix) {
+		return strings.TrimSuffix(message, suffix)
+	}
+
+	return "invalid graph query params"
 }
 
 func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQueryOptions, err error) {

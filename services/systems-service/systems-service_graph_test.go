@@ -1,8 +1,10 @@
 package systemsService
 
 import (
+	"errors"
 	"testing"
 
+	"panda/apigateway/helpers"
 	"panda/apigateway/services/systems-service/models"
 
 	"github.com/stretchr/testify/assert"
@@ -81,4 +83,11 @@ func TestCalculateSystemGraphHiddenLinksTotal(t *testing.T) {
 	assert.Equal(t, int64(90), calculateSystemGraphHiddenLinksTotal(100, 10))
 	assert.Equal(t, int64(0), calculateSystemGraphHiddenLinksTotal(10, 10))
 	assert.Equal(t, int64(0), calculateSystemGraphHiddenLinksTotal(5, 10))
+}
+
+func TestInvalidSystemGraphInput(t *testing.T) {
+	err := invalidSystemGraphInput("invalid systemType")
+
+	assert.True(t, errors.Is(err, helpers.ERR_INVALID_INPUT))
+	assert.Equal(t, "invalid systemType: INVALID_INPUT", err.Error())
 }
