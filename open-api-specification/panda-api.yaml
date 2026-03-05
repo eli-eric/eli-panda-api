@@ -1236,12 +1236,18 @@ definitions:
     type: object
   models.SystemGraphMeta:
     properties:
+      filterApplied:
+        type: boolean
       hiddenLinksTotal:
         type: integer
+      isPartial:
+        type: boolean
       relationshipStats:
         additionalProperties:
           $ref: '#/definitions/models.SystemGraphRelationshipStat'
         type: object
+      totalMatchedLinks:
+        type: integer
     type: object
   models.SystemGraphNode:
     properties:
@@ -4023,8 +4029,11 @@ paths:
       - Systems
   /v1/system/{uid}/graph:
     get:
-      description: Returns system graph for the given UID. Supports legacy mode, per-type
-        initial limiting, and load-more for one relationship type.
+      description: |-
+        Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.
+        Filters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).
+        Root system node is always kept as context; node filters apply to related nodes.
+        Examples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS&limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump&relationshipType=HAS_SUBSYSTEM&offset=20&limit=10 ; /v1/system/{uid}/graph?search=pump&systemLevels=TECHNOLOGY_UNIT
       parameters:
       - description: System UID
         in: path
@@ -4051,6 +4060,22 @@ paths:
         in: query
         name: limit
         type: integer
+      - description: Node search by name/systemCode (contains, case-insensitive)
+        in: query
+        name: search
+        type: string
+      - description: CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH
+        in: query
+        name: systemLevels
+        type: string
+      - description: System type name (case-insensitive exact)
+        in: query
+        name: systemType
+        type: string
+      - description: CSV relationship types
+        in: query
+        name: relationshipTypes
+        type: string
       produces:
       - application/json
       responses:

@@ -571,6 +571,51 @@ func collectSystemGraphNodeUIDs(rootUID string, links []models.SystemGraphLink) 
 	return uidList
 }
 
+func hasSystemGraphFilters(options models.SystemGraphQueryOptions) bool {
+	return options.Search != "" || len(options.SystemLevels) > 0 || options.SystemType != "" || len(options.RelationshipTypes) > 0
+}
+
+func getSystemGraphRelationshipTypes(options models.SystemGraphQueryOptions) []string {
+	if len(options.RelationshipTypes) > 0 {
+		return options.RelationshipTypes
+	}
+
+	return allowedSystemGraphRelationshipTypes
+}
+
+func isSystemGraphRelationshipTypeAllowedByFilter(relationshipType string, relationshipTypes []string) bool {
+	if len(relationshipTypes) == 0 {
+		return true
+	}
+
+	for _, filterRelationshipType := range relationshipTypes {
+		if relationshipType == filterRelationshipType {
+			return true
+		}
+	}
+
+	return false
+}
+
+func buildSystemGraphRelationshipStats(links []models.SystemGraphLink) map[string]models.SystemGraphRelationshipStat {
+	counts := map[string]int64{}
+
+	for _, link := range links {
+		counts[link.Relationship]++
+	}
+
+	stats := map[string]models.SystemGraphRelationshipStat{}
+	for relationType, count := range counts {
+		stats[relationType] = models.SystemGraphRelationshipStat{
+			Total:    count,
+			Returned: count,
+			HasMore:  false,
+		}
+	}
+
+	return stats
+}
+
 func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, options models.SystemGraphQueryOptions) (result models.SystemGraphResponse, err error) {
 	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	if err != nil {
@@ -586,6 +631,22 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 		return result, helpers.ERR_NOT_FOUND
 	}
 
+	hasFilters := hasSystemGraphFilters(options)
+
+	if options.RelationshipType != "" && options.LimitPerRelationshipType != nil {
+		return result, helpers.ERR_INVALID_INPUT
+	}
+
+	if options.SystemType != "" {
+		systemTypeExists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, SystemTypeNameExistsInFacilityQuery(options.SystemType, facilityCode))
+		if err != nil {
+			return result, err
+		}
+		if !systemTypeExists {
+			return result, helpers.ERR_INVALID_INPUT
+		}
+	}
+
 	if options.RelationshipType != "" {
 		if !isAllowedSystemGraphRelationshipType(options.RelationshipType) {
 			return result, helpers.ERR_INVALID_INPUT
@@ -599,13 +660,51 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			return result, helpers.ERR_INVALID_INPUT
 		}
 
-		linksQuery := GetSystemGraphLinksByUidAndTypeQuery(uid, facilityCode, options.RelationshipType, options.Offset, options.Limit)
+		if !isSystemGraphRelationshipTypeAllowedByFilter(options.RelationshipType, options.RelationshipTypes) {
+			nodes, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphNode](session, GetSystemGraphNodesByUidsQuery([]string{uid}, facilityCode))
+			if err != nil {
+				return result, err
+			}
+
+			helpers.ProcessArrayResult(&nodes, err)
+
+			result.Nodes = nodes
+			result.Links = []models.SystemGraphLink{}
+			result.Page = &models.SystemGraphPage{
+				Type:     options.RelationshipType,
+				Offset:   options.Offset,
+				Limit:    options.Limit,
+				Returned: 0,
+				Total:    0,
+				HasMore:  false,
+			}
+			result.Meta = &models.SystemGraphMeta{
+				IsPartial:         false,
+				FilterApplied:     hasFilters,
+				TotalMatchedLinks: 0,
+				HiddenLinksTotal:  0,
+			}
+
+			if options.IncludeRelationshipStats {
+				result.Meta.RelationshipStats = map[string]models.SystemGraphRelationshipStat{
+					options.RelationshipType: {
+						Total:    0,
+						Returned: 0,
+						HasMore:  false,
+					},
+				}
+			}
+
+			return result, nil
+		}
+
+		linksQuery := GetSystemGraphLinksByUidAndTypeFilteredQuery(uid, facilityCode, options.RelationshipType, options.Search, options.SystemLevels, options.SystemType, options.Offset, options.Limit)
 		links, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphLink](session, linksQuery)
 		if err != nil {
 			return result, err
 		}
 
-		totalCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemGraphLinksByUidAndTypeCountQuery(uid, facilityCode, options.RelationshipType))
+		totalCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemGraphLinksByUidAndTypeFilteredCountQuery(uid, facilityCode, options.RelationshipType, options.Search, options.SystemLevels, options.SystemType))
 		if err != nil {
 			return result, err
 		}
@@ -630,6 +729,22 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			Total:    totalCount,
 			HasMore:  int64(options.Offset)+returned < totalCount,
 		}
+		result.Meta = &models.SystemGraphMeta{
+			IsPartial:         int64(options.Offset)+returned < totalCount || options.Offset > 0,
+			FilterApplied:     hasFilters,
+			TotalMatchedLinks: totalCount,
+			HiddenLinksTotal:  0,
+		}
+
+		if options.IncludeRelationshipStats {
+			result.Meta.RelationshipStats = map[string]models.SystemGraphRelationshipStat{
+				options.RelationshipType: {
+					Total:    totalCount,
+					Returned: returned,
+					HasMore:  int64(options.Offset)+returned < totalCount,
+				},
+			}
+		}
 
 		return result, nil
 	}
@@ -639,16 +754,18 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 			return result, helpers.ERR_INVALID_INPUT
 		}
 
+		relationshipTypes := getSystemGraphRelationshipTypes(options)
 		collectedLinks := make([]models.SystemGraphLink, 0)
 		var relationshipStats map[string]models.SystemGraphRelationshipStat
+		totalMatchedLinks := int64(0)
 		hiddenLinksTotal := int64(0)
 
 		if options.IncludeRelationshipStats {
 			relationshipStats = make(map[string]models.SystemGraphRelationshipStat)
 		}
 
-		for _, relationshipType := range allowedSystemGraphRelationshipTypes {
-			linksQuery := GetSystemGraphLinksByUidAndTypeQuery(uid, facilityCode, relationshipType, 0, *options.LimitPerRelationshipType)
+		for _, relationshipType := range relationshipTypes {
+			linksQuery := GetSystemGraphLinksByUidAndTypeFilteredQuery(uid, facilityCode, relationshipType, options.Search, options.SystemLevels, options.SystemType, 0, *options.LimitPerRelationshipType)
 			typedLinks, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphLink](session, linksQuery)
 			if err != nil {
 				return result, err
@@ -656,17 +773,18 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 
 			collectedLinks = append(collectedLinks, typedLinks...)
 
+			totalCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemGraphLinksByUidAndTypeFilteredCountQuery(uid, facilityCode, relationshipType, options.Search, options.SystemLevels, options.SystemType))
+			if err != nil {
+				return result, err
+			}
+			totalMatchedLinks += totalCount
+
+			returned := int64(len(typedLinks))
+			if totalCount > returned {
+				hiddenLinksTotal += totalCount - returned
+			}
+
 			if options.IncludeRelationshipStats {
-				totalCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemGraphLinksByUidAndTypeCountQuery(uid, facilityCode, relationshipType))
-				if err != nil {
-					return result, err
-				}
-
-				returned := int64(len(typedLinks))
-				if totalCount > returned {
-					hiddenLinksTotal += totalCount - returned
-				}
-
 				relationshipStats[relationshipType] = models.SystemGraphRelationshipStat{
 					Total:    totalCount,
 					Returned: returned,
@@ -686,12 +804,49 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 
 		result.Nodes = nodes
 		result.Links = collectedLinks
+		result.Meta = &models.SystemGraphMeta{
+			IsPartial:         hiddenLinksTotal > 0,
+			FilterApplied:     hasFilters,
+			TotalMatchedLinks: totalMatchedLinks,
+			HiddenLinksTotal:  hiddenLinksTotal,
+		}
 
 		if options.IncludeRelationshipStats {
-			result.Meta = &models.SystemGraphMeta{
-				RelationshipStats: relationshipStats,
-				HiddenLinksTotal:  hiddenLinksTotal,
-			}
+			result.Meta.RelationshipStats = relationshipStats
+		}
+
+		return result, nil
+	}
+
+	if hasFilters {
+		relationTypes := getSystemGraphRelationshipTypes(options)
+
+		linksQuery := GetSystemGraphFilteredLinksByUidQuery(uid, facilityCode, relationTypes, options.Search, options.SystemLevels, options.SystemType)
+		links, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphLink](session, linksQuery)
+		if err != nil {
+			return result, err
+		}
+
+		nodeUIDs := collectSystemGraphNodeUIDs(uid, links)
+		nodes, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphNode](session, GetSystemGraphNodesByUidsQuery(nodeUIDs, facilityCode))
+		if err != nil {
+			return result, err
+		}
+
+		helpers.ProcessArrayResult(&nodes, err)
+		helpers.ProcessArrayResult(&links, err)
+
+		result.Nodes = nodes
+		result.Links = links
+		result.Meta = &models.SystemGraphMeta{
+			IsPartial:         false,
+			FilterApplied:     true,
+			TotalMatchedLinks: int64(len(links)),
+			HiddenLinksTotal:  0,
+		}
+
+		if options.IncludeRelationshipStats {
+			result.Meta.RelationshipStats = buildSystemGraphRelationshipStats(links)
 		}
 
 		return result, nil

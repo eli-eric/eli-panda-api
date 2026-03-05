@@ -121,6 +121,9 @@ type SystemGraphRelationshipStat struct {
 type SystemGraphMeta struct {
 	RelationshipStats map[string]SystemGraphRelationshipStat `json:"relationshipStats,omitempty"`
 	HiddenLinksTotal  int64                                  `json:"hiddenLinksTotal"`
+	IsPartial         bool                                   `json:"isPartial"`
+	FilterApplied     bool                                   `json:"filterApplied"`
+	TotalMatchedLinks int64                                  `json:"totalMatchedLinks"`
 }
 
 type SystemGraphPage struct {
@@ -145,6 +148,10 @@ type SystemGraphQueryOptions struct {
 	RelationshipType         string
 	Offset                   int
 	Limit                    int
+	Search                   string
+	SystemLevels             []string
+	SystemType               string
+	RelationshipTypes        []string
 }
 
 type SystemRelationship struct {

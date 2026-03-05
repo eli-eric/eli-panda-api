@@ -676,7 +676,10 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 
 // GetSystemGraphByUid godoc
 // @Summary Get system graph by UID
-// @Description Returns system graph for the given UID. Supports legacy mode, per-type initial limiting, and load-more for one relationship type.
+// @Description Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.
+// @Description Filters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).
+// @Description Root system node is always kept as context; node filters apply to related nodes.
+// @Description Examples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS&limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump&relationshipType=HAS_SUBSYSTEM&offset=20&limit=10 ; /v1/system/{uid}/graph?search=pump&systemLevels=TECHNOLOGY_UNIT
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth
@@ -686,6 +689,10 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 // @Param relationshipType query string false "Relationship type for load-more mode"
 // @Param offset query int false "Offset for load-more mode (default 0)"
 // @Param limit query int false "Limit for load-more mode (default 10, max 100)"
+// @Param search query string false "Node search by name/systemCode (contains, case-insensitive)"
+// @Param systemLevels query string false "CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH"
+// @Param systemType query string false "System type name (case-insensitive exact)"
+// @Param relationshipTypes query string false "CSV relationship types"
 // @Success 200 {object} models.SystemGraphResponse
 // @Failure 400 "Bad request"
 // @Failure 404 "System not found"
@@ -707,7 +714,7 @@ func (h *SystemsHandlers) GetSystemGraphByUid() echo.HandlerFunc {
 		}
 
 		if err == helpers.ERR_INVALID_INPUT {
-			return helpers.BadRequest("invalid relationshipType/offset/limit")
+			return helpers.BadRequest("invalid graph query params")
 		}
 
 		if err == helpers.ERR_NOT_FOUND {
@@ -725,6 +732,35 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 	offsetString := strings.TrimSpace(c.QueryParam("offset"))
 	limitString := strings.TrimSpace(c.QueryParam("limit"))
 	includeRelationshipStatsString := strings.TrimSpace(c.QueryParam("includeRelationshipStats"))
+	search := strings.TrimSpace(c.QueryParam("search"))
+	systemLevelsString := strings.TrimSpace(c.QueryParam("systemLevels"))
+	systemType := strings.TrimSpace(c.QueryParam("systemType"))
+	relationshipTypesString := strings.TrimSpace(c.QueryParam("relationshipTypes"))
+
+	options.Search = search
+	options.SystemType = systemType
+
+	systemLevels, err := parseCSVUpperValues(systemLevelsString)
+	if err != nil {
+		return options, err
+	}
+	for _, level := range systemLevels {
+		if !isAllowedSystemGraphLevel(level) {
+			return options, errors.New("invalid systemLevels")
+		}
+	}
+	options.SystemLevels = systemLevels
+
+	relationshipTypes, err := parseCSVUpperValues(relationshipTypesString)
+	if err != nil {
+		return options, err
+	}
+	for _, relationship := range relationshipTypes {
+		if !isAllowedSystemGraphRelationshipType(relationship) {
+			return options, errors.New("invalid relationshipTypes")
+		}
+	}
+	options.RelationshipTypes = relationshipTypes
 
 	if includeRelationshipStatsString != "" {
 		parsed, err := strconv.ParseBool(includeRelationshipStatsString)
@@ -734,7 +770,24 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 		options.IncludeRelationshipStats = parsed
 	}
 
+	if limitPerRelationshipTypeString != "" {
+		limitPerRelationshipType, err := strconv.Atoi(limitPerRelationshipTypeString)
+		if err != nil || limitPerRelationshipType <= 0 || limitPerRelationshipType > 100 {
+			return options, errors.New("invalid limitPerRelationshipType")
+		}
+		options.LimitPerRelationshipType = &limitPerRelationshipType
+	}
+
 	if relationshipType != "" {
+		relationshipType = strings.ToUpper(relationshipType)
+		if options.LimitPerRelationshipType != nil {
+			return options, errors.New("relationshipType cannot be combined with limitPerRelationshipType")
+		}
+
+		if !isAllowedSystemGraphRelationshipType(relationshipType) {
+			return options, errors.New("invalid relationshipType")
+		}
+
 		options.RelationshipType = relationshipType
 		options.Offset = 0
 		options.Limit = 10
@@ -762,15 +815,34 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 		return options, errors.New("offset and limit require relationshipType")
 	}
 
-	if limitPerRelationshipTypeString != "" {
-		limitPerRelationshipType, err := strconv.Atoi(limitPerRelationshipTypeString)
-		if err != nil || limitPerRelationshipType <= 0 || limitPerRelationshipType > 100 {
-			return options, errors.New("invalid limitPerRelationshipType")
-		}
-		options.LimitPerRelationshipType = &limitPerRelationshipType
+	return options, nil
+}
+
+func parseCSVUpperValues(value string) ([]string, error) {
+	if strings.TrimSpace(value) == "" {
+		return []string{}, nil
 	}
 
-	return options, nil
+	parts := strings.Split(value, ",")
+	seen := map[string]bool{}
+	result := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.ToUpper(strings.TrimSpace(part))
+		if trimmed == "" {
+			return nil, errors.New("invalid csv value")
+		}
+		if !seen[trimmed] {
+			seen[trimmed] = true
+			result = append(result, trimmed)
+		}
+	}
+
+	return result, nil
+}
+
+func isAllowedSystemGraphLevel(level string) bool {
+	return level == "TECHNOLOGY_UNIT" || level == "KEY_SYSTEMS" || level == "SUBSYSTEMS_AND_PARTS" || level == "TRASH"
 }
 
 // GetSystemsForRelationship godoc

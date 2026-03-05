@@ -4413,7 +4413,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns system graph for the given UID. Supports legacy mode, per-type initial limiting, and load-more for one relationship type.",
+                "description": "Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.\nFilters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).\nRoot system node is always kept as context; node filters apply to related nodes.\nExamples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS\u0026limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump\u0026relationshipType=HAS_SUBSYSTEM\u0026offset=20\u0026limit=10 ; /v1/system/{uid}/graph?search=pump\u0026systemLevels=TECHNOLOGY_UNIT",
                 "produces": [
                     "application/json"
                 ],
@@ -4457,6 +4457,30 @@
                         "type": "integer",
                         "description": "Limit for load-more mode (default 10, max 100)",
                         "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node search by name/systemCode (contains, case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH",
+                        "name": "systemLevels",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "System type name (case-insensitive exact)",
+                        "name": "systemType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV relationship types",
+                        "name": "relationshipTypes",
                         "in": "query"
                     }
                 ],
@@ -7379,14 +7403,23 @@
         "models.SystemGraphMeta": {
             "type": "object",
             "properties": {
+                "filterApplied": {
+                    "type": "boolean"
+                },
                 "hiddenLinksTotal": {
                     "type": "integer"
+                },
+                "isPartial": {
+                    "type": "boolean"
                 },
                 "relationshipStats": {
                     "type": "object",
                     "additionalProperties": {
                         "$ref": "#/definitions/models.SystemGraphRelationshipStat"
                     }
+                },
+                "totalMatchedLinks": {
+                    "type": "integer"
                 }
             }
         },
