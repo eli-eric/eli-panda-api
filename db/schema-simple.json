@@ -3,7 +3,7 @@
     { "start": ["User"], "end": ["Role"], "type": "HAS_ROLE", "properties": [] },
     { "start": ["SystemTypeGroup"], "end": ["SystemType"], "type": "CONTAINS_SYSTEM_TYPE", "properties": [] },
     {
-      "start": ["SystemTypeGroup", "Zone", "Location", "User", "Order", "System", "ContactPersonRole", "Team", "SystemAttribute"],
+      "start": ["SystemTypeGroup", "Zone", "Location", "User", "Order", "System", "ContactPersonRole", "Team", "SystemAttribute", "Grant", "ExperimentalSystem", "UserExperiment"],
       "end": ["Facility"],
       "type": "BELONGS_TO_FACILITY",
       "properties": []
@@ -48,7 +48,8 @@
         "Unit",
         "CatalogueServiceType",
         "Publication",
-        "Researcher"
+        "Researcher",
+        "Grant"
       ],
       "end": ["User"],
       "type": "WAS_UPDATED_BY",
@@ -88,6 +89,11 @@
     { "start": ["Publication"], "end": ["OpenAccessType"], "type": "HAS_OPEN_ACCESS_TYPE", "properties": [] },
     { "start": ["Publication"], "end": ["UserCall"], "type": "HAS_USER_CALL", "properties": [] },
     { "start": ["Publication"], "end": ["Researcher"], "type": "HAS_RESEARCHER", "properties": [] },
+    { "start": ["Publication"], "end": ["Grant"], "type": "HAS_GRANT", "properties": [] },
+    { "start": ["Publication"], "end": ["MediaType"], "type": "HAS_MEDIA_TYPE", "properties": [] },
+    { "start": ["Publication"], "end": ["UserExperiment"], "type": "HAS_USER_EXPERIMENT", "properties": [] },
+    { "start": ["Publication"], "end": ["ExperimentalSystem"], "type": "HAS_EXPERIMENTAL_SYSTEM", "properties": [] },
+    { "start": ["Grant"], "end": ["GrantGroup"], "type": "BELONGS_TO_GROUP", "properties": [] },
     { "start": ["Researcher"], "end": ["Country"], "type": "HAS_CITIZENSHIP", "properties": [] }
   ],
   "nodes": [
@@ -165,7 +171,11 @@
         { "name": "yearOfPublication", "type": "String" },
         { "name": "volume", "type": "Long" },
         { "name": "title", "type": "String" },
-        { "name": "pages", "type": "String" }
+        { "name": "pages", "type": "String" },
+        { "name": "pdfFileName", "type": "String" },
+        { "name": "pdfFileUrl", "type": "String" },
+        { "name": "eliPublication", "type": "String" },
+        { "name": "otherGrants", "type": "String" }
       ]
     },
     {
@@ -626,6 +636,48 @@
         { "name": "name", "type": "String" },
         { "name": "url", "type": "String" },
         { "name": "tags", "type": "String" }
+      ]
+    },
+    {
+      "label": "Grant",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "deleted", "type": "Boolean" }
+      ]
+    },
+    {
+      "label": "GrantGroup",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "MediaType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "UserExperiment",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "ExperimentalSystem",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
       ]
     },
     {
