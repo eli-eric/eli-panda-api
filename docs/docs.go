@@ -3177,49 +3177,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/publications/export/riv/providers": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns list of grant group providers with publication counts for a given year",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Publications"
-                ],
-                "summary": "Get RIV providers",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Year of publication",
-                        "name": "year",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.RivProvider"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request"
-                    },
-                    "500": {
-                        "description": "Internal Server Error"
-                    }
-                }
-            }
-        },
         "/v1/publications/export/riv/validate": {
             "get": {
                 "security": [
@@ -7224,20 +7181,6 @@ const docTemplate = `{
                 },
                 "responsible": {
                     "$ref": "#/definitions/models.EmployeeInfo"
-                }
-            }
-        },
-        "models.RivProvider": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "publicationCount": {
-                    "type": "integer"
                 }
             }
         },

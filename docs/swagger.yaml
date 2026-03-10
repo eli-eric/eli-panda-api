@@ -1032,15 +1032,6 @@ definitions:
       responsible:
         $ref: '#/definitions/models.EmployeeInfo'
     type: object
-  models.RivProvider:
-    properties:
-      code:
-        type: string
-      name:
-        type: string
-      publicationCount:
-        type: integer
-    type: object
   models.RivValidationResult:
     properties:
       totalPublications:
@@ -3727,34 +3718,6 @@ paths:
       security:
       - BearerAuth: []
       summary: Export publications as RIV XML
-      tags:
-      - Publications
-  /v1/publications/export/riv/providers:
-    get:
-      description: Returns list of grant group providers with publication counts for
-        a given year
-      parameters:
-      - description: Year of publication
-        in: query
-        name: year
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.RivProvider'
-            type: array
-        "400":
-          description: Bad Request
-        "500":
-          description: Internal Server Error
-      security:
-      - BearerAuth: []
-      summary: Get RIV providers
       tags:
       - Publications
   /v1/publications/export/riv/validate:

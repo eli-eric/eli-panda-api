@@ -42,7 +42,6 @@ type IPublicationsService interface {
 	// RIV export methods
 	ExportRiv(year string, provider string) ([]byte, string, error)
 	ValidateRiv(year string, provider string) (models.RivValidationResult, error)
-	GetRivProviders(year string) ([]models.RivProvider, error)
 	// Codebook autocomplete methods
 	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)

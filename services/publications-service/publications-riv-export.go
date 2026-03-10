@@ -596,36 +596,6 @@ func buildTypeD(v *models.RivVysledek, row rivPublicationRow) {
 	v.KodUtIsi = stripWosPrefix(derefStr(row.WosNumber))
 }
 
-// GetRivProviders returns grant group providers that have publications for the given year
-func (svc *PublicationsService) GetRivProviders(year string) ([]models.RivProvider, error) {
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	query := helpers.DatabaseQuery{
-		Query: `
-			MATCH (p:Publication)-[:HAS_GRANT]->(g:Grant)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
-			WHERE p.yearOfPublication = $year
-			  AND (p.deleted IS NULL OR p.deleted = false)
-			  AND gg.code IS NOT NULL
-			  AND gg.code <> "OTHER"
-			RETURN {code: gg.code, name: gg.name, publicationCount: COUNT(DISTINCT p)} as provider
-			ORDER BY provider.code
-		`,
-		ReturnAlias: "provider",
-		Parameters:  map[string]interface{}{"year": year},
-	}
-
-	result, err := helpers.GetNeo4jArrayOfNodes[models.RivProvider](session, query)
-	if err != nil {
-		return nil, fmt.Errorf("RIV providers query error: %w", err)
-	}
-
-	if result == nil {
-		result = []models.RivProvider{}
-	}
-
-	return result, nil
-}
-
 // --- Helper functions ---
 
 func buildIdentifikacniKod(pubCode string, year string) string {
