@@ -338,6 +338,8 @@ func (svc *CodebookService) GetListOfCodebooks() (codebookList []models.Codebook
 		models.EXPERIMENTAL_SYSTEM_CODEBOOK,
 		models.GRANT_GROUP_CODEBOOK,
 		models.MEDIA_TYPE_CODEBOOK,
+		models.PUBLISH_FORMAT_CODEBOOK,
+		models.CONFERENCE_SCOPE_CODEBOOK,
 	}
 }
 
@@ -394,4 +396,6 @@ var codebooksMap = map[string]models.CodebookType{
 	"EXPERIMENTAL_SYSTEM":        models.EXPERIMENTAL_SYSTEM_CODEBOOK,
 	"GRANT_GROUP":                models.GRANT_GROUP_CODEBOOK,
 	"MEDIA_TYPE":                 models.MEDIA_TYPE_CODEBOOK,
+	"PUBLISH_FORMAT":             models.PUBLISH_FORMAT_CODEBOOK,
+	"CONFERENCE_SCOPE":           models.CONFERENCE_SCOPE_CODEBOOK,
 }
