@@ -271,7 +271,9 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 		OPTIONAL MATCH (n)-[:HAS_USER_CALL]->(userCall:UserCall)
 		OPTIONAL MATCH (n)-[:HAS_USER_EXPERIMENT]->(userExperimentCb:UserExperiment)
 		OPTIONAL MATCH (n)-[:HAS_EXPERIMENTAL_SYSTEM]->(experimentalSystemCb:ExperimentalSystem)
-		WITH n, mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb
+		OPTIONAL MATCH (n)-[:HAS_PUBLISH_FORMAT]->(publishFormatCb:PublishFormat)
+		OPTIONAL MATCH (n)-[:HAS_CONFERENCE_SCOPE]->(conferenceScopeCb:ConferenceScope)
+		WITH n, mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb
 	`
 
 	// Add sorting
@@ -329,7 +331,18 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 			experimentalSystem: n.experimentalSystem,
 			experimentalSystemCb: CASE WHEN experimentalSystemCb IS NOT NULL THEN {uid: experimentalSystemCb.uid, name: experimentalSystemCb.name, code: experimentalSystemCb.code} ELSE null END,
 			otherGrants: n.otherGrants,
-			updatedAt: n.updatedAt
+			updatedAt: n.updatedAt,
+			publisher: n.publisher,
+			publishPlace: n.publishPlace,
+			isbn: n.isbn,
+			bookTitle: n.bookTitle,
+			bookPagesCount: n.bookPagesCount,
+			editionVolume: n.editionVolume,
+			proceedingsIsbn: n.proceedingsIsbn,
+			conferenceDate: n.conferenceDate,
+			conferencePlace: n.conferencePlace,
+			publishFormatCb: CASE WHEN publishFormatCb IS NOT NULL THEN {uid: publishFormatCb.uid, name: publishFormatCb.name, code: publishFormatCb.code} ELSE null END,
+			conferenceScopeCb: CASE WHEN conferenceScopeCb IS NOT NULL THEN {uid: conferenceScopeCb.uid, name: conferenceScopeCb.name, code: conferenceScopeCb.code} ELSE null END
 		} as n
 	`
 

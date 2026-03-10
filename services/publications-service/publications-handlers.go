@@ -366,7 +366,18 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			"Publishing Country",
 			"Language",
 			"Note",
-			"UID"})
+			"UID",
+			"Publisher",
+			"Publish Place",
+			"Publish Format",
+			"ISBN",
+			"Book Title",
+			"Book Pages Count",
+			"Edition Volume",
+			"Proceedings ISBN",
+			"Conference Date",
+			"Conference Place",
+			"Conference Scope"})
 
 		for _, item := range publications {
 
@@ -460,6 +471,50 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			if item.Note != nil {
 				note = *item.Note
 			}
+			publisher := ""
+			if item.Publisher != nil {
+				publisher = *item.Publisher
+			}
+			publishPlace := ""
+			if item.PublishPlace != nil {
+				publishPlace = *item.PublishPlace
+			}
+			publishFormat := ""
+			if item.PublishFormatCb != nil {
+				publishFormat = item.PublishFormatCb.Name
+			}
+			isbn := ""
+			if item.Isbn != nil {
+				isbn = *item.Isbn
+			}
+			bookTitle := ""
+			if item.BookTitle != nil {
+				bookTitle = *item.BookTitle
+			}
+			bookPagesCount := ""
+			if item.BookPagesCount != nil {
+				bookPagesCount = strconv.Itoa(*item.BookPagesCount)
+			}
+			editionVolume := ""
+			if item.EditionVolume != nil {
+				editionVolume = *item.EditionVolume
+			}
+			proceedingsIsbn := ""
+			if item.ProceedingsIsbn != nil {
+				proceedingsIsbn = *item.ProceedingsIsbn
+			}
+			conferenceDate := ""
+			if item.ConferenceDate != nil {
+				conferenceDate = *item.ConferenceDate
+			}
+			conferencePlace := ""
+			if item.ConferencePlace != nil {
+				conferencePlace = *item.ConferencePlace
+			}
+			conferenceScope := ""
+			if item.ConferenceScopeCb != nil {
+				conferenceScope = item.ConferenceScopeCb.Name
+			}
 			writer.Write([]string{
 				item.MediaType,
 				item.Code,
@@ -500,7 +555,18 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				item.PublishingCountry.Name,
 				item.Language,
 				note,
-				item.Uid})
+				item.Uid,
+				publisher,
+				publishPlace,
+				publishFormat,
+				isbn,
+				bookTitle,
+				bookPagesCount,
+				editionVolume,
+				proceedingsIsbn,
+				conferenceDate,
+				conferencePlace,
+				conferenceScope})
 		}
 
 		return nil
