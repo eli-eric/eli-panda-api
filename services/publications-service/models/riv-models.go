@@ -250,6 +250,13 @@ type RivUcastnici struct {
 	Klasifikace string `xml:"klasifikace-podle-statni-prislusnosti"`
 }
 
+// RivProvider represents a grant group provider available for RIV export
+type RivProvider struct {
+	Code             string `json:"code"`
+	Name             string `json:"name"`
+	PublicationCount int    `json:"publicationCount"`
+}
+
 // RivValidationWarning represents a single validation warning
 type RivValidationWarning struct {
 	PublicationCode string `json:"publicationCode"`

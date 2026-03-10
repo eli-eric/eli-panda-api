@@ -7,7 +7,6 @@ const (
 	// Institution identification
 	RivInstitutionICO   = "67985831"                            // 8-digit IČO
 	RivOrgUnitCode      = "_____"                               // 5-char org unit code (or _____ if not applicable)
-	RivProviderCode     = "MSM"                                 // 3-char provider code
 	RivInstitutionNameCZ = "Fyzikální ústav AV ČR, v. v. i."   // institution name in Czech
 	RivInstitutionNameEN = "Institute of Physics of the CAS"    // institution name in English
 	RivLegalType         = "verejna-vyzkumna-instituce"         // legal type of institution

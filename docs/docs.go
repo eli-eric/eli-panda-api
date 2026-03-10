@@ -3133,6 +3133,140 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/publications/export/riv": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Export publications for a given year and provider as RIV26A XML file for IS VaVaI",
+                "produces": [
+                    "application/xml"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Export publications as RIV XML",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Year of publication",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider code (grant group code)",
+                        "name": "provider",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "XML file"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications/export/riv/providers": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns list of grant group providers with publication counts for a given year",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Get RIV providers",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Year of publication",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.RivProvider"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications/export/riv/validate": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns validation warnings and counts for publications in a given year for a provider",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Validate publications for RIV export",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Year of publication",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider code (grant group code)",
+                        "name": "provider",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RivValidationResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/researcher": {
             "post": {
                 "security": [
@@ -6760,6 +6894,14 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "bookPagesCount": {
+                    "description": "total pages of the book",
+                    "type": "integer"
+                },
+                "bookTitle": {
+                    "description": "title of the book (for book chapters)",
+                    "type": "string"
+                },
                 "citeAs": {
                     "description": "citeAs is the citation of the publication",
                     "type": "string"
@@ -6768,12 +6910,32 @@ const docTemplate = `{
                     "description": "code is the internal code of the publication",
                     "type": "string"
                 },
+                "conferenceDate": {
+                    "description": "conference date (YYYY or YYYY-MM-DD)",
+                    "type": "string"
+                },
+                "conferencePlace": {
+                    "description": "conference place",
+                    "type": "string"
+                },
+                "conferenceScopeCb": {
+                    "description": "conference scope (national/european/worldwide)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
                 "dateOfPublication": {
                     "description": "dateOfPublication is the date of publication of the publication",
                     "type": "string"
                 },
                 "doi": {
                     "description": "doi is the unique identifier of the publication",
+                    "type": "string"
+                },
+                "editionVolume": {
+                    "description": "edition or volume number",
                     "type": "string"
                 },
                 "eidScopus": {
@@ -6829,6 +6991,10 @@ const docTemplate = `{
                 "impactFactor": {
                     "description": "impactFactor is the impact factor of the publication",
                     "type": "number"
+                },
+                "isbn": {
+                    "description": "Type C only",
+                    "type": "string"
                 },
                 "issn": {
                     "description": "issn is the issn of the publication",
@@ -6896,6 +7062,26 @@ const docTemplate = `{
                 },
                 "pdfFileUrl": {
                     "description": "pdfFileUrl is the url of the pdf file of the publication",
+                    "type": "string"
+                },
+                "proceedingsIsbn": {
+                    "description": "Type D only",
+                    "type": "string"
+                },
+                "publishFormatCb": {
+                    "description": "publish format (Print/Online/CD)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "publishPlace": {
+                    "description": "place of publication",
+                    "type": "string"
+                },
+                "publisher": {
+                    "description": "Type C \u0026 D shared fields",
                     "type": "string"
                 },
                 "publishingCountry": {
@@ -7038,6 +7224,48 @@ const docTemplate = `{
                 },
                 "responsible": {
                     "$ref": "#/definitions/models.EmployeeInfo"
+                }
+            }
+        },
+        "models.RivProvider": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "publicationCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.RivValidationResult": {
+            "type": "object",
+            "properties": {
+                "totalPublications": {
+                    "type": "integer"
+                },
+                "validPublications": {
+                    "type": "integer"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RivValidationWarning"
+                    }
+                }
+            }
+        },
+        "models.RivValidationWarning": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "publicationCode": {
+                    "type": "string"
                 }
             }
         },

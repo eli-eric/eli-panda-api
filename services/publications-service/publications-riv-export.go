@@ -81,8 +81,8 @@ type rivResearcherData struct {
 	CitizenshipCode      string
 }
 
-func (svc *PublicationsService) ExportRiv(year string) ([]byte, string, error) {
-	pubs, warnings, err := svc.buildRivData(year)
+func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte, string, error) {
+	pubs, warnings, err := svc.buildRivData(year, provider)
 	if err != nil {
 		return nil, "", err
 	}
@@ -91,7 +91,7 @@ func (svc *PublicationsService) ExportRiv(year string) ([]byte, string, error) {
 		log.Warn().Int("warnings", len(warnings)).Msg("RIV export has validation warnings")
 	}
 
-	dodavka := buildRivDodavka(year, pubs)
+	dodavka := buildRivDodavka(year, provider, pubs)
 
 	xmlBytes, err := xml.MarshalIndent(dodavka, "", "  ")
 	if err != nil {
@@ -105,13 +105,13 @@ func (svc *PublicationsService) ExportRiv(year string) ([]byte, string, error) {
 		yy = year[2:4]
 	}
 	filename := fmt.Sprintf("RIV%s-%s-%s,R%s.xml",
-		yy, models.RivProviderCode, models.RivInstitutionICO, models.RivDeliveryVersion)
+		yy, provider, models.RivInstitutionICO, models.RivDeliveryVersion)
 
 	return xmlOutput, filename, nil
 }
 
-func (svc *PublicationsService) ValidateRiv(year string) (models.RivValidationResult, error) {
-	pubs, warnings, err := svc.buildRivData(year)
+func (svc *PublicationsService) ValidateRiv(year string, provider string) (models.RivValidationResult, error) {
+	pubs, warnings, err := svc.buildRivData(year, provider)
 	if err != nil {
 		return models.RivValidationResult{}, err
 	}
@@ -130,15 +130,16 @@ func (svc *PublicationsService) ValidateRiv(year string) (models.RivValidationRe
 	}, nil
 }
 
-// buildRivData fetches publications for the year, aggregates flat rows, and validates.
-func (svc *PublicationsService) buildRivData(year string) ([]rivAggregatedPublication, []models.RivValidationWarning, error) {
+// buildRivData fetches publications for the year and provider, aggregates flat rows, and validates.
+func (svc *PublicationsService) buildRivData(year string, provider string) ([]rivAggregatedPublication, []models.RivValidationWarning, error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	query := helpers.DatabaseQuery{
 		Query: `
-			MATCH (p:Publication)
+			MATCH (p:Publication)-[:HAS_GRANT]->(g:Grant)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
 			WHERE p.yearOfPublication = $year
 			  AND (p.deleted IS NULL OR p.deleted = false)
+			  AND gg.code = $provider
 			OPTIONAL MATCH (p)-[:HAS_MEDIA_TYPE]->(mt:MediaType)
 			OPTIONAL MATCH (p)-[:HAS_PUBLISHING_COUNTRY]->(pc:Country)
 			OPTIONAL MATCH (p)-[:HAS_OPEN_ACCESS_TYPE]->(oat:OpenAccessType)
@@ -177,7 +178,7 @@ func (svc *PublicationsService) buildRivData(year string) ([]rivAggregatedPublic
 			ORDER BY p.uid, res.lastName, res.firstName
 		`,
 		ReturnAlias: "row",
-		Parameters:  map[string]interface{}{"year": year},
+		Parameters:  map[string]interface{}{"year": year, "provider": provider},
 	}
 
 	rows, err := helpers.GetNeo4jArrayOfNodes[rivPublicationRow](session, query)
@@ -284,7 +285,7 @@ func (svc *PublicationsService) buildRivData(year string) ([]rivAggregatedPublic
 	return pubs, warnings, nil
 }
 
-func buildRivDodavka(year string, pubs []rivAggregatedPublication) models.RivDodavka {
+func buildRivDodavka(year string, provider string, pubs []rivAggregatedPublication) models.RivDodavka {
 	vysledky := make([]models.RivVysledek, 0, len(pubs))
 	for _, pub := range pubs {
 		v := buildRivVysledek(pub)
@@ -309,7 +310,7 @@ func buildRivDodavka(year string, pubs []rivAggregatedPublication) models.RivDod
 				},
 			},
 			Dodavatel: models.RivDodavatel{
-				Subjekt: models.RivSubjektDodavatel{Kod: models.RivProviderCode},
+				Subjekt: models.RivSubjektDodavatel{Kod: provider},
 				Pracovnik: models.RivPracovnik{
 					Osoba: models.RivOsoba{
 						CeleJmeno: models.RivContactName,
@@ -593,6 +594,36 @@ func buildTypeD(v *models.RivVysledek, row rivPublicationRow) {
 	// Identifiers
 	v.EID = stripEidPrefix(derefStr(row.EidScopus))
 	v.KodUtIsi = stripWosPrefix(derefStr(row.WosNumber))
+}
+
+// GetRivProviders returns grant group providers that have publications for the given year
+func (svc *PublicationsService) GetRivProviders(year string) ([]models.RivProvider, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := helpers.DatabaseQuery{
+		Query: `
+			MATCH (p:Publication)-[:HAS_GRANT]->(g:Grant)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
+			WHERE p.yearOfPublication = $year
+			  AND (p.deleted IS NULL OR p.deleted = false)
+			  AND gg.code IS NOT NULL
+			  AND gg.code <> "OTHER"
+			RETURN {code: gg.code, name: gg.name, publicationCount: COUNT(DISTINCT p)} as provider
+			ORDER BY provider.code
+		`,
+		ReturnAlias: "provider",
+		Parameters:  map[string]interface{}{"year": year},
+	}
+
+	result, err := helpers.GetNeo4jArrayOfNodes[models.RivProvider](session, query)
+	if err != nil {
+		return nil, fmt.Errorf("RIV providers query error: %w", err)
+	}
+
+	if result == nil {
+		result = []models.RivProvider{}
+	}
+
+	return result, nil
 }
 
 // --- Helper functions ---

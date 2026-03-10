@@ -34,6 +34,7 @@ type IPublicationsHandlers interface {
 	GetPublicationsAsCsv() echo.HandlerFunc
 	ExportRiv() echo.HandlerFunc
 	ValidateRiv() echo.HandlerFunc
+	GetRivProviders() echo.HandlerFunc
 	// Researcher handlers
 	GetResearchers() echo.HandlerFunc
 	GetResearcher() echo.HandlerFunc
@@ -573,13 +574,14 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 	}
 }
 
-// ExportRiv exports publications for a given year as RIV26A XML
+// ExportRiv exports publications for a given year and provider as RIV26A XML
 // @Summary Export publications as RIV XML
-// @Description Export publications for a given year as RIV26A XML file for IS VaVaI
+// @Description Export publications for a given year and provider as RIV26A XML file for IS VaVaI
 // @Tags Publications
 // @Security BearerAuth
 // @Produce application/xml
 // @Param year query string true "Year of publication"
+// @Param provider query string true "Provider code (grant group code)"
 // @Success 200 "XML file"
 // @Failure 400 "Bad Request"
 // @Failure 500 "Internal Server Error"
@@ -590,8 +592,12 @@ func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
 		if year == "" {
 			return helpers.BadRequest("year query parameter is required")
 		}
+		provider := c.QueryParam("provider")
+		if provider == "" {
+			return helpers.BadRequest("provider query parameter is required")
+		}
 
-		xmlBytes, filename, err := h.PublicationsService.ExportRiv(year)
+		xmlBytes, filename, err := h.PublicationsService.ExportRiv(year, provider)
 		if err != nil {
 			log.Error().Err(err).Msg("Error exporting RIV")
 			return echo.ErrInternalServerError
@@ -605,11 +611,12 @@ func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
 
 // ValidateRiv validates publications for RIV export
 // @Summary Validate publications for RIV export
-// @Description Returns validation warnings and counts for publications in a given year
+// @Description Returns validation warnings and counts for publications in a given year for a provider
 // @Tags Publications
 // @Security BearerAuth
 // @Produce json
 // @Param year query string true "Year of publication"
+// @Param provider query string true "Provider code (grant group code)"
 // @Success 200 {object} models.RivValidationResult
 // @Failure 400 "Bad Request"
 // @Failure 500 "Internal Server Error"
@@ -620,10 +627,42 @@ func (h *PublicationsHandlers) ValidateRiv() echo.HandlerFunc {
 		if year == "" {
 			return helpers.BadRequest("year query parameter is required")
 		}
+		provider := c.QueryParam("provider")
+		if provider == "" {
+			return helpers.BadRequest("provider query parameter is required")
+		}
 
-		result, err := h.PublicationsService.ValidateRiv(year)
+		result, err := h.PublicationsService.ValidateRiv(year, provider)
 		if err != nil {
 			log.Error().Err(err).Msg("Error validating RIV")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
+	}
+}
+
+// GetRivProviders returns available RIV providers for a given year
+// @Summary Get RIV providers
+// @Description Returns list of grant group providers with publication counts for a given year
+// @Tags Publications
+// @Security BearerAuth
+// @Produce json
+// @Param year query string true "Year of publication"
+// @Success 200 {array} models.RivProvider
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publications/export/riv/providers [get]
+func (h *PublicationsHandlers) GetRivProviders() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		year := c.QueryParam("year")
+		if year == "" {
+			return helpers.BadRequest("year query parameter is required")
+		}
+
+		result, err := h.PublicationsService.GetRivProviders(year)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting RIV providers")
 			return echo.ErrInternalServerError
 		}
 
