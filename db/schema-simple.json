@@ -94,7 +94,9 @@
     { "start": ["Publication"], "end": ["UserExperiment"], "type": "HAS_USER_EXPERIMENT", "properties": [] },
     { "start": ["Publication"], "end": ["ExperimentalSystem"], "type": "HAS_EXPERIMENTAL_SYSTEM", "properties": [] },
     { "start": ["Grant"], "end": ["GrantGroup"], "type": "BELONGS_TO_GROUP", "properties": [] },
-    { "start": ["Researcher"], "end": ["Country"], "type": "HAS_CITIZENSHIP", "properties": [] }
+    { "start": ["Researcher"], "end": ["Country"], "type": "HAS_CITIZENSHIP", "properties": [] },
+    { "start": ["Publication"], "end": ["PublishFormat"], "type": "HAS_PUBLISH_FORMAT", "properties": [] },
+    { "start": ["Publication"], "end": ["ConferenceScope"], "type": "HAS_CONFERENCE_SCOPE", "properties": [] }
   ],
   "nodes": [
     {
@@ -175,7 +177,16 @@
         { "name": "pdfFileName", "type": "String" },
         { "name": "pdfFileUrl", "type": "String" },
         { "name": "eliPublication", "type": "String" },
-        { "name": "otherGrants", "type": "String" }
+        { "name": "otherGrants", "type": "String" },
+        { "name": "publisher", "type": "String" },
+        { "name": "publishPlace", "type": "String" },
+        { "name": "isbn", "type": "String" },
+        { "name": "bookTitle", "type": "String" },
+        { "name": "bookPagesCount", "type": "Long" },
+        { "name": "editionVolume", "type": "String" },
+        { "name": "proceedingsIsbn", "type": "String" },
+        { "name": "conferenceDate", "type": "String" },
+        { "name": "conferencePlace", "type": "String" }
       ]
     },
     {
@@ -692,6 +703,22 @@
         { "name": "researcherId", "type": "String" },
         { "name": "updatedAt", "type": "DateTime" },
         { "name": "deleted", "type": "Boolean" }
+      ]
+    },
+    {
+      "label": "PublishFormat",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "ConferenceScope",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
       ]
     }
   ]

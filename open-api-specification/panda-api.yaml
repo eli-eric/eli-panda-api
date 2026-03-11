@@ -800,17 +800,36 @@ definitions:
         items:
           type: string
         type: array
+      bookPagesCount:
+        description: total pages of the book
+        type: integer
+      bookTitle:
+        description: title of the book (for book chapters)
+        type: string
       citeAs:
         description: citeAs is the citation of the publication
         type: string
       code:
         description: code is the internal code of the publication
         type: string
+      conferenceDate:
+        description: conference date (YYYY or YYYY-MM-DD)
+        type: string
+      conferencePlace:
+        description: conference place
+        type: string
+      conferenceScopeCb:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: conference scope (national/european/worldwide)
       dateOfPublication:
         description: dateOfPublication is the date of publication of the publication
         type: string
       doi:
         description: doi is the unique identifier of the publication
+        type: string
+      editionVolume:
+        description: edition or volume number
         type: string
       eidScopus:
         description: eidScopus is the eid scopus of the publication
@@ -853,6 +872,9 @@ definitions:
       impactFactor:
         description: impactFactor is the impact factor of the publication
         type: number
+      isbn:
+        description: Type C only
+        type: string
       issn:
         description: issn is the issn of the publication
         type: string
@@ -900,6 +922,19 @@ definitions:
         type: string
       pdfFileUrl:
         description: pdfFileUrl is the url of the pdf file of the publication
+        type: string
+      proceedingsIsbn:
+        description: Type D only
+        type: string
+      publishFormatCb:
+        allOf:
+        - $ref: '#/definitions/models.Codebook'
+        description: publish format (Print/Online/CD)
+      publishPlace:
+        description: place of publication
+        type: string
+      publisher:
+        description: Type C & D shared fields
         type: string
       publishingCountry:
         allOf:
@@ -996,6 +1031,24 @@ definitions:
         $ref: '#/definitions/models.EmployeeInfo'
       responsible:
         $ref: '#/definitions/models.EmployeeInfo'
+    type: object
+  models.RivValidationResult:
+    properties:
+      totalPublications:
+        type: integer
+      validPublications:
+        type: integer
+      warnings:
+        items:
+          $ref: '#/definitions/models.RivValidationWarning'
+        type: array
+    type: object
+  models.RivValidationWarning:
+    properties:
+      message:
+        type: string
+      publicationCode:
+        type: string
     type: object
   models.ServiceLine:
     properties:
@@ -3636,6 +3689,66 @@ paths:
       security:
       - BearerAuth: []
       summary: Get publications as CSV
+      tags:
+      - Publications
+  /v1/publications/export/riv:
+    get:
+      description: Export publications for a given year and provider as RIV26A XML
+        file for IS VaVaI
+      parameters:
+      - description: Year of publication
+        in: query
+        name: year
+        required: true
+        type: string
+      - description: Provider code (grant group code)
+        in: query
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/xml
+      responses:
+        "200":
+          description: XML file
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Export publications as RIV XML
+      tags:
+      - Publications
+  /v1/publications/export/riv/validate:
+    get:
+      description: Returns validation warnings and counts for publications in a given
+        year for a provider
+      parameters:
+      - description: Year of publication
+        in: query
+        name: year
+        required: true
+        type: string
+      - description: Provider code (grant group code)
+        in: query
+        name: provider
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.RivValidationResult'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Validate publications for RIV export
       tags:
       - Publications
   /v1/researcher:
