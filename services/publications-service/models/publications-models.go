@@ -55,6 +55,20 @@ type Publication struct {
 	EliResearchers          []ResearcherRef          `json:"eliResearchers"`                                                                                       // eliResearchers are the connected researchers via HAS_RESEARCHER relationship
 	Grants                  []GrantRef               `json:"grants"`                                                                                               // grants are the connected grants via HAS_GRANT relationship
 	OtherGrants             *string                  `json:"otherGrants" neo4j:"prop,otherGrants"`                                                                 // otherGrants are the other grants of the publication
+	// Type C & D shared fields
+	Publisher               *string                  `json:"publisher" neo4j:"prop,publisher"`                                                                      // publisher name
+	PublishPlace            *string                  `json:"publishPlace" neo4j:"prop,publishPlace"`                                                                // place of publication
+	PublishFormatCb         *codebookModels.Codebook `json:"publishFormatCb" neo4j:"rel,PublishFormat,HAS_PUBLISH_FORMAT,uid,publishFormatCb"`                       // publish format (Print/Online/CD)
+	// Type C only
+	Isbn                    *string                  `json:"isbn" neo4j:"prop,isbn"`                                                                                // ISBN of the book
+	BookTitle               *string                  `json:"bookTitle" neo4j:"prop,bookTitle"`                                                                      // title of the book (for book chapters)
+	BookPagesCount          *int                     `json:"bookPagesCount" neo4j:"prop,bookPagesCount"`                                                            // total pages of the book
+	EditionVolume           *string                  `json:"editionVolume" neo4j:"prop,editionVolume"`                                                              // edition or volume number
+	// Type D only
+	ProceedingsIsbn         *string                  `json:"proceedingsIsbn" neo4j:"prop,proceedingsIsbn"`                                                          // ISBN of the proceedings
+	ConferenceDate          *string                  `json:"conferenceDate" neo4j:"prop,conferenceDate"`                                                            // conference date (YYYY or YYYY-MM-DD)
+	ConferencePlace         *string                  `json:"conferencePlace" neo4j:"prop,conferencePlace"`                                                          // conference place
+	ConferenceScopeCb       *codebookModels.Codebook `json:"conferenceScopeCb" neo4j:"rel,ConferenceScope,HAS_CONFERENCE_SCOPE,uid,conferenceScopeCb"`               // conference scope (national/european/worldwide)
 }
 
 type AuthorsDepartment struct {

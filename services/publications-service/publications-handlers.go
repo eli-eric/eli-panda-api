@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +25,11 @@ const (
 	eliPublicationNo  = "NO"
 )
 
+var (
+	yearRegex     = regexp.MustCompile(`^\d{4}$`)
+	providerRegex = regexp.MustCompile(`^[A-Za-z0-9]+$`)
+)
+
 type IPublicationsHandlers interface {
 	CreatePublication() echo.HandlerFunc
 	GetPublication() echo.HandlerFunc
@@ -32,6 +38,8 @@ type IPublicationsHandlers interface {
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
 	GetPublicationsAsCsv() echo.HandlerFunc
+	ExportRiv() echo.HandlerFunc
+	ValidateRiv() echo.HandlerFunc
 	// Researcher handlers
 	GetResearchers() echo.HandlerFunc
 	GetResearcher() echo.HandlerFunc
@@ -364,7 +372,18 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			"Publishing Country",
 			"Language",
 			"Note",
-			"UID"})
+			"UID",
+			"Publisher",
+			"Publish Place",
+			"Publish Format",
+			"ISBN",
+			"Book Title",
+			"Book Pages Count",
+			"Edition Volume",
+			"Proceedings ISBN",
+			"Conference Date",
+			"Conference Place",
+			"Conference Scope"})
 
 		for _, item := range publications {
 
@@ -458,6 +477,50 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			if item.Note != nil {
 				note = *item.Note
 			}
+			publisher := ""
+			if item.Publisher != nil {
+				publisher = *item.Publisher
+			}
+			publishPlace := ""
+			if item.PublishPlace != nil {
+				publishPlace = *item.PublishPlace
+			}
+			publishFormat := ""
+			if item.PublishFormatCb != nil {
+				publishFormat = item.PublishFormatCb.Name
+			}
+			isbn := ""
+			if item.Isbn != nil {
+				isbn = *item.Isbn
+			}
+			bookTitle := ""
+			if item.BookTitle != nil {
+				bookTitle = *item.BookTitle
+			}
+			bookPagesCount := ""
+			if item.BookPagesCount != nil {
+				bookPagesCount = strconv.Itoa(*item.BookPagesCount)
+			}
+			editionVolume := ""
+			if item.EditionVolume != nil {
+				editionVolume = *item.EditionVolume
+			}
+			proceedingsIsbn := ""
+			if item.ProceedingsIsbn != nil {
+				proceedingsIsbn = *item.ProceedingsIsbn
+			}
+			conferenceDate := ""
+			if item.ConferenceDate != nil {
+				conferenceDate = *item.ConferenceDate
+			}
+			conferencePlace := ""
+			if item.ConferencePlace != nil {
+				conferencePlace = *item.ConferencePlace
+			}
+			conferenceScope := ""
+			if item.ConferenceScopeCb != nil {
+				conferenceScope = item.ConferenceScopeCb.Name
+			}
 			writer.Write([]string{
 				item.MediaType,
 				item.Code,
@@ -498,10 +561,89 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				item.PublishingCountry.Name,
 				item.Language,
 				note,
-				item.Uid})
+				item.Uid,
+				publisher,
+				publishPlace,
+				publishFormat,
+				isbn,
+				bookTitle,
+				bookPagesCount,
+				editionVolume,
+				proceedingsIsbn,
+				conferenceDate,
+				conferencePlace,
+				conferenceScope})
 		}
 
 		return nil
+	}
+}
+
+// ExportRiv exports publications for a given year and provider as RIV26A XML
+// @Summary Export publications as RIV XML
+// @Description Export publications for a given year and provider as RIV26A XML file for IS VaVaI
+// @Tags Publications
+// @Security BearerAuth
+// @Produce application/xml
+// @Param year query string true "Year of publication"
+// @Param provider query string true "Provider code (grant group code)"
+// @Success 200 "XML file"
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publications/export/riv [get]
+func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		year := c.QueryParam("year")
+		if !yearRegex.MatchString(year) {
+			return helpers.BadRequest("year must be a 4-digit number")
+		}
+		provider := c.QueryParam("provider")
+		if !providerRegex.MatchString(provider) {
+			return helpers.BadRequest("provider must be alphanumeric")
+		}
+
+		xmlBytes, filename, err := h.PublicationsService.ExportRiv(year, provider)
+		if err != nil {
+			log.Error().Err(err).Msg("Error exporting RIV")
+			return echo.ErrInternalServerError
+		}
+
+		c.Response().Header().Set(echo.HeaderContentType, "application/xml")
+		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=\""+filename+"\"")
+		return c.Blob(200, "application/xml", xmlBytes)
+	}
+}
+
+// ValidateRiv validates publications for RIV export
+// @Summary Validate publications for RIV export
+// @Description Returns validation warnings and counts for publications in a given year for a provider
+// @Tags Publications
+// @Security BearerAuth
+// @Produce json
+// @Param year query string true "Year of publication"
+// @Param provider query string true "Provider code (grant group code)"
+// @Success 200 {object} models.RivValidationResult
+// @Failure 400 "Bad Request"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publications/export/riv/validate [get]
+func (h *PublicationsHandlers) ValidateRiv() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		year := c.QueryParam("year")
+		if !yearRegex.MatchString(year) {
+			return helpers.BadRequest("year must be a 4-digit number")
+		}
+		provider := c.QueryParam("provider")
+		if !providerRegex.MatchString(provider) {
+			return helpers.BadRequest("provider must be alphanumeric")
+		}
+
+		result, err := h.PublicationsService.ValidateRiv(year, provider)
+		if err != nil {
+			log.Error().Err(err).Msg("Error validating RIV")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, result)
 	}
 }
 
