@@ -136,10 +136,17 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 
 	query := helpers.DatabaseQuery{
 		Query: `
-			MATCH (p:Publication)-[:HAS_GRANT]->(g:Grant)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
+			MATCH (p:Publication)
 			WHERE p.yearOfPublication = $year
 			  AND (p.deleted IS NULL OR p.deleted = false)
-			  AND gg.code = $provider
+			OPTIONAL MATCH (p)-[:HAS_GRANT]->(g:Grant)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
+			WITH p, COLLECT(DISTINCT gg.code) AS providerCodes
+			WHERE CASE $provider
+			  WHEN "MSM" THEN
+			    "MSM" IN providerCodes
+			    OR NONE(code IN providerCodes WHERE code IN ["GA0", "TA0"])
+			  ELSE $provider IN providerCodes
+			END
 			OPTIONAL MATCH (p)-[:HAS_MEDIA_TYPE]->(mt:MediaType)
 			OPTIONAL MATCH (p)-[:HAS_PUBLISHING_COUNTRY]->(pc:Country)
 			OPTIONAL MATCH (p)-[:HAS_OPEN_ACCESS_TYPE]->(oat:OpenAccessType)
