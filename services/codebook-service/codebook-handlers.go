@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/codebook-service/models"
-	"panda/apigateway/shared"
 	"strconv"
 	"strings"
 
@@ -30,16 +29,6 @@ type ICodebookHandlers interface {
 // NewCommentsHandlers Comments handlers constructor
 func NewCodebookHandlers(codebookService ICodebookService) ICodebookHandlers {
 	return &CodebookHandlers{codebookService: codebookService}
-}
-
-func contains(s []string, str string) bool {
-	for _, v := range s {
-		if v == str {
-			return true
-		}
-	}
-
-	return false
 }
 
 // GetCodebook godoc
@@ -70,9 +59,6 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 		roles := c.Get("userRoles").([]string)
 		userUID := c.Get("userUID").(string)
 
-		//has the user role CODEBOOKS_ADMIN ?
-		isCodebooksAdmin := contains(roles, shared.ROLE_CODEBOOKS_ADMIN)
-
 		filterObject := new([]helpers.Filter)
 		if filter != "" {
 			json.Unmarshal([]byte(filter), filterObject)
@@ -83,8 +69,6 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 
 		if err != nil {
 			limit = autocompleteDefaultLimit
-		} else if limit > autocompleteMaxLimit && !isCodebooksAdmin {
-			limit = autocompleteMaxLimit
 		}
 
 		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject, userUID, roles)
@@ -136,7 +120,6 @@ func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 	}
 }
 
-const autocompleteMaxLimit int = 100
 const autocompleteDefaultLimit int = 10
 
 // GetListOfCodebooks godoc
