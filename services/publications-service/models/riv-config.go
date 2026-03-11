@@ -1,24 +1,23 @@
 package models
 
 // RIV export configuration — institution-specific constants for IS VaVaI (Czech R&D Information System)
-// TODO: replace placeholder values with real institution data
 
 const (
 	// Institution identification
-	RivInstitutionICO   = "67985831"                            // 8-digit IČO
-	RivOrgUnitCode      = "_____"                               // 5-char org unit code (or _____ if not applicable)
-	RivInstitutionNameCZ = "Fyzikální ústav AV ČR, v. v. i."   // institution name in Czech
-	RivInstitutionNameEN = "Institute of Physics of the CAS"    // institution name in English
-	RivLegalType         = "verejna-vyzkumna-instituce"         // legal type of institution
+	RivInstitutionICO    = "10974938"
+	RivOrgUnitCode       = "_____"
+	RivInstitutionNameCZ = "Extreme Light Infrastructure ERIC (ELI ERIC)"
+	RivInstitutionNameEN = "Extreme Light Infrastructure ERIC (ELI ERIC)"
+	RivLegalType         = "konsorcium-evropske-vyzkumne-infrastruktury"
 
 	// Contact person for the delivery
-	RivContactName  = "TODO: Contact Name"  // TODO: set real contact name
-	RivContactEmail = "TODO@eli-beams.eu"   // TODO: set real contact email
-	RivContactPhone = "+420000000000"       // TODO: set real contact phone
+	RivContactName  = "Ladislav Půst"
+	RivContactEmail = "ladislav.pust@eli-beams.eu"
+	RivContactPhone = "+420775620803"
 
 	// Delivery metadata
-	RivDeliveryVersion = "01"               // delivery version
-	RivDeliveryRef     = "TODO-REF"         // cover document reference number (cislo-jednaci)
+	RivDeliveryVersion = "01"
+	RivDeliveryRef     = "TODO-REF" // set per delivery
 )
 
 // MediaTypeDruhMap maps MediaType codes to RIV <druh> attribute values

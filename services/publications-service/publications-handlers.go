@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,11 @@ type PublicationsHandlers struct {
 const (
 	eliPublicationYes = "YES"
 	eliPublicationNo  = "NO"
+)
+
+var (
+	yearRegex     = regexp.MustCompile(`^\d{4}$`)
+	providerRegex = regexp.MustCompile(`^[A-Za-z0-9]+$`)
 )
 
 type IPublicationsHandlers interface {
@@ -588,12 +594,12 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		year := c.QueryParam("year")
-		if year == "" {
-			return helpers.BadRequest("year query parameter is required")
+		if !yearRegex.MatchString(year) {
+			return helpers.BadRequest("year must be a 4-digit number")
 		}
 		provider := c.QueryParam("provider")
-		if provider == "" {
-			return helpers.BadRequest("provider query parameter is required")
+		if !providerRegex.MatchString(provider) {
+			return helpers.BadRequest("provider must be alphanumeric")
 		}
 
 		xmlBytes, filename, err := h.PublicationsService.ExportRiv(year, provider)
@@ -603,7 +609,7 @@ func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
 		}
 
 		c.Response().Header().Set(echo.HeaderContentType, "application/xml")
-		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename="+filename)
+		c.Response().Header().Set(echo.HeaderContentDisposition, "attachment; filename=\""+filename+"\"")
 		return c.Blob(200, "application/xml", xmlBytes)
 	}
 }
@@ -623,12 +629,12 @@ func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
 func (h *PublicationsHandlers) ValidateRiv() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		year := c.QueryParam("year")
-		if year == "" {
-			return helpers.BadRequest("year query parameter is required")
+		if !yearRegex.MatchString(year) {
+			return helpers.BadRequest("year must be a 4-digit number")
 		}
 		provider := c.QueryParam("provider")
-		if provider == "" {
-			return helpers.BadRequest("provider query parameter is required")
+		if !providerRegex.MatchString(provider) {
+			return helpers.BadRequest("provider must be alphanumeric")
 		}
 
 		result, err := h.PublicationsService.ValidateRiv(year, provider)

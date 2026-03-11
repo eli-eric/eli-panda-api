@@ -72,6 +72,7 @@ type rivAggregatedPublication struct {
 }
 
 type rivResearcherData struct {
+	UID                  string
 	FirstName            string
 	LastName             string
 	IdentificationNumber string
@@ -141,6 +142,8 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			  AND (p.deleted IS NULL OR p.deleted = false)
 			OPTIONAL MATCH (p)-[:HAS_GRANT]->(g:Grant)-[:BELONGS_TO_GROUP]->(gg:GrantGroup)
 			WITH p, COLLECT(DISTINCT gg.code) AS providerCodes
+			// MSM fallback: NONE() on empty list returns true — includes publications
+			// without any grant (grantless, OTHER-only, null-group)
 			WHERE CASE $provider
 			  WHEN "MSM" THEN
 			    "MSM" IN providerCodes
@@ -205,16 +208,17 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			pubOrder = append(pubOrder, row.Uid)
 		}
 		if row.ResearcherUid != nil && *row.ResearcherUid != "" {
-			// Deduplicate researchers (same researcher can appear multiple times)
+			// Deduplicate researchers by UID (same researcher can appear multiple times due to multiple grants)
 			isDupe := false
 			for _, existing := range agg.researchers {
-				if existing.FirstName == derefStr(row.ResearcherFirst) && existing.LastName == derefStr(row.ResearcherLast) {
+				if existing.UID == *row.ResearcherUid {
 					isDupe = true
 					break
 				}
 			}
 			if !isDupe {
 				agg.researchers = append(agg.researchers, rivResearcherData{
+					UID:                  *row.ResearcherUid,
 					FirstName:            derefStr(row.ResearcherFirst),
 					LastName:             derefStr(row.ResearcherLast),
 					IdentificationNumber: derefStr(row.ResearcherIdNumber),
@@ -230,6 +234,11 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 	// Build ordered result + validate
 	pubs := make([]rivAggregatedPublication, 0, len(pubOrder))
 	warnings := make([]models.RivValidationWarning, 0)
+
+	// Config validation
+	if strings.Contains(models.RivDeliveryRef, "TODO") {
+		warnings = append(warnings, models.RivValidationWarning{PublicationCode: "", Message: "RivDeliveryRef still contains TODO placeholder"})
+	}
 
 	idCodes := make(map[string]bool)
 	for _, uid := range pubOrder {
