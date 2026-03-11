@@ -69,6 +69,8 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 			parsedLimit, err := strconv.Atoi(limitParam)
 			if err != nil || parsedLimit < 1 {
 				limit = autocompleteDefaultLimit
+			} else if parsedLimit > autocompleteMaxLimit {
+				limit = autocompleteMaxLimit
 			} else {
 				limit = parsedLimit
 			}
@@ -123,6 +125,7 @@ func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 	}
 }
 
+const autocompleteMaxLimit int = 5000
 const autocompleteDefaultLimit int = 10
 
 // GetListOfCodebooks godoc
