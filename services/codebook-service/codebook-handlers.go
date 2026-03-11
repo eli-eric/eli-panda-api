@@ -64,11 +64,14 @@ func (h *CodebookHandlers) GetCodebook() echo.HandlerFunc {
 			json.Unmarshal([]byte(filter), filterObject)
 		}
 
-		limit := autocompleteDefaultLimit
-		limit, err := strconv.Atoi(limitParam)
-
-		if err != nil {
-			limit = autocompleteDefaultLimit
+		limit := autocompleteMaxLimit
+		if limitParam != "" {
+			parsedLimit, err := strconv.Atoi(limitParam)
+			if err != nil {
+				limit = autocompleteDefaultLimit
+			} else {
+				limit = parsedLimit
+			}
 		}
 
 		codebookResponse, err := h.codebookService.GetCodebook(codebookCode, searchText, parentUID, limit, facilityCode, filterObject, userUID, roles)
@@ -120,6 +123,7 @@ func (h *CodebookHandlers) GetCodebookTree() echo.HandlerFunc {
 	}
 }
 
+const autocompleteMaxLimit int = 100
 const autocompleteDefaultLimit int = 10
 
 // GetListOfCodebooks godoc
