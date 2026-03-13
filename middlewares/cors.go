@@ -13,6 +13,7 @@ func CORSMiddleware() echo.MiddlewareFunc {
 			echo.HeaderAuthorization, // Explicitly allow the Authorization header
 		},
 		AllowCredentials: true,
+		ExposeHeaders:    []string{echo.HeaderContentDisposition},
 		AllowMethods:     []string{echo.GET, echo.HEAD, echo.PUT, echo.PATCH, echo.POST, echo.DELETE},
 	})
 }
