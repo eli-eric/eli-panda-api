@@ -3,6 +3,7 @@ package publicationsservice
 import (
 	"encoding/xml"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 )
+
+var issnRe = regexp.MustCompile(`^\d{4}-\d{3}[\dX]$`)
 
 // rivPublicationRow represents a single flat row returned by the RIV export Cypher query.
 // Each row is one researcher per publication — must be aggregated by publication UID.
@@ -66,12 +69,16 @@ type rivPublicationRow struct {
 	ResearcherScopus   *string `json:"researcherScopus"`
 	ResearcherRID      *string `json:"researcherRID"`
 	CitizenshipCode    *string `json:"citizenshipCode"`
+
+	// Grant codes (collected per publication)
+	GrantCodes []string `json:"grantCodes"`
 }
 
 // rivAggregatedPublication holds one publication with all its researchers
 type rivAggregatedPublication struct {
-	row         rivPublicationRow
-	researchers []rivResearcherData
+	row            rivPublicationRow
+	researchers    []rivResearcherData
+	mappedLanguage string
 }
 
 type rivResearcherData struct {
@@ -158,6 +165,9 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			OPTIONAL MATCH (p)-[:HAS_OPEN_ACCESS_TYPE]->(oat:OpenAccessType)
 			OPTIONAL MATCH (p)-[:HAS_PUBLISH_FORMAT]->(pf:PublishFormat)
 			OPTIONAL MATCH (p)-[:HAS_CONFERENCE_SCOPE]->(cs:ConferenceScope)
+			OPTIONAL MATCH (p)-[:HAS_GRANT]->(g2:Grant)-[:BELONGS_TO_GROUP]->(gg2:GrantGroup)
+			WHERE gg2.code IN ["MSM", "GA0", "TA0"]
+			WITH p, mt, pc, oat, pf, cs, COLLECT(DISTINCT g2.code) AS grantCodes
 			OPTIONAL MATCH (p)-[:HAS_RESEARCHER]->(res:Researcher)
 			  WHERE (res.deleted IS NULL OR res.deleted = false)
 			OPTIONAL MATCH (res)-[:HAS_CITIZENSHIP]->(rc:Country)
@@ -186,7 +196,8 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 				researcherIdNumber: res.identificationNumber,
 				researcherOrcid: res.orcid, researcherScopus: res.scopusId,
 				researcherRID: res.researcherId,
-				citizenshipCode: rc.code
+				citizenshipCode: rc.code,
+				grantCodes: grantCodes
 			} as row
 			ORDER BY p.uid, res.lastName, res.firstName
 		`,
@@ -272,6 +283,16 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "no mediaType code set"})
 		}
 
+		langCode, langErr := mapLanguage(agg.row.Language)
+		if langErr != nil {
+			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: langErr.Error()})
+		}
+		agg.mappedLanguage = langCode
+
+		if len(agg.row.GrantCodes) == 0 {
+			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "no CEP grant — using ramcove-programy-EK fallback"})
+		}
+
 		// Type-specific validation
 		switch mediaType {
 		case "J":
@@ -287,6 +308,30 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			hasEissn := agg.row.EIssn != nil && *agg.row.EIssn != ""
 			if !hasIsbn && !hasIssn && !hasEissn {
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type D: no proceedingsIsbn, issn, or eissn"})
+			}
+		}
+
+		// ISSN format validation
+		if issn := normalizeISSN(derefStr(agg.row.Issn)); issn != "" && !issnRe.MatchString(issn) {
+			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: fmt.Sprintf("invalid ISSN format %q", issn)})
+		}
+		if eissn := normalizeISSN(derefStr(agg.row.EIssn)); eissn != "" && !issnRe.MatchString(eissn) {
+			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: fmt.Sprintf("invalid eISSN format %q", eissn)})
+		}
+
+		// WoS ID validation
+		if wos := derefStr(agg.row.WosNumber); wos != "" {
+			normalized := normalizeWosID(wos)
+			if len(normalized) != 15 {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: fmt.Sprintf("WoS ID %q has %d chars after normalization, expected 15", normalized, len(normalized))})
+			}
+		}
+
+		// Keyword validation
+		if agg.row.Keywords != "" {
+			kws := splitKeywords(agg.row.Keywords)
+			if len(kws) == 1 && len(agg.row.Keywords) > 50 {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "only 1 keyword — verify keywords are properly separated"})
 			}
 		}
 
@@ -352,24 +397,26 @@ func buildRivVysledek(pub rivAggregatedPublication) models.RivVysledek {
 	mediaType := derefStr(row.MediaTypeCode)
 	druh := models.MediaTypeDruhMap[mediaType]
 
+	lang := pub.mappedLanguage
+
 	v := models.RivVysledek{
 		IdentifikacniKod: buildIdentifikacniKod(row.Code, row.YearOfPublication),
-		DuvernostUdaju:   "S",
+		DuvernostUdaju:   models.RivDuvernostUdaju,
 		RokUplatneni:     row.YearOfPublication,
 		KontrolniKod:     "0",
 		Druh:             druh,
-		Jazyk:            row.Language,
+		Jazyk:            lang,
 	}
 
 	// Titles
 	v.Nazvy = []models.RivNazev{{Jazyk: "eng", Value: row.Title}}
-	if row.Language != "" && row.Language != "eng" {
+	if lang != "" && lang != "eng" {
 		v.Nazvy = append(v.Nazvy, models.RivNazev{Jazyk: "#ORIG", Value: row.Title})
 	}
 
 	// Annotations
 	v.Anotace = []models.RivAnotace{{Jazyk: "eng", Value: row.Abstract}}
-	if row.Language != "" && row.Language != "eng" {
+	if lang != "" && lang != "eng" {
 		v.Anotace = append(v.Anotace, models.RivAnotace{Jazyk: "#ORIG", Value: row.Abstract})
 	}
 
@@ -384,11 +431,22 @@ func buildRivVysledek(pub rivAggregatedPublication) models.RivVysledek {
 	v.Klasifikace = buildRivKlasifikace(row)
 
 	// Navaznosti
-	v.Navaznosti = models.RivNavaznosti{
-		Navaznost: models.RivNavaznost{
-			DruhVztahu:             "byl-dosazen-pri-reseni",
-			InstitucionalniPodpora: models.RivEmpty{},
-		},
+	if len(row.GrantCodes) > 0 {
+		navs := make([]models.RivNavaznost, 0, len(row.GrantCodes))
+		for _, gc := range row.GrantCodes {
+			navs = append(navs, models.RivNavaznost{
+				DruhVztahu: "byl-dosazen-pri-reseni",
+				Projekt:    &models.RivProjekt{IdentifikacniKod: gc},
+			})
+		}
+		v.Navaznosti = models.RivNavaznosti{Navaznost: navs}
+	} else {
+		v.Navaznosti = models.RivNavaznosti{
+			Navaznost: []models.RivNavaznost{{
+				DruhVztahu:      "byl-dosazen-pri-reseni",
+				RamcoveProgramy: &models.RivEmpty{},
+			}},
+		}
 	}
 
 	// Type-specific elements
@@ -450,15 +508,11 @@ func buildRivKlasifikace(row rivPublicationRow) models.RivKlasifikace {
 	}
 
 	if row.Keywords != "" {
-		parts := strings.Split(row.Keywords, ";")
-		for _, kw := range parts {
-			trimmed := strings.TrimSpace(kw)
-			if trimmed != "" {
-				klas.KlicoveSlova = append(klas.KlicoveSlova, models.RivKlicoveSlovo{
-					Jazyk: "eng",
-					Value: trimmed,
-				})
-			}
+		for _, kw := range splitKeywords(row.Keywords) {
+			klas.KlicoveSlova = append(klas.KlicoveSlova, models.RivKlicoveSlovo{
+				Jazyk: "eng",
+				Value: kw,
+			})
 		}
 	}
 
@@ -480,8 +534,8 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 
 	// Periodikum
 	v.Periodikum = &models.RivPeriodikum{
-		ISSN:  derefStr(row.Issn),
-		EISSN: derefStr(row.EIssn),
+		ISSN:  normalizeISSN(derefStr(row.Issn)),
+		EISSN: normalizeISSN(derefStr(row.EIssn)),
 		Nazev: row.LongJournalTitle,
 	}
 	if row.PublishingCountryCode != nil && *row.PublishingCountryCode != "" {
@@ -510,7 +564,7 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 	}
 
 	// WOS/Scopus identifiers
-	v.KodUtIsi = stripWosPrefix(wos)
+	v.KodUtIsi = normalizeWosID(wos)
 	v.EID = stripEidPrefix(eid)
 
 	// Open access
@@ -562,15 +616,15 @@ func buildTypeC(v *models.RivVysledek, row rivPublicationRow) {
 
 	// Identifiers
 	v.EID = stripEidPrefix(derefStr(row.EidScopus))
-	v.KodUtIsi = stripWosPrefix(derefStr(row.WosNumber))
+	v.KodUtIsi = normalizeWosID(derefStr(row.WosNumber))
 }
 
 func buildTypeD(v *models.RivVysledek, row rivPublicationRow) {
 	sbornik := &models.RivSbornik{
 		Nazev:       row.LongJournalTitle,
 		ISBN:        derefStr(row.ProceedingsIsbn),
-		ISSN:        derefStr(row.Issn),
-		EISSN:       derefStr(row.EIssn),
+		ISSN:        normalizeISSN(derefStr(row.Issn)),
+		EISSN:       normalizeISSN(derefStr(row.EIssn)),
 		FormaVydani: derefStr(row.PublishFormatCode),
 	}
 
@@ -612,7 +666,7 @@ func buildTypeD(v *models.RivVysledek, row rivPublicationRow) {
 
 	// Identifiers
 	v.EID = stripEidPrefix(derefStr(row.EidScopus))
-	v.KodUtIsi = stripWosPrefix(derefStr(row.WosNumber))
+	v.KodUtIsi = normalizeWosID(derefStr(row.WosNumber))
 }
 
 // --- Helper functions ---
@@ -638,10 +692,60 @@ func stripDoiPrefix(doi string) string {
 	return doi
 }
 
-func stripWosPrefix(wos string) string {
-	return strings.TrimPrefix(wos, "WOS:")
+func normalizeWosID(raw string) string {
+	id := strings.TrimPrefix(strings.TrimSpace(raw), "WOS:")
+	if id == "" {
+		return ""
+	}
+	for len(id) < 15 {
+		id = "0" + id
+	}
+	return id
 }
 
 func stripEidPrefix(eid string) string {
 	return strings.TrimPrefix(eid, "EID=")
+}
+
+func splitKeywords(raw string) []string {
+	sep := ";"
+	if !strings.Contains(raw, ";") && strings.Contains(raw, ",") {
+		sep = ","
+	}
+	var result []string
+	for _, kw := range strings.Split(raw, sep) {
+		kw = strings.TrimSpace(kw)
+		if kw != "" {
+			result = append(result, kw)
+		}
+	}
+	return result
+}
+
+func normalizeISSN(issn string) string {
+	issn = strings.TrimSpace(issn)
+	if len(issn) == 8 && !strings.Contains(issn, "-") {
+		return issn[:4] + "-" + issn[4:]
+	}
+	return issn
+}
+
+func mapLanguage(lang string) (string, error) {
+	if lang == "" {
+		return "eng", fmt.Errorf("language is empty, defaulting to eng")
+	}
+	if len(lang) == 3 {
+		return strings.ToLower(lang), nil
+	}
+	if code, ok := models.RivLanguageMap[lang]; ok {
+		return code, nil
+	}
+	// Try title-case normalization (e.g. "english" → "English")
+	if len(lang) > 1 {
+		normalized := strings.ToUpper(lang[:1]) + strings.ToLower(lang[1:])
+		if code, ok := models.RivLanguageMap[normalized]; ok {
+			return code, nil
+		}
+	}
+	return "eng", fmt.Errorf("unknown language %q — defaulting to eng", lang)
 }
