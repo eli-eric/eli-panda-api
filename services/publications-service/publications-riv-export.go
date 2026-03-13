@@ -70,8 +70,9 @@ type rivPublicationRow struct {
 
 // rivAggregatedPublication holds one publication with all its researchers
 type rivAggregatedPublication struct {
-	row         rivPublicationRow
-	researchers []rivResearcherData
+	row            rivPublicationRow
+	researchers    []rivResearcherData
+	mappedLanguage string
 }
 
 type rivResearcherData struct {
@@ -272,6 +273,12 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "no mediaType code set"})
 		}
 
+		langCode, langErr := mapLanguage(agg.row.Language)
+		if langErr != nil {
+			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: langErr.Error()})
+		}
+		agg.mappedLanguage = langCode
+
 		// Type-specific validation
 		switch mediaType {
 		case "J":
@@ -352,24 +359,26 @@ func buildRivVysledek(pub rivAggregatedPublication) models.RivVysledek {
 	mediaType := derefStr(row.MediaTypeCode)
 	druh := models.MediaTypeDruhMap[mediaType]
 
+	lang := pub.mappedLanguage
+
 	v := models.RivVysledek{
 		IdentifikacniKod: buildIdentifikacniKod(row.Code, row.YearOfPublication),
 		DuvernostUdaju:   "S",
 		RokUplatneni:     row.YearOfPublication,
 		KontrolniKod:     "0",
 		Druh:             druh,
-		Jazyk:            row.Language,
+		Jazyk:            lang,
 	}
 
 	// Titles
 	v.Nazvy = []models.RivNazev{{Jazyk: "eng", Value: row.Title}}
-	if row.Language != "" && row.Language != "eng" {
+	if lang != "" && lang != "eng" {
 		v.Nazvy = append(v.Nazvy, models.RivNazev{Jazyk: "#ORIG", Value: row.Title})
 	}
 
 	// Annotations
 	v.Anotace = []models.RivAnotace{{Jazyk: "eng", Value: row.Abstract}}
-	if row.Language != "" && row.Language != "eng" {
+	if lang != "" && lang != "eng" {
 		v.Anotace = append(v.Anotace, models.RivAnotace{Jazyk: "#ORIG", Value: row.Abstract})
 	}
 
@@ -644,4 +653,17 @@ func stripWosPrefix(wos string) string {
 
 func stripEidPrefix(eid string) string {
 	return strings.TrimPrefix(eid, "EID=")
+}
+
+func mapLanguage(lang string) (string, error) {
+	if lang == "" {
+		return "eng", fmt.Errorf("language is empty, defaulting to eng")
+	}
+	if len(lang) == 3 {
+		return strings.ToLower(lang), nil
+	}
+	if code, ok := models.RivLanguageMap[lang]; ok {
+		return code, nil
+	}
+	return "", fmt.Errorf("unknown language %q — not in RivLanguageMap, cannot map to ISO 639-2", lang)
 }
