@@ -257,7 +257,6 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 	idCodes := make(map[string]bool)
 	for _, uid := range pubOrder {
 		agg := pubMap[uid]
-		pubs = append(pubs, *agg)
 
 		// Validation
 		code := agg.row.Code
@@ -302,6 +301,9 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			if agg.row.WebLink == "" {
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: no webLink"})
 			}
+			if agg.row.OpenAccessCode == nil || *agg.row.OpenAccessCode == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: missing OpenAccessType, defaulting to C (restricted)"})
+			}
 		case "D":
 			hasIsbn := agg.row.ProceedingsIsbn != nil && *agg.row.ProceedingsIsbn != ""
 			hasIssn := agg.row.Issn != nil && *agg.row.Issn != ""
@@ -344,6 +346,9 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 				})
 			}
 		}
+
+		// Append AFTER all mutations (mappedLanguage etc.) so the copy has final values
+		pubs = append(pubs, *agg)
 	}
 
 	return pubs, warnings, nil
@@ -567,8 +572,11 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 	v.KodUtIsi = normalizeWosID(wos)
 	v.EID = stripEidPrefix(eid)
 
-	// Open access
+	// Open access — mandatory for type J, default to "C" (restricted) if missing
 	v.ZpusobPublikovani = derefStr(row.OpenAccessCode)
+	if v.ZpusobPublikovani == "" {
+		v.ZpusobPublikovani = "C"
+	}
 }
 
 func buildTypeC(v *models.RivVysledek, row rivPublicationRow) {
