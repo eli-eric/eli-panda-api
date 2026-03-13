@@ -105,8 +105,8 @@ func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte,
 	if len(year) >= 4 {
 		yy = year[2:4]
 	}
-	filename := fmt.Sprintf("RIV%s-%s-%s,R%s.xml",
-		yy, provider, models.RivInstitutionICO, models.RivDeliveryVersion)
+	filename := fmt.Sprintf("RIV%s-%s-%s,%s%s.xml",
+		yy, provider, models.RivInstitutionICO, models.RivDeliveryMode, models.RivDeliveryVersion)
 
 	return xmlOutput, filename, nil
 }

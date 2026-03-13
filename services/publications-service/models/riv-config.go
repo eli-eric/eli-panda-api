@@ -8,7 +8,7 @@ const (
 	RivOrgUnitCode       = "_____"
 	RivInstitutionNameCZ = "Extreme Light Infrastructure ERIC (ELI ERIC)"
 	RivInstitutionNameEN = "Extreme Light Infrastructure ERIC (ELI ERIC)"
-	RivLegalType         = "konsorcium-evropske-vyzkumne-infrastruktury"
+	RivLegalType         = "pravnicka-osoba-jina"
 
 	// Contact person for the delivery
 	RivContactName  = "Ladislav Půst"
@@ -16,6 +16,7 @@ const (
 	RivContactPhone = "+420775620803"
 
 	// Delivery metadata
+	RivDeliveryMode    = "R" // R=new, Z=update, V=deletion
 	RivDeliveryVersion = "01"
 	RivDeliveryRef     = "TODO-REF" // set per delivery
 )
