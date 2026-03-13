@@ -15,6 +15,9 @@ const (
 	RivContactEmail = "ladislav.pust@eli-beams.eu"
 	RivContactPhone = "+420775620803"
 
+	// Result metadata
+	RivDuvernostUdaju = "verejne-pristupne"
+
 	// Delivery metadata
 	RivDeliveryMode    = "R" // R=new, Z=update, V=deletion
 	RivDeliveryVersion = "01"
