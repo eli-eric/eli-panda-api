@@ -306,7 +306,7 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: no webLink"})
 			}
 			if agg.row.OpenAccessCode == nil || *agg.row.OpenAccessCode == "" {
-				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: missing OpenAccessType, defaulting to C (restricted)"})
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: missing OpenAccessType, defaulting to restricted-access"})
 			}
 			if agg.row.Volume > 0 && fmt.Sprintf("%d", agg.row.Volume) == agg.row.YearOfPublication {
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: volume equals yearOfPublication — treating as missing"})
@@ -582,10 +582,12 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 	v.KodUtIsi = normalizeWosID(wos)
 	v.EID = stripEidPrefix(eid)
 
-	// Open access — mandatory for type J, default to "C" (restricted) if missing
-	v.ZpusobPublikovani = derefStr(row.OpenAccessCode)
-	if v.ZpusobPublikovani == "" {
-		v.ZpusobPublikovani = "C"
+	// Open access — mandatory for type J, map code to long-form RIV value
+	oaCode := derefStr(row.OpenAccessCode)
+	if mapped, ok := models.OpenAccessCodeToRIV[oaCode]; ok {
+		v.ZpusobPublikovani = mapped
+	} else {
+		v.ZpusobPublikovani = "restricted-access"
 	}
 }
 
