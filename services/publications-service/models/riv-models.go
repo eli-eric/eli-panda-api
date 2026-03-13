@@ -168,12 +168,17 @@ type RivKlicoveSlovo struct {
 
 // RivNavaznosti represents funding linkages
 type RivNavaznosti struct {
-	Navaznost RivNavaznost `xml:"navaznost"`
+	Navaznost []RivNavaznost `xml:"navaznost"`
 }
 
 type RivNavaznost struct {
-	DruhVztahu                  string   `xml:"druh-vztahu,attr"`
-	InstitucionalniPodpora      RivEmpty `xml:"institucionalni-podpora-na-rozvoj-VO"`
+	DruhVztahu      string      `xml:"druh-vztahu,attr"`
+	Projekt         *RivProjekt `xml:"projekt,omitempty"`
+	RamcoveProgramy *RivEmpty   `xml:"ramcove-programy-EK,omitempty"`
+}
+
+type RivProjekt struct {
+	IdentifikacniKod string `xml:"identifikacni-kod,attr"`
 }
 
 // Type J specific
