@@ -14,6 +14,8 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+var issnRe = regexp.MustCompile(`^\d{4}-\d{3}[\dX]$`)
+
 // rivPublicationRow represents a single flat row returned by the RIV export Cypher query.
 // Each row is one researcher per publication — must be aggregated by publication UID.
 type rivPublicationRow struct {
@@ -310,7 +312,6 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 		}
 
 		// ISSN format validation
-		issnRe := regexp.MustCompile(`^\d{4}-\d{3}[\dX]$`)
 		if issn := normalizeISSN(derefStr(agg.row.Issn)); issn != "" && !issnRe.MatchString(issn) {
 			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: fmt.Sprintf("invalid ISSN format %q", issn)})
 		}
@@ -693,6 +694,9 @@ func stripDoiPrefix(doi string) string {
 
 func normalizeWosID(raw string) string {
 	id := strings.TrimPrefix(strings.TrimSpace(raw), "WOS:")
+	if id == "" {
+		return ""
+	}
 	for len(id) < 15 {
 		id = "0" + id
 	}
@@ -736,5 +740,12 @@ func mapLanguage(lang string) (string, error) {
 	if code, ok := models.RivLanguageMap[lang]; ok {
 		return code, nil
 	}
-	return "", fmt.Errorf("unknown language %q — not in RivLanguageMap, cannot map to ISO 639-2", lang)
+	// Try title-case normalization (e.g. "english" → "English")
+	if len(lang) > 1 {
+		normalized := strings.ToUpper(lang[:1]) + strings.ToLower(lang[1:])
+		if code, ok := models.RivLanguageMap[normalized]; ok {
+			return code, nil
+		}
+	}
+	return "eng", fmt.Errorf("unknown language %q — defaulting to eng", lang)
 }
