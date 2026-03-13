@@ -1,6 +1,7 @@
 package publicationsservice
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"regexp"
@@ -110,6 +111,14 @@ func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte,
 	}
 
 	xmlOutput := []byte(xml.Header + string(xmlBytes))
+
+	// IS VaVaI requires self-closing form for empty elements with status-udaje
+	xmlOutput = bytes.ReplaceAll(xmlOutput,
+		[]byte(`status-udaje="neuvedeno"></rocnik>`),
+		[]byte(`status-udaje="neuvedeno"/>`))
+	xmlOutput = bytes.ReplaceAll(xmlOutput,
+		[]byte(`status-udaje="neuvedeno"></cislo>`),
+		[]byte(`status-udaje="neuvedeno"/>`))
 
 	yy := year
 	if len(year) >= 4 {
