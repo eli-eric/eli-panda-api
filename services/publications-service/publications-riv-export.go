@@ -1,7 +1,6 @@
 package publicationsservice
 
 import (
-	"bytes"
 	"encoding/xml"
 	"fmt"
 	"regexp"
@@ -16,6 +15,7 @@ import (
 )
 
 var issnRe = regexp.MustCompile(`^\d{4}-\d{3}[\dX]$`)
+var emptyElementRe = regexp.MustCompile(`<([^/\s>][^>]*)></[^>]+>`)
 
 // rivPublicationRow represents a single flat row returned by the RIV export Cypher query.
 // Each row is one researcher per publication — must be aggregated by publication UID.
@@ -112,13 +112,8 @@ func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte,
 
 	xmlOutput := []byte(xml.Header + string(xmlBytes))
 
-	// IS VaVaI requires self-closing form for empty elements with status-udaje
-	xmlOutput = bytes.ReplaceAll(xmlOutput,
-		[]byte(`status-udaje="neuvedeno"></rocnik>`),
-		[]byte(`status-udaje="neuvedeno"/>`))
-	xmlOutput = bytes.ReplaceAll(xmlOutput,
-		[]byte(`status-udaje="neuvedeno"></cislo>`),
-		[]byte(`status-udaje="neuvedeno"/>`))
+	// IS VaVaI requires self-closing form for all empty elements
+	xmlOutput = emptyElementRe.ReplaceAll(xmlOutput, []byte(`<$1/>`))
 
 	yy := year
 	if len(year) >= 4 {
