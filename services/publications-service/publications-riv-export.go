@@ -304,6 +304,11 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			if agg.row.OpenAccessCode == nil || *agg.row.OpenAccessCode == "" {
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: missing OpenAccessType, defaulting to C (restricted)"})
 			}
+			if agg.row.Volume > 0 && fmt.Sprintf("%d", agg.row.Volume) == agg.row.YearOfPublication {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: volume equals yearOfPublication — treating as missing"})
+			} else if agg.row.Volume == 0 {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: no volume number"})
+			}
 		case "D":
 			hasIsbn := agg.row.ProceedingsIsbn != nil && *agg.row.ProceedingsIsbn != ""
 			hasIssn := agg.row.Issn != nil && *agg.row.Issn != ""
@@ -547,10 +552,11 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 		v.Periodikum.Vydavatel = &models.RivVydavatel{Stat: *row.PublishingCountryCode}
 	}
 
-	// Rocnik
+	// Rocnik — reject volume if it matches yearOfPublication (data error)
 	v.Rocnik = &models.RivRocnik{}
-	if row.Volume > 0 {
-		v.Rocnik.Value = fmt.Sprintf("%d", row.Volume)
+	vol := row.Volume
+	if vol > 0 && fmt.Sprintf("%d", vol) != row.YearOfPublication {
+		v.Rocnik.Value = fmt.Sprintf("%d", vol)
 	} else {
 		v.Rocnik.StatusUdaje = "neuvedeno"
 	}
