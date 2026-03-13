@@ -31,6 +31,14 @@ var MediaTypeDruhMap = map[string]string{
 	"D": "clanek-ve-sborniku",
 }
 
+// OpenAccessCodeToRIV maps OpenAccessType.code to RIV zpusob-publikovani long-form values
+var OpenAccessCodeToRIV = map[string]string{
+	"A": "open-access",
+	"B": "embargoed-access",
+	"C": "restricted-access",
+	"D": "metadata-only",
+}
+
 // RivLanguageMap maps English language names to ISO 639-2 three-letter codes
 var RivLanguageMap = map[string]string{
 	// Germanic
