@@ -3,9 +3,12 @@ package publicationsservice
 import (
 	"encoding/xml"
 	"fmt"
+	"strconv"
+	"strings"
+	"time"
+
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -92,7 +95,7 @@ func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte,
 		log.Warn().Int("warnings", len(warnings)).Msg("RIV export has validation warnings")
 	}
 
-	dodavka := buildRivDodavka(year, provider, pubs)
+	dodavka := buildRivDodavka(provider, pubs)
 
 	xmlBytes, err := xml.MarshalIndent(dodavka, "", "  ")
 	if err != nil {
@@ -301,7 +304,7 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 	return pubs, warnings, nil
 }
 
-func buildRivDodavka(year string, provider string, pubs []rivAggregatedPublication) models.RivDodavka {
+func buildRivDodavka(provider string, pubs []rivAggregatedPublication) models.RivDodavka {
 	vysledky := make([]models.RivVysledek, 0, len(pubs))
 	for _, pub := range pubs {
 		v := buildRivVysledek(pub)
@@ -313,7 +316,7 @@ func buildRivDodavka(year string, provider string, pubs []rivAggregatedPublicati
 		Zahlavi: models.RivZahlavi{
 			Rozsah: models.RivRozsah{
 				InformacniOblast: "RIV",
-				ObdobiSberu:      year,
+				ObdobiSberu:      strconv.Itoa(time.Now().Year()),
 				Predkladatel: models.RivPredkladatel{
 					Subjekt: models.RivSubjektPredkladatel{
 						Druh: models.RivLegalType,
