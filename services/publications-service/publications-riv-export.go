@@ -313,12 +313,37 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 			} else if agg.row.Volume == 0 {
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: no volume number"})
 			}
+			if agg.row.Issue == nil || *agg.row.Issue == 0 {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: issue missing — using yearOfPublication as cislo fallback"})
+			}
+		case "C":
+			if agg.row.BookTitle == nil || *agg.row.BookTitle == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type C: bookTitle missing"})
+			}
+			if agg.row.Isbn == nil || *agg.row.Isbn == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type C: isbn missing"})
+			}
+			if agg.row.PublishFormatCode == nil || *agg.row.PublishFormatCode == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type C: publishFormat missing"})
+			}
 		case "D":
 			hasIsbn := agg.row.ProceedingsIsbn != nil && *agg.row.ProceedingsIsbn != ""
 			hasIssn := agg.row.Issn != nil && *agg.row.Issn != ""
 			hasEissn := agg.row.EIssn != nil && *agg.row.EIssn != ""
 			if !hasIsbn && !hasIssn && !hasEissn {
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type D: no proceedingsIsbn, issn, or eissn"})
+			}
+			if agg.row.PublishFormatCode == nil || *agg.row.PublishFormatCode == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type D: publishFormat missing"})
+			}
+			if agg.row.ConferenceDate == nil || *agg.row.ConferenceDate == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type D: conferenceDate missing"})
+			}
+			if agg.row.ConferencePlace == nil || *agg.row.ConferencePlace == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type D: conferencePlace missing"})
+			}
+			if agg.row.ConferenceScopeCode == nil || *agg.row.ConferenceScopeCode == "" {
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type D: conferenceScope missing"})
 			}
 		}
 
@@ -565,12 +590,12 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 		v.Rocnik.StatusUdaje = "neuvedeno"
 	}
 
-	// Cislo
+	// Cislo — fallback to yearOfPublication per RIV spec (cislo does not support neuvedeno)
 	v.Cislo = &models.RivCislo{}
 	if row.Issue != nil && *row.Issue > 0 {
 		v.Cislo.Value = fmt.Sprintf("%d", *row.Issue)
 	} else {
-		v.Cislo.StatusUdaje = "neuvedeno"
+		v.Cislo.Value = row.YearOfPublication
 	}
 
 	// Pages
