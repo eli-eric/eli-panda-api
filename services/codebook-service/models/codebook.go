@@ -69,3 +69,5 @@ var DEPARTMENT_CODEBOOK CodebookType = CodebookType{Code: "DEPARTMENT", Type: "S
 var EXPERIMENTAL_SYSTEM_CODEBOOK CodebookType = CodebookType{Code: "EXPERIMENTAL_SYSTEM", Type: "AUTOCOMPLETE", RoleEdit: shared.ROLE_PUBLICATIONS_EDIT, NodeLabel: "ExperimentalSystem", FacilityRelation: "BELONGS_TO_FACILITY"}
 var GRANT_GROUP_CODEBOOK CodebookType = CodebookType{Code: "GRANT_GROUP", Type: "SIMPLE", RoleEdit: shared.ROLE_PUBLICATIONS_EDIT, NodeLabel: "GrantGroup", FacilityRelation: "BELONGS_TO_FACILITY"}
 var MEDIA_TYPE_CODEBOOK CodebookType = CodebookType{Code: "MEDIA_TYPE", Type: "SIMPLE", RoleEdit: shared.ROLE_PUBLICATIONS_EDIT, NodeLabel: "MediaType"}
+var PUBLISH_FORMAT_CODEBOOK CodebookType = CodebookType{Code: "PUBLISH_FORMAT", Type: "SIMPLE", RoleEdit: shared.ROLE_PUBLICATIONS_EDIT, NodeLabel: "PublishFormat"}
+var CONFERENCE_SCOPE_CODEBOOK CodebookType = CodebookType{Code: "CONFERENCE_SCOPE", Type: "SIMPLE", RoleEdit: shared.ROLE_PUBLICATIONS_EDIT, NodeLabel: "ConferenceScope"}

@@ -3133,6 +3133,97 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/publications/export/riv": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Export publications for a given year and provider as RIV26A XML file for IS VaVaI",
+                "produces": [
+                    "application/xml"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Export publications as RIV XML",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Year of publication",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider code (grant group code)",
+                        "name": "provider",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "XML file"
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications/export/riv/validate": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns validation warnings and counts for publications in a given year for a provider",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Validate publications for RIV export",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Year of publication",
+                        "name": "year",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider code (grant group code)",
+                        "name": "provider",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.RivValidationResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/researcher": {
             "post": {
                 "security": [
@@ -3612,7 +3703,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Batch relationship creation result",
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/models.BatchRelationshipResponse"
                         }
                     },
                     "400": {
@@ -4402,6 +4493,103 @@ const docTemplate = `{
                                 "$ref": "#/definitions/models.SystemPhysicalItemInfo"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/graph": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Modes precedence: load-more when relationshipType set, paged-initial when limitPerRelationshipType set, filtered-complete when filters are set, legacy otherwise.\nFilters are supported in load-more and paged-initial modes. Only relationshipType + limitPerRelationshipType is invalid (400).\nInvalid values still return 400 (invalid relationship/system levels, malformed csv, invalid offset/limit).\nRoot system node is always kept as context; node filters apply to related nodes.\nExamples: /v1/system/{uid}/graph?systemLevels=SUBSYSTEMS_AND_PARTS\u0026limitPerRelationshipType=20 ; /v1/system/{uid}/graph?search=pump\u0026relationshipType=HAS_SUBSYSTEM\u0026offset=20\u0026limit=10 ; /v1/system/{uid}/graph?search=pump\u0026systemLevels=TECHNOLOGY_UNIT",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system graph by UID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max links per relationship type (initial mode)",
+                        "name": "limitPerRelationshipType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Include relationship stats in response meta (all graph modes)",
+                        "name": "includeRelationshipStats",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relationship type for load-more mode",
+                        "name": "relationshipType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset for load-more mode (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit for load-more mode (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Node search by name/systemCode (contains, case-insensitive)",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV system levels, eg TECHNOLOGY_UNIT,KEY_SYSTEMS,TRASH",
+                        "name": "systemLevels",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "System type name (case-insensitive exact)",
+                        "name": "systemType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "CSV relationship types",
+                        "name": "relationshipTypes",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemGraphResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "System not found"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5648,6 +5836,37 @@ const docTemplate = `{
                 }
             }
         },
+        "models.BatchRelationshipResponse": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "skippedDetails": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.BatchRelationshipSkipped"
+                    }
+                }
+            }
+        },
+        "models.BatchRelationshipSkipped": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "sourceUid": {
+                    "type": "string"
+                },
+                "targetUid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CatalogueCategory": {
             "type": "object",
             "properties": {
@@ -6632,6 +6851,14 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "bookPagesCount": {
+                    "description": "total pages of the book",
+                    "type": "integer"
+                },
+                "bookTitle": {
+                    "description": "title of the book (for book chapters)",
+                    "type": "string"
+                },
                 "citeAs": {
                     "description": "citeAs is the citation of the publication",
                     "type": "string"
@@ -6640,12 +6867,32 @@ const docTemplate = `{
                     "description": "code is the internal code of the publication",
                     "type": "string"
                 },
+                "conferenceDate": {
+                    "description": "conference date (YYYY or YYYY-MM-DD)",
+                    "type": "string"
+                },
+                "conferencePlace": {
+                    "description": "conference place",
+                    "type": "string"
+                },
+                "conferenceScopeCb": {
+                    "description": "conference scope (national/european/worldwide)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
                 "dateOfPublication": {
                     "description": "dateOfPublication is the date of publication of the publication",
                     "type": "string"
                 },
                 "doi": {
                     "description": "doi is the unique identifier of the publication",
+                    "type": "string"
+                },
+                "editionVolume": {
+                    "description": "edition or volume number",
                     "type": "string"
                 },
                 "eidScopus": {
@@ -6701,6 +6948,10 @@ const docTemplate = `{
                 "impactFactor": {
                     "description": "impactFactor is the impact factor of the publication",
                     "type": "number"
+                },
+                "isbn": {
+                    "description": "Type C only",
+                    "type": "string"
                 },
                 "issn": {
                     "description": "issn is the issn of the publication",
@@ -6768,6 +7019,26 @@ const docTemplate = `{
                 },
                 "pdfFileUrl": {
                     "description": "pdfFileUrl is the url of the pdf file of the publication",
+                    "type": "string"
+                },
+                "proceedingsIsbn": {
+                    "description": "Type D only",
+                    "type": "string"
+                },
+                "publishFormatCb": {
+                    "description": "publish format (Print/Online/CD)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.Codebook"
+                        }
+                    ]
+                },
+                "publishPlace": {
+                    "description": "place of publication",
+                    "type": "string"
+                },
+                "publisher": {
+                    "description": "Type C \u0026 D shared fields",
                     "type": "string"
                 },
                 "publishingCountry": {
@@ -6910,6 +7181,34 @@ const docTemplate = `{
                 },
                 "responsible": {
                     "$ref": "#/definitions/models.EmployeeInfo"
+                }
+            }
+        },
+        "models.RivValidationResult": {
+            "type": "object",
+            "properties": {
+                "totalPublications": {
+                    "type": "integer"
+                },
+                "validPublications": {
+                    "type": "integer"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.RivValidationWarning"
+                    }
+                }
+            }
+        },
+        "models.RivValidationWarning": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "publicationCode": {
+                    "type": "string"
                 }
             }
         },
@@ -7255,6 +7554,126 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphLink": {
+            "type": "object",
+            "properties": {
+                "relationship": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphMeta": {
+            "type": "object",
+            "properties": {
+                "filterApplied": {
+                    "type": "boolean"
+                },
+                "hiddenLinksTotal": {
+                    "type": "integer"
+                },
+                "isPartial": {
+                    "type": "boolean"
+                },
+                "relationshipStats": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.SystemGraphRelationshipStat"
+                    }
+                },
+                "totalMatchedLinks": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.SystemGraphNode": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphPage": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "returned": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemGraphRelationshipStat": {
+            "type": "object",
+            "properties": {
+                "hasMore": {
+                    "type": "boolean"
+                },
+                "returned": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.SystemGraphResponse": {
+            "type": "object",
+            "properties": {
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemGraphLink"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/models.SystemGraphMeta"
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemGraphNode"
+                    }
+                },
+                "page": {
+                    "$ref": "#/definitions/models.SystemGraphPage"
                 }
             }
         },
