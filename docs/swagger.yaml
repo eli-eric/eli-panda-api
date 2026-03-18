@@ -72,6 +72,15 @@ definitions:
       totalCount:
         type: integer
     type: object
+  helpers.PaginationResult-models_Zone:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/models.Zone'
+        type: array
+      totalCount:
+        type: integer
+    type: object
   helpers.RelatedNodeLabelAmount:
     properties:
       count:
@@ -1710,12 +1719,8 @@ definitions:
         type: string
       name:
         type: string
-      parentCode:
-        type: string
-      parentName:
-        type: string
-      parentUid:
-        type: string
+      parentZone:
+        $ref: '#/definitions/models.Codebook'
       uid:
         type: string
     type: object
@@ -5365,9 +5370,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/models.Zone'
-            type: array
+            $ref: '#/definitions/helpers.PaginationResult-models_Zone'
         "500":
           description: Internal Server Error
       security:

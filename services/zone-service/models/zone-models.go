@@ -1,12 +1,14 @@
 package models
 
+import (
+	codebookModels "panda/apigateway/services/codebook-service/models"
+)
+
 type Zone struct {
-	UID        string  `json:"uid" neo4j:"key,uid"`
-	Name       string  `json:"name" neo4j:"prop,name"`
-	Code       string  `json:"code" neo4j:"prop,code"`
-	ParentUID  *string `json:"parentUid,omitempty"`
-	ParentName *string `json:"parentName,omitempty"`
-	ParentCode *string `json:"parentCode,omitempty"`
+	UID        string                   `json:"uid" neo4j:"key,uid"`
+	Name       string                   `json:"name" neo4j:"prop,name"`
+	Code       string                   `json:"code" neo4j:"prop,code"`
+	ParentZone *codebookModels.Codebook `json:"parentZone,omitempty"`
 }
 
 type ZoneCreateRequest struct {

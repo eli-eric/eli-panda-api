@@ -5647,10 +5647,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Zone"
-                            }
+                            "$ref": "#/definitions/helpers.PaginationResult-models_Zone"
                         }
                     },
                     "500": {
@@ -5974,6 +5971,20 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.SystemCodesResult"
+                    }
+                },
+                "totalCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "helpers.PaginationResult-models_Zone": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Zone"
                     }
                 },
                 "totalCount": {
@@ -8465,14 +8476,8 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "parentCode": {
-                    "type": "string"
-                },
-                "parentName": {
-                    "type": "string"
-                },
-                "parentUid": {
-                    "type": "string"
+                "parentZone": {
+                    "$ref": "#/definitions/models.Codebook"
                 },
                 "uid": {
                     "type": "string"

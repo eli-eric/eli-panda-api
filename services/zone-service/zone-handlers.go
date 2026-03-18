@@ -33,7 +33,7 @@ func NewZoneHandlers(svc IZoneService) IZoneHandlers {
 // @Tags Zones
 // @Security BearerAuth
 // @Produce json
-// @Success 200 {array} models.Zone
+// @Success 200 {object} helpers.PaginationResult[models.Zone]
 // @Failure 500 "Internal Server Error"
 // @Router /v1/zones [get]
 func (h *ZoneHandlers) GetAllZones() echo.HandlerFunc {
@@ -46,7 +46,12 @@ func (h *ZoneHandlers) GetAllZones() echo.HandlerFunc {
 			return echo.ErrInternalServerError
 		}
 
-		return c.JSON(http.StatusOK, zones)
+		paginationResult := helpers.PaginationResult[models.Zone]{
+			TotalCount: int64(len(zones)),
+			Data:       zones,
+		}
+
+		return c.JSON(http.StatusOK, paginationResult)
 	}
 }
 

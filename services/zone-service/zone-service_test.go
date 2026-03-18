@@ -59,7 +59,7 @@ func TestCreateRootZone(t *testing.T) {
 	dbResult, err := service.GetZoneByUID(result.UID, testFacilityCode)
 	assert.NoError(t, err)
 	assert.Equal(t, req.Name, dbResult.Name)
-	assert.Nil(t, dbResult.ParentUID)
+	assert.Nil(t, dbResult.ParentZone)
 
 	cleanupZone(result.UID)
 	cleanupUser(userUID)
@@ -92,8 +92,8 @@ func TestCreateSubZone(t *testing.T) {
 	// verify parent info
 	dbSub, err := service.GetZoneByUID(sub.UID, testFacilityCode)
 	assert.NoError(t, err)
-	assert.NotNil(t, dbSub.ParentUID)
-	assert.Equal(t, parent.UID, *dbSub.ParentUID)
+	assert.NotNil(t, dbSub.ParentZone)
+	assert.Equal(t, parent.UID, dbSub.ParentZone.UID)
 
 	cleanupZone(sub.UID)
 	cleanupZone(parent.UID)
@@ -178,8 +178,8 @@ func TestGetAllZones(t *testing.T) {
 	for _, z := range zones {
 		if z.UID == sub.UID {
 			found = true
-			assert.NotNil(t, z.ParentUID)
-			assert.Equal(t, root.UID, *z.ParentUID)
+			assert.NotNil(t, z.ParentZone)
+			assert.Equal(t, root.UID, z.ParentZone.UID)
 			break
 		}
 	}
@@ -262,8 +262,8 @@ func TestUpdateZone_ReassignParent(t *testing.T) {
 		Name: "Sub", Code: sub.Code, ParentUID: &rootB.UID,
 	})
 	assert.NoError(t, err)
-	assert.NotNil(t, updated.ParentUID)
-	assert.Equal(t, rootB.UID, *updated.ParentUID)
+	assert.NotNil(t, updated.ParentZone)
+	assert.Equal(t, rootB.UID, updated.ParentZone.UID)
 
 	cleanupZone(sub.UID)
 	cleanupZone(rootA.UID)
@@ -419,8 +419,8 @@ func TestImportZones_WithParentCode(t *testing.T) {
 	zones, _ := service.GetAllZones(testFacilityCode)
 	for _, z := range zones {
 		if z.Code == childCode {
-			assert.NotNil(t, z.ParentUID)
-			assert.Equal(t, parent.UID, *z.ParentUID)
+			assert.NotNil(t, z.ParentZone)
+			assert.Equal(t, parent.UID, z.ParentZone.UID)
 		}
 	}
 

@@ -10,7 +10,7 @@ func GetAllZonesQuery(facilityCode string) helpers.DatabaseQuery {
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
 				RETURN {uid: z.uid, name: z.name, code: z.code,
-						parentUid: parent.uid, parentName: parent.name, parentCode: parent.code} as zone
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone
 				ORDER BY coalesce(parent.code, z.code), z.code`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
@@ -25,7 +25,7 @@ func GetZoneByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
 				RETURN {uid: z.uid, name: z.name, code: z.code,
-						parentUid: parent.uid, parentName: parent.name, parentCode: parent.code} as zone`,
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
 			"uid":          uid,
@@ -173,7 +173,7 @@ func GetZoneByCodeAndFacilityQuery(code, facilityCode string) helpers.DatabaseQu
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
 				RETURN {uid: z.uid, name: z.name, code: z.code,
-						parentUid: parent.uid, parentName: parent.name, parentCode: parent.code} as zone`,
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
 			"code":         code,

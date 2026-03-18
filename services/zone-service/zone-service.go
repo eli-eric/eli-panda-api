@@ -214,7 +214,7 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 				}
 
 				// check parent is root
-				if parentZone.ParentUID != nil {
+				if parentZone.ParentZone != nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("row %d: parent zone '%s' is already a subzone (max 2 levels)", rowNum, parentCode))
 					continue
 				}
