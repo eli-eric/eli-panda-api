@@ -1704,6 +1704,50 @@ definitions:
       volume:
         type: string
     type: object
+  models.Zone:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      parentCode:
+        type: string
+      parentName:
+        type: string
+      parentUid:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.ZoneCreateRequest:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      parentUid:
+        type: string
+    type: object
+  models.ZoneImportResult:
+    properties:
+      created:
+        type: integer
+      errors:
+        items:
+          type: string
+        type: array
+      skipped:
+        type: integer
+    type: object
+  models.ZoneUpdateRequest:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      parentUid:
+        type: string
+    type: object
   panda_apigateway_services_catalogue-service_models.CatalogueItemDetail:
     properties:
       property:
@@ -5312,6 +5356,157 @@ paths:
       summary: Get UUID V4
       tags:
       - General
+  /v1/zones:
+    get:
+      description: Get all zones for the current facility
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Zone'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get all zones
+      tags:
+      - Zones
+    post:
+      consumes:
+      - application/json
+      description: Create a new zone
+      parameters:
+      - description: Zone
+        in: body
+        name: zone
+        required: true
+        schema:
+          $ref: '#/definitions/models.ZoneCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Zone'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create zone
+      tags:
+      - Zones
+  /v1/zones/{uid}:
+    delete:
+      description: Soft delete zone (rejects if zone has subzones or system references)
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "409":
+          description: Conflict
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete zone
+      tags:
+      - Zones
+    get:
+      description: Get zone by uid
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Zone'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get zone by uid
+      tags:
+      - Zones
+    put:
+      consumes:
+      - application/json
+      description: Update zone name, code and optionally reassign parent
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Zone
+        in: body
+        name: zone
+        required: true
+        schema:
+          $ref: '#/definitions/models.ZoneUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Zone'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update zone
+      tags:
+      - Zones
+  /v1/zones/import:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Import zones from CSV file. Insert-only, skips existing by code
+        match.
+      parameters:
+      - description: CSV file
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ZoneImportResult'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Import zones from CSV
+      tags:
+      - Zones
 schemes:
 - http
 securityDefinitions:

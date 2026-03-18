@@ -200,7 +200,7 @@ func (h *ZoneHandlers) DeleteZone() echo.HandlerFunc {
 // @Security BearerAuth
 // @Accept multipart/form-data
 // @Produce json
-// @Param file formance file true "CSV file"
+// @Param file formData file true "CSV file"
 // @Success 200 {object} models.ZoneImportResult
 // @Failure 400 "Bad Request"
 // @Failure 500 "Internal Server Error"
