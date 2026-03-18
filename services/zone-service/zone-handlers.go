@@ -1,6 +1,7 @@
 package zoneservice
 
 import (
+	"encoding/json"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/zone-service/models"
@@ -39,15 +40,24 @@ func NewZoneHandlers(svc IZoneService) IZoneHandlers {
 func (h *ZoneHandlers) GetAllZones() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		facilityCode := c.Get("facilityCode").(string)
+		search := c.QueryParam("search")
 
-		zones, err := h.zoneService.GetAllZones(facilityCode)
+		pagingObject := new(helpers.Pagination)
+		pagination := c.QueryParam("pagination")
+		json.Unmarshal([]byte(pagination), &pagingObject)
+
+		sortingObject := new([]helpers.Sorting)
+		sorting := c.QueryParam("sorting")
+		json.Unmarshal([]byte(sorting), &sortingObject)
+
+		zones, totalCount, err := h.zoneService.GetAllZones(facilityCode, search, pagingObject.Page, pagingObject.PageSize, sortingObject)
 		if err != nil {
 			log.Error().Err(err).Msg("Error getting zones")
 			return echo.ErrInternalServerError
 		}
 
 		paginationResult := helpers.PaginationResult[models.Zone]{
-			TotalCount: int64(len(zones)),
+			TotalCount: totalCount,
 			Data:       zones,
 		}
 

@@ -1,22 +1,72 @@
 package zoneservice
 
 import (
+	"fmt"
 	"panda/apigateway/helpers"
 )
 
-func GetAllZonesQuery(facilityCode string) helpers.DatabaseQuery {
-	return helpers.DatabaseQuery{
-		Query: `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
+func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]helpers.Sorting) helpers.DatabaseQuery {
+	query := `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
-				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
-				RETURN {uid: z.uid, name: z.name, code: z.code,
-						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone
-				ORDER BY coalesce(parent.code, z.code), z.code`,
+				AND ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search))
+				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)`
+
+	query += getZoneSortingClause(sorting)
+	query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
+
+	query += ` RETURN {uid: z.uid, name: z.name, code: z.code,
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`
+
+	return helpers.DatabaseQuery{
+		Query:       query,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
 			"facilityCode": facilityCode,
+			"search":       search,
 		},
 	}
+}
+
+func GetAllZonesCountQuery(facilityCode, search string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
+				WHERE (z.deleted IS NULL OR z.deleted <> true)
+				AND ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search))
+				RETURN count(z) as totalCount`,
+		ReturnAlias: "totalCount",
+		Parameters: map[string]interface{}{
+			"facilityCode": facilityCode,
+			"search":       search,
+		},
+	}
+}
+
+func getZoneSortingClause(sorting *[]helpers.Sorting) string {
+	if sorting == nil || len(*sorting) == 0 {
+		return " ORDER BY coalesce(parent.code, z.code), z.code "
+	}
+
+	orderBy := " ORDER BY "
+	for i, sort := range *sorting {
+		sortField := mapZoneSortField(sort.ID)
+		direction := helpers.GetSortingDirectionString(sort.DESC)
+		if i > 0 {
+			orderBy += ", "
+		}
+		orderBy += fmt.Sprintf("%s %s", sortField, direction)
+	}
+	return orderBy
+}
+
+func mapZoneSortField(fieldID string) string {
+	fieldMap := map[string]string{
+		"name": "z.name",
+		"code": "z.code",
+	}
+	if mapped, ok := fieldMap[fieldID]; ok {
+		return mapped
+	}
+	return "z." + fieldID
 }
 
 func GetZoneByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {

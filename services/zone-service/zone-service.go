@@ -18,7 +18,7 @@ type ZoneService struct {
 }
 
 type IZoneService interface {
-	GetAllZones(facilityCode string) ([]models.Zone, error)
+	GetAllZones(facilityCode, search string, page, pageSize int, sorting *[]helpers.Sorting) ([]models.Zone, int64, error)
 	GetZoneByUID(uid, facilityCode string) (models.Zone, error)
 	CreateZone(facilityCode, userUID string, req *models.ZoneCreateRequest) (models.Zone, error)
 	UpdateZone(uid, facilityCode, userUID string, req *models.ZoneUpdateRequest) (models.Zone, error)
@@ -30,14 +30,31 @@ func NewZoneService(driver *neo4j.Driver) IZoneService {
 	return &ZoneService{neo4jDriver: driver}
 }
 
-func (svc *ZoneService) GetAllZones(facilityCode string) (result []models.Zone, err error) {
+func (svc *ZoneService) GetAllZones(facilityCode, search string, page, pageSize int, sorting *[]helpers.Sorting) (result []models.Zone, totalCount int64, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
-	query := GetAllZonesQuery(facilityCode)
+	limit := pageSize
+	if limit <= 0 {
+		limit = 50
+	}
+	skip := 0
+	if page > 1 {
+		skip = (page - 1) * limit
+	}
+
+	query := GetAllZonesQuery(facilityCode, search, skip, limit, sorting)
 	result, err = helpers.GetNeo4jArrayOfNodes[models.Zone](session, query)
 	helpers.ProcessArrayResult(&result, err)
-	return result, err
+
+	if err != nil {
+		return result, 0, err
+	}
+
+	countQuery := GetAllZonesCountQuery(facilityCode, search)
+	totalCount, err = helpers.GetNeo4jSingleRecordSingleValue[int64](session, countQuery)
+
+	return result, totalCount, err
 }
 
 func (svc *ZoneService) GetZoneByUID(uid, facilityCode string) (result models.Zone, err error) {

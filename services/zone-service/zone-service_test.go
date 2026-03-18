@@ -169,7 +169,7 @@ func TestGetAllZones(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	zones, err := service.GetAllZones(testFacilityCode)
+	zones, _, err := service.GetAllZones(testFacilityCode, "", 1, 100, nil)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(zones), 2)
 
@@ -416,7 +416,7 @@ func TestImportZones_WithParentCode(t *testing.T) {
 	assert.Equal(t, 1, result.Created)
 
 	// verify child has parent
-	zones, _ := service.GetAllZones(testFacilityCode)
+	zones, _ := service.GetAllZones(testFacilityCode, "", 1, 100, nil)
 	for _, z := range zones {
 		if z.Code == childCode {
 			assert.NotNil(t, z.ParentZone)
