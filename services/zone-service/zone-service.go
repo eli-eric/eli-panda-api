@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"mime/multipart"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/zone-service/models"
 	"strings"
@@ -24,7 +23,7 @@ type IZoneService interface {
 	CreateZone(facilityCode, userUID string, req *models.ZoneCreateRequest) (models.Zone, error)
 	UpdateZone(uid, facilityCode, userUID string, req *models.ZoneUpdateRequest) (models.Zone, error)
 	DeleteZone(uid, facilityCode, userUID string) error
-	ImportZones(facilityCode, userUID string, file multipart.File) (models.ZoneImportResult, error)
+	ImportZones(facilityCode, userUID string, file io.Reader) (models.ZoneImportResult, error)
 }
 
 func NewZoneService(driver *neo4j.Driver) IZoneService {
@@ -152,7 +151,7 @@ func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 	return err
 }
 
-func (svc *ZoneService) ImportZones(facilityCode, userUID string, file multipart.File) (result models.ZoneImportResult, err error) {
+func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader) (result models.ZoneImportResult, err error) {
 	reader := csv.NewReader(file)
 	reader.TrimLeadingSpace = true
 
