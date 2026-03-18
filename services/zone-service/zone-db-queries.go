@@ -8,9 +8,10 @@ import (
 func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]helpers.Sorting) helpers.DatabaseQuery {
 	query := `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
-				AND ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search))
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
-				WITH z, parent`
+				WITH z, parent
+				WHERE ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search)
+					OR toLower(parent.name) CONTAINS toLower($search) OR toLower(parent.code) CONTAINS toLower($search))`
 
 	query += getZoneSortingClause(sorting)
 	query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
@@ -32,7 +33,10 @@ func GetAllZonesCountQuery(facilityCode, search string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
-				AND ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search))
+				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
+				WITH z, parent
+				WHERE ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search)
+					OR toLower(parent.name) CONTAINS toLower($search) OR toLower(parent.code) CONTAINS toLower($search))
 				RETURN count(z) as totalCount`,
 		ReturnAlias: "totalCount",
 		Parameters: map[string]interface{}{
