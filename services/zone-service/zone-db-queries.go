@@ -9,7 +9,8 @@ func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]h
 	query := `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				AND ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search))
-				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)`
+				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
+				WITH z, parent`
 
 	query += getZoneSortingClause(sorting)
 	query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
@@ -60,8 +61,9 @@ func getZoneSortingClause(sorting *[]helpers.Sorting) string {
 
 func mapZoneSortField(fieldID string) string {
 	fieldMap := map[string]string{
-		"name": "z.name",
-		"code": "z.code",
+		"name":       "z.name",
+		"code":       "z.code",
+		"parentZone": "parent.name",
 	}
 	if mapped, ok := fieldMap[fieldID]; ok {
 		return mapped
