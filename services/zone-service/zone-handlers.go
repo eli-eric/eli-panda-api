@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/zone-service/models"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
@@ -247,7 +246,7 @@ func (h *ZoneHandlers) ImportZones() echo.HandlerFunc {
 
 		result, err := h.zoneService.ImportZones(facilityCode, userUID, file)
 		if err != nil {
-			if strings.Contains(err.Error(), "CSV") {
+			if errors.Is(err, ErrCSVHeader) || errors.Is(err, ErrCSVColumns) {
 				return helpers.BadRequest(err.Error())
 			}
 			log.Error().Err(err).Msg("Error importing zones")

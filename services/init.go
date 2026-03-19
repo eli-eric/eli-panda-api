@@ -85,5 +85,5 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	zoneSvc := zoneservice.NewZoneService(neo4jDriver)
 	zoneHandlers := zoneservice.NewZoneHandlers(zoneSvc)
 	zoneservice.MapZoneRoutes(e, zoneHandlers, jwtMiddleware)
-	log.Info().Msg("Zone      service initialized successfully.")
+	log.Info().Msg("Zone     service initialized successfully.")
 }

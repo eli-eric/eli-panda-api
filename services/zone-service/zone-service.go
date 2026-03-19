@@ -21,6 +21,8 @@ var (
 	ErrMaxDepth       = errors.New("parent zone is already a subzone (max 2 levels of nesting)")
 	ErrConflictSub    = errors.New("zone has subzones")
 	ErrConflictSys    = errors.New("zone is referenced by systems")
+	ErrCSVHeader      = errors.New("failed to read CSV header")
+	ErrCSVColumns     = errors.New("CSV must have 'name' and 'code' columns")
 )
 
 type ZoneService struct {
@@ -219,12 +221,12 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 	// read header
 	header, err := reader.Read()
 	if err != nil {
-		return result, fmt.Errorf("failed to read CSV header: %w", err)
+		return result, fmt.Errorf("%w: %v", ErrCSVHeader, err)
 	}
 
 	colIndex := mapCSVColumns(header)
 	if colIndex["name"] == -1 || colIndex["code"] == -1 {
-		return result, fmt.Errorf("CSV must have 'name' and 'code' columns")
+		return result, ErrCSVColumns
 	}
 
 	// single session for entire import (including creates)
