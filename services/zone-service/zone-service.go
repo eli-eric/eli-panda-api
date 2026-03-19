@@ -122,7 +122,7 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		return result, fmt.Errorf("zone with code '%s' already exists in this facility", req.Code)
 	}
 
-	// validate parent before any writes
+	// validate parent before any writes (only when explicitly provided)
 	if req.ParentUID != nil && *req.ParentUID != "" {
 		if *req.ParentUID == uid {
 			return result, fmt.Errorf("zone cannot be its own parent")
@@ -139,19 +139,22 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		return result, err
 	}
 
-	// remove existing parent rel
-	removeQuery := RemoveParentRelQuery(uid, facilityCode)
-	err = helpers.WriteNeo4jAndReturnNothing(session, removeQuery)
-	if err != nil {
-		return result, err
-	}
-
-	// set new parent if provided
-	if req.ParentUID != nil && *req.ParentUID != "" {
-		setQuery := SetParentRelQuery(uid, *req.ParentUID, facilityCode)
-		err = helpers.WriteNeo4jAndReturnNothing(session, setQuery)
+	// mutate parent only when explicitly provided (nil = preserve current parent)
+	if req.ParentUID != nil {
+		// remove existing parent rel
+		removeQuery := RemoveParentRelQuery(uid, facilityCode)
+		err = helpers.WriteNeo4jAndReturnNothing(session, removeQuery)
 		if err != nil {
 			return result, err
+		}
+
+		// set new parent if non-empty (empty string = explicit detach to root)
+		if *req.ParentUID != "" {
+			setQuery := SetParentRelQuery(uid, *req.ParentUID, facilityCode)
+			err = helpers.WriteNeo4jAndReturnNothing(session, setQuery)
+			if err != nil {
+				return result, err
+			}
 		}
 	}
 
