@@ -123,8 +123,9 @@ func (h *ZoneHandlers) CreateZone() echo.HandlerFunc {
 
 		zone, err := h.zoneService.CreateZone(facilityCode, userUID, req)
 		if err != nil {
-			if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "max 2 levels") {
-				return helpers.BadRequest(err.Error())
+			errMsg := err.Error()
+			if strings.Contains(errMsg, "already exists") || strings.Contains(errMsg, "max 2 levels") || strings.Contains(errMsg, "parent zone not found") || strings.Contains(errMsg, "cannot be its own parent") {
+				return helpers.BadRequest(errMsg)
 			}
 			log.Error().Err(err).Msg("Error creating zone")
 			return echo.ErrInternalServerError
@@ -166,8 +167,12 @@ func (h *ZoneHandlers) UpdateZone() echo.HandlerFunc {
 
 		zone, err := h.zoneService.UpdateZone(uid, facilityCode, userUID, req)
 		if err != nil {
-			if strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "max 2 levels") {
-				return helpers.BadRequest(err.Error())
+			errMsg := err.Error()
+			if strings.HasPrefix(errMsg, "NOT_FOUND:") {
+				return echo.ErrNotFound
+			}
+			if strings.Contains(errMsg, "already exists") || strings.Contains(errMsg, "max 2 levels") || strings.Contains(errMsg, "parent zone not found") || strings.Contains(errMsg, "cannot be its own parent") {
+				return helpers.BadRequest(errMsg)
 			}
 			log.Error().Err(err).Msg("Error updating zone")
 			return echo.ErrInternalServerError
@@ -195,9 +200,13 @@ func (h *ZoneHandlers) DeleteZone() echo.HandlerFunc {
 
 		err := h.zoneService.DeleteZone(uid, facilityCode, userUID)
 		if err != nil {
-			if strings.HasPrefix(err.Error(), "CONFLICT:") {
+			errMsg := err.Error()
+			if strings.HasPrefix(errMsg, "NOT_FOUND:") {
+				return echo.ErrNotFound
+			}
+			if strings.HasPrefix(errMsg, "CONFLICT:") {
 				return c.JSON(http.StatusConflict, helpers.ConflictErrorResponse{
-					ErrorMessage: strings.TrimPrefix(err.Error(), "CONFLICT:"),
+					ErrorMessage: strings.TrimPrefix(errMsg, "CONFLICT:"),
 				})
 			}
 			log.Error().Err(err).Msg("Error deleting zone")

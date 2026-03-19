@@ -13,6 +13,10 @@ import (
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
+var (
+	ErrNotFound = errors.New("NOT_FOUND:zone not found")
+)
+
 type ZoneService struct {
 	neo4jDriver *neo4j.Driver
 }
@@ -82,8 +86,7 @@ func (svc *ZoneService) CreateZone(facilityCode, userUID string, req *models.Zon
 	uid := uuid.New().String()
 
 	if req.ParentUID != nil && *req.ParentUID != "" {
-		// validate parent is root zone (no incoming HAS_SUBZONE)
-		if err := svc.validateParentIsRoot(*req.ParentUID); err != nil {
+		if err := svc.validateParentIsRoot(*req.ParentUID, facilityCode); err != nil {
 			return result, err
 		}
 
@@ -101,6 +104,15 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
+	// check zone exists in this facility
+	_, err = svc.GetZoneByUID(uid, facilityCode)
+	if err != nil {
+		if strings.Contains(err.Error(), "no more records") {
+			return result, ErrNotFound
+		}
+		return result, err
+	}
+
 	// validate code uniqueness (exclude current zone)
 	codeCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneCodeExistsQuery(req.Code, facilityCode, uid))
 	if err != nil {
@@ -110,31 +122,39 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		return result, fmt.Errorf("zone with code '%s' already exists in this facility", req.Code)
 	}
 
+	// validate parent before any writes
+	if req.ParentUID != nil && *req.ParentUID != "" {
+		if *req.ParentUID == uid {
+			return result, fmt.Errorf("zone cannot be its own parent")
+		}
+		if err := svc.validateParentIsRoot(*req.ParentUID, facilityCode); err != nil {
+			return result, err
+		}
+	}
+
 	// update properties
-	updateQuery := UpdateZoneQuery(uid, req.Name, req.Code, userUID)
+	updateQuery := UpdateZoneQuery(uid, req.Name, req.Code, facilityCode, userUID)
 	err = helpers.WriteNeo4jAndReturnNothing(session, updateQuery)
 	if err != nil {
 		return result, err
 	}
 
-	// handle parent reassignment
-	// first remove existing parent rel
-	removeQuery := RemoveParentRelQuery(uid)
-	_ = helpers.WriteNeo4jAndReturnNothing(session, removeQuery)
+	// remove existing parent rel
+	removeQuery := RemoveParentRelQuery(uid, facilityCode)
+	err = helpers.WriteNeo4jAndReturnNothing(session, removeQuery)
+	if err != nil {
+		return result, err
+	}
 
 	// set new parent if provided
 	if req.ParentUID != nil && *req.ParentUID != "" {
-		if err := svc.validateParentIsRoot(*req.ParentUID); err != nil {
-			return result, err
-		}
-		setQuery := SetParentRelQuery(uid, *req.ParentUID)
+		setQuery := SetParentRelQuery(uid, *req.ParentUID, facilityCode)
 		err = helpers.WriteNeo4jAndReturnNothing(session, setQuery)
 		if err != nil {
 			return result, err
 		}
 	}
 
-	// return updated zone
 	return svc.GetZoneByUID(uid, facilityCode)
 }
 
@@ -142,8 +162,17 @@ func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
+	// check zone exists in this facility
+	_, err := svc.GetZoneByUID(uid, facilityCode)
+	if err != nil {
+		if strings.Contains(err.Error(), "no more records") {
+			return ErrNotFound
+		}
+		return err
+	}
+
 	// check subzones
-	subCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneHasSubzonesQuery(uid))
+	subCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneHasSubzonesQuery(uid, facilityCode))
 	if err != nil {
 		return err
 	}
@@ -152,7 +181,7 @@ func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 	}
 
 	// check system references
-	sysCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneHasSystemRefsQuery(uid))
+	sysCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneHasSystemRefsQuery(uid, facilityCode))
 	if err != nil {
 		return err
 	}
@@ -183,6 +212,10 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 		return result, fmt.Errorf("CSV must have 'name' and 'code' columns")
 	}
 
+	// single session for entire import
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
+
 	rowNum := 1
 	for {
 		record, err := reader.Read()
@@ -196,6 +229,12 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 		}
 		rowNum++
 
+		// bounds check
+		if colIndex["name"] >= len(record) || colIndex["code"] >= len(record) {
+			result.Errors = append(result.Errors, fmt.Sprintf("row %d: too few columns", rowNum))
+			continue
+		}
+
 		name := strings.TrimSpace(record[colIndex["name"]])
 		code := strings.TrimSpace(record[colIndex["code"]])
 
@@ -205,12 +244,15 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 		}
 
 		// check if zone exists
-		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 		existing, existErr := helpers.GetNeo4jSingleRecordSingleValue[int64](session,
 			CheckZoneCodeExistsQuery(code, facilityCode, ""))
-		session.Close()
 
-		if existErr == nil && existing > 0 {
+		if existErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("row %d: error checking existence: %s", rowNum, existErr.Error()))
+			continue
+		}
+
+		if existing > 0 {
 			result.Skipped++
 			continue
 		}
@@ -220,17 +262,14 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 		if colIndex["parentCode"] != -1 && colIndex["parentCode"] < len(record) {
 			parentCode := strings.TrimSpace(record[colIndex["parentCode"]])
 			if parentCode != "" {
-				pSession, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-				parentZone, pErr := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](pSession,
+				parentZone, pErr := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session,
 					GetZoneByCodeAndFacilityQuery(parentCode, facilityCode))
-				pSession.Close()
 
 				if pErr != nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("row %d: parent zone '%s' not found", rowNum, parentCode))
 					continue
 				}
 
-				// check parent is root
 				if parentZone.ParentZone != nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("row %d: parent zone '%s' is already a subzone (max 2 levels)", rowNum, parentCode))
 					continue
@@ -258,7 +297,7 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 	return result, nil
 }
 
-func (svc *ZoneService) validateParentIsRoot(parentUID string) error {
+func (svc *ZoneService) validateParentIsRoot(parentUID, facilityCode string) error {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
@@ -267,9 +306,12 @@ func (svc *ZoneService) validateParentIsRoot(parentUID string) error {
 		HasParent bool   `json:"hasParent"`
 	}
 
-	check, err := helpers.GetNeo4jSingleRecordAndMapToStruct[parentCheck](session, CheckParentIsRootQuery(parentUID))
+	check, err := helpers.GetNeo4jSingleRecordAndMapToStruct[parentCheck](session, CheckParentIsRootQuery(parentUID, facilityCode))
 	if err != nil {
-		return fmt.Errorf("parent zone not found")
+		if strings.Contains(err.Error(), "no more records") {
+			return fmt.Errorf("parent zone not found")
+		}
+		return fmt.Errorf("error validating parent zone: %w", err)
 	}
 	if check.HasParent {
 		return fmt.Errorf("parent zone is already a subzone (max 2 levels of nesting)")
@@ -297,4 +339,3 @@ func mapCSVColumns(header []string) map[string]int {
 	}
 	return colIndex
 }
-

@@ -72,7 +72,7 @@ func mapZoneSortField(fieldID string) string {
 	if mapped, ok := fieldMap[fieldID]; ok {
 		return mapped
 	}
-	return "z." + fieldID
+	return "z.name"
 }
 
 func GetZoneByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {
@@ -104,15 +104,16 @@ func CheckZoneCodeExistsQuery(code, facilityCode, excludeUID string) helpers.Dat
 	}
 }
 
-func CheckParentIsRootQuery(parentUID string) helpers.DatabaseQuery {
+func CheckParentIsRootQuery(parentUID, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (p:Zone{uid:$parentUID})
+		Query: `MATCH (p:Zone{uid:$parentUID})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
 				WHERE (p.deleted IS NULL OR p.deleted <> true)
 				OPTIONAL MATCH (gp:Zone)-[:HAS_SUBZONE]->(p)
 				RETURN {uid: p.uid, hasParent: gp IS NOT NULL} as result`,
 		ReturnAlias: "result",
 		Parameters: map[string]interface{}{
-			"parentUID": parentUID,
+			"parentUID":    parentUID,
+			"facilityCode": facilityCode,
 		},
 	}
 }
@@ -120,9 +121,8 @@ func CheckParentIsRootQuery(parentUID string) helpers.DatabaseQuery {
 func CreateRootZoneQuery(uid, name, code, facilityCode, userUID string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `MATCH (f:Facility{code:$facilityCode})
-				CREATE (z:Zone{uid:$uid, name:$name, code:$code, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-				WITH z
 				MATCH (u:User{uid:$userUID})
+				CREATE (z:Zone{uid:$uid, name:$name, code:$code, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 				CREATE (z)-[:WAS_UPDATED_BY{at:datetime(), action:"INSERT"}]->(u)
 				RETURN {uid:z.uid, name:z.name, code:z.code} as zone`,
 		ReturnAlias: "zone",
@@ -139,13 +139,14 @@ func CreateRootZoneQuery(uid, name, code, facilityCode, userUID string) helpers.
 func CreateSubZoneQuery(uid, name, code, facilityCode, parentUID, userUID string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `MATCH (f:Facility{code:$facilityCode})
-				MATCH (parent:Zone{uid:$parentUID})
+				MATCH (parent:Zone{uid:$parentUID})-[:BELONGS_TO_FACILITY]->(f)
+				WHERE (parent.deleted IS NULL OR parent.deleted <> true)
+				MATCH (u:User{uid:$userUID})
 				CREATE (z:Zone{uid:$uid, name:$name, code:$code, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 				CREATE (parent)-[:HAS_SUBZONE]->(z)
-				WITH z
-				MATCH (u:User{uid:$userUID})
 				CREATE (z)-[:WAS_UPDATED_BY{at:datetime(), action:"INSERT"}]->(u)
-				RETURN {uid:z.uid, name:z.name, code:z.code, parentUid:$parentUID} as zone`,
+				RETURN {uid:z.uid, name:z.name, code:z.code,
+						parentZone: {uid:parent.uid, name:parent.name, code:parent.code}} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
 			"uid":          uid,
@@ -158,9 +159,9 @@ func CreateSubZoneQuery(uid, name, code, facilityCode, parentUID, userUID string
 	}
 }
 
-func UpdateZoneQuery(uid, name, code, userUID string) helpers.DatabaseQuery {
+func UpdateZoneQuery(uid, name, code, facilityCode, userUID string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (z:Zone{uid:$uid})
+		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				SET z.name = $name, z.code = $code
 				WITH z
@@ -169,56 +170,65 @@ func UpdateZoneQuery(uid, name, code, userUID string) helpers.DatabaseQuery {
 				RETURN z.uid as uid`,
 		ReturnAlias: "uid",
 		Parameters: map[string]interface{}{
-			"uid":     uid,
-			"name":    name,
-			"code":    code,
-			"userUID": userUID,
+			"uid":          uid,
+			"name":         name,
+			"code":         code,
+			"facilityCode": facilityCode,
+			"userUID":      userUID,
 		},
 	}
 }
 
-func RemoveParentRelQuery(uid string) helpers.DatabaseQuery {
+func RemoveParentRelQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (parent:Zone)-[rel:HAS_SUBZONE]->(z:Zone{uid:$uid})
+		Query: `MATCH (parent:Zone)-[rel:HAS_SUBZONE]->(z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
 				DELETE rel`,
 		Parameters: map[string]interface{}{
-			"uid": uid,
+			"uid":          uid,
+			"facilityCode": facilityCode,
 		},
 	}
 }
 
-func SetParentRelQuery(uid, parentUID string) helpers.DatabaseQuery {
+func SetParentRelQuery(uid, parentUID, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (z:Zone{uid:$uid})
-				MATCH (parent:Zone{uid:$parentUID})
+		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
+				WHERE (z.deleted IS NULL OR z.deleted <> true)
+				MATCH (parent:Zone{uid:$parentUID})-[:BELONGS_TO_FACILITY]->(f)
+				WHERE (parent.deleted IS NULL OR parent.deleted <> true)
 				MERGE (parent)-[:HAS_SUBZONE]->(z)`,
 		Parameters: map[string]interface{}{
-			"uid":       uid,
-			"parentUID": parentUID,
+			"uid":          uid,
+			"parentUID":    parentUID,
+			"facilityCode": facilityCode,
 		},
 	}
 }
 
-func CheckZoneHasSubzonesQuery(uid string) helpers.DatabaseQuery {
+func CheckZoneHasSubzonesQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (z:Zone{uid:$uid})-[:HAS_SUBZONE]->(sub:Zone)
+		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
+				MATCH (z)-[:HAS_SUBZONE]->(sub:Zone)
 				WHERE (sub.deleted IS NULL OR sub.deleted <> true)
 				RETURN count(sub) as cnt`,
 		ReturnAlias: "cnt",
 		Parameters: map[string]interface{}{
-			"uid": uid,
+			"uid":          uid,
+			"facilityCode": facilityCode,
 		},
 	}
 }
 
-func CheckZoneHasSystemRefsQuery(uid string) helpers.DatabaseQuery {
+func CheckZoneHasSystemRefsQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (s:System)-[:HAS_ZONE]->(z:Zone{uid:$uid})
+		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
+				MATCH (s:System)-[:HAS_ZONE]->(z)
 				WHERE (s.deleted IS NULL OR s.deleted <> true)
 				RETURN count(s) as cnt`,
 		ReturnAlias: "cnt",
 		Parameters: map[string]interface{}{
-			"uid": uid,
+			"uid":          uid,
+			"facilityCode": facilityCode,
 		},
 	}
 }

@@ -71,7 +71,6 @@ func TestCreateSubZone(t *testing.T) {
 	userUID := "test-user-" + uuid.New().String()
 	createTestUser(t, userUID)
 
-	// create parent
 	parentReq := &models.ZoneCreateRequest{
 		Name: "Parent Zone",
 		Code: "PZ-" + uuid.New().String()[:8],
@@ -79,7 +78,6 @@ func TestCreateSubZone(t *testing.T) {
 	parent, err := service.CreateZone(testFacilityCode, userUID, parentReq)
 	assert.NoError(t, err)
 
-	// create sub-zone
 	subReq := &models.ZoneCreateRequest{
 		Name:      "Sub Zone",
 		Code:      "SZ-" + uuid.New().String()[:8],
@@ -106,13 +104,11 @@ func TestCreateSubSubZone_Rejected(t *testing.T) {
 	userUID := "test-user-" + uuid.New().String()
 	createTestUser(t, userUID)
 
-	// create root
 	root, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Root", Code: "R-" + uuid.New().String()[:8],
 	})
 	assert.NoError(t, err)
 
-	// create sub
 	sub, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Sub", Code: "S-" + uuid.New().String()[:8], ParentUID: &root.UID,
 	})
@@ -173,7 +169,6 @@ func TestGetAllZones(t *testing.T) {
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, len(zones), 2)
 
-	// find our sub-zone and check parent info
 	found := false
 	for _, z := range zones {
 		if z.UID == sub.UID {
@@ -241,21 +236,60 @@ func TestUpdateZone(t *testing.T) {
 	cleanupUser(userUID)
 }
 
+func TestUpdateZone_NotFound(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	_, err := service.UpdateZone("non-existent-uid", testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: "Nope", Code: "NP",
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "NOT_FOUND")
+
+	cleanupUser(userUID)
+}
+
+func TestUpdateZone_SelfParent_Rejected(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Self", Code: "SP-" + uuid.New().String()[:8],
+	})
+	assert.NoError(t, err)
+
+	_, err = service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: "Self", Code: zone.Code, ParentUID: &zone.UID,
+	})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be its own parent")
+
+	cleanupZone(zone.UID)
+	cleanupUser(userUID)
+}
+
 func TestUpdateZone_ReassignParent(t *testing.T) {
 	setupTestFacility(t)
 	service := NewZoneService(&testsetup.TestDriver)
 	userUID := "test-user-" + uuid.New().String()
 	createTestUser(t, userUID)
 
-	rootA, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	rootA, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Root A", Code: "RA-" + uuid.New().String()[:8],
 	})
-	rootB, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	assert.NoError(t, err)
+	rootB, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Root B", Code: "RB-" + uuid.New().String()[:8],
 	})
-	sub, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	assert.NoError(t, err)
+	sub, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Sub", Code: "RS-" + uuid.New().String()[:8], ParentUID: &rootA.UID,
 	})
+	assert.NoError(t, err)
 
 	// reassign sub from rootA to rootB
 	updated, err := service.UpdateZone(sub.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
@@ -277,11 +311,12 @@ func TestDeleteZone(t *testing.T) {
 	userUID := "test-user-" + uuid.New().String()
 	createTestUser(t, userUID)
 
-	zone, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "To Delete", Code: "TD-" + uuid.New().String()[:8],
 	})
+	assert.NoError(t, err)
 
-	err := service.DeleteZone(zone.UID, testFacilityCode, userUID)
+	err = service.DeleteZone(zone.UID, testFacilityCode, userUID)
 	assert.NoError(t, err)
 
 	// verify soft deleted
@@ -304,14 +339,16 @@ func TestDeleteZone_WithSubzones_Rejected(t *testing.T) {
 	userUID := "test-user-" + uuid.New().String()
 	createTestUser(t, userUID)
 
-	root, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	root, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Root", Code: "DR-" + uuid.New().String()[:8],
 	})
-	sub, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	assert.NoError(t, err)
+	sub, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Sub", Code: "DS-" + uuid.New().String()[:8], ParentUID: &root.UID,
 	})
+	assert.NoError(t, err)
 
-	err := service.DeleteZone(root.UID, testFacilityCode, userUID)
+	err = service.DeleteZone(root.UID, testFacilityCode, userUID)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "CONFLICT:zone has subzones")
 
@@ -326,14 +363,16 @@ func TestDeleteZone_WithSystemRef_Rejected(t *testing.T) {
 	userUID := "test-user-" + uuid.New().String()
 	createTestUser(t, userUID)
 
-	zone, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Zone With Sys", Code: "ZS-" + uuid.New().String()[:8],
 	})
+	assert.NoError(t, err)
 
-	// create system referencing zone
+	// create system referencing existing zone (MATCH, not CREATE duplicate)
 	sysUID := "test-sys-" + uuid.New().String()
-	_, err := testsetup.TestSession.Run(
-		`CREATE (s:System {uid: $sysUID, deleted: false})-[:HAS_ZONE]->(:Zone {uid: $zoneUID})`,
+	_, err = testsetup.TestSession.Run(
+		`MATCH (z:Zone {uid: $zoneUID})
+		 CREATE (s:System {uid: $sysUID, deleted: false})-[:HAS_ZONE]->(z)`,
 		map[string]interface{}{"sysUID": sysUID, "zoneUID": zone.UID},
 	)
 	assert.NoError(t, err)
@@ -342,7 +381,6 @@ func TestDeleteZone_WithSystemRef_Rejected(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "CONFLICT:zone is referenced by systems")
 
-	// cleanup
 	testsetup.TestSession.Run(`MATCH (s:System {uid: $uid}) DETACH DELETE s`, map[string]interface{}{"uid": sysUID})
 	cleanupZone(zone.UID)
 	cleanupUser(userUID)
@@ -365,7 +403,6 @@ func TestImportZones_NewZones(t *testing.T) {
 	assert.Equal(t, 2, result.Created)
 	assert.Equal(t, 0, result.Skipped)
 
-	// cleanup by code lookup
 	testsetup.TestSession.Run(
 		`MATCH (z:Zone) WHERE z.code IN [$c1, $c2] DETACH DELETE z`,
 		map[string]interface{}{"c1": code1, "c2": code2},
@@ -380,9 +417,10 @@ func TestImportZones_SkipExisting(t *testing.T) {
 	createTestUser(t, userUID)
 
 	code := "SKIP-" + uuid.New().String()[:8]
-	zone, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Existing", Code: code,
 	})
+	assert.NoError(t, err)
 
 	csvData := "name,code\nExisting," + code + "\n"
 	file := bytes.NewReader([]byte(csvData))
@@ -403,9 +441,10 @@ func TestImportZones_WithParentCode(t *testing.T) {
 	createTestUser(t, userUID)
 
 	parentCode := "PAR-" + uuid.New().String()[:8]
-	parent, _ := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+	parent, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
 		Name: "Parent", Code: parentCode,
 	})
+	assert.NoError(t, err)
 
 	childCode := "CHD-" + uuid.New().String()[:8]
 	csvData := "name,code,parentCode\nChild Zone," + childCode + "," + parentCode + "\n"
@@ -416,7 +455,8 @@ func TestImportZones_WithParentCode(t *testing.T) {
 	assert.Equal(t, 1, result.Created)
 
 	// verify child has parent
-	zones, _ := service.GetAllZones(testFacilityCode, "", 1, 100, nil)
+	zones, _, err := service.GetAllZones(testFacilityCode, "", 1, 100, nil)
+	assert.NoError(t, err)
 	for _, z := range zones {
 		if z.Code == childCode {
 			assert.NotNil(t, z.ParentZone)
@@ -424,7 +464,6 @@ func TestImportZones_WithParentCode(t *testing.T) {
 		}
 	}
 
-	// cleanup
 	testsetup.TestSession.Run(
 		`MATCH (z:Zone) WHERE z.code IN [$c1, $c2] DETACH DELETE z`,
 		map[string]interface{}{"c1": parentCode, "c2": childCode},
