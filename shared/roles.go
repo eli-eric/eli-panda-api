@@ -40,3 +40,7 @@ const SYSTEM_ATTRIBUTE_EDIT string = "system-attribute-edit"
 
 const ROLE_PUBLICATIONS_VIEW string = "publications-view"
 const ROLE_PUBLICATIONS_EDIT string = "publications-edit"
+
+// Zones
+const ROLE_ZONES_VIEW string = "zones-view"
+const ROLE_ZONES_EDIT string = "zones-edit"
