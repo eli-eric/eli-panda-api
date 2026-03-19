@@ -11,7 +11,8 @@ func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]h
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
 				WITH z, parent
 				WHERE ($search = '' OR toLower(z.name) CONTAINS toLower($search) OR toLower(z.code) CONTAINS toLower($search)
-					OR toLower(parent.name) CONTAINS toLower($search) OR toLower(parent.code) CONTAINS toLower($search))`
+					OR toLower(parent.name) CONTAINS toLower($search) OR toLower(parent.code) CONTAINS toLower($search))
+				WITH z, parent`
 
 	query += getZoneSortingClause(sorting)
 	query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
