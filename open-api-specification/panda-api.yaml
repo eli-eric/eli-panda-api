@@ -5417,6 +5417,8 @@ paths:
       responses:
         "200":
           description: OK
+        "404":
+          description: Not Found
         "409":
           description: Conflict
         "500":
@@ -5475,6 +5477,8 @@ paths:
             $ref: '#/definitions/models.Zone'
         "400":
           description: Bad Request
+        "404":
+          description: Not Found
         "500":
           description: Internal Server Error
       security:

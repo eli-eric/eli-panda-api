@@ -146,6 +146,7 @@ func (h *ZoneHandlers) CreateZone() echo.HandlerFunc {
 // @Param zone body models.ZoneUpdateRequest true "Zone"
 // @Success 200 {object} models.Zone
 // @Failure 400 "Bad Request"
+// @Failure 404 "Not Found"
 // @Failure 500 "Internal Server Error"
 // @Router /v1/zones/{uid} [put]
 func (h *ZoneHandlers) UpdateZone() echo.HandlerFunc {
@@ -189,6 +190,7 @@ func (h *ZoneHandlers) UpdateZone() echo.HandlerFunc {
 // @Security BearerAuth
 // @Param uid path string true "uid"
 // @Success 200 "OK"
+// @Failure 404 "Not Found"
 // @Failure 409 "Conflict"
 // @Failure 500 "Internal Server Error"
 // @Router /v1/zones/{uid} [delete]
@@ -247,8 +249,11 @@ func (h *ZoneHandlers) ImportZones() echo.HandlerFunc {
 
 		result, err := h.zoneService.ImportZones(facilityCode, userUID, file)
 		if err != nil {
+			if strings.Contains(err.Error(), "CSV") {
+				return helpers.BadRequest(err.Error())
+			}
 			log.Error().Err(err).Msg("Error importing zones")
-			return helpers.BadRequest(err.Error())
+			return echo.ErrInternalServerError
 		}
 
 		return c.JSON(http.StatusOK, result)
