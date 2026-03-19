@@ -246,7 +246,7 @@ func TestUpdateZone_NotFound(t *testing.T) {
 		Name: "Nope", Code: "NP",
 	})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "NOT_FOUND")
+	assert.ErrorIs(t, err, ErrNotFound)
 
 	cleanupUser(userUID)
 }
@@ -350,7 +350,7 @@ func TestDeleteZone_WithSubzones_Rejected(t *testing.T) {
 
 	err = service.DeleteZone(root.UID, testFacilityCode, userUID)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "CONFLICT:zone has subzones")
+	assert.ErrorIs(t, err, ErrConflictSub)
 
 	cleanupZone(sub.UID)
 	cleanupZone(root.UID)
@@ -379,7 +379,7 @@ func TestDeleteZone_WithSystemRef_Rejected(t *testing.T) {
 
 	err = service.DeleteZone(zone.UID, testFacilityCode, userUID)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "CONFLICT:zone is referenced by systems")
+	assert.ErrorIs(t, err, ErrConflictSys)
 
 	testsetup.TestSession.Run(`MATCH (s:System {uid: $uid}) DETACH DELETE s`, map[string]interface{}{"uid": sysUID})
 	cleanupZone(zone.UID)

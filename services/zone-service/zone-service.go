@@ -14,13 +14,13 @@ import (
 )
 
 var (
-	ErrNotFound      = errors.New("NOT_FOUND:zone not found")
-	ErrDuplicateCode = errors.New("zone with this code already exists in this facility")
-	ErrSelfParent    = errors.New("zone cannot be its own parent")
+	ErrNotFound       = errors.New("zone not found")
+	ErrDuplicateCode  = errors.New("zone with this code already exists in this facility")
+	ErrSelfParent     = errors.New("zone cannot be its own parent")
 	ErrParentNotFound = errors.New("parent zone not found")
-	ErrMaxDepth      = errors.New("parent zone is already a subzone (max 2 levels of nesting)")
-	ErrConflictSub   = errors.New("CONFLICT:zone has subzones")
-	ErrConflictSys   = errors.New("CONFLICT:zone is referenced by systems")
+	ErrMaxDepth       = errors.New("parent zone is already a subzone (max 2 levels of nesting)")
+	ErrConflictSub    = errors.New("zone has subzones")
+	ErrConflictSys    = errors.New("zone is referenced by systems")
 )
 
 type ZoneService struct {

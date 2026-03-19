@@ -84,7 +84,7 @@ func (h *ZoneHandlers) GetZoneByUID() echo.HandlerFunc {
 
 		zone, err := h.zoneService.GetZoneByUID(uid, facilityCode)
 		if err != nil {
-			if err.Error() == "Result contains no more records" {
+			if isNoRecords(err) {
 				return echo.ErrNotFound
 			}
 			log.Error().Err(err).Msg("Error getting zone")
