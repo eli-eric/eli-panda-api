@@ -14,7 +14,13 @@ import (
 )
 
 var (
-	ErrNotFound = errors.New("NOT_FOUND:zone not found")
+	ErrNotFound      = errors.New("NOT_FOUND:zone not found")
+	ErrDuplicateCode = errors.New("zone with this code already exists in this facility")
+	ErrSelfParent    = errors.New("zone cannot be its own parent")
+	ErrParentNotFound = errors.New("parent zone not found")
+	ErrMaxDepth      = errors.New("parent zone is already a subzone (max 2 levels of nesting)")
+	ErrConflictSub   = errors.New("CONFLICT:zone has subzones")
+	ErrConflictSys   = errors.New("CONFLICT:zone is referenced by systems")
 )
 
 type ZoneService struct {
@@ -74,19 +80,23 @@ func (svc *ZoneService) CreateZone(facilityCode, userUID string, req *models.Zon
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
+	return svc.createZoneWithSession(session, facilityCode, userUID, req)
+}
+
+func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCode, userUID string, req *models.ZoneCreateRequest) (result models.Zone, err error) {
 	// validate code uniqueness per facility
 	codeCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneCodeExistsQuery(req.Code, facilityCode, ""))
 	if err != nil {
 		return result, err
 	}
 	if codeCount > 0 {
-		return result, fmt.Errorf("zone with code '%s' already exists in this facility", req.Code)
+		return result, ErrDuplicateCode
 	}
 
 	uid := uuid.New().String()
 
 	if req.ParentUID != nil && *req.ParentUID != "" {
-		if err := svc.validateParentIsRoot(*req.ParentUID, facilityCode); err != nil {
+		if err := validateParentIsRoot(session, *req.ParentUID, facilityCode); err != nil {
 			return result, err
 		}
 
@@ -105,9 +115,9 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 	defer session.Close()
 
 	// check zone exists in this facility
-	_, err = svc.GetZoneByUID(uid, facilityCode)
+	_, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
 	if err != nil {
-		if strings.Contains(err.Error(), "no more records") {
+		if isNoRecords(err) {
 			return result, ErrNotFound
 		}
 		return result, err
@@ -119,15 +129,15 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		return result, err
 	}
 	if codeCount > 0 {
-		return result, fmt.Errorf("zone with code '%s' already exists in this facility", req.Code)
+		return result, ErrDuplicateCode
 	}
 
 	// validate parent before any writes (only when explicitly provided)
 	if req.ParentUID != nil && *req.ParentUID != "" {
 		if *req.ParentUID == uid {
-			return result, fmt.Errorf("zone cannot be its own parent")
+			return result, ErrSelfParent
 		}
-		if err := svc.validateParentIsRoot(*req.ParentUID, facilityCode); err != nil {
+		if err := validateParentIsRoot(session, *req.ParentUID, facilityCode); err != nil {
 			return result, err
 		}
 	}
@@ -158,7 +168,9 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		}
 	}
 
-	return svc.GetZoneByUID(uid, facilityCode)
+	// re-read updated zone
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
+	return result, err
 }
 
 func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
@@ -166,9 +178,9 @@ func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 	defer session.Close()
 
 	// check zone exists in this facility
-	_, err := svc.GetZoneByUID(uid, facilityCode)
+	_, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
 	if err != nil {
-		if strings.Contains(err.Error(), "no more records") {
+		if isNoRecords(err) {
 			return ErrNotFound
 		}
 		return err
@@ -180,7 +192,7 @@ func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 		return err
 	}
 	if subCount > 0 {
-		return errors.New("CONFLICT:zone has subzones")
+		return ErrConflictSub
 	}
 
 	// check system references
@@ -189,7 +201,7 @@ func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 		return err
 	}
 	if sysCount > 0 {
-		return errors.New("CONFLICT:zone is referenced by systems")
+		return ErrConflictSys
 	}
 
 	// soft delete + history log
@@ -215,7 +227,7 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 		return result, fmt.Errorf("CSV must have 'name' and 'code' columns")
 	}
 
-	// single session for entire import
+	// single session for entire import (including creates)
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
@@ -282,13 +294,13 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 			}
 		}
 
-		// create zone
+		// create zone using shared session
 		req := &models.ZoneCreateRequest{
 			Name:      name,
 			Code:      code,
 			ParentUID: parentUID,
 		}
-		_, createErr := svc.CreateZone(facilityCode, userUID, req)
+		_, createErr := svc.createZoneWithSession(session, facilityCode, userUID, req)
 		if createErr != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("row %d: %s", rowNum, createErr.Error()))
 			continue
@@ -300,10 +312,7 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 	return result, nil
 }
 
-func (svc *ZoneService) validateParentIsRoot(parentUID, facilityCode string) error {
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
-
+func validateParentIsRoot(session neo4j.Session, parentUID, facilityCode string) error {
 	type parentCheck struct {
 		UID       string `json:"uid"`
 		HasParent bool   `json:"hasParent"`
@@ -311,16 +320,20 @@ func (svc *ZoneService) validateParentIsRoot(parentUID, facilityCode string) err
 
 	check, err := helpers.GetNeo4jSingleRecordAndMapToStruct[parentCheck](session, CheckParentIsRootQuery(parentUID, facilityCode))
 	if err != nil {
-		if strings.Contains(err.Error(), "no more records") {
-			return fmt.Errorf("parent zone not found")
+		if isNoRecords(err) {
+			return ErrParentNotFound
 		}
 		return fmt.Errorf("error validating parent zone: %w", err)
 	}
 	if check.HasParent {
-		return fmt.Errorf("parent zone is already a subzone (max 2 levels of nesting)")
+		return ErrMaxDepth
 	}
 
 	return nil
+}
+
+func isNoRecords(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "no more records")
 }
 
 func mapCSVColumns(header []string) map[string]int {

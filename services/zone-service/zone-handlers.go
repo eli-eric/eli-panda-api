@@ -2,6 +2,7 @@ package zoneservice
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/zone-service/models"
@@ -123,9 +124,8 @@ func (h *ZoneHandlers) CreateZone() echo.HandlerFunc {
 
 		zone, err := h.zoneService.CreateZone(facilityCode, userUID, req)
 		if err != nil {
-			errMsg := err.Error()
-			if strings.Contains(errMsg, "already exists") || strings.Contains(errMsg, "max 2 levels") || strings.Contains(errMsg, "parent zone not found") || strings.Contains(errMsg, "cannot be its own parent") {
-				return helpers.BadRequest(errMsg)
+			if isClientError(err) {
+				return helpers.BadRequest(err.Error())
 			}
 			log.Error().Err(err).Msg("Error creating zone")
 			return echo.ErrInternalServerError
@@ -168,12 +168,11 @@ func (h *ZoneHandlers) UpdateZone() echo.HandlerFunc {
 
 		zone, err := h.zoneService.UpdateZone(uid, facilityCode, userUID, req)
 		if err != nil {
-			errMsg := err.Error()
-			if strings.HasPrefix(errMsg, "NOT_FOUND:") {
+			if errors.Is(err, ErrNotFound) {
 				return echo.ErrNotFound
 			}
-			if strings.Contains(errMsg, "already exists") || strings.Contains(errMsg, "max 2 levels") || strings.Contains(errMsg, "parent zone not found") || strings.Contains(errMsg, "cannot be its own parent") {
-				return helpers.BadRequest(errMsg)
+			if isClientError(err) {
+				return helpers.BadRequest(err.Error())
 			}
 			log.Error().Err(err).Msg("Error updating zone")
 			return echo.ErrInternalServerError
@@ -202,13 +201,12 @@ func (h *ZoneHandlers) DeleteZone() echo.HandlerFunc {
 
 		err := h.zoneService.DeleteZone(uid, facilityCode, userUID)
 		if err != nil {
-			errMsg := err.Error()
-			if strings.HasPrefix(errMsg, "NOT_FOUND:") {
+			if errors.Is(err, ErrNotFound) {
 				return echo.ErrNotFound
 			}
-			if strings.HasPrefix(errMsg, "CONFLICT:") {
+			if errors.Is(err, ErrConflictSub) || errors.Is(err, ErrConflictSys) {
 				return c.JSON(http.StatusConflict, helpers.ConflictErrorResponse{
-					ErrorMessage: strings.TrimPrefix(errMsg, "CONFLICT:"),
+					ErrorMessage: err.Error(),
 				})
 			}
 			log.Error().Err(err).Msg("Error deleting zone")
@@ -258,4 +256,11 @@ func (h *ZoneHandlers) ImportZones() echo.HandlerFunc {
 
 		return c.JSON(http.StatusOK, result)
 	}
+}
+
+func isClientError(err error) bool {
+	return errors.Is(err, ErrDuplicateCode) ||
+		errors.Is(err, ErrSelfParent) ||
+		errors.Is(err, ErrParentNotFound) ||
+		errors.Is(err, ErrMaxDepth)
 }
