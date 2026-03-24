@@ -470,3 +470,57 @@ func TestImportZones_WithParentCode(t *testing.T) {
 	)
 	cleanupUser(userUID)
 }
+
+func TestGetAllZones_DefaultSort_RootZonesFirst(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	// create two root zones and two subzones with predictable codes
+	// using ZZZ prefix to avoid collision with real data
+	rootA, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Root A", Code: "ZZZA",
+	})
+	assert.NoError(t, err)
+	rootB, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Root B", Code: "ZZZB",
+	})
+	assert.NoError(t, err)
+	subA1, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Sub A1", Code: "ZZZA1", ParentUID: &rootA.UID,
+	})
+	assert.NoError(t, err)
+	subB1, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Sub B1", Code: "ZZZB1", ParentUID: &rootB.UID,
+	})
+	assert.NoError(t, err)
+
+	// fetch with default sort (nil sorting)
+	zones, _, err := service.GetAllZones(testFacilityCode, "ZZZ", 1, 100, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(zones))
+
+	// root zones (ParentZone == nil) must appear before subzones
+	lastRootIdx := -1
+	firstSubIdx := len(zones)
+	for i, z := range zones {
+		if z.ParentZone == nil {
+			lastRootIdx = i
+		} else if i < firstSubIdx {
+			firstSubIdx = i
+		}
+	}
+	assert.Greater(t, firstSubIdx, lastRootIdx, "all root zones should appear before any subzone")
+
+	// within root zones, should be sorted by code ASC
+	assert.Nil(t, zones[0].ParentZone)
+	assert.Nil(t, zones[1].ParentZone)
+	assert.True(t, zones[0].Code <= zones[1].Code, "root zones should be sorted by code ASC")
+
+	cleanupZone(subA1.UID)
+	cleanupZone(subB1.UID)
+	cleanupZone(rootA.UID)
+	cleanupZone(rootB.UID)
+	cleanupUser(userUID)
+}
