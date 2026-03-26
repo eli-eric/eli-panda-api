@@ -231,10 +231,6 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 
 	for i := 0; i < len(result); i++ {
 		decodeAuthorsDepartments(&result[i])
-		// Fetch connected researchers
-		result[i].EliResearchers, _ = svc.getPublicationResearchers(result[i].Uid)
-		// Fetch connected grants
-		result[i].Grants, _ = svc.getPublicationGrants(result[i].Uid)
 	}
 
 	return result, totalCount, err
@@ -283,8 +279,20 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 	// Add pagination
 	query.Query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
 
-	// Return statement
+	// Collect researchers and grants only for paginated results
 	query.Query += `
+		CALL {
+			WITH n
+			OPTIONAL MATCH (n)-[:HAS_RESEARCHER]->(r:Researcher)
+			WHERE r IS NOT NULL AND (r.deleted IS NULL OR r.deleted = false)
+			RETURN collect({uid: r.uid, firstName: r.firstName, lastName: r.lastName}) AS eliResearchers
+		}
+		CALL {
+			WITH n
+			OPTIONAL MATCH (n)-[:HAS_GRANT]->(g:Grant)
+			WHERE g IS NOT NULL AND (g.deleted IS NULL OR g.deleted = false)
+			RETURN collect({uid: g.uid, code: g.code, name: g.name}) AS grants
+		}
 		RETURN {
 			uid: n.uid,
 			doi: n.doi,
@@ -342,7 +350,9 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 			conferenceDate: n.conferenceDate,
 			conferencePlace: n.conferencePlace,
 			publishFormatCb: CASE WHEN publishFormatCb IS NOT NULL THEN {uid: publishFormatCb.uid, name: publishFormatCb.name, code: publishFormatCb.code} ELSE null END,
-			conferenceScopeCb: CASE WHEN conferenceScopeCb IS NOT NULL THEN {uid: conferenceScopeCb.uid, name: conferenceScopeCb.name, code: conferenceScopeCb.code} ELSE null END
+			conferenceScopeCb: CASE WHEN conferenceScopeCb IS NOT NULL THEN {uid: conferenceScopeCb.uid, name: conferenceScopeCb.name, code: conferenceScopeCb.code} ELSE null END,
+			eliResearchers: eliResearchers,
+			grants: grants
 		} as n
 	`
 
