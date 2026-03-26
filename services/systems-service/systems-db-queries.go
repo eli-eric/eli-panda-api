@@ -3003,39 +3003,43 @@ func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, us
 		WITH root, destination, f, u
 		CALL {
 			WITH root, f
-			WHERE $copyRecursive = true
 			MATCH (root)-[:HAS_SUBSYSTEM*0..50]->(n:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-			RETURN collect(DISTINCT n) AS nodes
-			UNION
-			WITH root, f
-			WHERE $copyRecursive = false
-			MATCH (root)-[:BELONGS_TO_FACILITY]->(f)
-			RETURN [root] AS nodes
+			RETURN collect(DISTINCT n) AS allDescendants
 		}
-		WITH root, destination, f, u, nodes
+		WITH root, destination, f, u,
+			 CASE WHEN $copyRecursive THEN allDescendants ELSE [root] END AS nodes
 		UNWIND nodes AS n
 		WITH root, destination, f, u, n, apoc.create.uuid() AS newUid
 		CREATE (c:System{uid:newUid, deleted:false, lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
 		SET c.name = n.name,
 			c.systemLevel = n.systemLevel
 		WITH root, destination, collect({old: n.uid, new: c.uid}) AS pairs
-		UNWIND pairs AS p
-		MATCH (orig:System{uid:p.old})-[:HAS_SYSTEM_TYPE]->(st:SystemType)
-		MATCH (copy:System{uid:p.new})
-		MERGE (copy)-[:HAS_SYSTEM_TYPE]->(st)
-		WITH root, destination, pairs
-		UNWIND pairs AS parentPair
-		MATCH (parentOrig:System{uid:parentPair.old})-[:HAS_SUBSYSTEM]->(childOrig:System)
-		WHERE any(x IN pairs WHERE x.old = childOrig.uid)
-		MATCH (parentCopy:System{uid:parentPair.new})
-		WITH root, destination, pairs, parentCopy, childOrig.uid AS childOldUid
-		UNWIND [x IN pairs WHERE x.old = childOldUid] AS childPair
-		MATCH (childCopy:System{uid:childPair.new})
-		MERGE (parentCopy)-[:HAS_SUBSYSTEM]->(childCopy)
-		WITH root, destination, pairs
-		WITH root.uid AS rootOldUid, destination, pairs, [x IN pairs WHERE x.old = rootOldUid][0].new AS rootNewUid
+		WITH root.uid AS rootOldUid, destination, pairs
+		WITH rootOldUid, destination, pairs, [x IN pairs WHERE x.old = rootOldUid][0].new AS rootNewUid
 		MATCH (rootCopy:System{uid: rootNewUid})
 		MERGE (destination)-[:HAS_SUBSYSTEM]->(rootCopy)
+		WITH rootNewUid, pairs
+		CALL {
+			WITH pairs
+			UNWIND pairs AS p
+			MATCH (orig:System{uid:p.old})-[:HAS_SYSTEM_TYPE]->(st:SystemType)
+			MATCH (copy:System{uid:p.new})
+			MERGE (copy)-[:HAS_SYSTEM_TYPE]->(st)
+			RETURN count(*) AS typesLinked
+		}
+		WITH rootNewUid, pairs
+		CALL {
+			WITH pairs
+			UNWIND pairs AS parentPair
+			MATCH (parentOrig:System{uid:parentPair.old})-[:HAS_SUBSYSTEM]->(childOrig:System)
+			WHERE any(x IN pairs WHERE x.old = childOrig.uid)
+			MATCH (parentCopy:System{uid:parentPair.new})
+			WITH parentCopy, childOrig.uid AS childOldUid, pairs
+			UNWIND [x IN pairs WHERE x.old = childOldUid] AS childPair
+			MATCH (childCopy:System{uid:childPair.new})
+			MERGE (parentCopy)-[:HAS_SUBSYSTEM]->(childCopy)
+			RETURN count(*) AS linksCreated
+		}
 		RETURN rootNewUid AS createdRootUid
 	}
 	RETURN {uids: collect(createdRootUid)} as result`
