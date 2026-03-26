@@ -49,7 +49,7 @@ func GetAllZonesCountQuery(facilityCode, search string) helpers.DatabaseQuery {
 
 func getZoneSortingClause(sorting *[]helpers.Sorting) string {
 	if sorting == nil || len(*sorting) == 0 {
-		return " ORDER BY parent.code ASC, z.code ASC "
+		return " ORDER BY parent.code DESC, z.code ASC "
 	}
 
 	orderBy := " ORDER BY "
