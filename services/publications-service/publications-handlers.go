@@ -473,6 +473,10 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 			if item.EidScopus != nil {
 				eidScopus = "=\"" + *item.EidScopus + "\""
 			}
+			publishingCountry := ""
+			if item.PublishingCountry != nil {
+				publishingCountry = item.PublishingCountry.Name
+			}
 			note := ""
 			if item.Note != nil {
 				note = *item.Note
@@ -558,7 +562,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 				issn,
 				eIssn,
 				eidScopus,
-				item.PublishingCountry.Name,
+				publishingCountry,
 				item.Language,
 				note,
 				item.Uid,
