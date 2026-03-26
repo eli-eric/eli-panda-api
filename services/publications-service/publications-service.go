@@ -270,19 +270,6 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 		OPTIONAL MATCH (n)-[:HAS_PUBLISH_FORMAT]->(publishFormatCb:PublishFormat)
 		OPTIONAL MATCH (n)-[:HAS_CONFERENCE_SCOPE]->(conferenceScopeCb:ConferenceScope)
 		WITH n, mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb
-		CALL {
-			WITH n
-			OPTIONAL MATCH (n)-[:HAS_RESEARCHER]->(r:Researcher)
-			WHERE r.deleted IS NULL OR r.deleted = false
-			RETURN CASE WHEN COUNT(r) > 0 THEN collect({uid: r.uid, firstName: r.firstName, lastName: r.lastName}) ELSE [] END AS eliResearchers
-		}
-		CALL {
-			WITH n
-			OPTIONAL MATCH (n)-[:HAS_GRANT]->(g:Grant)
-			WHERE g.deleted IS NULL OR g.deleted = false
-			RETURN CASE WHEN COUNT(g) > 0 THEN collect({uid: g.uid, code: g.code, name: g.name}) ELSE [] END AS grants
-		}
-		WITH n, mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb, eliResearchers, grants
 	`
 
 	// Add sorting
@@ -292,8 +279,20 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 	// Add pagination
 	query.Query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
 
-	// Return statement
+	// Collect researchers and grants only for paginated results
 	query.Query += `
+		CALL {
+			WITH n
+			OPTIONAL MATCH (n)-[:HAS_RESEARCHER]->(r:Researcher)
+			WHERE r.deleted IS NULL OR r.deleted = false
+			RETURN collect({uid: r.uid, firstName: r.firstName, lastName: r.lastName}) AS eliResearchers
+		}
+		CALL {
+			WITH n
+			OPTIONAL MATCH (n)-[:HAS_GRANT]->(g:Grant)
+			WHERE g.deleted IS NULL OR g.deleted = false
+			RETURN collect({uid: g.uid, code: g.code, name: g.name}) AS grants
+		}
 		RETURN {
 			uid: n.uid,
 			doi: n.doi,
