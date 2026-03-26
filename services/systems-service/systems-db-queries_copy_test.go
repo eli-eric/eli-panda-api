@@ -2,6 +2,7 @@ package systemsService
 
 import (
 	"regexp"
+	"strings"
 	"testing"
 
 	"panda/apigateway/services/systems-service/models"
@@ -43,20 +44,10 @@ func TestCopySystemsQuery_QueryStructure(t *testing.T) {
 	assert.Contains(t, query.Query, "CASE WHEN $copyOnlyChildren")
 
 	// Destination linking must come BEFORE type/hierarchy subqueries
-	destLinkIdx := 0
-	for i := range query.Query {
-		if i+len("MERGE (destination)") <= len(query.Query) && query.Query[i:i+len("MERGE (destination)")] == "MERGE (destination)" {
-			destLinkIdx = i
-			break
-		}
-	}
-	typeLinkIdx := 0
-	for i := range query.Query {
-		if i+len("MERGE (copy)-[:HAS_SYSTEM_TYPE]") <= len(query.Query) && query.Query[i:i+len("MERGE (copy)-[:HAS_SYSTEM_TYPE]")] == "MERGE (copy)-[:HAS_SYSTEM_TYPE]" {
-			typeLinkIdx = i
-			break
-		}
-	}
+	destLinkIdx := strings.Index(query.Query, "MERGE (destination)")
+	typeLinkIdx := strings.Index(query.Query, "MERGE (copy)-[:HAS_SYSTEM_TYPE]")
+	assert.Greater(t, destLinkIdx, -1, "query must contain destination linking")
+	assert.Greater(t, typeLinkIdx, -1, "query must contain type copying")
 	assert.True(t, destLinkIdx < typeLinkIdx, "destination linking must happen before type copying to avoid blocking on leaf nodes")
 }
 

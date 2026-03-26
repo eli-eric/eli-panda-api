@@ -3031,7 +3031,7 @@ func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, us
 		CALL {
 			WITH pairs
 			UNWIND pairs AS parentPair
-			MATCH (parentOrig:System{uid:parentPair.old})-[:HAS_SUBSYSTEM]->(childOrig:System)
+			MATCH (parentOrig:System{uid:parentPair.old})-[:HAS_SUBSYSTEM]->(childOrig:System{deleted:false})
 			WHERE any(x IN pairs WHERE x.old = childOrig.uid)
 			MATCH (parentCopy:System{uid:parentPair.new})
 			WITH parentCopy, childOrig.uid AS childOldUid, pairs
