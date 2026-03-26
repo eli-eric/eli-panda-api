@@ -231,10 +231,6 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 
 	for i := 0; i < len(result); i++ {
 		decodeAuthorsDepartments(&result[i])
-		// Fetch connected researchers
-		result[i].EliResearchers, _ = svc.getPublicationResearchers(result[i].Uid)
-		// Fetch connected grants
-		result[i].Grants, _ = svc.getPublicationGrants(result[i].Uid)
 	}
 
 	return result, totalCount, err
@@ -274,6 +270,18 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 		OPTIONAL MATCH (n)-[:HAS_PUBLISH_FORMAT]->(publishFormatCb:PublishFormat)
 		OPTIONAL MATCH (n)-[:HAS_CONFERENCE_SCOPE]->(conferenceScopeCb:ConferenceScope)
 		WITH n, mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb
+		CALL {
+			WITH n
+			OPTIONAL MATCH (n)-[:HAS_RESEARCHER]->(r:Researcher)
+			WHERE r.deleted IS NULL OR r.deleted = false
+			RETURN CASE WHEN COUNT(r) > 0 THEN collect({uid: r.uid, firstName: r.firstName, lastName: r.lastName}) ELSE [] END AS eliResearchers
+		}
+		CALL {
+			WITH n
+			OPTIONAL MATCH (n)-[:HAS_GRANT]->(g:Grant)
+			WHERE g.deleted IS NULL OR g.deleted = false
+			RETURN CASE WHEN COUNT(g) > 0 THEN collect({uid: g.uid, code: g.code, name: g.name}) ELSE [] END AS grants
+		}
 	`
 
 	// Add sorting
@@ -342,7 +350,9 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 			conferenceDate: n.conferenceDate,
 			conferencePlace: n.conferencePlace,
 			publishFormatCb: CASE WHEN publishFormatCb IS NOT NULL THEN {uid: publishFormatCb.uid, name: publishFormatCb.name, code: publishFormatCb.code} ELSE null END,
-			conferenceScopeCb: CASE WHEN conferenceScopeCb IS NOT NULL THEN {uid: conferenceScopeCb.uid, name: conferenceScopeCb.name, code: conferenceScopeCb.code} ELSE null END
+			conferenceScopeCb: CASE WHEN conferenceScopeCb IS NOT NULL THEN {uid: conferenceScopeCb.uid, name: conferenceScopeCb.name, code: conferenceScopeCb.code} ELSE null END,
+			eliResearchers: eliResearchers,
+			grants: grants
 		} as n
 	`
 
