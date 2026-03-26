@@ -282,6 +282,7 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 			WHERE g.deleted IS NULL OR g.deleted = false
 			RETURN CASE WHEN COUNT(g) > 0 THEN collect({uid: g.uid, code: g.code, name: g.name}) ELSE [] END AS grants
 		}
+		WITH n, mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb, eliResearchers, grants
 	`
 
 	// Add sorting
