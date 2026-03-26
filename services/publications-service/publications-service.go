@@ -284,13 +284,13 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 		CALL {
 			WITH n
 			OPTIONAL MATCH (n)-[:HAS_RESEARCHER]->(r:Researcher)
-			WHERE r.deleted IS NULL OR r.deleted = false
+			WHERE r IS NOT NULL AND (r.deleted IS NULL OR r.deleted = false)
 			RETURN collect({uid: r.uid, firstName: r.firstName, lastName: r.lastName}) AS eliResearchers
 		}
 		CALL {
 			WITH n
 			OPTIONAL MATCH (n)-[:HAS_GRANT]->(g:Grant)
-			WHERE g.deleted IS NULL OR g.deleted = false
+			WHERE g IS NOT NULL AND (g.deleted IS NULL OR g.deleted = false)
 			RETURN collect({uid: g.uid, code: g.code, name: g.name}) AS grants
 		}
 		RETURN {
