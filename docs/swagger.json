@@ -8479,6 +8479,9 @@
                 "name": {
                     "type": "string"
                 },
+                "notes": {
+                    "type": "string"
+                },
                 "parentZone": {
                     "$ref": "#/definitions/models.Codebook"
                 },
@@ -8494,6 +8497,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "notes": {
                     "type": "string"
                 },
                 "parentUid": {
@@ -8525,6 +8531,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "notes": {
                     "type": "string"
                 },
                 "parentUid": {

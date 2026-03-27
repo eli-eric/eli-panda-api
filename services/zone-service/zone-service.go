@@ -102,10 +102,10 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 			return result, err
 		}
 
-		query := CreateSubZoneQuery(uid, req.Name, req.Code, facilityCode, *req.ParentUID, userUID)
+		query := CreateSubZoneQuery(uid, req.Name, req.Code, req.Notes, facilityCode, *req.ParentUID, userUID)
 		result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Zone](session, query)
 	} else {
-		query := CreateRootZoneQuery(uid, req.Name, req.Code, facilityCode, userUID)
+		query := CreateRootZoneQuery(uid, req.Name, req.Code, req.Notes, facilityCode, userUID)
 		result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Zone](session, query)
 	}
 
@@ -145,7 +145,7 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 	}
 
 	// update properties
-	updateQuery := UpdateZoneQuery(uid, req.Name, req.Code, facilityCode, userUID)
+	updateQuery := UpdateZoneQuery(uid, req.Name, req.Code, req.Notes, facilityCode, userUID)
 	err = helpers.WriteNeo4jAndReturnNothing(session, updateQuery)
 	if err != nil {
 		return result, err
