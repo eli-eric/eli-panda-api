@@ -22,7 +22,7 @@ type ZoneCreateRequest struct {
 type ZoneUpdateRequest struct {
 	Name      string  `json:"name"`
 	Code      string  `json:"code"`
-	Notes     string  `json:"notes"`
+	Notes     *string `json:"notes,omitempty"`
 	ParentUID *string `json:"parentUid,omitempty"`
 }
 

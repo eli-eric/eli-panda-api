@@ -17,7 +17,7 @@ func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]h
 	query += getZoneSortingClause(sorting)
 	query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
 
-	query += ` RETURN {uid: z.uid, name: z.name, code: z.code, notes: z.notes,
+	query += ` RETURN {uid: z.uid, name: z.name, code: z.code, notes: coalesce(z.notes, ''),
 						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`
 
 	return helpers.DatabaseQuery{
@@ -81,7 +81,7 @@ func GetZoneByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {
 		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
-				RETURN {uid: z.uid, name: z.name, code: z.code, notes: z.notes,
+				RETURN {uid: z.uid, name: z.name, code: z.code, notes: coalesce(z.notes, ''),
 						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
@@ -162,11 +162,11 @@ func CreateSubZoneQuery(uid, name, code, notes, facilityCode, parentUID, userUID
 	}
 }
 
-func UpdateZoneQuery(uid, name, code, notes, facilityCode, userUID string) helpers.DatabaseQuery {
-	return helpers.DatabaseQuery{
+func UpdateZoneQuery(uid, name, code string, notes *string, facilityCode, userUID string) helpers.DatabaseQuery {
+	q := helpers.DatabaseQuery{
 		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
-				SET z.name = $name, z.code = $code, z.notes = $notes
+				SET z.name = $name, z.code = $code, z.notes = coalesce($notes, z.notes)
 				WITH z
 				MATCH (u:User{uid:$userUID})
 				CREATE (z)-[:WAS_UPDATED_BY{at:datetime(), action:"UPDATE"}]->(u)
@@ -176,11 +176,17 @@ func UpdateZoneQuery(uid, name, code, notes, facilityCode, userUID string) helpe
 			"uid":          uid,
 			"name":         name,
 			"code":         code,
-			"notes":        notes,
+			"notes":        nil,
 			"facilityCode": facilityCode,
 			"userUID":      userUID,
 		},
 	}
+
+	if notes != nil {
+		q.Parameters["notes"] = *notes
+	}
+
+	return q
 }
 
 func RemoveParentRelQuery(uid, facilityCode string) helpers.DatabaseQuery {
@@ -242,7 +248,7 @@ func GetZoneByCodeAndFacilityQuery(code, facilityCode string) helpers.DatabaseQu
 		Query: `MATCH (z:Zone{code:$code})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
 				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
-				RETURN {uid: z.uid, name: z.name, code: z.code, notes: z.notes,
+				RETURN {uid: z.uid, name: z.name, code: z.code, notes: coalesce(z.notes, ''),
 						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{

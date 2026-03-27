@@ -228,8 +228,9 @@ func TestUpdateZone(t *testing.T) {
 	assert.NoError(t, err)
 
 	newCode := "UP-" + uuid.New().String()[:8]
+	updatedNotes := "updated notes"
 	updated, err := service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
-		Name: "Updated", Code: newCode, Notes: "updated notes",
+		Name: "Updated", Code: newCode, Notes: &updatedNotes,
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated", updated.Name)
