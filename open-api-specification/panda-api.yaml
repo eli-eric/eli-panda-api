@@ -5037,8 +5037,8 @@ paths:
       - Systems
   /v1/systems/hierarchy:
     get:
-      description: Returns a hierarchy tree containing only systems that have subsystems
-        (no leaves).
+      description: Returns a hierarchy tree containing parent systems plus standalone
+        root systems without subsystems. Child arrays contain only parent systems.
       produces:
       - application/json
       responses:
@@ -5052,7 +5052,7 @@ paths:
           description: Internal server error
       security:
       - BearerAuth: []
-      summary: Get systems hierarchy (parents only)
+      summary: Get systems hierarchy
       tags:
       - Systems
   /v1/systems/locations-flat:

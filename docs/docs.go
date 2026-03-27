@@ -5119,14 +5119,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns a hierarchy tree containing only systems that have subsystems (no leaves).",
+                "description": "Returns a hierarchy tree containing parent systems plus standalone root systems without subsystems. Child arrays contain only parent systems.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Systems"
                 ],
-                "summary": "Get systems hierarchy (parents only)",
+                "summary": "Get systems hierarchy",
                 "responses": {
                     "200": {
                         "description": "OK",
