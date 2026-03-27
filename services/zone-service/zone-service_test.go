@@ -44,8 +44,9 @@ func TestCreateRootZone(t *testing.T) {
 	createTestUser(t, userUID)
 
 	req := &models.ZoneCreateRequest{
-		Name: "Test Zone",
-		Code: "TZ-" + uuid.New().String()[:8],
+		Name:  "Test Zone",
+		Code:  "TZ-" + uuid.New().String()[:8],
+		Notes: "test notes content",
 	}
 
 	result, err := service.CreateZone(testFacilityCode, userUID, req)
@@ -54,11 +55,13 @@ func TestCreateRootZone(t *testing.T) {
 	assert.NotEmpty(t, result.UID)
 	assert.Equal(t, req.Name, result.Name)
 	assert.Equal(t, req.Code, result.Code)
+	assert.Equal(t, "test notes content", result.Notes)
 
 	// verify in DB
 	dbResult, err := service.GetZoneByUID(result.UID, testFacilityCode)
 	assert.NoError(t, err)
 	assert.Equal(t, req.Name, dbResult.Name)
+	assert.Equal(t, "test notes content", dbResult.Notes)
 	assert.Nil(t, dbResult.ParentZone)
 
 	cleanupZone(result.UID)
@@ -220,17 +223,18 @@ func TestUpdateZone(t *testing.T) {
 	createTestUser(t, userUID)
 
 	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
-		Name: "Original", Code: "OR-" + uuid.New().String()[:8],
+		Name: "Original", Code: "OR-" + uuid.New().String()[:8], Notes: "original notes",
 	})
 	assert.NoError(t, err)
 
 	newCode := "UP-" + uuid.New().String()[:8]
 	updated, err := service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
-		Name: "Updated", Code: newCode,
+		Name: "Updated", Code: newCode, Notes: "updated notes",
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated", updated.Name)
 	assert.Equal(t, newCode, updated.Code)
+	assert.Equal(t, "updated notes", updated.Notes)
 
 	cleanupZone(zone.UID)
 	cleanupUser(userUID)
