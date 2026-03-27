@@ -84,3 +84,21 @@ func TestSystemTypeNameExistsInFacilityQuery(t *testing.T) {
 	assert.Equal(t, "result", query.ReturnAlias)
 	assert.Contains(t, query.Query, "toLower(st.name) = toLower($systemType)")
 }
+
+func TestGetSystemsHierarchyEdgesQuery_IncludesStandaloneRoots(t *testing.T) {
+	query := GetSystemsHierarchyEdgesQuery("B")
+
+	assert.Equal(t, "uid", query.ReturnAlias)
+	assert.Contains(t, query.Query, "OR NOT EXISTS {")
+	assert.Contains(t, query.Query, "MATCH (:System)-[:HAS_SUBSYSTEM]->(n)")
+	assert.Contains(t, query.Query, "WHERE (n)-[:HAS_SUBSYSTEM]->() OR NOT hasAnyParent")
+}
+
+func TestGetSystemsHierarchyEdgesQuery_StillLimitsChildrenToParents(t *testing.T) {
+	query := GetSystemsHierarchyEdgesQuery("B")
+
+	assert.Contains(t, query.Query, "OPTIONAL MATCH (p:System)-[:HAS_SUBSYSTEM]->(n)")
+	assert.Contains(t, query.Query, "AND (p)-[:HAS_SUBSYSTEM]->()")
+	assert.Contains(t, query.Query, "CASE WHEN hasAnyParent THEN p.uid ELSE null END as parentUid")
+	assert.NotContains(t, query.Query, "RETURN path")
+}
