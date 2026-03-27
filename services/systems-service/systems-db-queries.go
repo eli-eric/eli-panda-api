@@ -1147,31 +1147,8 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	return result
 }
 
-// GetSystemsHierarchyPathsQuery returns hierarchy structure as Neo4j paths.
-// NOTE: The Cypher is intentionally kept identical to the requested reference query
-// (only the Facility code is parameterized).
-func GetSystemsHierarchyPathsQuery(facilityCode string) (result helpers.DatabaseQuery) {
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["facilityCode"] = facilityCode
-
-	result.Query = `
-	MATCH (root:System)-[:BELONGS_TO_FACILITY]->(:Facility {code: $facilityCode})
-	WHERE NOT ()-[:HAS_SUBSYSTEM]->(root)
-		AND root.deleted <> TRUE
-		AND (root)-[:HAS_SUBSYSTEM]->()
-
-	MATCH path = (root)-[:HAS_SUBSYSTEM*]->(s:System)
-	WHERE s.deleted <> TRUE
-		AND (s)-[:HAS_SUBSYSTEM]->()
-
-	RETURN path
-	`
-	result.ReturnAlias = "path"
-	return result
-}
-
 // GetSystemsHierarchyEdgesQuery returns hierarchy as lightweight rows (parentUid -> uid)
-// for systems that have subsystems (parents only).
+// for parent systems plus standalone root systems without subsystems.
 //
 // This avoids returning Neo4j PATH objects, which can be extremely large for deep/wide hierarchies
 // and may lead to connection pool exhaustion/timeouts in dev.
@@ -1182,9 +1159,15 @@ func GetSystemsHierarchyEdgesQuery(facilityCode string) (result helpers.Database
 	result.Query = `
 	MATCH (n:System)-[:BELONGS_TO_FACILITY]->(:Facility {code: $facilityCode})
 	WHERE n.deleted <> TRUE
-		AND (n)-[:HAS_SUBSYSTEM]->()
+		AND (
+			(n)-[:HAS_SUBSYSTEM]->()
+			OR NOT EXISTS {
+				MATCH (:System)-[:HAS_SUBSYSTEM]->(n)
+			}
+		)
 	OPTIONAL MATCH (anyParent:System)-[:HAS_SUBSYSTEM]->(n)
 	WITH n, count(anyParent) > 0 AS hasAnyParent
+	WHERE (n)-[:HAS_SUBSYSTEM]->() OR NOT hasAnyParent
 
 	OPTIONAL MATCH (p:System)-[:HAS_SUBSYSTEM]->(n)
 	WHERE p.deleted <> TRUE

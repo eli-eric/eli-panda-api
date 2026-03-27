@@ -95,6 +95,60 @@ func NewSystemsService(settings *config.Config, driver *neo4j.Driver) ISystemsSe
 	return &SystemsService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }
 
+func hierarchySystemLevelOrder(systemLevel *string) int {
+	if systemLevel == nil {
+		return 3
+	}
+
+	switch strings.ToUpper(strings.TrimSpace(*systemLevel)) {
+	case "TECHNOLOGY_UNIT":
+		return 1
+	case "KEY_SYSTEMS":
+		return 2
+	default:
+		return 3
+	}
+}
+
+func hierarchySystemLevelValue(systemLevel *string) string {
+	if systemLevel == nil {
+		return ""
+	}
+
+	return strings.ToUpper(strings.TrimSpace(*systemLevel))
+}
+
+func compareHierarchyNodes(leftNode, rightNode *models.SystemHierarchyNode) bool {
+	leftOrder := hierarchySystemLevelOrder(leftNode.SystemLevel)
+	rightOrder := hierarchySystemLevelOrder(rightNode.SystemLevel)
+	if leftOrder != rightOrder {
+		return leftOrder < rightOrder
+	}
+
+	leftSystemLevel := hierarchySystemLevelValue(leftNode.SystemLevel)
+	rightSystemLevel := hierarchySystemLevelValue(rightNode.SystemLevel)
+	if leftSystemLevel != rightSystemLevel {
+		return leftSystemLevel < rightSystemLevel
+	}
+
+	return strings.ToLower(leftNode.Name) < strings.ToLower(rightNode.Name)
+}
+
+func sortHierarchyRoots(rootUIDs []string, nodesByUID map[string]*models.SystemHierarchyNode, childrenByUID map[string]map[string]struct{}) {
+	sort.SliceStable(rootUIDs, func(i, j int) bool {
+		leftUID := rootUIDs[i]
+		rightUID := rootUIDs[j]
+
+		leftHasChildren := len(childrenByUID[leftUID]) > 0
+		rightHasChildren := len(childrenByUID[rightUID]) > 0
+		if leftHasChildren != rightHasChildren {
+			return leftHasChildren
+		}
+
+		return compareHierarchyNodes(nodesByUID[leftUID], nodesByUID[rightUID])
+	})
+}
+
 func (svc *SystemsService) GetSystemTypesCodebook(facilityCode string) (result []codebookModels.Codebook, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
@@ -461,9 +515,7 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 		}
 		roots = append(roots, uid)
 	}
-	sort.SliceStable(roots, func(i, j int) bool {
-		return strings.ToLower(nodesByUID[roots[i]].Name) < strings.ToLower(nodesByUID[roots[j]].Name)
-	})
+	sortHierarchyRoots(roots, nodesByUID, childrenByUID)
 
 	var build func(uid string, visiting map[string]bool) models.SystemHierarchyNode
 	build = func(uid string, visiting map[string]bool) models.SystemHierarchyNode {
@@ -497,7 +549,7 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 			childUIDs = append(childUIDs, childUID)
 		}
 		sort.SliceStable(childUIDs, func(i, j int) bool {
-			return strings.ToLower(nodesByUID[childUIDs[i]].Name) < strings.ToLower(nodesByUID[childUIDs[j]].Name)
+			return compareHierarchyNodes(nodesByUID[childUIDs[i]], nodesByUID[childUIDs[j]])
 		})
 		for _, childUID := range childUIDs {
 			out.Children = append(out.Children, build(childUID, visiting))

@@ -411,8 +411,8 @@ func (h *SystemsHandlers) GetSystemsWithSearchAndPagination() echo.HandlerFunc {
 }
 
 // GetSystemsHierarchy godoc
-// @Summary Get systems hierarchy (parents only)
-// @Description Returns a hierarchy tree containing only systems that have subsystems (no leaves).
+// @Summary Get systems hierarchy
+// @Description Returns a hierarchy tree containing parent systems plus standalone root systems without subsystems. Child arrays contain only parent systems.
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth

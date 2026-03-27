@@ -2,6 +2,7 @@ package systemsService
 
 import (
 	"errors"
+	"sort"
 	"testing"
 
 	"panda/apigateway/helpers"
@@ -90,4 +91,58 @@ func TestInvalidSystemGraphInput(t *testing.T) {
 
 	assert.True(t, errors.Is(err, helpers.ERR_INVALID_INPUT))
 	assert.Equal(t, "invalid systemType: INVALID_INPUT", err.Error())
+}
+
+func TestSortHierarchyRoots_PrioritizesRootsWithChildren(t *testing.T) {
+	technologyUnit := "TECHNOLOGY_UNIT"
+	keySystems := "KEY_SYSTEMS"
+	trash := "TRASH"
+
+	roots := []string{"root-b", "root-parent", "root-a"}
+	nodesByUID := map[string]*models.SystemHierarchyNode{
+		"root-a": {
+			UID:         "root-a",
+			Name:        "Alpha Root",
+			SystemLevel: &trash,
+		},
+		"root-b": {
+			UID:         "root-b",
+			Name:        "Beta Root",
+			SystemLevel: &keySystems,
+		},
+		"root-parent": {
+			UID:         "root-parent",
+			Name:        "Parent Root",
+			SystemLevel: &technologyUnit,
+		},
+	}
+	childrenByUID := map[string]map[string]struct{}{
+		"root-parent": {
+			"child-1": {},
+		},
+	}
+
+	sortHierarchyRoots(roots, nodesByUID, childrenByUID)
+
+	assert.Equal(t, []string{"root-parent", "root-b", "root-a"}, roots)
+}
+
+func TestCompareHierarchyNodes_SortsBySystemLevelOrderThenLevelThenName(t *testing.T) {
+	technologyUnit := "TECHNOLOGY_UNIT"
+	keySystems := "KEY_SYSTEMS"
+	subsystems := "SUBSYSTEMS_AND_PARTS"
+	trash := "TRASH"
+
+	nodes := []*models.SystemHierarchyNode{
+		{UID: "trash", Name: "Zulu", SystemLevel: &trash},
+		{UID: "subsystems", Name: "Alpha", SystemLevel: &subsystems},
+		{UID: "key", Name: "Zulu", SystemLevel: &keySystems},
+		{UID: "technology", Name: "Zulu", SystemLevel: &technologyUnit},
+	}
+
+	sort.SliceStable(nodes, func(i, j int) bool {
+		return compareHierarchyNodes(nodes[i], nodes[j])
+	})
+
+	assert.Equal(t, []string{"technology", "key", "subsystems", "trash"}, []string{nodes[0].UID, nodes[1].UID, nodes[2].UID, nodes[3].UID})
 }
