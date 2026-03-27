@@ -8,7 +8,7 @@
 
 Provide two lightweight read endpoints for the new System Hierarchy Explorer UI:
 
-1. A **parents-only hierarchy tree** (loads first, cheap)
+1. A **hierarchy tree of parent systems plus standalone roots** (loads first, cheap)
 2. A **leaf systems table** for a selected parent (loaded on selection, paginated)
 
 ## Endpoints
@@ -34,7 +34,7 @@ Provide two lightweight read endpoints for the new System Hierarchy Explorer UI:
 
 Notes:
 
-- The tree includes only systems that have at least one subsystem.
+- The top-level tree includes systems that have at least one subsystem and standalone root systems that have no parent and no subsystems.
 - `children` only contains children that are also parents (i.e., themselves have subsystems).
 - `hasLeafChildren=true` indicates the node has at least one direct child that is a leaf; the UI can use this to show that leaf systems are available even if `children` is empty.
 
