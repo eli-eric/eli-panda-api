@@ -1719,6 +1719,8 @@ definitions:
         type: string
       name:
         type: string
+      notes:
+        type: string
       parentZone:
         $ref: '#/definitions/models.Codebook'
       uid:
@@ -1729,6 +1731,8 @@ definitions:
       code:
         type: string
       name:
+        type: string
+      notes:
         type: string
       parentUid:
         type: string
@@ -1749,6 +1753,8 @@ definitions:
       code:
         type: string
       name:
+        type: string
+      notes:
         type: string
       parentUid:
         type: string

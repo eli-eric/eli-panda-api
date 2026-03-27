@@ -8482,6 +8482,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "notes": {
+                    "type": "string"
+                },
                 "parentZone": {
                     "$ref": "#/definitions/models.Codebook"
                 },
@@ -8497,6 +8500,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "notes": {
                     "type": "string"
                 },
                 "parentUid": {
@@ -8528,6 +8534,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "notes": {
                     "type": "string"
                 },
                 "parentUid": {
