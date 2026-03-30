@@ -287,10 +287,6 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 		}
 		agg.mappedLanguage = langCode
 
-		if len(agg.row.GrantCodes) == 0 {
-			warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "no CEP grant — using ramcove-programy-EK fallback"})
-		}
-
 		// Type-specific validation
 		switch mediaType {
 		case "J":
