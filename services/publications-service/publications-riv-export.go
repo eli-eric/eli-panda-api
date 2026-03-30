@@ -93,7 +93,7 @@ type rivResearcherData struct {
 	CitizenshipCode      string
 }
 
-func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte, string, error) {
+func (svc *PublicationsService) ExportRiv(year string, provider string, deliveryRef string) ([]byte, string, error) {
 	pubs, warnings, err := svc.buildRivData(year, provider)
 	if err != nil {
 		return nil, "", err
@@ -103,7 +103,7 @@ func (svc *PublicationsService) ExportRiv(year string, provider string) ([]byte,
 		log.Warn().Int("warnings", len(warnings)).Msg("RIV export has validation warnings")
 	}
 
-	dodavka := buildRivDodavka(provider, pubs)
+	dodavka := buildRivDodavka(provider, deliveryRef, pubs)
 
 	xmlBytes, err := xml.MarshalIndent(dodavka, "", "  ")
 	if err != nil {
@@ -253,11 +253,6 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 	pubs := make([]rivAggregatedPublication, 0, len(pubOrder))
 	warnings := make([]models.RivValidationWarning, 0)
 
-	// Config validation
-	if strings.Contains(models.RivDeliveryRef, "TODO") {
-		warnings = append(warnings, models.RivValidationWarning{PublicationCode: "", Message: "RivDeliveryRef still contains TODO placeholder"})
-	}
-
 	idCodes := make(map[string]bool)
 	for _, uid := range pubOrder {
 		agg := pubMap[uid]
@@ -314,7 +309,7 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: no volume number"})
 			}
 			if agg.row.Issue == nil || *agg.row.Issue == 0 {
-				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: issue missing — using yearOfPublication as cislo fallback"})
+				warnings = append(warnings, models.RivValidationWarning{PublicationCode: code, Message: "type J: issue missing — fill in manually before submission"})
 			}
 		case "C":
 			if agg.row.BookTitle == nil || *agg.row.BookTitle == "" {
@@ -388,7 +383,7 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 	return pubs, warnings, nil
 }
 
-func buildRivDodavka(provider string, pubs []rivAggregatedPublication) models.RivDodavka {
+func buildRivDodavka(provider string, deliveryRef string, pubs []rivAggregatedPublication) models.RivDodavka {
 	vysledky := make([]models.RivVysledek, 0, len(pubs))
 	for _, pub := range pubs {
 		v := buildRivVysledek(pub)
@@ -425,7 +420,7 @@ func buildRivDodavka(provider string, pubs []rivAggregatedPublication) models.Ri
 				},
 			},
 			Verze:    models.RivDeliveryVersion,
-			Pruvodka: models.RivPruvodka{CisloJednaci: models.RivDeliveryRef},
+			Pruvodka: models.RivPruvodka{CisloJednaci: deliveryRef},
 		},
 		Obsah: models.RivObsah{Vysledky: vysledky},
 	}
@@ -590,12 +585,10 @@ func buildTypeJ(v *models.RivVysledek, row rivPublicationRow) {
 		v.Rocnik.StatusUdaje = "neuvedeno"
 	}
 
-	// Cislo — fallback to yearOfPublication per RIV spec (cislo does not support neuvedeno)
+	// Cislo — left empty when missing so user can fill manually before submission
 	v.Cislo = &models.RivCislo{}
 	if row.Issue != nil && *row.Issue > 0 {
 		v.Cislo.Value = fmt.Sprintf("%d", *row.Issue)
-	} else {
-		v.Cislo.Value = row.YearOfPublication
 	}
 
 	// Pages
