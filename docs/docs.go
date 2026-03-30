@@ -3162,6 +3162,13 @@ const docTemplate = `{
                         "name": "provider",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Delivery reference number (cislo jednaci)",
+                        "name": "deliveryRef",
+                        "in": "query",
+                        "required": true
                     }
                 ],
                 "responses": {

@@ -40,7 +40,7 @@ type IPublicationsService interface {
 	UpdateGrant(grant *models.Grant, userUID string) (result models.Grant, err error)
 	DeleteGrant(uid string, userUID string) (err error)
 	// RIV export methods
-	ExportRiv(year string, provider string) ([]byte, string, error)
+	ExportRiv(year string, provider string, deliveryRef string) ([]byte, string, error)
 	ValidateRiv(year string, provider string) (models.RivValidationResult, error)
 	// Codebook autocomplete methods
 	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)

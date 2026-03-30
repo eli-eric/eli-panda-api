@@ -21,7 +21,6 @@ const (
 	// Delivery metadata
 	RivDeliveryMode    = "R" // R=new, Z=update, V=deletion
 	RivDeliveryVersion = "01"
-	RivDeliveryRef     = "TODO-REF" // set per delivery
 )
 
 // MediaTypeDruhMap maps MediaType codes to RIV <druh> attribute values
