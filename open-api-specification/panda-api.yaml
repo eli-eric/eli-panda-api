@@ -3761,6 +3761,11 @@ paths:
         name: provider
         required: true
         type: string
+      - description: Delivery reference number (cislo jednaci)
+        in: query
+        name: deliveryRef
+        required: true
+        type: string
       produces:
       - application/xml
       responses:

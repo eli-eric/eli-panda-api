@@ -591,6 +591,7 @@ func (h *PublicationsHandlers) GetPublicationsAsCsv() echo.HandlerFunc {
 // @Produce application/xml
 // @Param year query string true "Year of publication"
 // @Param provider query string true "Provider code (grant group code)"
+// @Param deliveryRef query string true "Delivery reference number (cislo jednaci)"
 // @Success 200 "XML file"
 // @Failure 400 "Bad Request"
 // @Failure 500 "Internal Server Error"
@@ -605,8 +606,12 @@ func (h *PublicationsHandlers) ExportRiv() echo.HandlerFunc {
 		if !providerRegex.MatchString(provider) {
 			return helpers.BadRequest("provider must be alphanumeric")
 		}
+		deliveryRef := strings.TrimSpace(c.QueryParam("deliveryRef"))
+		if deliveryRef == "" {
+			return helpers.BadRequest("deliveryRef is required")
+		}
 
-		xmlBytes, filename, err := h.PublicationsService.ExportRiv(year, provider)
+		xmlBytes, filename, err := h.PublicationsService.ExportRiv(year, provider, deliveryRef)
 		if err != nil {
 			log.Error().Err(err).Msg("Error exporting RIV")
 			return echo.ErrInternalServerError
