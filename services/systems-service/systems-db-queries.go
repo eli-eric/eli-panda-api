@@ -536,12 +536,12 @@ func GetSystemsSearchFilterQueryOnly(searchString string, facilityCode string, f
 
 		if priceFilter != nil {
 			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, order `
-			result.Query += ` MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
+			result.Query += ` MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order) WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
 			result.Parameters["filterPriceFrom"] = priceFilter.Min
 			result.Parameters["filterPriceTo"] = priceFilter.Max
 		} else {
 			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, order `
-			result.Query += ` OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() `
+			result.Query += ` OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order) `
 		}
 
 		if eunFilter != nil {
@@ -1068,7 +1068,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
@@ -1108,7 +1108,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
 	lastUpdateBy: sys.lastUpdateBy,	
@@ -1345,10 +1345,10 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 
 	// responsible
 	if filterVal := helpers.GetFilterValueCodebook(filtering, "responsible"); filterVal != nil {
-		result.Query += ` MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe) WHERE responsilbe.uid = $filterResponsible `
+		result.Query += ` MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible) WHERE responsible.uid = $filterResponsible `
 		result.Parameters["filterResponsible"] = (*filterVal).UID
 	} else {
-		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe) `
+		result.Query += ` OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible) `
 	}
 
 	// importance
@@ -1433,35 +1433,35 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 		}
 
 		if priceFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, order `
-			result.Query += ` MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, order `
+			result.Query += ` MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order) WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
 			result.Parameters["filterPriceFrom"] = priceFilter.Min
 			result.Parameters["filterPriceTo"] = priceFilter.Max
 		} else {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, order `
-			result.Query += ` OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, order `
+			result.Query += ` OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order) `
 		}
 
 		if eunFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 			result.Query += ` WHERE toLower(physicalItem.eun) CONTAINS $filterEUN `
 			result.Parameters["filterEUN"] = strings.ToLower(*eunFilter)
 		}
 
 		if serialNumberFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 			result.Query += ` WHERE toLower(physicalItem.serialNumber) CONTAINS $filterSerialNumber `
 			result.Parameters["filterSerialNumber"] = strings.ToLower(*serialNumberFilter)
 		}
 
 		if catalogueNumberFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 			result.Query += ` WHERE toLower(catalogueItem.catalogueNumber) CONTAINS $filterCatalogueNumber `
 			result.Parameters["filterCatalogueNumber"] = strings.ToLower(*catalogueNumberFilter)
 		}
 
 		if catalogueNameFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+			result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 			result.Query += ` WHERE toLower(catalogueItem.name) CONTAINS $filterCatalogueName `
 			result.Parameters["filterCatalogueName"] = strings.ToLower(*catalogueNameFilter)
 		}
@@ -1474,21 +1474,21 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 
 			if filter.Type == "text" {
 				if filterPropvalue := helpers.GetFilterValueString(filtering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE toLower(pv.value) contains $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = strings.ToLower(*filterPropvalue)
 				}
 			} else if filter.Type == "list" {
 				if filterPropvalue := helpers.GetFilterValueListString(filtering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE pv.value IN $propFilterVal%v `, i, itemTypeByPropType[filter.PropType], i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterVal%v", i)] = filterPropvalue
 				}
 			} else if filter.Type == "number" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filtering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v) WHERE ($propFilterValFrom%v IS NULL OR toFloat(pv.value) >= $propFilterValFrom%v) AND ($propFilterValTo%v IS NULL OR toFloat(pv.value) <= $propFilterValTo%v) `, i, itemTypeByPropType[filter.PropType], i, i, i, i)
 					result.Parameters[fmt.Sprintf("propUID%v", i)] = filter.Id
 					result.Parameters[fmt.Sprintf("propFilterValFrom%v", i)] = filterPropvalue.Min
@@ -1496,9 +1496,9 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 				}
 			} else if filter.Type == "range" {
 				if filterPropvalue := helpers.GetFilterValueRangeFloat64(filtering, filter.Id); filterPropvalue != nil {
-					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order `
+					result.Query += ` WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order `
 					result.Query += fmt.Sprintf(` MATCH(prop{uid: $propUID%v})<-[pv]-(%v)
-					WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsilbe, loc, zone, st, supplier, ol, order, apoc.convert.fromJsonMap(pv.value) as jsonValue
+					WITH sys, physicalItem, catalogueItem, ciCategory, itemUsage, imp, responsible, loc, zone, st, supplier, ol, order, apoc.convert.fromJsonMap(pv.value) as jsonValue
 					WHERE (toFloat(jsonValue.min) <= $propFilterValFrom%[1]v - $propFilterValTo%[1]v)
 					AND (toFloat(jsonValue.max) >= $propFilterValFrom%[1]v + $propFilterValTo%[1]v)
 					`, i, itemTypeByPropType[filter.PropType])
@@ -1563,7 +1563,7 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 		location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end,
 		zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 		systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-		responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+		responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 		importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,
 		lastUpdateTime: sys.lastUpdateTime,
 		lastUpdateBy: sys.lastUpdateBy,
@@ -1749,7 +1749,7 @@ func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string,
 			result.Parameters["filterSupplier"] = (*supplierFilter).UID
 		}
 		if priceFilter != nil {
-			result.Query += ` WITH sys, physicalItem, catalogueItem MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-() WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
+			result.Query += ` WITH sys, physicalItem, catalogueItem MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order) WHERE ($filterPriceFrom IS NULL OR ol.price >= $filterPriceFrom) AND ($filterPriceTo IS NULL OR ol.price <= $filterPriceTo) `
 			result.Parameters["filterPriceFrom"] = priceFilter.Min
 			result.Parameters["filterPriceTo"] = priceFilter.Max
 		}
@@ -1830,7 +1830,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (catalogueItem)-[:HAS_SUPPLIER]->(supplier)
@@ -1866,7 +1866,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name, code: zone.code} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
 	lastUpdateBy: sys.lastUpdateBy,	
@@ -1909,7 +1909,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)
 	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(physicalItem)-[:IS_BASED_ON]->(catalogueItem)-[:BELONGS_TO_CATEGORY]->(ciCategory)	
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
@@ -1940,7 +1940,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 	location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	lastUpdateTime: sys.lastUpdateTime,
 	lastUpdateBy: sys.lastUpdateBy,	
@@ -1978,7 +1978,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)  
 	OPTIONAL MATCH (sys)-[:HAS_ZONE]->(zone)  
 	OPTIONAL MATCH (sys)-[:HAS_SYSTEM_TYPE]->(st)	
-	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsilbe)
+	OPTIONAL MATCH (sys)-[:HAS_RESPONSIBLE]->(responsible)
 	OPTIONAL MATCH (sys)-[:HAS_IMPORTANCE]->(imp)		
 	OPTIONAL MATCH (physicalItem)-[:HAS_ITEM_USAGE]->(itemUsage)
 	CALL {
@@ -2004,7 +2004,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	location: case when loc is not null then {uid: loc.uid, name: loc.name, code: loc.code} else null end,
 	zone: case when zone is not null then {uid: zone.uid, name: zone.name} else null end,
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
-	responsible: case when responsilbe is not null then {uid: responsilbe.uid, name: responsilbe.lastName + " " + responsilbe.firstName} else null end,
+	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
 	subsystems: case when subsys is not null then collect({uid: subsys.uid, name: subsys.name}) else null end,
 	physicalItem: case when physicalItem is not null then {
