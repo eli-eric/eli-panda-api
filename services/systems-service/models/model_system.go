@@ -197,6 +197,7 @@ type SystemHistory struct {
 	ChangedBy   string               `json:"changedBy"`
 	HistoryType string               `json:"historyType"`
 	Action      string               `json:"action"`
+	Changes     *string              `json:"changes,omitempty"`
 	Detail      *SystemHistoryDetail `json:"detail"`
 }
 
