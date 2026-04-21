@@ -162,7 +162,7 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, err
 		}
 
 		rec, _ := record.Get("n")
@@ -346,7 +346,7 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query Data
 			if isNoRowsError(err) {
 				return nil, ERR_NO_ROWS
 			}
-			return nil, fmt.Errorf(err.Error())
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -373,7 +373,7 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 			if isNoRowsError(err) {
 				return nil, ERR_NO_ROWS
 			}
-			return nil, fmt.Errorf(err.Error())
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -400,7 +400,7 @@ func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, qu
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -427,7 +427,7 @@ func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query Database
 			if isNoRowsError(err) {
 				return nil, ERR_NO_ROWS
 			}
-			return nil, fmt.Errorf(err.Error())
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -1065,10 +1065,9 @@ var ERR_DUPLICATE_SYSTEM_CODE = errors.New("DUPLICATE_SYSTEM_CODE")
 var ERR_MISSING_REQUIRED_FIELD = errors.New("MISSING_REQUIRED_FIELD")
 
 // ERR_NO_ROWS is returned by the single-record neo4j helpers when Result.Single()
-// reports zero matching rows. The error text preserves the driver's original message
-// so existing callers that do strings.Contains(err.Error(), "no more records")
-// keep working; new callers should prefer errors.Is(err, helpers.ERR_NO_ROWS).
-var ERR_NO_ROWS = errors.New("Result contains no more records")
+// reports zero matching rows. Callers should use errors.Is(err, helpers.ERR_NO_ROWS)
+// rather than string-match the message.
+var ERR_NO_ROWS = errors.New("no matching records")
 
 // isNoRowsError detects the neo4j driver's "no more records" UsageError that
 // Result.Single() emits when a query returns zero rows. Used by the single-record

@@ -335,7 +335,7 @@ func validateParentIsRoot(session neo4j.Session, parentUID, facilityCode string)
 }
 
 func isNoRecords(err error) bool {
-	return err != nil && strings.Contains(err.Error(), "no more records")
+	return errors.Is(err, helpers.ERR_NO_ROWS)
 }
 
 func mapCSVColumns(header []string) map[string]int {

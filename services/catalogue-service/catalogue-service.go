@@ -19,6 +19,10 @@ type CatalogueService struct {
 	jwtSecret   string
 }
 
+// ErrPatchValidation marks errors from PATCH reference validation (unknown supplier/
+// category/property UID, missing property UID). The handler uses errors.Is to surface 400.
+var ErrPatchValidation = errors.New("patch validation failed")
+
 type ICatalogueService interface {
 	GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
 	GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.CatalogueItemSimple], err error)
@@ -423,10 +427,6 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 	return result, err
 }
 
-// ErrPatchValidation marks errors from PATCH reference validation (unknown supplier/
-// category/property UID, missing property UID). The handler uses errors.Is to surface 400.
-var ErrPatchValidation = errors.New("patch validation failed")
-
 func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.PatchCatalogueItemFields, userUID string) (result models.CatalogueItem, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
@@ -443,10 +443,7 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 		return result, helpers.ERR_CONFLICT
 	}
 
-	// If the PATCH also changes category, augment originalItem.Details with the new
-	// category's property set so detail UIDs from the target category pass validation
-	// and the Cypher builder can source DB-backed Name/Type.Code for the audit entries.
-	if fields.Category != nil && fields.Category.UID != "" && fields.Category.UID != originalItem.Category.UID && fields.Details != nil {
+	if isCombinedCategoryAndDetailsPatch(fields, &originalItem) {
 		newCatProps, propErr := svc.GetCatalogueCategoryPropertiesByUid(fields.Category.UID, nil)
 		if propErr != nil {
 			return result, propErr
@@ -478,6 +475,20 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 
 	result, err = svc.GetCatalogueItemWithDetailsByUid(uid)
 	return result, err
+}
+
+// isCombinedCategoryAndDetailsPatch reports whether a PATCH swaps category AND also
+// supplies details. In that case the service augments originalItem.Details with the new
+// category's property set so detail UIDs from the target category pass validation
+// and the Cypher builder can source DB-backed Name/Type.Code for audit entries.
+func isCombinedCategoryAndDetailsPatch(fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem) bool {
+	if fields.Details == nil || fields.Category == nil {
+		return false
+	}
+	if fields.Category.UID == "" {
+		return false
+	}
+	return fields.Category.UID != originalItem.Category.UID
 }
 
 // validatePatchReferences rejects references to non-existent supplier/category/property
