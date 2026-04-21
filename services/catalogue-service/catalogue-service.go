@@ -40,6 +40,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
 	GetCatalogueCategoryPhysicalItemPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (result models.CatalogueItem, err error)
+	PatchCatalogueItem(uid string, fields *models.PatchCatalogueItemFields, userUID string) (result models.CatalogueItem, err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
 	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
@@ -418,6 +419,29 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 		}
 	}
 
+	return result, err
+}
+
+func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.PatchCatalogueItemFields, userUID string) (result models.CatalogueItem, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(uid)
+	if err != nil {
+		return result, err
+	}
+
+	if !fields.LastUpdateTime.Equal(originalItem.LastUpdateTime) {
+		return result, helpers.ERR_CONFLICT
+	}
+
+	query := PatchCatalogueItemQuery(uid, fields, &originalItem, userUID)
+	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		return result, err
+	}
+
+	result, err = svc.GetCatalogueItemWithDetailsByUid(uid)
 	return result, err
 }
 

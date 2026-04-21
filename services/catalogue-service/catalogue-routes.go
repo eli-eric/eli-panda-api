@@ -38,6 +38,8 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.POST("/v1/catalogue/item", m.Authorization(h.CreateNewCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
 	//update catalogue item
 	e.PUT("/v1/catalogue/item/:uid", m.Authorization(h.UpdateCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
+	//partial update catalogue item (JSON merge patch semantics)
+	e.PATCH("/v1/catalogue/item/:uid", m.Authorization(h.PatchCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
 	//delete catalogue item
 	e.DELETE("/v1/catalogue/item/:uid", m.Authorization(h.DeleteCatalogueItem(), shared.ROLE_CATALOGUE_EDIT), jwtMiddleware)
 	//get catalogue item statistics
