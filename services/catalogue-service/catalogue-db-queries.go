@@ -1056,6 +1056,175 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	return result
 }
 
+// PatchCatalogueItemQuery builds a partial-update Cypher query for a catalogue item.
+// Only fields with non-nil presence markers in `fields` produce SET / MERGE segments.
+// A JSON-serialized changes array is attached to the WAS_UPDATED_BY relationship for audit.
+func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["userUID"] = userUID
+
+	var changes []helpers.ChangeEntry
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(item:CatalogueItem{uid: $uid})
+	SET item.lastUpdateTime = datetime()
+	WITH u, item
+	`
+
+	if fields.Name != nil {
+		result.Parameters["name"] = *fields.Name
+		result.Query += ` SET item.name = $name WITH u, item `
+		changes = helpers.AppendIfChanged(changes, "name", helpers.ChangeTypeString, originalItem.Name, *fields.Name)
+	}
+
+	if fields.CatalogueNumber != nil {
+		result.Parameters["catalogueNumber"] = *fields.CatalogueNumber
+		result.Query += ` SET item.catalogueNumber = $catalogueNumber WITH u, item `
+		changes = helpers.AppendIfChanged(changes, "catalogueNumber", helpers.ChangeTypeString, originalItem.CatalogueNumber, *fields.CatalogueNumber)
+	}
+
+	applyOptionalString := func(opt *models.Optional[string], paramKey, cypherField, changeField string, oldVal *string) {
+		if opt == nil {
+			return
+		}
+		if opt.Value != nil {
+			result.Parameters[paramKey] = *opt.Value
+		} else {
+			result.Parameters[paramKey] = nil
+		}
+		result.Query += fmt.Sprintf(` SET item.%s = $%s WITH u, item `, cypherField, paramKey)
+		changes = helpers.AppendIfChanged(changes, changeField, helpers.ChangeTypeString, stringPtrToAny(oldVal), stringPtrToAny(opt.Value))
+	}
+
+	applyOptionalString(fields.Description, "description", "description", "description", originalItem.Description)
+	applyOptionalString(fields.ManufacturerUrl, "manufacturerUrl", "manufacturerUrl", "manufacturerUrl", originalItem.ManufacturerUrl)
+	applyOptionalString(fields.ManufacturerNumber, "manufacturerNumber", "manufacturerNumber", "manufacturerNumber", originalItem.ManufacturerNumber)
+
+	if fields.Supplier != nil {
+		result.Query += `
+		OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->()
+		DELETE oldSup
+		WITH u, item
+		`
+		if fields.Supplier.Value != nil && fields.Supplier.Value.UID != "" {
+			result.Parameters["supplierUid"] = fields.Supplier.Value.UID
+			result.Query += `
+			MATCH(newSup:Supplier{uid: $supplierUid})
+			MERGE(item)-[:HAS_SUPPLIER]->(newSup)
+			WITH u, item
+			`
+		}
+		var oldSup, newSup interface{}
+		if originalItem.Supplier != nil {
+			oldSup = originalItem.Supplier
+		}
+		if fields.Supplier.Value != nil {
+			newSup = fields.Supplier.Value
+		}
+		changes = helpers.AppendIfChanged(changes, "supplier", helpers.ChangeTypeCodebook, oldSup, newSup)
+	}
+
+	if fields.Category != nil && fields.Category.UID != "" {
+		result.Parameters["categoryUid"] = fields.Category.UID
+		result.Query += `
+		OPTIONAL MATCH (item)-[oldCat:BELONGS_TO_CATEGORY]->()
+		DELETE oldCat
+		WITH u, item
+		MATCH(newCat:CatalogueCategory{uid: $categoryUid})
+		MERGE(item)-[:BELONGS_TO_CATEGORY]->(newCat)
+		WITH u, item
+		`
+		changes = helpers.AppendIfChanged(changes, "category", helpers.ChangeTypeCodebook, originalItem.Category, *fields.Category)
+	}
+
+	if fields.Details != nil {
+		for i, detail := range *fields.Details {
+			propAlias := fmt.Sprintf("pp%d", i)
+			propUIDKey := fmt.Sprintf("propUID%d", i)
+			propValKey := fmt.Sprintf("propValue%d", i)
+
+			result.Parameters[propUIDKey] = detail.Property.UID
+
+			newValForChange := detail.Value
+			if detail.Value == nil {
+				result.Parameters[propValKey] = nil
+			} else {
+				if detail.Property.Type.Code == "range" {
+					if jsonValue, err := json.Marshal(detail.Value); err == nil {
+						result.Parameters[propValKey] = string(jsonValue)
+						newValForChange = string(jsonValue)
+					} else {
+						result.Parameters[propValKey] = detail.Value
+					}
+				} else {
+					result.Parameters[propValKey] = detail.Value
+				}
+			}
+
+			result.Query += fmt.Sprintf(`
+			MATCH(%[1]s:CatalogueCategoryProperty{uid: $%[2]s})
+			MERGE(item)-[r_%[1]s:HAS_CATALOGUE_PROPERTY]->(%[1]s)
+			SET r_%[1]s.value = $%[3]s
+			WITH u, item
+			`, propAlias, propUIDKey, propValKey)
+
+			changeType := mapPropertyTypeToChangeType(detail.Property.Type.Code)
+			oldDetail := findDetailByPropUID(originalItem.Details, detail.Property.UID)
+			propName := detail.Property.Name
+			var oldValForChange interface{}
+			if oldDetail != nil {
+				oldValForChange = oldDetail.Value
+				if oldDetail.Property.Name != "" {
+					propName = oldDetail.Property.Name
+				}
+			}
+			changes = helpers.AppendIfChanged(changes, propName, changeType, oldValForChange, newValForChange)
+		}
+	}
+
+	result.Parameters["changes"] = helpers.MarshalChanges(changes)
+	result.Query += `
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "PATCH", changes: $changes }]->(u)
+	RETURN item.uid as uid
+	`
+
+	result.ReturnAlias = "uid"
+	return result
+}
+
+func stringPtrToAny(s *string) interface{} {
+	if s == nil {
+		return nil
+	}
+	return *s
+}
+
+func mapPropertyTypeToChangeType(code string) helpers.ChangeType {
+	switch code {
+	case "number":
+		return helpers.ChangeTypeNumber
+	case "date":
+		return helpers.ChangeTypeDate
+	case "boolean":
+		return helpers.ChangeTypeBoolean
+	default:
+		return helpers.ChangeTypeString
+	}
+}
+
+func findDetailByPropUID(details []models.CatalogueItemDetail, propUID string) *models.CatalogueItemDetail {
+	for i := range details {
+		if details[i].Property.UID == propUID {
+			return &details[i]
+		}
+	}
+	return nil
+}
+
 // delete catalogue item query
 func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.DatabaseQuery) {
 
