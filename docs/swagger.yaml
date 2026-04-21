@@ -2188,6 +2188,43 @@ paths:
       summary: Get catalogue item detail
       tags:
       - Catalogue
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Applies a partial update to a catalogue item. Only fields present in the JSON body are modified.
+        Required: lastUpdateTime (for conflict detection). Supported keys: name, catalogueNumber, description, manufacturerUrl, manufacturerNumber, supplier, category, details.
+        Scalar fields set to JSON null are cleared. Missing keys are left untouched. Details are merged (no deletion); send value:null to clear a single detail's value.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Partial catalogue item payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueItem'
+        "400":
+          description: Bad Request
+        "409":
+          description: Conflict
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Partially update catalogue item
+      tags:
+      - Catalogue
     put:
       consumes:
       - application/json
