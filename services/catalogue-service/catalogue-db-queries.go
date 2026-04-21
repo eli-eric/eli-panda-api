@@ -1210,7 +1210,7 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += `
-	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "PATCH", changes: $changes }]->(u)
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE", changes: $changes }]->(u)
 	RETURN item.uid as uid
 	`
 

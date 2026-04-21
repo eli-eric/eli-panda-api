@@ -121,7 +121,7 @@ func readLatestChanges(t *testing.T, itemUID string) (string, string) {
 	t.Helper()
 	res, err := testsetup.TestSession.Run(`
 		MATCH (i:CatalogueItem{uid: $uid})-[r:WAS_UPDATED_BY]->()
-		WHERE r.action = 'PATCH'
+		WHERE r.action = 'UPDATE'
 		RETURN r.changes as changes, r.action as action
 		ORDER BY r.at DESC LIMIT 1
 	`, map[string]interface{}{"uid": itemUID})
@@ -162,7 +162,7 @@ func TestPatchCatalogueItem_UpdatesNameOnly(t *testing.T) {
 	assert.Equal(t, f.supplierUID, updated.Supplier.UID, "supplier must not change")
 
 	changes, action := readLatestChanges(t, f.itemUID)
-	assert.Equal(t, "PATCH", action)
+	assert.Equal(t, "UPDATE", action)
 	var parsed []map[string]interface{}
 	assert.NoError(t, json.Unmarshal([]byte(changes), &parsed))
 	assert.Len(t, parsed, 1)
@@ -263,7 +263,7 @@ func TestPatchCatalogueItem_IdempotentCall_EmptyChanges(t *testing.T) {
 	assert.NoError(t, err)
 
 	changes, action := readLatestChanges(t, f.itemUID)
-	assert.Equal(t, "PATCH", action)
+	assert.Equal(t, "UPDATE", action)
 	assert.Equal(t, "[]", changes, "idempotent PATCH should record empty changes array")
 }
 

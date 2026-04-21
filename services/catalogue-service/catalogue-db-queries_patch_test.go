@@ -51,7 +51,7 @@ func TestPatchCatalogueItemQuery_NameOnly(t *testing.T) {
 	assert.NotContains(t, q.Query, "HAS_CATALOGUE_PROPERTY")
 	assert.NotContains(t, q.Query, "HAS_SUPPLIER")
 	assert.NotContains(t, q.Query, "BELONGS_TO_CATEGORY")
-	assert.Contains(t, q.Query, `action: "PATCH"`)
+	assert.Contains(t, q.Query, `action: "UPDATE"`)
 	assert.Contains(t, q.Query, "changes: $changes")
 	assert.Equal(t, "New Name", q.Parameters["name"])
 
@@ -164,7 +164,7 @@ func TestPatchCatalogueItemQuery_NoChanges_EmptyChangesArray(t *testing.T) {
 	q := PatchCatalogueItemQuery("item-1", fields, newOriginalItem(), "user-1")
 
 	assert.Contains(t, q.Query, "SET item.name = $name")
-	assert.Contains(t, q.Query, `action: "PATCH"`)
+	assert.Contains(t, q.Query, `action: "UPDATE"`)
 	assert.Equal(t, "[]", q.Parameters["changes"])
 }
 
@@ -210,7 +210,7 @@ func TestPatchCatalogueItemQuery_AlwaysSetsLastUpdateAndAuditRel(t *testing.T) {
 
 	assert.Contains(t, q.Query, "SET item.lastUpdateTime = datetime()")
 	assert.Contains(t, q.Query, "CREATE(item)-[:WAS_UPDATED_BY")
-	assert.Contains(t, q.Query, `action: "PATCH"`)
+	assert.Contains(t, q.Query, `action: "UPDATE"`)
 	assert.Equal(t, "[]", q.Parameters["changes"])
 	assert.Equal(t, "user-1", q.Parameters["userUID"])
 	assert.Equal(t, "item-1", q.Parameters["uid"])
