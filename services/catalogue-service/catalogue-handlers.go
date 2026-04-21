@@ -2,6 +2,7 @@ package catalogueService
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -582,9 +583,11 @@ func (h *CatalogueHandlers) PatchCatalogueItem() echo.HandlerFunc {
 		updatedItem, err := h.catalogueService.PatchCatalogueItem(uid, fields, userUID)
 		if err == nil {
 			return c.JSON(http.StatusOK, updatedItem)
-		} else if err == helpers.ERR_CONFLICT {
+		} else if errors.Is(err, helpers.ERR_CONFLICT) {
 			log.Err(helpers.ERR_CONFLICT).Msg("Catalogue item was updated by another user")
 			return echo.ErrConflict
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
 		}
 
 		log.Error().Err(err).Msg("Error patching catalogue item")
@@ -660,6 +663,9 @@ func parsePatchCatalogueItemPayload(raw map[string]json.RawMessage) (*models.Pat
 			if err := json.Unmarshal(r, &cb); err != nil {
 				return nil, fmt.Errorf("invalid supplier: %w", err)
 			}
+			if cb.UID == "" {
+				return nil, fmt.Errorf("supplier.uid is required; to clear the supplier send supplier: null")
+			}
 			fields.Supplier = &models.Optional[codebookModels.Codebook]{Value: &cb}
 		}
 	}
@@ -668,6 +674,9 @@ func parsePatchCatalogueItemPayload(raw map[string]json.RawMessage) (*models.Pat
 		var cb codebookModels.Codebook
 		if err := json.Unmarshal(r, &cb); err != nil {
 			return nil, fmt.Errorf("invalid category: %w", err)
+		}
+		if cb.UID == "" {
+			return nil, fmt.Errorf("category.uid is required")
 		}
 		fields.Category = &cb
 	}

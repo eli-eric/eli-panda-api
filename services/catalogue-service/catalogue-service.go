@@ -7,6 +7,7 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -428,6 +429,9 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 
 	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(uid)
 	if err != nil {
+		if strings.Contains(err.Error(), "no more records") {
+			return result, helpers.ERR_NOT_FOUND
+		}
 		return result, err
 	}
 

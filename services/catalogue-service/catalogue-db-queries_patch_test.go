@@ -181,6 +181,29 @@ func TestPatchCatalogueItemQuery_ChangesJsonShape(t *testing.T) {
 	}
 }
 
+func TestPatchCatalogueItemQuery_DetailRangeValue_SerializesAsJson(t *testing.T) {
+	rangeVal := map[string]interface{}{"min": 1.0, "max": 10.0}
+	details := []models.CatalogueItemDetail{{
+		Property: models.CatalogueCategoryProperty{UID: "prop-range", Name: "Frequency", Type: models.CatalogueCategoryPropertyType{Code: "range"}},
+		Value:    rangeVal,
+	}}
+	fields := &models.PatchCatalogueItemFields{Details: &details}
+	q := PatchCatalogueItemQuery("item-1", fields, newOriginalItem(), "user-1")
+
+	raw, ok := q.Parameters["propValue0"].(string)
+	assert.True(t, ok, "range value must be serialized to a JSON string")
+	var parsed map[string]float64
+	assert.NoError(t, json.Unmarshal([]byte(raw), &parsed))
+	assert.Equal(t, 1.0, parsed["min"])
+	assert.Equal(t, 10.0, parsed["max"])
+
+	changes := parseChanges(t, q)
+	assert.Len(t, changes, 1)
+	assert.Equal(t, "Frequency", changes[0]["field"])
+	assert.Equal(t, "string", changes[0]["type"], "range maps to string ChangeType per spec")
+	assert.Equal(t, raw, changes[0]["newValue"], "new value in change entry is the JSON string form")
+}
+
 func TestPatchCatalogueItemQuery_AlwaysSetsLastUpdateAndAuditRel(t *testing.T) {
 	q := PatchCatalogueItemQuery("item-1", &models.PatchCatalogueItemFields{}, newOriginalItem(), "user-1")
 

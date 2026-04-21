@@ -3,6 +3,7 @@ package catalogueService
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
@@ -338,4 +339,35 @@ func TestParsePatchCatalogueItemPayload_AbsentDescription(t *testing.T) {
 	fields, err := parsePatchCatalogueItemPayload(raw)
 	assert.NoError(t, err)
 	assert.Nil(t, fields.Description, "absent key maps to nil Optional pointer")
+}
+
+func TestParsePatchCatalogueItemPayload_CategoryEmptyUID_Rejected(t *testing.T) {
+	raw := map[string]json.RawMessage{
+		"lastUpdateTime": json.RawMessage(`"2026-04-21T10:00:00Z"`),
+		"category":       json.RawMessage(`{}`),
+	}
+	_, err := parsePatchCatalogueItemPayload(raw)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "category.uid")
+}
+
+func TestParsePatchCatalogueItemPayload_SupplierEmptyUID_Rejected(t *testing.T) {
+	raw := map[string]json.RawMessage{
+		"lastUpdateTime": json.RawMessage(`"2026-04-21T10:00:00Z"`),
+		"supplier":       json.RawMessage(`{"name":"X"}`),
+	}
+	_, err := parsePatchCatalogueItemPayload(raw)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "supplier.uid")
+}
+
+func TestPatchCatalogueItem_UnknownUid_ReturnsNotFound(t *testing.T) {
+	svc := newPatchSvc()
+
+	newName := "X"
+	_, err := svc.PatchCatalogueItem("does-not-exist-"+uuid.NewString(), &models.PatchCatalogueItemFields{
+		Name:           &newName,
+		LastUpdateTime: time.Now(),
+	}, "anything")
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
 }
