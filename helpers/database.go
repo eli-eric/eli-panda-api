@@ -343,6 +343,9 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query Data
 
 		record, err := result.Single()
 		if err != nil {
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
 			return nil, fmt.Errorf(err.Error())
 		}
 
@@ -367,6 +370,9 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 
 		record, err := result.Single()
 		if err != nil {
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
 			return nil, fmt.Errorf(err.Error())
 		}
 
@@ -418,6 +424,9 @@ func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query Database
 
 		record, err := result.Single()
 		if err != nil {
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
 			return nil, fmt.Errorf(err.Error())
 		}
 
@@ -1054,3 +1063,16 @@ var ERR_DELETE_RELATED_ITEMS = errors.New("DELETE_NOT_POSSIBLE_RELATED_ITEMS")
 var ERR_CONFLICT = errors.New("CONFLICT")
 var ERR_DUPLICATE_SYSTEM_CODE = errors.New("DUPLICATE_SYSTEM_CODE")
 var ERR_MISSING_REQUIRED_FIELD = errors.New("MISSING_REQUIRED_FIELD")
+
+// ERR_NO_ROWS is returned by the single-record neo4j helpers when Result.Single()
+// reports zero matching rows. The error text preserves the driver's original message
+// so existing callers that do strings.Contains(err.Error(), "no more records")
+// keep working; new callers should prefer errors.Is(err, helpers.ERR_NO_ROWS).
+var ERR_NO_ROWS = errors.New("Result contains no more records")
+
+// isNoRowsError detects the neo4j driver's "no more records" UsageError that
+// Result.Single() emits when a query returns zero rows. Used by the single-record
+// helpers to convert the driver's stringy error into our typed ERR_NO_ROWS sentinel.
+func isNoRowsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "no more records")
+}

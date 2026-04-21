@@ -270,6 +270,53 @@ func TestPatchCatalogueItemQuery_AuditUsesDBSourcedMetadata(t *testing.T) {
 	assert.Equal(t, "number", changes[0]["type"], "type should come from originalItem's Type.Code, not payload")
 }
 
+func TestPatchCatalogueItemQuery_DetailFloatFormatEdgeCases(t *testing.T) {
+	// Pin the encodeDetailValueForStorage behavior for tricky float formats so a future
+	// change doesn't silently alter how numbers are stored / compared.
+	cases := []struct {
+		name     string
+		oldValue interface{}
+		newValue interface{}
+		expected string
+		changed  bool
+	}{
+		{"integer float matches integer string", "1", float64(1), "1", false},
+		{"integer float with trailing .0", "1.0", float64(1), "1", true}, // drift: stored as "1.0", payload normalizes to "1"
+		{"decimal preserves precision", "3.14", float64(3.14), "3.14", false},
+		{"large int-valued float uses exp notation", "1e+20", float64(1e20), "1e+20", false},
+		{"negative", "-2.5", float64(-2.5), "-2.5", false},
+		{"bool true", "true", true, "true", false},
+		{"bool false", "false", false, "false", false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			orig := newOriginalItem()
+			// override prop-B's stored value for this case
+			for i := range orig.Details {
+				if orig.Details[i].Property.UID == "prop-B" {
+					orig.Details[i].Value = tc.oldValue
+				}
+			}
+
+			details := []models.CatalogueItemDetail{{
+				Property: models.CatalogueCategoryProperty{UID: "prop-B"},
+				Value:    tc.newValue,
+			}}
+			q := PatchCatalogueItemQuery("item-1", &models.PatchCatalogueItemFields{Details: &details}, orig, "user-1")
+
+			assert.Equal(t, tc.expected, q.Parameters["propValue0"], "stored form must match expected normalized output")
+
+			changes := parseChanges(t, q)
+			if tc.changed {
+				assert.Len(t, changes, 1, "expected value drift to register as a change")
+			} else {
+				assert.Len(t, changes, 0, "semantically equal old/new should not register a change")
+			}
+		})
+	}
+}
+
 func TestPatchCatalogueItemQuery_DetailNumberTypeCoercion(t *testing.T) {
 	// originalItem has prop-B (Weight, type "number") stored as string "50".
 	// Payload sends JSON number 50 (float64 in Go) → should NOT register as change.

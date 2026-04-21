@@ -10,7 +10,6 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -555,8 +554,9 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 // @Param uid path string true "Catalogue item UID"
 // @Param body body object true "Partial catalogue item payload"
 // @Success 200 {object} models.CatalogueItem
-// @Failure 400 "Bad Request"
-// @Failure 409 "Conflict"
+// @Failure 400 "Bad Request — malformed body, missing lastUpdateTime, or unknown supplier/category/property UID"
+// @Failure 404 "Not Found — catalogue item does not exist"
+// @Failure 409 "Conflict — lastUpdateTime mismatch or concurrent update detected"
 // @Failure 500 "Internal server error"
 // @Router /v1/catalogue/item/{uid} [patch]
 func (h *CatalogueHandlers) PatchCatalogueItem() echo.HandlerFunc {
@@ -590,26 +590,13 @@ func (h *CatalogueHandlers) PatchCatalogueItem() echo.HandlerFunc {
 			return echo.ErrConflict
 		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
 			return echo.ErrNotFound
-		} else if isPatchValidationError(err) {
+		} else if errors.Is(err, ErrPatchValidation) {
 			return helpers.BadRequest(err.Error())
 		}
 
 		log.Error().Err(err).Msg("Error patching catalogue item")
 		return echo.ErrInternalServerError
 	}
-}
-
-// isPatchValidationError identifies service-layer reference validation failures
-// (unknown supplier/category/property UID) so the handler returns 400 instead of 500.
-func isPatchValidationError(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := err.Error()
-	return strings.Contains(msg, "supplier not found") ||
-		strings.Contains(msg, "category not found") ||
-		strings.Contains(msg, "property ") ||
-		strings.Contains(msg, "detail.property.uid")
 }
 
 // rawMessageIsNull reports whether a json.RawMessage contains the literal token

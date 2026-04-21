@@ -776,10 +776,13 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Bad Request"
+                        "description": "Bad Request — malformed body, missing lastUpdateTime, or unknown supplier/category/property UID"
+                    },
+                    "404": {
+                        "description": "Not Found — catalogue item does not exist"
                     },
                     "409": {
-                        "description": "Conflict"
+                        "description": "Conflict — lastUpdateTime mismatch or concurrent update detected"
                     },
                     "500": {
                         "description": "Internal server error"

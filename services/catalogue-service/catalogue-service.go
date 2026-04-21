@@ -8,7 +8,6 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
@@ -424,13 +423,17 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 	return result, err
 }
 
+// ErrPatchValidation marks errors from PATCH reference validation (unknown supplier/
+// category/property UID, missing property UID). The handler uses errors.Is to surface 400.
+var ErrPatchValidation = errors.New("patch validation failed")
+
 func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.PatchCatalogueItemFields, userUID string) (result models.CatalogueItem, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
 	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(uid)
 	if err != nil {
-		if strings.Contains(err.Error(), "no more records") {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
 			return result, helpers.ERR_NOT_FOUND
 		}
 		return result, err
@@ -438,6 +441,21 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 
 	if !fields.LastUpdateTime.Equal(originalItem.LastUpdateTime) {
 		return result, helpers.ERR_CONFLICT
+	}
+
+	// If the PATCH also changes category, augment originalItem.Details with the new
+	// category's property set so detail UIDs from the target category pass validation
+	// and the Cypher builder can source DB-backed Name/Type.Code for the audit entries.
+	if fields.Category != nil && fields.Category.UID != "" && fields.Category.UID != originalItem.Category.UID && fields.Details != nil {
+		newCatProps, propErr := svc.GetCatalogueCategoryPropertiesByUid(fields.Category.UID, nil)
+		if propErr != nil {
+			return result, propErr
+		}
+		for _, p := range newCatProps {
+			if findDetailByPropUID(originalItem.Details, p.Property.UID) == nil {
+				originalItem.Details = append(originalItem.Details, models.CatalogueItemDetail{Property: p.Property, PropertyGroup: p.PropertyGroup, Value: nil})
+			}
+		}
 	}
 
 	if err := svc.validatePatchReferences(fields, &originalItem); err != nil {
@@ -449,7 +467,7 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 	if err != nil {
 		// Empty result = MATCH on uid+lastUpdateTime yielded no rows, i.e. a concurrent
 		// write raced us between the initial read and the PATCH execution.
-		if strings.Contains(err.Error(), "no more records") {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
 			return result, helpers.ERR_CONFLICT
 		}
 		return result, err
@@ -464,13 +482,13 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 
 // validatePatchReferences rejects references to non-existent supplier/category/property
 // nodes before the main PATCH query runs, so an invalid UID produces a clear 400 instead
-// of silently stripping relationships.
+// of silently stripping relationships. Returned errors wrap ErrPatchValidation.
 func (svc *CatalogueService) validatePatchReferences(fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem) error {
 	if fields.Supplier != nil && fields.Supplier.Value != nil && fields.Supplier.Value.UID != "" {
 		if exists, err := svc.nodeExists("Supplier", fields.Supplier.Value.UID); err != nil {
 			return err
 		} else if !exists {
-			return fmt.Errorf("supplier not found: %s", fields.Supplier.Value.UID)
+			return fmt.Errorf("%w: supplier not found: %s", ErrPatchValidation, fields.Supplier.Value.UID)
 		}
 	}
 
@@ -478,7 +496,7 @@ func (svc *CatalogueService) validatePatchReferences(fields *models.PatchCatalog
 		if exists, err := svc.nodeExists("CatalogueCategory", fields.Category.UID); err != nil {
 			return err
 		} else if !exists {
-			return fmt.Errorf("category not found: %s", fields.Category.UID)
+			return fmt.Errorf("%w: category not found: %s", ErrPatchValidation, fields.Category.UID)
 		}
 	}
 
@@ -489,10 +507,10 @@ func (svc *CatalogueService) validatePatchReferences(fields *models.PatchCatalog
 		}
 		for _, d := range *fields.Details {
 			if d.Property.UID == "" {
-				return fmt.Errorf("detail.property.uid is required")
+				return fmt.Errorf("%w: detail.property.uid is required", ErrPatchValidation)
 			}
 			if !knownProps[d.Property.UID] {
-				return fmt.Errorf("property %s is not part of the item's category; change the category first or send a valid property UID", d.Property.UID)
+				return fmt.Errorf("%w: property %s is not part of the item's category; change the category first or send a valid property UID", ErrPatchValidation, d.Property.UID)
 			}
 		}
 	}

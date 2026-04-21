@@ -461,6 +461,86 @@ func TestParsePatchCatalogueItemPayload_NullCategory_Rejected(t *testing.T) {
 	assert.Contains(t, err.Error(), "category cannot be null")
 }
 
+func TestPatchCatalogueItemQuery_CypherLockRejectsStaleTimestamp(t *testing.T) {
+	// This test bypasses the service-layer Go check by calling the Cypher directly,
+	// proving the WHERE item.lastUpdateTime.epochMillis = ... guard actually works.
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+
+	// Advance the stored timestamp so it no longer matches `original`.
+	_, err := testsetup.TestSession.Run(
+		`MATCH(i:CatalogueItem{uid: $uid}) SET i.lastUpdateTime = datetime() + duration({seconds: 1}) RETURN i`,
+		map[string]interface{}{"uid": f.itemUID},
+	)
+	assert.NoError(t, err)
+
+	// Build and execute the PATCH query with the original (now stale) timestamp.
+	newName := "ForcedViaCypher"
+	query := PatchCatalogueItemQuery(f.itemUID, &models.PatchCatalogueItemFields{
+		Name:           &newName,
+		LastUpdateTime: original.LastUpdateTime,
+	}, &original, f.userUID)
+
+	session, _ := helpers.NewNeo4jSession(testsetup.TestDriver)
+	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	assert.ErrorIs(t, err, helpers.ERR_NO_ROWS, "Cypher MATCH should return zero rows for stale lastUpdateTime")
+
+	// verify the item name was NOT written
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	assert.Equal(t, "Original Item", reloaded.Name, "stale PATCH must not reach SET item.name")
+}
+
+func TestPatchCatalogueItem_CombinedCategoryAndDetails(t *testing.T) {
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	// Seed a property on the second category so we can include it in the combined PATCH.
+	newPropUID := "pt-newcat-prop-" + uuid.NewString()
+	newGrpUID := "pt-newcat-grp-" + uuid.NewString()
+	_, err := testsetup.TestSession.Run(`
+		MATCH (cat2:CatalogueCategory{uid: $cat2})
+		MATCH (typeStr:CatalogueCategoryPropertyType{code: 'text'})
+		CREATE (p:CatalogueCategoryProperty {uid: $propUID, name: 'Wavelength'})
+		CREATE (p)-[:IS_PROPERTY_TYPE]->(typeStr)
+		CREATE (grp:CatalogueCategoryPropertyGroup {uid: $grpUID, name: 'NewGrp'})
+		CREATE (cat2)-[:HAS_GROUP]->(grp)
+		CREATE (grp)-[:CONTAINS_PROPERTY]->(p)
+	`, map[string]interface{}{"cat2": f.category2, "propUID": newPropUID, "grpUID": newGrpUID})
+	assert.NoError(t, err)
+	defer testsetup.TestSession.Run(`MATCH (n) WHERE n.uid IN [$p, $g] DETACH DELETE n`,
+		map[string]interface{}{"p": newPropUID, "g": newGrpUID})
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+
+	// PATCH swaps category AND sets a detail belonging to the new category.
+	details := []models.CatalogueItemDetail{{
+		Property: models.CatalogueCategoryProperty{UID: newPropUID},
+		Value:    "650nm",
+	}}
+	updated, err := svc.PatchCatalogueItem(f.itemUID, &models.PatchCatalogueItemFields{
+		Category:       &codebookModels.Codebook{UID: f.category2, Name: "PatchTestCat2"},
+		Details:        &details,
+		LastUpdateTime: original.LastUpdateTime,
+	}, f.userUID)
+	assert.NoError(t, err, "combined category + new-category details should be accepted")
+	assert.Equal(t, f.category2, updated.Category.UID)
+
+	// verify the new detail value is persisted
+	found := false
+	for _, d := range updated.Details {
+		if d.Property.UID == newPropUID {
+			assert.Equal(t, "650nm", d.Value)
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "new-category property should appear in the updated item")
+}
+
 func TestParsePatchCatalogueItemPayload_NullDescription_WhitespaceTolerant(t *testing.T) {
 	raw := map[string]json.RawMessage{
 		"lastUpdateTime": json.RawMessage(`"2026-04-21T10:00:00Z"`),
