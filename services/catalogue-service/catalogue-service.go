@@ -3,6 +3,7 @@ package catalogueService
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -439,14 +440,78 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 		return result, helpers.ERR_CONFLICT
 	}
 
-	query := PatchCatalogueItemQuery(uid, fields, &originalItem, userUID)
-	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
-	if err != nil {
+	if err := svc.validatePatchReferences(fields, &originalItem); err != nil {
 		return result, err
+	}
+
+	query := PatchCatalogueItemQuery(uid, fields, &originalItem, userUID)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		// Empty result = MATCH on uid+lastUpdateTime yielded no rows, i.e. a concurrent
+		// write raced us between the initial read and the PATCH execution.
+		if strings.Contains(err.Error(), "no more records") {
+			return result, helpers.ERR_CONFLICT
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_CONFLICT
 	}
 
 	result, err = svc.GetCatalogueItemWithDetailsByUid(uid)
 	return result, err
+}
+
+// validatePatchReferences rejects references to non-existent supplier/category/property
+// nodes before the main PATCH query runs, so an invalid UID produces a clear 400 instead
+// of silently stripping relationships.
+func (svc *CatalogueService) validatePatchReferences(fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem) error {
+	if fields.Supplier != nil && fields.Supplier.Value != nil && fields.Supplier.Value.UID != "" {
+		if exists, err := svc.nodeExists("Supplier", fields.Supplier.Value.UID); err != nil {
+			return err
+		} else if !exists {
+			return fmt.Errorf("supplier not found: %s", fields.Supplier.Value.UID)
+		}
+	}
+
+	if fields.Category != nil && fields.Category.UID != "" {
+		if exists, err := svc.nodeExists("CatalogueCategory", fields.Category.UID); err != nil {
+			return err
+		} else if !exists {
+			return fmt.Errorf("category not found: %s", fields.Category.UID)
+		}
+	}
+
+	if fields.Details != nil {
+		knownProps := map[string]bool{}
+		for _, d := range originalItem.Details {
+			knownProps[d.Property.UID] = true
+		}
+		for _, d := range *fields.Details {
+			if d.Property.UID == "" {
+				return fmt.Errorf("detail.property.uid is required")
+			}
+			if !knownProps[d.Property.UID] {
+				return fmt.Errorf("property %s is not part of the item's category; change the category first or send a valid property UID", d.Property.UID)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (svc *CatalogueService) nodeExists(label, uid string) (bool, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	q := helpers.DatabaseQuery{
+		Query:       fmt.Sprintf("MATCH(n:%s{uid: $uid}) RETURN count(n) as c", label),
+		ReturnAlias: "c",
+		Parameters:  map[string]interface{}{"uid": uid},
+	}
+	c, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, q)
+	if err != nil {
+		return false, err
+	}
+	return c > 0, nil
 }
 
 func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (err error) {

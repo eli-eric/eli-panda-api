@@ -1,6 +1,7 @@
 package catalogueService
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
 	codebookModels "panda/apigateway/services/codebook-service/models"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 
@@ -588,11 +590,32 @@ func (h *CatalogueHandlers) PatchCatalogueItem() echo.HandlerFunc {
 			return echo.ErrConflict
 		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
 			return echo.ErrNotFound
+		} else if isPatchValidationError(err) {
+			return helpers.BadRequest(err.Error())
 		}
 
 		log.Error().Err(err).Msg("Error patching catalogue item")
 		return echo.ErrInternalServerError
 	}
+}
+
+// isPatchValidationError identifies service-layer reference validation failures
+// (unknown supplier/category/property UID) so the handler returns 400 instead of 500.
+func isPatchValidationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "supplier not found") ||
+		strings.Contains(msg, "category not found") ||
+		strings.Contains(msg, "property ") ||
+		strings.Contains(msg, "detail.property.uid")
+}
+
+// rawMessageIsNull reports whether a json.RawMessage contains the literal token
+// "null", tolerating surrounding whitespace (encoding/json preserves it in RawMessage).
+func rawMessageIsNull(r json.RawMessage) bool {
+	return bytes.Equal(bytes.TrimSpace(r), []byte("null"))
 }
 
 // parsePatchCatalogueItemPayload maps a json.RawMessage map into the typed
@@ -629,7 +652,7 @@ func parsePatchCatalogueItemPayload(raw map[string]json.RawMessage) (*models.Pat
 		if !ok {
 			return nil, nil
 		}
-		if string(r) == "null" {
+		if rawMessageIsNull(r) {
 			return &models.Optional[string]{Value: nil}, nil
 		}
 		var v string
@@ -656,7 +679,7 @@ func parsePatchCatalogueItemPayload(raw map[string]json.RawMessage) (*models.Pat
 	}
 
 	if r, ok := raw["supplier"]; ok {
-		if string(r) == "null" {
+		if rawMessageIsNull(r) {
 			fields.Supplier = &models.Optional[codebookModels.Codebook]{Value: nil}
 		} else {
 			var cb codebookModels.Codebook
@@ -670,7 +693,10 @@ func parsePatchCatalogueItemPayload(raw map[string]json.RawMessage) (*models.Pat
 		}
 	}
 
-	if r, ok := raw["category"]; ok && string(r) != "null" {
+	if r, ok := raw["category"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("category cannot be null; category is required for catalogue items")
+		}
 		var cb codebookModels.Codebook
 		if err := json.Unmarshal(r, &cb); err != nil {
 			return nil, fmt.Errorf("invalid category: %w", err)

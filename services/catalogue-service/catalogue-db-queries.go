@@ -1059,11 +1059,26 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 // PatchCatalogueItemQuery builds a partial-update Cypher query for a catalogue item.
 // Only fields with non-nil presence markers in `fields` produce SET / MERGE segments.
 // A JSON-serialized changes array is attached to the WAS_UPDATED_BY relationship for audit.
+//
+// The item MATCH includes lastUpdateTime as a precondition: concurrent writes that
+// advance the timestamp between service-layer read and this query will make the MATCH
+// return zero rows, causing no writes and a missing-record response the service maps to 409.
+//
+// Relationship swaps (supplier, category) MATCH the new target node BEFORE deleting the
+// existing relationship so an invalid target UID cannot leave the item stripped of
+// supplier/category. The service layer also pre-validates these UIDs to surface 400 errors.
+//
+// Detail audit metadata (field name, type) is sourced from originalItem.Details — which
+// service.GetCatalogueItemWithDetailsByUid augments with the canonical property set of the
+// item's category — so payload-supplied Property.Name/Type.Code cannot spoof the audit log.
+// Unknown property UIDs fall back to the payload (and the service layer rejects them).
 func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["userUID"] = userUID
+	// epoch millis avoids time.Time → Neo4j DateTime precision/timezone round-trip mismatches
+	result.Parameters["lastUpdateTimeMillis"] = originalItem.LastUpdateTime.UnixMilli()
 
 	var changes []helpers.ChangeEntry
 
@@ -1071,6 +1086,7 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	MATCH(u:User{uid: $userUID})
 	WITH u
 	MATCH(item:CatalogueItem{uid: $uid})
+	WHERE item.lastUpdateTime.epochMillis = $lastUpdateTimeMillis
 	SET item.lastUpdateTime = datetime()
 	WITH u, item
 	`
@@ -1105,16 +1121,21 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	applyOptionalString(fields.ManufacturerNumber, "manufacturerNumber", "manufacturerNumber", "manufacturerNumber", originalItem.ManufacturerNumber)
 
 	if fields.Supplier != nil {
-		result.Query += `
-		OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->()
-		DELETE oldSup
-		WITH u, item
-		`
 		if fields.Supplier.Value != nil && fields.Supplier.Value.UID != "" {
 			result.Parameters["supplierUid"] = fields.Supplier.Value.UID
 			result.Query += `
 			MATCH(newSup:Supplier{uid: $supplierUid})
+			WITH u, item, newSup
+			OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->()
+			DELETE oldSup
+			WITH u, item, newSup
 			MERGE(item)-[:HAS_SUPPLIER]->(newSup)
+			WITH u, item
+			`
+		} else {
+			result.Query += `
+			OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->()
+			DELETE oldSup
 			WITH u, item
 			`
 		}
@@ -1131,10 +1152,11 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	if fields.Category != nil && fields.Category.UID != "" {
 		result.Parameters["categoryUid"] = fields.Category.UID
 		result.Query += `
+		MATCH(newCat:CatalogueCategory{uid: $categoryUid})
+		WITH u, item, newCat
 		OPTIONAL MATCH (item)-[oldCat:BELONGS_TO_CATEGORY]->()
 		DELETE oldCat
-		WITH u, item
-		MATCH(newCat:CatalogueCategory{uid: $categoryUid})
+		WITH u, item, newCat
 		MERGE(item)-[:BELONGS_TO_CATEGORY]->(newCat)
 		WITH u, item
 		`
@@ -1149,21 +1171,23 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 
 			result.Parameters[propUIDKey] = detail.Property.UID
 
-			newValForChange := detail.Value
-			if detail.Value == nil {
-				result.Parameters[propValKey] = nil
-			} else {
-				if detail.Property.Type.Code == "range" {
-					if jsonValue, err := json.Marshal(detail.Value); err == nil {
-						result.Parameters[propValKey] = string(jsonValue)
-						newValForChange = string(jsonValue)
-					} else {
-						result.Parameters[propValKey] = detail.Value
-					}
-				} else {
-					result.Parameters[propValKey] = detail.Value
+			oldDetail := findDetailByPropUID(originalItem.Details, detail.Property.UID)
+
+			// Source type code from DB (originalItem) to prevent audit spoofing.
+			// Fall back to payload if not found (service layer rejects unknown UIDs).
+			typeCode := detail.Property.Type.Code
+			propName := detail.Property.Name
+			if oldDetail != nil {
+				if oldDetail.Property.Type.Code != "" {
+					typeCode = oldDetail.Property.Type.Code
+				}
+				if oldDetail.Property.Name != "" {
+					propName = oldDetail.Property.Name
 				}
 			}
+
+			newStored := encodeDetailValueForStorage(detail.Value, typeCode)
+			result.Parameters[propValKey] = newStored
 
 			result.Query += fmt.Sprintf(`
 			MATCH(%[1]s:CatalogueCategoryProperty{uid: $%[2]s})
@@ -1172,17 +1196,15 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 			WITH u, item
 			`, propAlias, propUIDKey, propValKey)
 
-			changeType := mapPropertyTypeToChangeType(detail.Property.Type.Code)
-			oldDetail := findDetailByPropUID(originalItem.Details, detail.Property.UID)
-			propName := detail.Property.Name
-			var oldValForChange interface{}
+			// Normalize both sides to the DB storage form so type mismatches
+			// (e.g. payload int 50 vs stored string "50") don't register as changes.
+			var oldForCompare interface{}
 			if oldDetail != nil {
-				oldValForChange = oldDetail.Value
-				if oldDetail.Property.Name != "" {
-					propName = oldDetail.Property.Name
-				}
+				oldForCompare = oldDetail.Value
 			}
-			changes = helpers.AppendIfChanged(changes, propName, changeType, oldValForChange, newValForChange)
+			newForCompare := newStored
+			changeType := mapPropertyTypeToChangeType(typeCode)
+			changes = helpers.AppendIfChanged(changes, propName, changeType, oldForCompare, newForCompare)
 		}
 	}
 
@@ -1194,6 +1216,25 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 
 	result.ReturnAlias = "uid"
 	return result
+}
+
+// encodeDetailValueForStorage normalizes a detail value to the string representation
+// the DB stores for HAS_CATALOGUE_PROPERTY.value. range → JSON-stringified map, nil → nil,
+// everything else → fmt.Sprintf("%v", v) which matches Neo4j's toString() for numbers/bools.
+func encodeDetailValueForStorage(value interface{}, typeCode string) interface{} {
+	if value == nil {
+		return nil
+	}
+	if s, ok := value.(string); ok && s == "" {
+		return ""
+	}
+	if typeCode == "range" {
+		if b, err := json.Marshal(value); err == nil {
+			return string(b)
+		}
+		return value
+	}
+	return fmt.Sprintf("%v", value)
 }
 
 func stringPtrToAny(s *string) interface{} {

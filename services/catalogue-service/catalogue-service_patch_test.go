@@ -371,3 +371,103 @@ func TestPatchCatalogueItem_UnknownUid_ReturnsNotFound(t *testing.T) {
 	}, "anything")
 	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
 }
+
+func TestPatchCatalogueItem_UnknownSupplier_ReturnsValidationError(t *testing.T) {
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	_, err := svc.PatchCatalogueItem(f.itemUID, &models.PatchCatalogueItemFields{
+		Supplier:       &models.Optional[codebookModels.Codebook]{Value: &codebookModels.Codebook{UID: "nonexistent-" + uuid.NewString()}},
+		LastUpdateTime: original.LastUpdateTime,
+	}, f.userUID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "supplier not found")
+
+	// verify old supplier relationship still exists
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	assert.NotNil(t, reloaded.Supplier, "original HAS_SUPPLIER must not be deleted when new supplier is invalid")
+	assert.Equal(t, f.supplierUID, reloaded.Supplier.UID)
+}
+
+func TestPatchCatalogueItem_UnknownCategory_ReturnsValidationError(t *testing.T) {
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	_, err := svc.PatchCatalogueItem(f.itemUID, &models.PatchCatalogueItemFields{
+		Category:       &codebookModels.Codebook{UID: "nonexistent-" + uuid.NewString()},
+		LastUpdateTime: original.LastUpdateTime,
+	}, f.userUID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "category not found")
+
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	assert.Equal(t, f.categoryUID, reloaded.Category.UID, "original category must not be deleted when new category is invalid")
+}
+
+func TestPatchCatalogueItem_UnknownPropertyUID_ReturnsValidationError(t *testing.T) {
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	details := []models.CatalogueItemDetail{{
+		Property: models.CatalogueCategoryProperty{UID: "not-in-category-" + uuid.NewString()},
+		Value:    "X",
+	}}
+	_, err := svc.PatchCatalogueItem(f.itemUID, &models.PatchCatalogueItemFields{
+		Details:        &details,
+		LastUpdateTime: original.LastUpdateTime,
+	}, f.userUID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "property")
+}
+
+func TestPatchCatalogueItem_TOCTOU_CaughtByCypherLock(t *testing.T) {
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+
+	// Simulate a concurrent writer advancing lastUpdateTime between our read and write.
+	_, err := testsetup.TestSession.Run(
+		`MATCH(i:CatalogueItem{uid: $uid}) SET i.lastUpdateTime = datetime() RETURN i`,
+		map[string]interface{}{"uid": f.itemUID},
+	)
+	assert.NoError(t, err)
+
+	// Now attempt PATCH with the original (stale) timestamp. The Go-level check would
+	// normally catch this, but we call with the original ts to force the Cypher-level
+	// check to be the one that rejects.
+	newName := "Raced"
+	_, err = svc.PatchCatalogueItem(f.itemUID, &models.PatchCatalogueItemFields{
+		Name:           &newName,
+		LastUpdateTime: original.LastUpdateTime,
+	}, f.userUID)
+	assert.ErrorIs(t, err, helpers.ERR_CONFLICT)
+}
+
+func TestParsePatchCatalogueItemPayload_NullCategory_Rejected(t *testing.T) {
+	raw := map[string]json.RawMessage{
+		"lastUpdateTime": json.RawMessage(`"2026-04-21T10:00:00Z"`),
+		"category":       json.RawMessage(`null`),
+	}
+	_, err := parsePatchCatalogueItemPayload(raw)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "category cannot be null")
+}
+
+func TestParsePatchCatalogueItemPayload_NullDescription_WhitespaceTolerant(t *testing.T) {
+	raw := map[string]json.RawMessage{
+		"lastUpdateTime": json.RawMessage(`"2026-04-21T10:00:00Z"`),
+		"description":    json.RawMessage("  null\n"),
+	}
+	fields, err := parsePatchCatalogueItemPayload(raw)
+	assert.NoError(t, err)
+	assert.NotNil(t, fields.Description)
+	assert.Nil(t, fields.Description.Value)
+}
