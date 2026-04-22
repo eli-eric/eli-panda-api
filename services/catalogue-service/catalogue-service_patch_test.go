@@ -493,6 +493,34 @@ func TestPatchCatalogueItemQuery_CypherLockRejectsStaleTimestamp(t *testing.T) {
 	assert.Equal(t, "Original Item", reloaded.Name, "stale PATCH must not reach SET item.name")
 }
 
+func TestPatchCatalogueItemQuery_Phase1MatchFailure_NoPartialWrite(t *testing.T) {
+	// Guards against the Cypher pitfall where writes executed before a later failing
+	// MATCH are still applied inside the transaction. The builder places ALL MATCHes
+	// (user, item, supplier, category, each detail property) before ANY write, so a
+	// missing reference yields zero rows and no writes — including lastUpdateTime.
+	// This test bypasses the service-layer pre-validation by calling the query directly.
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	originalTS := original.LastUpdateTime
+
+	query := PatchCatalogueItemQuery(f.itemUID, &models.PatchCatalogueItemFields{
+		Category:       &codebookModels.Codebook{UID: "nonexistent-cat-" + uuid.NewString()},
+		LastUpdateTime: originalTS,
+	}, &original, f.userUID)
+
+	session, _ := helpers.NewNeo4jSession(testsetup.TestDriver)
+	_, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	assert.ErrorIs(t, err, helpers.ERR_NO_ROWS, "missing category ref should yield zero rows")
+
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	assert.True(t, reloaded.LastUpdateTime.Equal(originalTS),
+		"phase-1 MATCH failure must not advance lastUpdateTime")
+	assert.Equal(t, f.categoryUID, reloaded.Category.UID, "category must stay intact")
+}
+
 func TestPatchCatalogueItem_CombinedCategoryAndDetails(t *testing.T) {
 	f := seedPatchFixture(t)
 	defer cleanupPatchFixture(f)

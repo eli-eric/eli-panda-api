@@ -443,7 +443,7 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 		return result, helpers.ERR_CONFLICT
 	}
 
-	if isCombinedCategoryAndDetailsPatch(fields, &originalItem) {
+	if isCombinedCategoryAndDetailsPatch(fields, originalItem.Category.UID) {
 		newCatProps, propErr := svc.GetCatalogueCategoryPropertiesByUid(fields.Category.UID, nil)
 		if propErr != nil {
 			return result, propErr
@@ -481,14 +481,14 @@ func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.Patch
 // supplies details. In that case the service augments originalItem.Details with the new
 // category's property set so detail UIDs from the target category pass validation
 // and the Cypher builder can source DB-backed Name/Type.Code for audit entries.
-func isCombinedCategoryAndDetailsPatch(fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem) bool {
+func isCombinedCategoryAndDetailsPatch(fields *models.PatchCatalogueItemFields, oldCategoryUID string) bool {
 	if fields.Details == nil || fields.Category == nil {
 		return false
 	}
 	if fields.Category.UID == "" {
 		return false
 	}
-	return fields.Category.UID != originalItem.Category.UID
+	return fields.Category.UID != oldCategoryUID
 }
 
 // validatePatchReferences rejects references to non-existent supplier/category/property

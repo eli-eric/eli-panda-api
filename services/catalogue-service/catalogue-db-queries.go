@@ -1060,13 +1060,17 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 // Only fields with non-nil presence markers in `fields` produce SET / MERGE segments.
 // A JSON-serialized changes array is attached to the WAS_UPDATED_BY relationship for audit.
 //
+// Query shape: PHASE 1 matches every referenced node (user, item with lastUpdateTime guard,
+// supplier, category, each detail property), PHASE 2 performs all writes, PHASE 3 writes
+// the audit relationship and returns. This ordering guarantees that if any reference is
+// missing or the timestamp guard fails, the whole query yields zero rows and NO writes
+// execute — not even lastUpdateTime advances. (The write transaction also rolls back on
+// the ERR_NO_ROWS that results, but structuring the query this way makes partial-write
+// safety independent of transaction-scope guarantees.)
+//
 // The item MATCH includes lastUpdateTime as a precondition: concurrent writes that
 // advance the timestamp between service-layer read and this query will make the MATCH
 // return zero rows, causing no writes and a missing-record response the service maps to 409.
-//
-// Relationship swaps (supplier, category) MATCH the new target node BEFORE deleting the
-// existing relationship so an invalid target UID cannot leave the item stripped of
-// supplier/category. The service layer also pre-validates these UIDs to surface 400 errors.
 //
 // Detail audit metadata (field name, type) is sourced from originalItem.Details — which
 // service.GetCatalogueItemWithDetailsByUid augments with the canonical property set of the
@@ -1082,24 +1086,57 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 
 	var changes []helpers.ChangeEntry
 
+	// Track variables that must be carried through subsequent WITH clauses.
+	carry := []string{"u", "item"}
+
+	// =====  PHASE 1 — all MATCHes (validate refs before any write)  =====
+
 	result.Query = `
 	MATCH(u:User{uid: $userUID})
 	WITH u
 	MATCH(item:CatalogueItem{uid: $uid})
 	WHERE item.lastUpdateTime.epochMillis = $lastUpdateTimeMillis
-	SET item.lastUpdateTime = datetime()
-	WITH u, item
 	`
+
+	settingSupplier := fields.Supplier != nil && fields.Supplier.Value != nil && fields.Supplier.Value.UID != ""
+	if settingSupplier {
+		result.Parameters["supplierUid"] = fields.Supplier.Value.UID
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(newSup:Supplier{uid: $supplierUid}) `
+		carry = append(carry, "newSup")
+	}
+
+	if fields.Category != nil && fields.Category.UID != "" {
+		result.Parameters["categoryUid"] = fields.Category.UID
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(newCat:CatalogueCategory{uid: $categoryUid}) `
+		carry = append(carry, "newCat")
+	}
+
+	if fields.Details != nil {
+		for i, detail := range *fields.Details {
+			propAlias := fmt.Sprintf("pp%d", i)
+			propUIDKey := fmt.Sprintf("propUID%d", i)
+			result.Parameters[propUIDKey] = detail.Property.UID
+			result.Query += ` WITH ` + strings.Join(carry, ", ") + fmt.Sprintf(` MATCH(%s:CatalogueCategoryProperty{uid: $%s}) `, propAlias, propUIDKey)
+			carry = append(carry, propAlias)
+		}
+	}
+
+	// Consolidating WITH so subsequent clauses see all matched variables.
+	result.Query += ` WITH ` + strings.Join(carry, ", ") + ` `
+
+	// =====  PHASE 2 — all writes  =====
+
+	result.Query += ` SET item.lastUpdateTime = datetime() `
 
 	if fields.Name != nil {
 		result.Parameters["name"] = *fields.Name
-		result.Query += ` SET item.name = $name WITH u, item `
+		result.Query += ` SET item.name = $name `
 		changes = helpers.AppendIfChanged(changes, "name", helpers.ChangeTypeString, originalItem.Name, *fields.Name)
 	}
 
 	if fields.CatalogueNumber != nil {
 		result.Parameters["catalogueNumber"] = *fields.CatalogueNumber
-		result.Query += ` SET item.catalogueNumber = $catalogueNumber WITH u, item `
+		result.Query += ` SET item.catalogueNumber = $catalogueNumber `
 		changes = helpers.AppendIfChanged(changes, "catalogueNumber", helpers.ChangeTypeString, originalItem.CatalogueNumber, *fields.CatalogueNumber)
 	}
 
@@ -1112,7 +1149,7 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 		} else {
 			result.Parameters[paramKey] = nil
 		}
-		result.Query += fmt.Sprintf(` SET item.%s = $%s WITH u, item `, cypherField, paramKey)
+		result.Query += fmt.Sprintf(` SET item.%s = $%s `, cypherField, paramKey)
 		changes = helpers.AppendIfChanged(changes, changeField, helpers.ChangeTypeString, stringPtrToAny(oldVal), stringPtrToAny(opt.Value))
 	}
 
@@ -1121,23 +1158,9 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	applyOptionalString(fields.ManufacturerNumber, "manufacturerNumber", "manufacturerNumber", "manufacturerNumber", originalItem.ManufacturerNumber)
 
 	if fields.Supplier != nil {
-		if fields.Supplier.Value != nil && fields.Supplier.Value.UID != "" {
-			result.Parameters["supplierUid"] = fields.Supplier.Value.UID
-			result.Query += `
-			MATCH(newSup:Supplier{uid: $supplierUid})
-			WITH u, item, newSup
-			OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->()
-			DELETE oldSup
-			WITH u, item, newSup
-			MERGE(item)-[:HAS_SUPPLIER]->(newSup)
-			WITH u, item
-			`
-		} else {
-			result.Query += `
-			OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->()
-			DELETE oldSup
-			WITH u, item
-			`
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->() DELETE oldSup `
+		if settingSupplier {
+			result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(item)-[:HAS_SUPPLIER]->(newSup) `
 		}
 		var oldSup, newSup interface{}
 		if originalItem.Supplier != nil {
@@ -1150,31 +1173,20 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	}
 
 	if fields.Category != nil && fields.Category.UID != "" {
-		result.Parameters["categoryUid"] = fields.Category.UID
-		result.Query += `
-		MATCH(newCat:CatalogueCategory{uid: $categoryUid})
-		WITH u, item, newCat
-		OPTIONAL MATCH (item)-[oldCat:BELONGS_TO_CATEGORY]->()
-		DELETE oldCat
-		WITH u, item, newCat
-		MERGE(item)-[:BELONGS_TO_CATEGORY]->(newCat)
-		WITH u, item
-		`
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (item)-[oldCat:BELONGS_TO_CATEGORY]->() DELETE oldCat `
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(item)-[:BELONGS_TO_CATEGORY]->(newCat) `
 		changes = helpers.AppendIfChanged(changes, "category", helpers.ChangeTypeCodebook, originalItem.Category, *fields.Category)
 	}
 
 	if fields.Details != nil {
 		for i, detail := range *fields.Details {
 			propAlias := fmt.Sprintf("pp%d", i)
-			propUIDKey := fmt.Sprintf("propUID%d", i)
 			propValKey := fmt.Sprintf("propValue%d", i)
-
-			result.Parameters[propUIDKey] = detail.Property.UID
 
 			oldDetail := findDetailByPropUID(originalItem.Details, detail.Property.UID)
 
-			// Source type code from DB (originalItem) to prevent audit spoofing.
-			// Fall back to payload if not found (service layer rejects unknown UIDs).
+			// Source name/type from DB (originalItem) to prevent audit spoofing.
+			// Fall back to payload if not found (service layer rejects unknown UIDs upstream).
 			typeCode := detail.Property.Type.Code
 			propName := detail.Property.Name
 			if oldDetail != nil {
@@ -1189,12 +1201,7 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 			newStored := encodeDetailValueForStorage(detail.Value, typeCode)
 			result.Parameters[propValKey] = newStored
 
-			result.Query += fmt.Sprintf(`
-			MATCH(%[1]s:CatalogueCategoryProperty{uid: $%[2]s})
-			MERGE(item)-[r_%[1]s:HAS_CATALOGUE_PROPERTY]->(%[1]s)
-			SET r_%[1]s.value = $%[3]s
-			WITH u, item
-			`, propAlias, propUIDKey, propValKey)
+			result.Query += fmt.Sprintf(` MERGE(item)-[r_%[1]s:HAS_CATALOGUE_PROPERTY]->(%[1]s) SET r_%[1]s.value = $%[2]s `, propAlias, propValKey)
 
 			// Normalize both sides to the DB storage form so type mismatches
 			// (e.g. payload int 50 vs stored string "50") don't register as changes.
@@ -1207,6 +1214,8 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 			changes = helpers.AppendIfChanged(changes, propName, changeType, oldForCompare, newForCompare)
 		}
 	}
+
+	// =====  PHASE 3 — audit relationship + return  =====
 
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += `

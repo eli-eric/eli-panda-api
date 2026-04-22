@@ -162,6 +162,9 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 		record, err := result.Single()
 		if err != nil {
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
 			return nil, err
 		}
 
@@ -400,6 +403,9 @@ func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, qu
 
 		record, err := result.Single()
 		if err != nil {
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
 			return nil, err
 		}
 
