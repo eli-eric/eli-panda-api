@@ -516,10 +516,15 @@ func (svc *CatalogueService) validatePatchReferences(fields *models.PatchCatalog
 		for _, d := range originalItem.Details {
 			knownProps[d.Property.UID] = true
 		}
+		seen := map[string]bool{}
 		for _, d := range *fields.Details {
 			if d.Property.UID == "" {
 				return fmt.Errorf("%w: detail.property.uid is required", ErrPatchValidation)
 			}
+			if seen[d.Property.UID] {
+				return fmt.Errorf("%w: duplicate property UID in details: %s", ErrPatchValidation, d.Property.UID)
+			}
+			seen[d.Property.UID] = true
 			if !knownProps[d.Property.UID] {
 				return fmt.Errorf("%w: property %s is not part of the item's category; change the category first or send a valid property UID", ErrPatchValidation, d.Property.UID)
 			}

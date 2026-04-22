@@ -1207,11 +1207,14 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 
 			result.Query += fmt.Sprintf(` MERGE(item)-[r_%[1]s:HAS_CATALOGUE_PROPERTY]->(%[1]s) SET r_%[1]s.value = $%[2]s `, propAlias, propValKey)
 
-			// Normalize both sides to the DB storage form so type mismatches
-			// (e.g. payload int 50 vs stored string "50") don't register as changes.
+			// Normalize both sides through encodeDetailValueForStorage so type mismatches
+			// don't register as changes:
+			//   - payload int 50 vs stored string "50"
+			//   - range re-read as RangeFloat64Nullable struct vs re-marshaled JSON string
+			//   - map[string]interface{} from FE vs struct from DB read
 			var oldForCompare interface{}
 			if oldDetail != nil {
-				oldForCompare = oldDetail.Value
+				oldForCompare = encodeDetailValueForStorage(oldDetail.Value, typeCode)
 			}
 			newForCompare := newStored
 			changeType := mapPropertyTypeToChangeType(typeCode)
@@ -1232,8 +1235,10 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 }
 
 // encodeDetailValueForStorage normalizes a detail value to the string representation
-// the DB stores for HAS_CATALOGUE_PROPERTY.value. range → JSON-stringified map, nil → nil,
-// everything else → fmt.Sprintf("%v", v) which matches Neo4j's toString() for numbers/bools.
+// the DB stores for HAS_CATALOGUE_PROPERTY.value. range → canonical JSON via
+// helpers.RangeFloat64Nullable (fixed key order regardless of input shape — map, struct,
+// or pre-marshaled string), nil → nil, everything else → fmt.Sprintf("%v", v) which
+// matches Neo4j's toString() for numbers/bools.
 func encodeDetailValueForStorage(value interface{}, typeCode string) interface{} {
 	if value == nil {
 		return nil
@@ -1242,12 +1247,33 @@ func encodeDetailValueForStorage(value interface{}, typeCode string) interface{}
 		return ""
 	}
 	if typeCode == "range" {
-		if b, err := json.Marshal(value); err == nil {
+		r := coerceToRange(value)
+		if b, err := json.Marshal(r); err == nil {
 			return string(b)
 		}
 		return value
 	}
 	return fmt.Sprintf("%v", value)
+}
+
+// coerceToRange maps heterogeneous inputs into the canonical helpers.RangeFloat64Nullable
+// shape so both sides of a change comparison produce byte-identical JSON.
+// Handles: already-canonical struct (re-read via GetCatalogueItemWithDetailsByUid),
+// JSON string (raw DB storage form), and map[string]interface{} (FE payload).
+func coerceToRange(v interface{}) helpers.RangeFloat64Nullable {
+	var r helpers.RangeFloat64Nullable
+	switch x := v.(type) {
+	case helpers.RangeFloat64Nullable:
+		return x
+	case string:
+		_ = json.Unmarshal([]byte(x), &r)
+		return r
+	default:
+		if b, err := json.Marshal(v); err == nil {
+			_ = json.Unmarshal(b, &r)
+		}
+		return r
+	}
 }
 
 func stringPtrToAny(s *string) interface{} {

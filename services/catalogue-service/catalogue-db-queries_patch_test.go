@@ -182,6 +182,29 @@ func TestPatchCatalogueItemQuery_ChangesJsonShape(t *testing.T) {
 	}
 }
 
+func TestPatchCatalogueItemQuery_RangeIdempotent_NoChange(t *testing.T) {
+	// GetCatalogueItemWithDetailsByUid unmarshals stored range JSON into a
+	// helpers.RangeFloat64Nullable struct. If the change comparison didn't normalize
+	// both sides, the struct-vs-string mismatch would register a false-positive change
+	// and break idempotent PATCH for range fields.
+	min, max := 1.0, 10.0
+	orig := newOriginalItem()
+	orig.Details = append(orig.Details, models.CatalogueItemDetail{
+		Property: models.CatalogueCategoryProperty{UID: "prop-range", Name: "Freq", Type: models.CatalogueCategoryPropertyType{Code: "range"}},
+		Value:    helpers.RangeFloat64Nullable{Min: &min, Max: &max},
+	})
+
+	// FE re-sends the same range as a map (how encoding/json unmarshals unknown shapes).
+	details := []models.CatalogueItemDetail{{
+		Property: models.CatalogueCategoryProperty{UID: "prop-range"},
+		Value:    map[string]interface{}{"min": 1.0, "max": 10.0},
+	}}
+	q := PatchCatalogueItemQuery("item-1", &models.PatchCatalogueItemFields{Details: &details}, orig, "user-1")
+
+	changes := parseChanges(t, q)
+	assert.Len(t, changes, 0, "idempotent range PATCH must not register a change")
+}
+
 func TestPatchCatalogueItemQuery_DetailRangeValue_SerializesAsJson(t *testing.T) {
 	rangeVal := map[string]interface{}{"min": 1.0, "max": 10.0}
 	details := []models.CatalogueItemDetail{{

@@ -408,6 +408,32 @@ func TestPatchCatalogueItem_UnknownCategory_ReturnsValidationError(t *testing.T)
 	assert.Equal(t, f.categoryUID, reloaded.Category.UID, "original category must not be deleted when new category is invalid")
 }
 
+func TestPatchCatalogueItem_DuplicatePropertyUIDs_ReturnsValidationError(t *testing.T) {
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	details := []models.CatalogueItemDetail{
+		{Property: models.CatalogueCategoryProperty{UID: f.propAUID}, Value: "first"},
+		{Property: models.CatalogueCategoryProperty{UID: f.propAUID}, Value: "second"},
+	}
+	_, err := svc.PatchCatalogueItem(f.itemUID, &models.PatchCatalogueItemFields{
+		Details:        &details,
+		LastUpdateTime: original.LastUpdateTime,
+	}, f.userUID)
+	assert.ErrorIs(t, err, ErrPatchValidation)
+	assert.Contains(t, err.Error(), "duplicate property UID")
+
+	// Verify nothing was written — original value "12" untouched.
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	for _, d := range reloaded.Details {
+		if d.Property.UID == f.propAUID {
+			assert.Equal(t, "12", d.Value, "duplicate-UID payload must not reach any write")
+		}
+	}
+}
+
 func TestPatchCatalogueItem_UnknownPropertyUID_ReturnsValidationError(t *testing.T) {
 	f := seedPatchFixture(t)
 	defer cleanupPatchFixture(f)
