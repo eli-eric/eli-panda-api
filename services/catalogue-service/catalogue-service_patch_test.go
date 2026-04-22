@@ -463,7 +463,7 @@ func TestParsePatchCatalogueItemPayload_NullCategory_Rejected(t *testing.T) {
 
 func TestPatchCatalogueItemQuery_CypherLockRejectsStaleTimestamp(t *testing.T) {
 	// This test bypasses the service-layer Go check by calling the Cypher directly,
-	// proving the WHERE item.lastUpdateTime.epochMillis = ... guard actually works.
+	// proving the WHERE item.lastUpdateTime.{epochSeconds,nanosecond} = ... guard works.
 	f := seedPatchFixture(t)
 	defer cleanupPatchFixture(f)
 	svc := newPatchSvc()
@@ -491,6 +491,40 @@ func TestPatchCatalogueItemQuery_CypherLockRejectsStaleTimestamp(t *testing.T) {
 	// verify the item name was NOT written
 	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
 	assert.Equal(t, "Original Item", reloaded.Name, "stale PATCH must not reach SET item.name")
+}
+
+func TestPatchCatalogueItemQuery_CypherLockRejectsSubMillisecondRace(t *testing.T) {
+	// Neo4j datetime() has nanosecond precision; a guard that only compared
+	// epochMillis would let a concurrent write in the same millisecond pass.
+	// Here we advance the stored timestamp by exactly 1 nanosecond and confirm
+	// the query is still rejected.
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+
+	_, err := testsetup.TestSession.Run(
+		`MATCH(i:CatalogueItem{uid: $uid})
+		 SET i.lastUpdateTime = i.lastUpdateTime + duration({nanoseconds: 1})
+		 RETURN i`,
+		map[string]interface{}{"uid": f.itemUID},
+	)
+	assert.NoError(t, err)
+
+	newName := "SubMsRace"
+	query := PatchCatalogueItemQuery(f.itemUID, &models.PatchCatalogueItemFields{
+		Name:           &newName,
+		LastUpdateTime: original.LastUpdateTime,
+	}, &original, f.userUID)
+
+	session, _ := helpers.NewNeo4jSession(testsetup.TestDriver)
+	_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	assert.ErrorIs(t, err, helpers.ERR_NO_ROWS,
+		"sub-ms timestamp drift must still be detected by the nanosecond-precision guard")
+
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	assert.Equal(t, "Original Item", reloaded.Name)
 }
 
 func TestPatchCatalogueItemQuery_Phase1MatchFailure_NoPartialWrite(t *testing.T) {

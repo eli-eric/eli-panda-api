@@ -219,9 +219,13 @@ func TestPatchCatalogueItemQuery_AlwaysSetsLastUpdateAndAuditRel(t *testing.T) {
 func TestPatchCatalogueItemQuery_ItemMatchGuardsLastUpdateTime(t *testing.T) {
 	q := PatchCatalogueItemQuery("item-1", &models.PatchCatalogueItemFields{}, newOriginalItem(), "user-1")
 
-	assert.Contains(t, q.Query, "WHERE item.lastUpdateTime.epochMillis = $lastUpdateTimeMillis",
-		"MATCH should include lastUpdateTime precondition to defend against TOCTOU races")
-	assert.Equal(t, newOriginalItem().LastUpdateTime.UnixMilli(), q.Parameters["lastUpdateTimeMillis"])
+	assert.Contains(t, q.Query, "WHERE item.lastUpdateTime.epochSeconds = $lastUpdateTimeEpochSeconds",
+		"MATCH should guard with epochSeconds precondition")
+	assert.Contains(t, q.Query, "AND item.lastUpdateTime.nanosecond = $lastUpdateTimeNanosecond",
+		"MATCH must also compare nanosecond-within-second so sub-millisecond races are caught")
+	original := newOriginalItem()
+	assert.Equal(t, original.LastUpdateTime.Unix(), q.Parameters["lastUpdateTimeEpochSeconds"])
+	assert.Equal(t, original.LastUpdateTime.Nanosecond(), q.Parameters["lastUpdateTimeNanosecond"])
 }
 
 func TestPatchCatalogueItemQuery_SupplierChange_MatchesNewBeforeDelete(t *testing.T) {

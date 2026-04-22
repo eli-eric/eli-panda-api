@@ -1081,8 +1081,11 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["userUID"] = userUID
-	// epoch millis avoids time.Time → Neo4j DateTime precision/timezone round-trip mismatches
-	result.Parameters["lastUpdateTimeMillis"] = originalItem.LastUpdateTime.UnixMilli()
+	// Neo4j datetime() has nanosecond precision; epochMillis alone would truncate
+	// sub-millisecond differences and let concurrent writes inside the same ms race through.
+	// Compare epochSeconds + nanosecond (0-999_999_999 within the second) for full precision.
+	result.Parameters["lastUpdateTimeEpochSeconds"] = originalItem.LastUpdateTime.Unix()
+	result.Parameters["lastUpdateTimeNanosecond"] = originalItem.LastUpdateTime.Nanosecond()
 
 	var changes []helpers.ChangeEntry
 
@@ -1095,7 +1098,8 @@ func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields
 	MATCH(u:User{uid: $userUID})
 	WITH u
 	MATCH(item:CatalogueItem{uid: $uid})
-	WHERE item.lastUpdateTime.epochMillis = $lastUpdateTimeMillis
+	WHERE item.lastUpdateTime.epochSeconds = $lastUpdateTimeEpochSeconds
+	  AND item.lastUpdateTime.nanosecond = $lastUpdateTimeNanosecond
 	`
 
 	settingSupplier := fields.Supplier != nil && fields.Supplier.Value != nil && fields.Supplier.Value.UID != ""
