@@ -3,6 +3,7 @@ package publicationsservice
 import (
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
@@ -136,8 +137,7 @@ func (h *PublicationsHandlers) GetPublication() echo.HandlerFunc {
 
 		publication, err := h.PublicationsService.GetPublicationByUid(uid)
 		if err != nil {
-			// return 404 if not found - in error message will be result contains no more records
-			if err.Error() == "Result contains no more records" {
+			if errors.Is(err, helpers.ERR_NO_ROWS) {
 				return echo.ErrNotFound
 			}
 			log.Error().Err(err).Msg("Error getting publication")
@@ -717,8 +717,7 @@ func (h *PublicationsHandlers) GetResearcher() echo.HandlerFunc {
 
 		researcher, err := h.PublicationsService.GetResearcherByUid(uid)
 		if err != nil {
-			// return 404 if not found - in error message will be result contains no more records
-			if err.Error() == "Result contains no more records" {
+			if errors.Is(err, helpers.ERR_NO_ROWS) {
 				return echo.ErrNotFound
 			}
 			log.Error().Err(err).Msg("Error getting researcher")
@@ -926,7 +925,7 @@ func (h *PublicationsHandlers) GetGrant() echo.HandlerFunc {
 
 		grant, err := h.PublicationsService.GetGrantByUid(uid)
 		if err != nil {
-			if err.Error() == "Result contains no more records" {
+			if errors.Is(err, helpers.ERR_NO_ROWS) {
 				return echo.ErrNotFound
 			}
 			log.Error().Err(err).Msg("Error getting grant")

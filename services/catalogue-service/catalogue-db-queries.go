@@ -1056,6 +1056,255 @@ func UpdateCatalogueItemQuery(item *models.CatalogueItem, oldItem *models.Catalo
 	return result
 }
 
+// PatchCatalogueItemQuery builds a partial-update Cypher query for a catalogue item.
+// Only fields with non-nil presence markers in `fields` produce SET / MERGE segments.
+// A JSON-serialized changes array is attached to the WAS_UPDATED_BY relationship for audit.
+//
+// Query shape: PHASE 1 matches every referenced node (user, item with lastUpdateTime guard,
+// supplier, category, each detail property), PHASE 2 performs all writes, PHASE 3 writes
+// the audit relationship and returns. This ordering guarantees that if any reference is
+// missing or the timestamp guard fails, the whole query yields zero rows and NO writes
+// execute — not even lastUpdateTime advances. (The write transaction also rolls back on
+// the ERR_NO_ROWS that results, but structuring the query this way makes partial-write
+// safety independent of transaction-scope guarantees.)
+//
+// The item MATCH includes lastUpdateTime as a precondition: concurrent writes that
+// advance the timestamp between service-layer read and this query will make the MATCH
+// return zero rows, causing no writes and a missing-record response the service maps to 409.
+//
+// Detail audit metadata (field name, type) is sourced from originalItem.Details — which
+// service.GetCatalogueItemWithDetailsByUid augments with the canonical property set of the
+// item's category — so payload-supplied Property.Name/Type.Code cannot spoof the audit log.
+// Unknown property UIDs fall back to the payload (and the service layer rejects them).
+func PatchCatalogueItemQuery(uid string, fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem, userUID string) (result helpers.DatabaseQuery) {
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["uid"] = uid
+	result.Parameters["userUID"] = userUID
+	// Neo4j datetime() has nanosecond precision; epochMillis alone would truncate
+	// sub-millisecond differences and let concurrent writes inside the same ms race through.
+	// Compare epochSeconds + nanosecond (0-999_999_999 within the second) for full precision.
+	result.Parameters["lastUpdateTimeEpochSeconds"] = originalItem.LastUpdateTime.Unix()
+	result.Parameters["lastUpdateTimeNanosecond"] = originalItem.LastUpdateTime.Nanosecond()
+
+	var changes []helpers.ChangeEntry
+
+	// Track variables that must be carried through subsequent WITH clauses.
+	carry := []string{"u", "item"}
+
+	// =====  PHASE 1 — all MATCHes (validate refs before any write)  =====
+
+	result.Query = `
+	MATCH(u:User{uid: $userUID})
+	WITH u
+	MATCH(item:CatalogueItem{uid: $uid})
+	WHERE item.lastUpdateTime.epochSeconds = $lastUpdateTimeEpochSeconds
+	  AND item.lastUpdateTime.nanosecond = $lastUpdateTimeNanosecond
+	`
+
+	settingSupplier := fields.Supplier != nil && fields.Supplier.Value != nil && fields.Supplier.Value.UID != ""
+	if settingSupplier {
+		result.Parameters["supplierUid"] = fields.Supplier.Value.UID
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(newSup:Supplier{uid: $supplierUid}) `
+		carry = append(carry, "newSup")
+	}
+
+	if fields.Category != nil && fields.Category.UID != "" {
+		result.Parameters["categoryUid"] = fields.Category.UID
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(newCat:CatalogueCategory{uid: $categoryUid}) `
+		carry = append(carry, "newCat")
+	}
+
+	if fields.Details != nil {
+		for i, detail := range *fields.Details {
+			propAlias := fmt.Sprintf("pp%d", i)
+			propUIDKey := fmt.Sprintf("propUID%d", i)
+			result.Parameters[propUIDKey] = detail.Property.UID
+			result.Query += ` WITH ` + strings.Join(carry, ", ") + fmt.Sprintf(` MATCH(%s:CatalogueCategoryProperty{uid: $%s}) `, propAlias, propUIDKey)
+			carry = append(carry, propAlias)
+		}
+	}
+
+	// Consolidating WITH so subsequent clauses see all matched variables.
+	result.Query += ` WITH ` + strings.Join(carry, ", ") + ` `
+
+	// =====  PHASE 2 — all writes  =====
+
+	result.Query += ` SET item.lastUpdateTime = datetime() `
+
+	if fields.Name != nil {
+		result.Parameters["name"] = *fields.Name
+		result.Query += ` SET item.name = $name `
+		changes = helpers.AppendIfChanged(changes, "name", helpers.ChangeTypeString, originalItem.Name, *fields.Name)
+	}
+
+	if fields.CatalogueNumber != nil {
+		result.Parameters["catalogueNumber"] = *fields.CatalogueNumber
+		result.Query += ` SET item.catalogueNumber = $catalogueNumber `
+		changes = helpers.AppendIfChanged(changes, "catalogueNumber", helpers.ChangeTypeString, originalItem.CatalogueNumber, *fields.CatalogueNumber)
+	}
+
+	applyOptionalString := func(opt *models.Optional[string], paramKey, cypherField, changeField string, oldVal *string) {
+		if opt == nil {
+			return
+		}
+		if opt.Value != nil {
+			result.Parameters[paramKey] = *opt.Value
+		} else {
+			result.Parameters[paramKey] = nil
+		}
+		result.Query += fmt.Sprintf(` SET item.%s = $%s `, cypherField, paramKey)
+		changes = helpers.AppendIfChanged(changes, changeField, helpers.ChangeTypeString, stringPtrToAny(oldVal), stringPtrToAny(opt.Value))
+	}
+
+	applyOptionalString(fields.Description, "description", "description", "description", originalItem.Description)
+	applyOptionalString(fields.ManufacturerUrl, "manufacturerUrl", "manufacturerUrl", "manufacturerUrl", originalItem.ManufacturerUrl)
+	applyOptionalString(fields.ManufacturerNumber, "manufacturerNumber", "manufacturerNumber", "manufacturerNumber", originalItem.ManufacturerNumber)
+
+	if fields.Supplier != nil {
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (item)-[oldSup:HAS_SUPPLIER]->() DELETE oldSup `
+		if settingSupplier {
+			result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(item)-[:HAS_SUPPLIER]->(newSup) `
+		}
+		var oldSup, newSup interface{}
+		if originalItem.Supplier != nil {
+			oldSup = originalItem.Supplier
+		}
+		if fields.Supplier.Value != nil {
+			newSup = fields.Supplier.Value
+		}
+		changes = helpers.AppendIfChanged(changes, "supplier", helpers.ChangeTypeCodebook, oldSup, newSup)
+	}
+
+	if fields.Category != nil && fields.Category.UID != "" {
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (item)-[oldCat:BELONGS_TO_CATEGORY]->() DELETE oldCat `
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(item)-[:BELONGS_TO_CATEGORY]->(newCat) `
+		changes = helpers.AppendIfChanged(changes, "category", helpers.ChangeTypeCodebook, originalItem.Category, *fields.Category)
+	}
+
+	if fields.Details != nil {
+		for i, detail := range *fields.Details {
+			propAlias := fmt.Sprintf("pp%d", i)
+			propValKey := fmt.Sprintf("propValue%d", i)
+
+			oldDetail := findDetailByPropUID(originalItem.Details, detail.Property.UID)
+
+			// Source name/type from DB (originalItem) to prevent audit spoofing.
+			// Fall back to payload if not found (service layer rejects unknown UIDs upstream).
+			typeCode := detail.Property.Type.Code
+			propName := detail.Property.Name
+			if oldDetail != nil {
+				if oldDetail.Property.Type.Code != "" {
+					typeCode = oldDetail.Property.Type.Code
+				}
+				if oldDetail.Property.Name != "" {
+					propName = oldDetail.Property.Name
+				}
+			}
+
+			newStored := encodeDetailValueForStorage(detail.Value, typeCode)
+			result.Parameters[propValKey] = newStored
+
+			result.Query += fmt.Sprintf(` MERGE(item)-[r_%[1]s:HAS_CATALOGUE_PROPERTY]->(%[1]s) SET r_%[1]s.value = $%[2]s `, propAlias, propValKey)
+
+			// Normalize both sides through encodeDetailValueForStorage so type mismatches
+			// don't register as changes:
+			//   - payload int 50 vs stored string "50"
+			//   - range re-read as RangeFloat64Nullable struct vs re-marshaled JSON string
+			//   - map[string]interface{} from FE vs struct from DB read
+			var oldForCompare interface{}
+			if oldDetail != nil {
+				oldForCompare = encodeDetailValueForStorage(oldDetail.Value, typeCode)
+			}
+			newForCompare := newStored
+			changeType := mapPropertyTypeToChangeType(typeCode)
+			changes = helpers.AppendIfChanged(changes, propName, changeType, oldForCompare, newForCompare)
+		}
+	}
+
+	// =====  PHASE 3 — audit relationship + return  =====
+
+	result.Parameters["changes"] = helpers.MarshalChanges(changes)
+	result.Query += `
+	CREATE(item)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE", changes: $changes }]->(u)
+	RETURN item.uid as uid
+	`
+
+	result.ReturnAlias = "uid"
+	return result
+}
+
+// encodeDetailValueForStorage normalizes a detail value to the string representation
+// the DB stores for HAS_CATALOGUE_PROPERTY.value. range → canonical JSON via
+// helpers.RangeFloat64Nullable (fixed key order regardless of input shape — map, struct,
+// or pre-marshaled string), nil → nil, everything else → fmt.Sprintf("%v", v) which
+// matches Neo4j's toString() for numbers/bools.
+func encodeDetailValueForStorage(value interface{}, typeCode string) interface{} {
+	if value == nil {
+		return nil
+	}
+	if s, ok := value.(string); ok && s == "" {
+		return ""
+	}
+	if typeCode == "range" {
+		r := coerceToRange(value)
+		if b, err := json.Marshal(r); err == nil {
+			return string(b)
+		}
+		return value
+	}
+	return fmt.Sprintf("%v", value)
+}
+
+// coerceToRange maps heterogeneous inputs into the canonical helpers.RangeFloat64Nullable
+// shape so both sides of a change comparison produce byte-identical JSON.
+// Handles: already-canonical struct (re-read via GetCatalogueItemWithDetailsByUid),
+// JSON string (raw DB storage form), and map[string]interface{} (FE payload).
+func coerceToRange(v interface{}) helpers.RangeFloat64Nullable {
+	var r helpers.RangeFloat64Nullable
+	switch x := v.(type) {
+	case helpers.RangeFloat64Nullable:
+		return x
+	case string:
+		_ = json.Unmarshal([]byte(x), &r)
+		return r
+	default:
+		if b, err := json.Marshal(v); err == nil {
+			_ = json.Unmarshal(b, &r)
+		}
+		return r
+	}
+}
+
+func stringPtrToAny(s *string) interface{} {
+	if s == nil {
+		return nil
+	}
+	return *s
+}
+
+func mapPropertyTypeToChangeType(code string) helpers.ChangeType {
+	switch code {
+	case "number":
+		return helpers.ChangeTypeNumber
+	case "date":
+		return helpers.ChangeTypeDate
+	case "boolean":
+		return helpers.ChangeTypeBoolean
+	default:
+		return helpers.ChangeTypeString
+	}
+}
+
+func findDetailByPropUID(details []models.CatalogueItemDetail, propUID string) *models.CatalogueItemDetail {
+	for i := range details {
+		if details[i].Property.UID == propUID {
+			return &details[i]
+		}
+	}
+	return nil
+}
+
 // delete catalogue item query
 func DeleteCatalogueItemQuery(itemUid string, userUID string) (result helpers.DatabaseQuery) {
 
