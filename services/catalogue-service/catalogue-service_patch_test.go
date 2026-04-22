@@ -555,6 +555,40 @@ func TestPatchCatalogueItemQuery_Phase1MatchFailure_NoPartialWrite(t *testing.T)
 	assert.Equal(t, f.categoryUID, reloaded.Category.UID, "category must stay intact")
 }
 
+func TestPatchCatalogueItemQuery_Phase1MissingDetailProperty_NoPartialWrite(t *testing.T) {
+	// Closer to the category test above, but exercising the detail-property MATCH in phase 1.
+	// Bypass service pre-validation by forging a detail with a property UID absent from DB.
+	f := seedPatchFixture(t)
+	defer cleanupPatchFixture(f)
+	svc := newPatchSvc()
+
+	original, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	originalTS := original.LastUpdateTime
+
+	bogusDetails := []models.CatalogueItemDetail{{
+		Property: models.CatalogueCategoryProperty{UID: "nonexistent-prop-" + uuid.NewString()},
+		Value:    "should-never-write",
+	}}
+	query := PatchCatalogueItemQuery(f.itemUID, &models.PatchCatalogueItemFields{
+		Details:        &bogusDetails,
+		LastUpdateTime: originalTS,
+	}, &original, f.userUID)
+
+	session, _ := helpers.NewNeo4jSession(testsetup.TestDriver)
+	_, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	assert.ErrorIs(t, err, helpers.ERR_NO_ROWS, "missing detail-property ref should yield zero rows")
+
+	reloaded, _ := svc.GetCatalogueItemWithDetailsByUid(f.itemUID)
+	assert.True(t, reloaded.LastUpdateTime.Equal(originalTS),
+		"phase-1 MATCH failure on detail property must not advance lastUpdateTime")
+
+	// also verify no stray HAS_CATALOGUE_PROPERTY relationship was created to the missing UID
+	for _, d := range reloaded.Details {
+		assert.NotEqual(t, bogusDetails[0].Property.UID, d.Property.UID,
+			"bogus property UID must never appear on the reloaded item")
+	}
+}
+
 func TestPatchCatalogueItem_CombinedCategoryAndDetails(t *testing.T) {
 	f := seedPatchFixture(t)
 	defer cleanupPatchFixture(f)
