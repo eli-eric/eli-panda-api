@@ -7978,6 +7978,9 @@ const docTemplate = `{
                 "changedBy": {
                     "type": "string"
                 },
+                "changes": {
+                    "type": "string"
+                },
                 "detail": {
                     "$ref": "#/definitions/models.SystemHistoryDetail"
                 },
