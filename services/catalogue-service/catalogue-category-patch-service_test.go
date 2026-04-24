@@ -507,6 +507,83 @@ func TestDeleteCatalogueCategoryProperty_BlocksWhenItemReferences(t *testing.T) 
 	assert.NoError(t, err, "property must survive a rejected DELETE")
 }
 
+// ===== Physical property CRUD integration tests =====
+
+func TestCreateCatalogueCategoryPhysicalProperty_HappyPath(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	p, err := svc.CreateCatalogueCategoryPhysicalProperty(f.categoryUID, &models.CreateCatalogueCategoryPhysicalPropertyFields{
+		Name: "Weight",
+		Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(p.UID)
+	assert.Equal(t, "Weight", p.Name)
+	assert.NotNil(t, p.Order)
+	assert.Equal(t, 10, *p.Order)
+}
+
+func TestPatchCatalogueCategoryPhysicalProperty_RenameAndDefault(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	original, err := svc.CreateCatalogueCategoryPhysicalProperty(f.categoryUID, &models.CreateCatalogueCategoryPhysicalPropertyFields{
+		Name: "Length", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(original.UID)
+
+	newName := "Total Length"
+	newDefault := "2m"
+	updated, err := svc.PatchCatalogueCategoryPhysicalProperty(f.categoryUID, original.UID, &models.PatchCatalogueCategoryPhysicalPropertyFields{
+		Name:         &newName,
+		DefaultValue: &models.Optional[string]{Value: &newDefault},
+	}, f.userUID)
+	assert.NoError(t, err)
+	assert.Equal(t, "Total Length", updated.Name)
+	assert.Equal(t, "2m", updated.DefaultValue)
+
+	changes, action := readLatestCategoryChanges(t, f.categoryUID)
+	assert.Equal(t, "UPDATE", action)
+	var parsed []map[string]interface{}
+	assert.NoError(t, json.Unmarshal([]byte(changes), &parsed))
+	assert.Len(t, parsed, 2)
+	for _, c := range parsed {
+		field, _ := c["field"].(string)
+		assert.Contains(t, field, "physicalProperty.", "audit field must be namespaced under physicalProperty")
+	}
+}
+
+func TestDeleteCatalogueCategoryPhysicalProperty_AlwaysSucceeds(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	p, err := svc.CreateCatalogueCategoryPhysicalProperty(f.categoryUID, &models.CreateCatalogueCategoryPhysicalPropertyFields{
+		Name: "Width", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+
+	err = svc.DeleteCatalogueCategoryPhysicalProperty(f.categoryUID, p.UID, f.userUID)
+	assert.NoError(t, err, "physical props aren't referenced by items, so DELETE always succeeds")
+
+	_, err = svc.fetchCategoryPhysicalProperty(f.categoryUID, p.UID)
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}
+
+func TestParsePatchCategoryPhysicalProperty_RejectsGroupUid(t *testing.T) {
+	body := []byte(`{"name":"X","groupUid":"g1"}`)
+	_, err := parsePatchCategoryPhysicalPropertyPayload(body)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "groupUid is not valid on physical properties")
+}
+
 func TestDeleteCatalogueCategoryGroup_BlocksWhenPropertyHasItemValue(t *testing.T) {
 	f, gA, gB := seedCategoryWithGroups(t)
 	defer cleanupCategoryPatchFixture(f)

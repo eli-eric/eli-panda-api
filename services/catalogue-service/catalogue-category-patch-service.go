@@ -312,6 +312,151 @@ func (svc *CatalogueService) DeleteCatalogueCategoryProperty(categoryUID, proper
 	return nil
 }
 
+// fetchCategoryPhysicalProperty loads a physical property scoped to a category.
+func (svc *CatalogueService) fetchCategoryPhysicalProperty(categoryUID, propertyUID string) (CategoryPropertyWithGroup, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	p, err := helpers.GetNeo4jSingleRecordAndMapToStruct[CategoryPropertyWithGroup](session, GetCatalogueCategoryPhysicalPropertyByUidsQuery(categoryUID, propertyUID))
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return p, helpers.ERR_NOT_FOUND
+		}
+		return p, err
+	}
+	return p, nil
+}
+
+func (svc *CatalogueService) CreateCatalogueCategoryPhysicalProperty(categoryUID string, fields *models.CreateCatalogueCategoryPhysicalPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	if fields.Type.UID == "" {
+		return result, fmt.Errorf("%w: property type uid is required", ErrPatchValidation)
+	}
+	if exists, nerr := svc.nodeExists("CatalogueCategoryPropertyType", fields.Type.UID); nerr != nil {
+		return result, nerr
+	} else if !exists {
+		return result, fmt.Errorf("%w: property type not found: %s", ErrPatchValidation, fields.Type.UID)
+	}
+	if fields.Unit != nil && fields.Unit.UID != "" {
+		if exists, nerr := svc.nodeExists("Unit", fields.Unit.UID); nerr != nil {
+			return result, nerr
+		} else if !exists {
+			return result, fmt.Errorf("%w: unit not found: %s", ErrPatchValidation, fields.Unit.UID)
+		}
+	}
+
+	var order int
+	if fields.Order != nil {
+		order = *fields.Order
+	} else {
+		next, qerr := helpers.GetNeo4jSingleRecordSingleValue[int64](session, NextPhysicalPropertyOrderQuery(categoryUID))
+		if qerr != nil {
+			if errors.Is(qerr, helpers.ERR_NO_ROWS) {
+				return result, helpers.ERR_NOT_FOUND
+			}
+			return result, qerr
+		}
+		order = int(next)
+	}
+
+	newUID := uuid.NewString()
+	query := CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newUID, userUID, fields, order)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_NOT_FOUND
+	}
+
+	fetched, err := svc.fetchCategoryPhysicalProperty(categoryUID, newUID)
+	if err != nil {
+		return result, err
+	}
+	return toCatalogueCategoryProperty(fetched), nil
+}
+
+func (svc *CatalogueService) PatchCatalogueCategoryPhysicalProperty(categoryUID, propertyUID string, fields *models.PatchCatalogueCategoryPhysicalPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	original, err := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID)
+	if err != nil {
+		return result, err
+	}
+
+	if fields.Type != nil && fields.Type.UID != "" {
+		exists, nerr := svc.nodeExists("CatalogueCategoryPropertyType", fields.Type.UID)
+		if nerr != nil {
+			return result, nerr
+		}
+		if !exists {
+			return result, fmt.Errorf("%w: property type not found: %s", ErrPatchValidation, fields.Type.UID)
+		}
+	}
+	if fields.Unit != nil && fields.Unit.Value != nil && fields.Unit.Value.UID != "" {
+		exists, nerr := svc.nodeExists("Unit", fields.Unit.Value.UID)
+		if nerr != nil {
+			return result, nerr
+		}
+		if !exists {
+			return result, fmt.Errorf("%w: unit not found: %s", ErrPatchValidation, fields.Unit.Value.UID)
+		}
+	}
+
+	// Lazy order seed across all physical properties in this category.
+	if fields.Order != nil {
+		_, serr := helpers.WriteNeo4jAndReturnSingleValue[int64](session, SeedCategoryPhysicalPropertyOrdersQuery(categoryUID))
+		if serr != nil && !errors.Is(serr, helpers.ERR_NO_ROWS) {
+			return result, serr
+		}
+		if refreshed, ferr := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID); ferr == nil {
+			original = refreshed
+		}
+	}
+
+	query := PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID, fields, &original, userUID)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_NOT_FOUND
+	}
+
+	fetched, err := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID)
+	if err != nil {
+		return result, err
+	}
+	return toCatalogueCategoryProperty(fetched), nil
+}
+
+func (svc *CatalogueService) DeleteCatalogueCategoryPhysicalProperty(categoryUID, propertyUID, userUID string) error {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	original, err := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID)
+	if err != nil {
+		return err
+	}
+
+	query := DeleteCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID, userUID, original.Name)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return helpers.ERR_NOT_FOUND
+		}
+		return err
+	}
+	if returnedUID == "" {
+		return helpers.ERR_NOT_FOUND
+	}
+	return nil
+}
+
 // toCatalogueCategoryProperty converts the internal group-aware shape into the public
 // CatalogueCategoryProperty model used in API responses.
 func toCatalogueCategoryProperty(p CategoryPropertyWithGroup) models.CatalogueCategoryProperty {

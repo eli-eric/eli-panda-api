@@ -294,6 +294,147 @@ func (h *CatalogueHandlers) DeleteCatalogueCategoryProperty() echo.HandlerFunc {
 	}
 }
 
+// CreateCatalogueCategoryPhysicalProperty godoc
+// @Summary Create physical item property on a category
+// @Description Physical properties are default-value templates attached directly to the category (no group). type.uid required.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param body body object true "Physical property payload"
+// @Success 201 {object} models.CatalogueCategoryProperty
+// @Failure 400 "Bad Request — missing/invalid fields or unknown type/unit UID"
+// @Failure 404 "Not Found — category does not exist"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/physical-property [post]
+func (h *CatalogueHandlers) CreateCatalogueCategoryPhysicalProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+		fields, err := parseCreateCategoryPhysicalPropertyPayload(body)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		userUID := c.Get("userUID").(string)
+		created, err := h.catalogueService.CreateCatalogueCategoryPhysicalProperty(uid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusCreated, created)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, ErrPatchValidation) {
+			return helpers.BadRequest(err.Error())
+		}
+		log.Error().Err(err).Msg("Error creating physical property")
+		return echo.ErrInternalServerError
+	}
+}
+
+// PatchCatalogueCategoryPhysicalProperty godoc
+// @Summary Update physical item property
+// @Description Partial update — same fields as regular property minus groupUid (physicals don't belong to groups).
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param pid path string true "Physical property UID"
+// @Param body body object true "Patch payload"
+// @Success 200 {object} models.CatalogueCategoryProperty
+// @Failure 400 "Bad Request"
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/physical-property/{pid} [patch]
+func (h *CatalogueHandlers) PatchCatalogueCategoryPhysicalProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		pid := c.Param("pid")
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+		fields, err := parsePatchCategoryPhysicalPropertyPayload(body)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		userUID := c.Get("userUID").(string)
+		updated, err := h.catalogueService.PatchCatalogueCategoryPhysicalProperty(uid, pid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusOK, updated)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, ErrPatchValidation) {
+			return helpers.BadRequest(err.Error())
+		}
+		log.Error().Err(err).Msg("Error patching physical property")
+		return echo.ErrInternalServerError
+	}
+}
+
+// DeleteCatalogueCategoryPhysicalProperty godoc
+// @Summary Delete physical item property
+// @Description Physicals aren't referenced by items, so delete never returns 409 — always 204 on success.
+// @Tags Catalogue
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param pid path string true "Physical property UID"
+// @Success 204 "No Content"
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/physical-property/{pid} [delete]
+func (h *CatalogueHandlers) DeleteCatalogueCategoryPhysicalProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		pid := c.Param("pid")
+		userUID := c.Get("userUID").(string)
+		err := h.catalogueService.DeleteCatalogueCategoryPhysicalProperty(uid, pid, userUID)
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		}
+		log.Error().Err(err).Msg("Error deleting physical property")
+		return echo.ErrInternalServerError
+	}
+}
+
+func parseCreateCategoryPhysicalPropertyPayload(body []byte) (*models.CreateCatalogueCategoryPhysicalPropertyFields, error) {
+	regular, err := parseCreateCategoryPropertyPayload(body)
+	if err != nil {
+		return nil, err
+	}
+	// Physical props share the same input shape as regular ones — just copy fields.
+	return &models.CreateCatalogueCategoryPhysicalPropertyFields{
+		Name:         regular.Name,
+		DefaultValue: regular.DefaultValue,
+		ListOfValues: regular.ListOfValues,
+		Order:        regular.Order,
+		Type:         regular.Type,
+		Unit:         regular.Unit,
+	}, nil
+}
+
+func parsePatchCategoryPhysicalPropertyPayload(body []byte) (*models.PatchCatalogueCategoryPhysicalPropertyFields, error) {
+	regular, err := parsePatchCategoryPropertyPayload(body)
+	if err != nil {
+		return nil, err
+	}
+	if regular.GroupUID != nil {
+		return nil, fmt.Errorf("groupUid is not valid on physical properties — they are not part of any group")
+	}
+	return &models.PatchCatalogueCategoryPhysicalPropertyFields{
+		Name:         regular.Name,
+		DefaultValue: regular.DefaultValue,
+		ListOfValues: regular.ListOfValues,
+		Order:        regular.Order,
+		Type:         regular.Type,
+		Unit:         regular.Unit,
+	}, nil
+}
+
 func parseCreateCategoryPropertyPayload(body []byte) (*models.CreateCatalogueCategoryPropertyFields, error) {
 	raw := map[string]json.RawMessage{}
 	if err := json.Unmarshal(body, &raw); err != nil {
