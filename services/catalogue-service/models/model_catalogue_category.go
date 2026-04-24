@@ -29,6 +29,8 @@ type CatalogueCategoryPropertyGroup struct {
 
 	Name string `json:"name,omitempty"`
 
+	Order *int `json:"order,omitempty"`
+
 	Properties []CatalogueCategoryProperty `json:"properties"`
 }
 
@@ -40,6 +42,8 @@ type CatalogueCategoryProperty struct {
 	ListOfValues []string `json:"listOfValues,omitempty"`
 
 	DefaultValue string `json:"defaultValue,omitempty"`
+
+	Order *int `json:"order,omitempty"`
 
 	Type CatalogueCategoryPropertyType `json:"type,omitempty"`
 
@@ -55,4 +59,67 @@ type CatalogueCategoryPropertyType struct {
 type CatalogueCategoryTreeItem struct {
 	UID             string                      `json:"uid,omitempty"`
 	Has_subcategory []CatalogueCategoryTreeItem `json:"has_subcategory,omitempty"`
+}
+
+// PatchCatalogueCategoryFields carries the parsed body of PATCH /v1/catalogue/category/:uid.
+// Each pointer is nil when the corresponding JSON key was absent.
+type PatchCatalogueCategoryFields struct {
+	Name       *string
+	Code       *string
+	SystemType *Optional[models.Codebook]
+}
+
+// PatchCatalogueCategoryGroupFields — PATCH /.../group/:gid payload.
+type PatchCatalogueCategoryGroupFields struct {
+	Name  *string
+	Order *int
+}
+
+// CreateCatalogueCategoryGroupFields — POST /.../group payload.
+type CreateCatalogueCategoryGroupFields struct {
+	Name  string
+	Order *int // optional; server auto-assigns if nil
+}
+
+// PatchCatalogueCategoryPropertyFields — PATCH /.../property/:pid payload.
+// GroupUID is present only when the caller wants to move the property to a different group.
+type PatchCatalogueCategoryPropertyFields struct {
+	Name         *string
+	DefaultValue *Optional[string]
+	ListOfValues *[]string
+	Order        *int
+	Type         *CatalogueCategoryPropertyType
+	Unit         *Optional[models.Codebook]
+	GroupUID     *string
+}
+
+// CreateCatalogueCategoryPropertyFields — POST /.../group/:gid/property payload.
+type CreateCatalogueCategoryPropertyFields struct {
+	Name         string
+	DefaultValue *string
+	ListOfValues []string
+	Order        *int
+	Type         CatalogueCategoryPropertyType
+	Unit         *models.Codebook
+}
+
+// PatchCatalogueCategoryPhysicalPropertyFields — PATCH /.../physical-property/:pid payload.
+// Same shape as property but physical props have no group and aren't referenced by items.
+type PatchCatalogueCategoryPhysicalPropertyFields struct {
+	Name         *string
+	DefaultValue *Optional[string]
+	ListOfValues *[]string
+	Order        *int
+	Type         *CatalogueCategoryPropertyType
+	Unit         *Optional[models.Codebook]
+}
+
+// CreateCatalogueCategoryPhysicalPropertyFields — POST /.../physical-property payload.
+type CreateCatalogueCategoryPhysicalPropertyFields struct {
+	Name         string
+	DefaultValue *string
+	ListOfValues []string
+	Order        *int
+	Type         CatalogueCategoryPropertyType
+	Unit         *models.Codebook
 }
