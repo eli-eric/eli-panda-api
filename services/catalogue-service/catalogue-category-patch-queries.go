@@ -569,6 +569,242 @@ func propertyField(propertyUID, scalar string) string {
 	return fmt.Sprintf("property.%s.%s", propertyUID, scalar)
 }
 
+// physicalPropertyField mirrors propertyField for physical properties —
+// "physicalProperty.<uid>.<scalar>".
+func physicalPropertyField(propertyUID, scalar string) string {
+	return fmt.Sprintf("physicalProperty.%s.%s", propertyUID, scalar)
+}
+
+// =====  Physical property CRUD — CONTAINS_PHYSICAL_ITEM_PROPERTY attached to category  =====
+//
+// Physical item properties have the same shape as regular CatalogueCategoryProperty but
+// live directly under a category (no group) and are NOT referenced by CatalogueItem
+// HAS_CATALOGUE_PROPERTY edges — they're default-value templates. That means DELETE has
+// no item-reference gate and the code is simpler than the grouped-property variant.
+
+// GetCatalogueCategoryPhysicalPropertyByUidsQuery fetches a single physical property
+// scoped to a category. Empty result = property doesn't exist OR isn't attached to this
+// category (404).
+func GetCatalogueCategoryPhysicalPropertyByUidsQuery(categoryUID, propertyUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = map[string]interface{}{"uid": categoryUID, "propertyUid": propertyUID}
+	result.Query = `
+	MATCH(c:CatalogueCategory{uid: $uid})-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(p:CatalogueCategoryProperty{uid: $propertyUid})
+	OPTIONAL MATCH(p)-[:IS_PROPERTY_TYPE]->(t:CatalogueCategoryPropertyType)
+	OPTIONAL MATCH(p)-[:HAS_UNIT]->(u:Unit)
+	RETURN {
+		uid: p.uid,
+		name: p.name,
+		defaultValue: p.defaultValue,
+		order: p.order,
+		listOfValues: case when p.listOfValues is not null and p.listOfValues <> '' then apoc.text.split(p.listOfValues, ';') else null end,
+		type: case when t is not null then {uid: t.uid, name: t.name, code: t.code} else null end,
+		unit: case when u is not null then {uid: u.uid, name: u.name} else null end
+	} as property
+	`
+	result.ReturnAlias = "property"
+	return result
+}
+
+// NextPhysicalPropertyOrderQuery — max(existing physical prop order)+10 for auto-order on create.
+func NextPhysicalPropertyOrderQuery(categoryUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = map[string]interface{}{"uid": categoryUID}
+	result.Query = `
+	MATCH(c:CatalogueCategory{uid: $uid})
+	OPTIONAL MATCH(c)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(p:CatalogueCategoryProperty)
+	RETURN coalesce(max(p.order), 0) + 10 as nextOrder
+	`
+	result.ReturnAlias = "nextOrder"
+	return result
+}
+
+// SeedCategoryPhysicalPropertyOrdersQuery — per-category lazy order seed for physicals.
+func SeedCategoryPhysicalPropertyOrdersQuery(categoryUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = map[string]interface{}{"uid": categoryUID}
+	result.Query = `
+	MATCH(c:CatalogueCategory{uid: $uid})
+	OPTIONAL MATCH(c)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(ordered:CatalogueCategoryProperty) WHERE ordered.order IS NOT NULL
+	WITH c, coalesce(max(ordered.order), 0) as maxExisting
+	MATCH(c)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(unseeded:CatalogueCategoryProperty)
+	WHERE unseeded.order IS NULL
+	WITH maxExisting, unseeded ORDER BY id(unseeded)
+	WITH maxExisting, collect(unseeded) as ps
+	UNWIND range(0, size(ps)-1) as i
+	WITH ps[i] as pn, maxExisting, i
+	SET pn.order = maxExisting + (i + 1) * 10
+	RETURN count(pn) as seeded
+	`
+	result.ReturnAlias = "seeded"
+	return result
+}
+
+// CreateCatalogueCategoryPhysicalPropertyQuery — attaches a new physical property under
+// a category via CONTAINS_PHYSICAL_ITEM_PROPERTY. Same type + optional unit MATCHes as
+// regular property create.
+func CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newPropertyUID, userUID string, fields *models.CreateCatalogueCategoryPhysicalPropertyFields, resolvedOrder int) (result helpers.DatabaseQuery) {
+	params, skeleton := initCategoryPatchQuery(categoryUID, userUID, "INSERT")
+	result.Parameters = params
+	result.Parameters["newPropUid"] = newPropertyUID
+	result.Parameters["name"] = fields.Name
+	result.Parameters["order"] = resolvedOrder
+	result.Parameters["typeUid"] = fields.Type.UID
+
+	defaultValue := ""
+	if fields.DefaultValue != nil {
+		defaultValue = *fields.DefaultValue
+	}
+	result.Parameters["defaultValue"] = defaultValue
+	result.Parameters["listOfValues"] = strings.Join(fields.ListOfValues, ";")
+
+	settingUnit := fields.Unit != nil && fields.Unit.UID != ""
+	if settingUnit {
+		result.Parameters["unitUid"] = fields.Unit.UID
+	}
+
+	result.Query = skeleton
+	result.Query += `
+	WITH u, category
+	MATCH(propType:CatalogueCategoryPropertyType{uid: $typeUid})
+	WITH u, category, propType
+	`
+	if settingUnit {
+		result.Query += `
+		MATCH(unit:Unit{uid: $unitUid})
+		WITH u, category, propType, unit
+		`
+	}
+	result.Query += `
+	CREATE(newProp:CatalogueCategoryProperty{uid: $newPropUid, name: $name, defaultValue: $defaultValue, listOfValues: $listOfValues, order: $order})
+	CREATE(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(newProp)
+	CREATE(newProp)-[:IS_PROPERTY_TYPE]->(propType)
+	`
+	if settingUnit {
+		result.Query += ` CREATE(newProp)-[:HAS_UNIT]->(unit) `
+	}
+	result.Query += ` WITH u, category `
+
+	changes := []helpers.ChangeEntry{
+		{Field: "physicalProperty", Type: string(helpers.ChangeTypeString), OldValue: nil, NewValue: fields.Name},
+	}
+	result.Parameters["changes"] = helpers.MarshalChanges(changes)
+	result.Query += categoryAuditSuffix
+	result.ReturnAlias = "uid"
+	return result
+}
+
+// PatchCatalogueCategoryPhysicalPropertyQuery — same dynamic phase-1/phase-2 structure as
+// regular property PATCH but without the group-move branch (physical props live on the
+// category directly).
+func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string, fields *models.PatchCatalogueCategoryPhysicalPropertyFields, original *CategoryPropertyWithGroup, userUID string) (result helpers.DatabaseQuery) {
+	params, skeleton := initCategoryPatchQuery(categoryUID, userUID, "UPDATE")
+	result.Parameters = params
+	result.Parameters["propertyUid"] = propertyUID
+	result.Query = skeleton
+
+	carry := []string{"u", "category"}
+	result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(p:CatalogueCategoryProperty{uid: $propertyUid}) `
+	carry = append(carry, "p")
+
+	settingType := fields.Type != nil && fields.Type.UID != ""
+	if settingType {
+		result.Parameters["typeUid"] = fields.Type.UID
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(newPropType:CatalogueCategoryPropertyType{uid: $typeUid}) `
+		carry = append(carry, "newPropType")
+	}
+
+	settingUnit := fields.Unit != nil && fields.Unit.Value != nil && fields.Unit.Value.UID != ""
+	if settingUnit {
+		result.Parameters["unitUid"] = fields.Unit.Value.UID
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MATCH(newUnit:Unit{uid: $unitUid}) `
+		carry = append(carry, "newUnit")
+	}
+
+	result.Query += ` WITH ` + strings.Join(carry, ", ") + ` `
+
+	var changes []helpers.ChangeEntry
+	if fields.Name != nil {
+		result.Parameters["name"] = *fields.Name
+		result.Query += ` SET p.name = $name `
+		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "name"), helpers.ChangeTypeString, original.Name, *fields.Name)
+	}
+	if fields.DefaultValue != nil {
+		var v string
+		if fields.DefaultValue.Value != nil {
+			v = *fields.DefaultValue.Value
+		}
+		result.Parameters["defaultValue"] = v
+		result.Query += ` SET p.defaultValue = $defaultValue `
+		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "defaultValue"), helpers.ChangeTypeString, original.DefaultValue, v)
+	}
+	if fields.ListOfValues != nil {
+		joined := strings.Join(*fields.ListOfValues, ";")
+		result.Parameters["listOfValues"] = joined
+		result.Query += ` SET p.listOfValues = $listOfValues `
+		oldJoined := strings.Join(original.ListOfValues, ";")
+		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "listOfValues"), helpers.ChangeTypeString, oldJoined, joined)
+	}
+	if fields.Order != nil {
+		result.Parameters["order"] = *fields.Order
+		result.Query += ` SET p.order = $order `
+		var oldOrder interface{}
+		if original.Order != nil {
+			oldOrder = *original.Order
+		}
+		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "order"), helpers.ChangeTypeNumber, oldOrder, *fields.Order)
+	}
+	if settingType {
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (p)-[oldTypeRel:IS_PROPERTY_TYPE]->() DELETE oldTypeRel `
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(p)-[:IS_PROPERTY_TYPE]->(newPropType) `
+		var oldTy, newTy interface{}
+		if original.Type != nil {
+			oldTy = original.Type
+		}
+		newTy = fields.Type
+		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "type"), helpers.ChangeTypeCodebook, oldTy, newTy)
+	}
+	if fields.Unit != nil {
+		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (p)-[oldUnitRel:HAS_UNIT]->() DELETE oldUnitRel `
+		if settingUnit {
+			result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(p)-[:HAS_UNIT]->(newUnit) `
+		}
+		var oldUnit, newUnit interface{}
+		if original.Unit != nil {
+			oldUnit = original.Unit
+		}
+		if fields.Unit.Value != nil {
+			newUnit = fields.Unit.Value
+		}
+		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "unit"), helpers.ChangeTypeCodebook, oldUnit, newUnit)
+	}
+
+	result.Parameters["changes"] = helpers.MarshalChanges(changes)
+	result.Query += categoryAuditSuffix
+	result.ReturnAlias = "uid"
+	return result
+}
+
+// DeleteCatalogueCategoryPhysicalPropertyQuery — unconditional DETACH DELETE. Physical
+// properties aren't referenced by items, so there's no 409 gate.
+func DeleteCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID, userUID, originalName string) (result helpers.DatabaseQuery) {
+	params, skeleton := initCategoryPatchQuery(categoryUID, userUID, "DELETE")
+	result.Parameters = params
+	result.Parameters["propertyUid"] = propertyUID
+	result.Query = skeleton
+	result.Query += `
+	WITH u, category
+	MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(p:CatalogueCategoryProperty{uid: $propertyUid})
+	DETACH DELETE p
+	WITH u, category
+	`
+
+	changes := []helpers.ChangeEntry{
+		{Field: "physicalProperty", Type: string(helpers.ChangeTypeString), OldValue: originalName, NewValue: nil},
+	}
+	result.Parameters["changes"] = helpers.MarshalChanges(changes)
+	result.Query += categoryAuditSuffix
+	result.ReturnAlias = "uid"
+	return result
+}
+
 // ListCatalogueCategoryGroupsQuery fetches every group (with its order) under a category.
 // Used by the PATCH group service to decide whether lazy-seed is required — it must see
 // ALL groups, including empty ones. Returns an array ordered by current sort to keep the

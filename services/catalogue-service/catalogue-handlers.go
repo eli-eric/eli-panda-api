@@ -34,6 +34,9 @@ type ICatalogueHandlers interface {
 	CreateCatalogueCategoryProperty() echo.HandlerFunc
 	PatchCatalogueCategoryProperty() echo.HandlerFunc
 	DeleteCatalogueCategoryProperty() echo.HandlerFunc
+	CreateCatalogueCategoryPhysicalProperty() echo.HandlerFunc
+	PatchCatalogueCategoryPhysicalProperty() echo.HandlerFunc
+	DeleteCatalogueCategoryPhysicalProperty() echo.HandlerFunc
 	CreateCatalogueCategory() echo.HandlerFunc
 	DeleteCatalogueCategory() echo.HandlerFunc
 	GetCatalogueCategoryImageByUid() echo.HandlerFunc
