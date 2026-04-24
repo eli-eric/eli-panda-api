@@ -23,6 +23,11 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.PATCH("/v1/catalogue/category/:uid/group/:gid", m.Authorization(h.PatchCatalogueCategoryGroup(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.DELETE("/v1/catalogue/category/:uid/group/:gid", m.Authorization(h.DeleteCatalogueCategoryGroup(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
+	// granular property CRUD — flat URL for PATCH/DELETE (server enforces category consistency)
+	e.POST("/v1/catalogue/category/:uid/group/:gid/property", m.Authorization(h.CreateCatalogueCategoryProperty(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.PATCH("/v1/catalogue/category/:uid/property/:pid", m.Authorization(h.PatchCatalogueCategoryProperty(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.DELETE("/v1/catalogue/category/:uid/property/:pid", m.Authorization(h.DeleteCatalogueCategoryProperty(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+
 	e.GET("/v1/catalogue/category/:uid/properties", m.Authorization(h.GetCatalogueCategoryPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	e.GET("/v1/catalogue/category/:uid/physical-item-properties", m.Authorization(h.GetCatalogueCategoryPhysicalItemPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)

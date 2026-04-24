@@ -2,9 +2,11 @@ package catalogueService
 
 import (
 	"errors"
+	"fmt"
 
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
+	codebookModels "panda/apigateway/services/codebook-service/models"
 
 	"github.com/google/uuid"
 )
@@ -121,6 +123,212 @@ func (svc *CatalogueService) PatchCatalogueCategoryGroup(categoryUID, groupUID s
 	}
 
 	return svc.fetchCategoryGroup(categoryUID, groupUID)
+}
+
+// fetchCategoryProperty loads a property with its parent group UID, type, unit, and
+// ordered fields so the PATCH flow can compute accurate change diffs.
+func (svc *CatalogueService) fetchCategoryProperty(categoryUID, propertyUID string) (CategoryPropertyWithGroup, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	p, err := helpers.GetNeo4jSingleRecordAndMapToStruct[CategoryPropertyWithGroup](session, GetCatalogueCategoryPropertyByUidsQuery(categoryUID, propertyUID))
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return p, helpers.ERR_NOT_FOUND
+		}
+		return p, err
+	}
+	return p, nil
+}
+
+func (svc *CatalogueService) CreateCatalogueCategoryProperty(categoryUID, groupUID string, fields *models.CreateCatalogueCategoryPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	// Pre-validate type UID (required) + unit UID (optional) so an invalid codebook
+	// reference surfaces as 400 ErrPatchValidation instead of silent zero-row.
+	if fields.Type.UID == "" {
+		return result, fmt.Errorf("%w: property type uid is required", ErrPatchValidation)
+	}
+	if exists, nerr := svc.nodeExists("CatalogueCategoryPropertyType", fields.Type.UID); nerr != nil {
+		return result, nerr
+	} else if !exists {
+		return result, fmt.Errorf("%w: property type not found: %s", ErrPatchValidation, fields.Type.UID)
+	}
+	if fields.Unit != nil && fields.Unit.UID != "" {
+		if exists, nerr := svc.nodeExists("Unit", fields.Unit.UID); nerr != nil {
+			return result, nerr
+		} else if !exists {
+			return result, fmt.Errorf("%w: unit not found: %s", ErrPatchValidation, fields.Unit.UID)
+		}
+	}
+
+	// Resolve the target order upfront (payload value wins; otherwise max(siblings)+10).
+	var order int
+	if fields.Order != nil {
+		order = *fields.Order
+	} else {
+		next, qerr := helpers.GetNeo4jSingleRecordSingleValue[int64](session, NextPropertyOrderQuery(categoryUID, groupUID))
+		if qerr != nil {
+			if errors.Is(qerr, helpers.ERR_NO_ROWS) {
+				return result, helpers.ERR_NOT_FOUND
+			}
+			return result, qerr
+		}
+		order = int(next)
+	}
+
+	newUID := uuid.NewString()
+	query := CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newUID, userUID, fields, order)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_NOT_FOUND
+	}
+
+	fetched, err := svc.fetchCategoryProperty(categoryUID, newUID)
+	if err != nil {
+		return result, err
+	}
+	result = toCatalogueCategoryProperty(fetched)
+	return result, nil
+}
+
+func (svc *CatalogueService) PatchCatalogueCategoryProperty(categoryUID, propertyUID string, fields *models.PatchCatalogueCategoryPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	original, err := svc.fetchCategoryProperty(categoryUID, propertyUID)
+	if err != nil {
+		return result, err
+	}
+
+	// Pre-validate move target, new type, new unit.
+	if fields.GroupUID != nil && *fields.GroupUID != "" && *fields.GroupUID != original.GroupUID {
+		exists, nerr := svc.nodeExists("CatalogueCategoryPropertyGroup", *fields.GroupUID)
+		if nerr != nil {
+			return result, nerr
+		}
+		if !exists {
+			return result, fmt.Errorf("%w: target group not found: %s", ErrPatchValidation, *fields.GroupUID)
+		}
+		// Ensure the new group belongs to this category (flat URL enforcement).
+		gr, gerr := svc.fetchCategoryGroup(categoryUID, *fields.GroupUID)
+		if gerr != nil {
+			return result, fmt.Errorf("%w: target group not under this category: %s", ErrPatchValidation, *fields.GroupUID)
+		}
+		_ = gr
+	}
+	if fields.Type != nil && fields.Type.UID != "" {
+		exists, nerr := svc.nodeExists("CatalogueCategoryPropertyType", fields.Type.UID)
+		if nerr != nil {
+			return result, nerr
+		}
+		if !exists {
+			return result, fmt.Errorf("%w: property type not found: %s", ErrPatchValidation, fields.Type.UID)
+		}
+	}
+	if fields.Unit != nil && fields.Unit.Value != nil && fields.Unit.Value.UID != "" {
+		exists, nerr := svc.nodeExists("Unit", fields.Unit.Value.UID)
+		if nerr != nil {
+			return result, nerr
+		}
+		if !exists {
+			return result, fmt.Errorf("%w: unit not found: %s", ErrPatchValidation, fields.Unit.Value.UID)
+		}
+	}
+
+	// Lazy order seed for the group the property currently lives in.
+	if fields.Order != nil {
+		siblings, lerr := helpers.GetNeo4jArrayOfNodes[models.CatalogueCategoryProperty](session, ListCatalogueCategoryPropertiesInGroupQuery(categoryUID, original.GroupUID))
+		if lerr != nil && !errors.Is(lerr, helpers.ERR_NO_ROWS) {
+			return result, lerr
+		}
+		allSeeded := true
+		for _, p := range siblings {
+			if p.Order == nil {
+				allSeeded = false
+				break
+			}
+		}
+		if !allSeeded {
+			_, serr := helpers.WriteNeo4jAndReturnSingleValue[int64](session, SeedCategoryPropertyOrdersQuery(categoryUID, original.GroupUID))
+			if serr != nil && !errors.Is(serr, helpers.ERR_NO_ROWS) {
+				return result, serr
+			}
+			if refreshed, ferr := svc.fetchCategoryProperty(categoryUID, propertyUID); ferr == nil {
+				original = refreshed
+			}
+		}
+	}
+
+	query := PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID, fields, &original, userUID)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_NOT_FOUND
+	}
+
+	fetched, err := svc.fetchCategoryProperty(categoryUID, propertyUID)
+	if err != nil {
+		return result, err
+	}
+	result = toCatalogueCategoryProperty(fetched)
+	return result, nil
+}
+
+func (svc *CatalogueService) DeleteCatalogueCategoryProperty(categoryUID, propertyUID, userUID string) error {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	original, err := svc.fetchCategoryProperty(categoryUID, propertyUID)
+	if err != nil {
+		return err
+	}
+
+	query := DeleteCatalogueCategoryPropertyQuery(categoryUID, propertyUID, userUID, original.Name)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			still, checkErr := svc.nodeExists("CatalogueCategoryProperty", propertyUID)
+			if checkErr != nil {
+				return checkErr
+			}
+			if still {
+				return helpers.ERR_DELETE_RELATED_ITEMS
+			}
+			return helpers.ERR_NOT_FOUND
+		}
+		return err
+	}
+	if returnedUID == "" {
+		return helpers.ERR_NOT_FOUND
+	}
+	return nil
+}
+
+// toCatalogueCategoryProperty converts the internal group-aware shape into the public
+// CatalogueCategoryProperty model used in API responses.
+func toCatalogueCategoryProperty(p CategoryPropertyWithGroup) models.CatalogueCategoryProperty {
+	out := models.CatalogueCategoryProperty{
+		UID:          p.UID,
+		Name:         p.Name,
+		DefaultValue: p.DefaultValue,
+		Order:        p.Order,
+		ListOfValues: p.ListOfValues,
+	}
+	if p.Type != nil {
+		out.Type = *p.Type
+	}
+	if p.Unit != nil {
+		out.Unit = &codebookModels.Codebook{UID: p.Unit.UID, Name: p.Unit.Name}
+	}
+	return out
 }
 
 func (svc *CatalogueService) DeleteCatalogueCategoryGroup(categoryUID, groupUID, userUID string) error {
