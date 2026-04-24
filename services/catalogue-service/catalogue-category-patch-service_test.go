@@ -165,3 +165,189 @@ func TestParsePatchCatalogueCategoryPayload_SystemTypeEmptyUIDRejected(t *testin
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "systemType.uid")
 }
+
+// ===== Group CRUD integration tests =====
+
+func seedCategoryWithGroups(t *testing.T) (f categoryPatchFixture, groupAUID, groupBUID string) {
+	t.Helper()
+	f = seedCategoryPatchFixture(t)
+	groupAUID = "cp-grpA-" + uuid.NewString()
+	groupBUID = "cp-grpB-" + uuid.NewString()
+	_, err := testsetup.TestSession.Run(`
+		MATCH(c:CatalogueCategory{uid: $cat})
+		CREATE (gA:CatalogueCategoryPropertyGroup {uid: $gA, name: 'Group A'})
+		CREATE (gB:CatalogueCategoryPropertyGroup {uid: $gB, name: 'Group B'})
+		CREATE (c)-[:HAS_GROUP]->(gA)
+		CREATE (c)-[:HAS_GROUP]->(gB)
+	`, map[string]interface{}{"cat": f.categoryUID, "gA": groupAUID, "gB": groupBUID})
+	assert.NoError(t, err)
+	return f, groupAUID, groupBUID
+}
+
+func cleanupGroups(ids ...string) {
+	for _, id := range ids {
+		testsetup.TestSession.Run(`MATCH (n) WHERE n.uid = $uid DETACH DELETE n`, map[string]interface{}{"uid": id})
+	}
+}
+
+func TestCreateCatalogueCategoryGroup_AutoAssignsOrder(t *testing.T) {
+	f := seedCategoryPatchFixture(t)
+	defer cleanupCategoryPatchFixture(f)
+	svc := newPatchSvc()
+
+	// First group — no siblings, should get order=10
+	g1, err := svc.CreateCatalogueCategoryGroup(f.categoryUID, &models.CreateCatalogueCategoryGroupFields{Name: "First"}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(g1.UID)
+	assert.NotEmpty(t, g1.UID)
+	assert.Equal(t, "First", g1.Name)
+	assert.NotNil(t, g1.Order)
+	assert.Equal(t, 10, *g1.Order)
+
+	// Second group — max(siblings)+10 = 20
+	g2, err := svc.CreateCatalogueCategoryGroup(f.categoryUID, &models.CreateCatalogueCategoryGroupFields{Name: "Second"}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(g2.UID)
+	assert.Equal(t, 20, *g2.Order)
+
+	// Third group — explicit order=15 overrides auto
+	fifteen := 15
+	g3, err := svc.CreateCatalogueCategoryGroup(f.categoryUID, &models.CreateCatalogueCategoryGroupFields{Name: "Third", Order: &fifteen}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(g3.UID)
+	assert.Equal(t, 15, *g3.Order)
+}
+
+func TestCreateCatalogueCategoryGroup_UnknownCategory_ReturnsNotFound(t *testing.T) {
+	svc := newPatchSvc()
+	_, err := svc.CreateCatalogueCategoryGroup("missing-"+uuid.NewString(),
+		&models.CreateCatalogueCategoryGroupFields{Name: "X"}, "user")
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}
+
+func TestPatchCatalogueCategoryGroup_RenameOnly(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	newName := "Renamed A"
+	updated, err := svc.PatchCatalogueCategoryGroup(f.categoryUID, gA,
+		&models.PatchCatalogueCategoryGroupFields{Name: &newName}, f.userUID)
+	assert.NoError(t, err)
+	assert.Equal(t, "Renamed A", updated.Name)
+
+	changes, action := readLatestCategoryChanges(t, f.categoryUID)
+	assert.Equal(t, "UPDATE", action)
+	var parsed []map[string]interface{}
+	assert.NoError(t, json.Unmarshal([]byte(changes), &parsed))
+	assert.Len(t, parsed, 1)
+	assert.Equal(t, "group."+gA+".name", parsed[0]["field"])
+}
+
+func TestPatchCatalogueCategoryGroup_WrongCategory_ReturnsNotFound(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+
+	// Seed an unrelated category — gA doesn't belong to it.
+	otherCat := "cp-other-" + uuid.NewString()
+	_, err := testsetup.TestSession.Run(`CREATE (c:CatalogueCategory{uid: $uid, name: 'Other', code: 'OT'})`,
+		map[string]interface{}{"uid": otherCat})
+	assert.NoError(t, err)
+	defer cleanupGroups(otherCat)
+
+	svc := newPatchSvc()
+	newName := "Tampered"
+	_, err = svc.PatchCatalogueCategoryGroup(otherCat, gA,
+		&models.PatchCatalogueCategoryGroupFields{Name: &newName}, f.userUID)
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}
+
+func TestPatchCatalogueCategoryGroup_LazyOrderSeed(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	// Both seeded groups have NULL order. PATCH gA.order=25 — service must lazy-seed
+	// gB too (otherwise ORDER BY would place gB at the NULL-end 2147483647 sentinel
+	// while gA jumps to 25 and the UI sees "gA first, everything else after").
+	twentyFive := 25
+	_, err := svc.PatchCatalogueCategoryGroup(f.categoryUID, gA,
+		&models.PatchCatalogueCategoryGroupFields{Order: &twentyFive}, f.userUID)
+	assert.NoError(t, err)
+
+	// Use a raw Cypher read (the legacy GetCatalogueCategoryWithDetailsByUid filters
+	// out empty groups) to verify both seeded groups have order values.
+	res, qerr := testsetup.TestSession.Run(`
+		MATCH(c:CatalogueCategory{uid: $uid})-[:HAS_GROUP]->(g:CatalogueCategoryPropertyGroup)
+		RETURN g.uid as uid, g.order as order
+	`, map[string]interface{}{"uid": f.categoryUID})
+	assert.NoError(t, qerr)
+
+	orders := map[string]int64{}
+	for res.Next() {
+		uidRaw, _ := res.Record().Get("uid")
+		ordRaw, _ := res.Record().Get("order")
+		uidStr, _ := uidRaw.(string)
+		if ord, ok := ordRaw.(int64); ok {
+			orders[uidStr] = ord
+		}
+	}
+	assert.Contains(t, orders, gA, "gA must have a non-nil order")
+	assert.Contains(t, orders, gB, "lazy seed must assign order to gB even though PATCH only targets gA")
+	assert.Equal(t, int64(25), orders[gA])
+}
+
+func TestDeleteCatalogueCategoryGroup_EmptyGroup_Succeeds(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gB) // gA should be gone after the DELETE
+	svc := newPatchSvc()
+
+	err := svc.DeleteCatalogueCategoryGroup(f.categoryUID, gA, f.userUID)
+	assert.NoError(t, err)
+
+	reloaded, _ := svc.GetCatalogueCategoryWithDetailsByUid(f.categoryUID)
+	for _, g := range reloaded.Groups {
+		assert.NotEqual(t, gA, g.UID, "gA must be gone")
+	}
+}
+
+func TestDeleteCatalogueCategoryGroup_BlocksWhenPropertyHasItemValue(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	// Seed a property under gA and an item that references it.
+	propUID := "cp-prop-" + uuid.NewString()
+	itemUID := "cp-item-" + uuid.NewString()
+	_, err := testsetup.TestSession.Run(`
+		MATCH(g:CatalogueCategoryPropertyGroup{uid: $gid})
+		MATCH(c:CatalogueCategory{uid: $cid})
+		MERGE(typeStr:CatalogueCategoryPropertyType {code: 'text'}) ON CREATE SET typeStr.uid = randomUUID(), typeStr.name = 'Text'
+		CREATE (p:CatalogueCategoryProperty {uid: $pid, name: 'P'})
+		CREATE (p)-[:IS_PROPERTY_TYPE]->(typeStr)
+		CREATE (g)-[:CONTAINS_PROPERTY]->(p)
+		CREATE (i:CatalogueItem {uid: $iid, name: 'I', catalogueNumber: 'CN', lastUpdateTime: datetime()})
+		CREATE (i)-[:BELONGS_TO_CATEGORY]->(c)
+		CREATE (i)-[:HAS_CATALOGUE_PROPERTY {value: '5'}]->(p)
+	`, map[string]interface{}{"gid": gA, "cid": f.categoryUID, "pid": propUID, "iid": itemUID})
+	assert.NoError(t, err)
+	defer cleanupGroups(propUID, itemUID)
+
+	err = svc.DeleteCatalogueCategoryGroup(f.categoryUID, gA, f.userUID)
+	assert.ErrorIs(t, err, helpers.ERR_DELETE_RELATED_ITEMS)
+
+	// Group must still exist.
+	reloaded, _ := svc.GetCatalogueCategoryWithDetailsByUid(f.categoryUID)
+	var stillThere bool
+	for _, g := range reloaded.Groups {
+		if g.UID == gA {
+			stillThere = true
+		}
+	}
+	assert.True(t, stillThere, "group must survive a rejected DELETE")
+}
