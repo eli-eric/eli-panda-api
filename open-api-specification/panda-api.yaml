@@ -2147,6 +2147,36 @@ paths:
       summary: Delete catalogue category group
       tags:
       - Catalogue
+    get:
+      description: Returns a single group scoped to a category. 404 if the group doesn't
+        belong to the given category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Group UID
+        in: path
+        name: gid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryPropertyGroup'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get a single catalogue category group
+      tags:
+      - Catalogue
     patch:
       consumes:
       - application/json
@@ -2340,6 +2370,35 @@ paths:
       summary: Delete physical item property
       tags:
       - Catalogue
+    get:
+      description: Returns a single physical property attached to a category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Physical property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get a single physical item property
+      tags:
+      - Catalogue
     patch:
       consumes:
       - application/json
@@ -2438,6 +2497,36 @@ paths:
       security:
       - BearerAuth: []
       summary: Delete catalogue category property
+      tags:
+      - Catalogue
+    get:
+      description: Returns a single property scoped to a category. 404 if the property
+        doesn't belong to this category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get a single catalogue category property
       tags:
       - Catalogue
     patch:
