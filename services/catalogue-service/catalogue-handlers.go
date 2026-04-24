@@ -27,6 +27,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueItemWithDetailsByUid() echo.HandlerFunc
 	GetCatalogueCategoryWithDetailsByUid() echo.HandlerFunc
 	UpdateCatalogueCategory() echo.HandlerFunc
+	PatchCatalogueCategory() echo.HandlerFunc
 	CreateCatalogueCategory() echo.HandlerFunc
 	DeleteCatalogueCategory() echo.HandlerFunc
 	GetCatalogueCategoryImageByUid() echo.HandlerFunc
