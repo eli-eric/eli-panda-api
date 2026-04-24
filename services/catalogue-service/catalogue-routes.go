@@ -18,6 +18,11 @@ func MapCatalogueRoutes(e *echo.Echo, h ICatalogueHandlers, jwtMiddleware echo.M
 	e.PATCH("/v1/catalogue/category/:uid", m.Authorization(h.PatchCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 	e.DELETE("/v1/catalogue/category/:uid", m.Authorization(h.DeleteCatalogueCategory(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
+	// granular group CRUD
+	e.POST("/v1/catalogue/category/:uid/group", m.Authorization(h.CreateCatalogueCategoryGroup(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.PATCH("/v1/catalogue/category/:uid/group/:gid", m.Authorization(h.PatchCatalogueCategoryGroup(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+	e.DELETE("/v1/catalogue/category/:uid/group/:gid", m.Authorization(h.DeleteCatalogueCategoryGroup(), shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
+
 	e.GET("/v1/catalogue/category/:uid/properties", m.Authorization(h.GetCatalogueCategoryPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)
 
 	e.GET("/v1/catalogue/category/:uid/physical-item-properties", m.Authorization(h.GetCatalogueCategoryPhysicalItemPropertiesByUid(), shared.ROLE_CATALOGUE_VIEW, shared.ROLE_CATALOGUE_EDIT, shared.ROLE_CATALOGUE_CATEGORY_EDIT), jwtMiddleware)

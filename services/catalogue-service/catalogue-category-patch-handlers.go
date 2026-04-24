@@ -66,6 +66,175 @@ func (h *CatalogueHandlers) PatchCatalogueCategory() echo.HandlerFunc {
 	}
 }
 
+// CreateCatalogueCategoryGroup godoc
+// @Summary Create catalogue category group
+// @Description Create a new property group under a category. Order is optional — server auto-assigns max(siblings)+10 if omitted.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param body body object true "Group payload (name required)"
+// @Success 201 {object} models.CatalogueCategoryPropertyGroup
+// @Failure 400 "Bad Request — malformed body or missing name"
+// @Failure 404 "Not Found — category does not exist"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/group [post]
+func (h *CatalogueHandlers) CreateCatalogueCategoryGroup() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+		fields, err := parseCreateCategoryGroupPayload(body)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+		created, err := h.catalogueService.CreateCatalogueCategoryGroup(uid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusCreated, created)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		}
+		log.Error().Err(err).Msg("Error creating catalogue category group")
+		return echo.ErrInternalServerError
+	}
+}
+
+// PatchCatalogueCategoryGroup godoc
+// @Summary Update catalogue category group
+// @Description Partially update a group's name and/or order. Flat URL — the server validates group belongs to the given category.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param gid path string true "Group UID"
+// @Param body body object true "Patch group payload"
+// @Success 200 {object} models.CatalogueCategoryPropertyGroup
+// @Failure 400 "Bad Request — malformed body"
+// @Failure 404 "Not Found — category or group does not exist, or group does not belong to this category"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/group/{gid} [patch]
+func (h *CatalogueHandlers) PatchCatalogueCategoryGroup() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		gid := c.Param("gid")
+
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+		fields, err := parsePatchCategoryGroupPayload(body)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+		updated, err := h.catalogueService.PatchCatalogueCategoryGroup(uid, gid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusOK, updated)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		}
+		log.Error().Err(err).Msg("Error patching catalogue category group")
+		return echo.ErrInternalServerError
+	}
+}
+
+// DeleteCatalogueCategoryGroup godoc
+// @Summary Delete catalogue category group
+// @Description Delete a group and its properties. Blocked with 409 if any property under this group is referenced by a catalogue item.
+// @Tags Catalogue
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param gid path string true "Group UID"
+// @Success 204 "No Content"
+// @Failure 404 "Not Found"
+// @Failure 409 "Conflict — at least one property in this group has item values"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/group/{gid} [delete]
+func (h *CatalogueHandlers) DeleteCatalogueCategoryGroup() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		gid := c.Param("gid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.catalogueService.DeleteCatalogueCategoryGroup(uid, gid, userUID)
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, helpers.ERR_DELETE_RELATED_ITEMS) {
+			return echo.NewHTTPError(http.StatusConflict, "group contains properties referenced by catalogue items")
+		}
+		log.Error().Err(err).Msg("Error deleting catalogue category group")
+		return echo.ErrInternalServerError
+	}
+}
+
+func parseCreateCategoryGroupPayload(body []byte) (*models.CreateCatalogueCategoryGroupFields, error) {
+	raw := map[string]json.RawMessage{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("invalid JSON body")
+	}
+	fields := &models.CreateCatalogueCategoryGroupFields{}
+
+	rname, ok := raw["name"]
+	if !ok || rawMessageIsNull(rname) {
+		return nil, fmt.Errorf("name is required")
+	}
+	if err := json.Unmarshal(rname, &fields.Name); err != nil {
+		return nil, fmt.Errorf("invalid name: %w", err)
+	}
+	if fields.Name == "" {
+		return nil, fmt.Errorf("name must not be empty")
+	}
+
+	if r, ok := raw["order"]; ok && !rawMessageIsNull(r) {
+		var v int
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid order: %w", err)
+		}
+		fields.Order = &v
+	}
+	return fields, nil
+}
+
+func parsePatchCategoryGroupPayload(body []byte) (*models.PatchCatalogueCategoryGroupFields, error) {
+	raw := map[string]json.RawMessage{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("invalid JSON body")
+	}
+	fields := &models.PatchCatalogueCategoryGroupFields{}
+
+	if r, ok := raw["name"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("name cannot be null")
+		}
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid name: %w", err)
+		}
+		fields.Name = &v
+	}
+	if r, ok := raw["order"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("order cannot be null")
+		}
+		var v int
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid order: %w", err)
+		}
+		fields.Order = &v
+	}
+	return fields, nil
+}
+
 // parsePatchCatalogueCategoryPayload maps the raw-message payload into typed fields.
 // Absent keys stay nil; explicit null on systemType becomes Optional with nil Value.
 func parsePatchCatalogueCategoryPayload(raw map[string]json.RawMessage) (*models.PatchCatalogueCategoryFields, error) {
