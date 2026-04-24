@@ -355,6 +355,59 @@ const docTemplate = `{
                         "description": "Internal server error"
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "JSON Merge Patch on category scalar fields (name, code, systemType).\nImage is out of scope — handled via Minio separately.\nOnly keys present in the body are modified. systemType null clears the relationship.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Partially update catalogue category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial category payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body or unknown systemType UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category does not exist"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
             }
         },
         "/v1/catalogue/category/{uid}/copy": {
@@ -387,6 +440,227 @@ const docTemplate = `{
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/group": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new property group under a category. Order is optional — server auto-assigns max(siblings)+10 if omitted.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Group payload (name required)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body or missing name"
+                    },
+                    "404": {
+                        "description": "Not Found — category does not exist"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/group/{gid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a group and its properties. Blocked with 409 if any property under this group is referenced by a catalogue item.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict — at least one property in this group has item values"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially update a group's name and/or order. Flat URL — the server validates group belongs to the given category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch group payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body"
+                    },
+                    "404": {
+                        "description": "Not Found — category or group does not exist, or group does not belong to this category"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/group/{gid}/property": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new property in a group under a category. type.uid required; unit, listOfValues, defaultValue, order are optional.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Property payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — missing/invalid fields or unknown type/unit UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category or group does not exist"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -471,6 +745,162 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/catalogue/category/{uid}/physical-property": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Physical properties are default-value templates attached directly to the category (no group). type.uid required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create physical item property on a category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Physical property payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — missing/invalid fields or unknown type/unit UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category does not exist"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/physical-property/{pid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Physicals aren't referenced by items, so delete never returns 409 — always 204 on success.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete physical item property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Physical property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update — same fields as regular property minus groupUid (physicals don't belong to groups).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update physical item property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Physical property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/catalogue/category/{uid}/properties": {
             "get": {
                 "security": [
@@ -510,6 +940,110 @@ const docTemplate = `{
                                 "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/property/{pid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a property. Blocked with 409 if any catalogue item references the property.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict — property has item values; clear them first via item PATCH"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update. Optional fields: name, defaultValue, listOfValues, order, type, unit, groupUid (move).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch property payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body or unknown ref UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category or property does not exist, or property does not belong to this category"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -6245,6 +6779,9 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
+                "order": {
+                    "type": "integer"
+                },
                 "type": {
                     "$ref": "#/definitions/models.CatalogueCategoryPropertyType"
                 },
@@ -6261,6 +6798,9 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string"
+                },
+                "order": {
+                    "type": "integer"
                 },
                 "properties": {
                     "type": "array",
