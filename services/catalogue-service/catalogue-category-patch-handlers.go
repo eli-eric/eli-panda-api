@@ -177,6 +177,277 @@ func (h *CatalogueHandlers) DeleteCatalogueCategoryGroup() echo.HandlerFunc {
 	}
 }
 
+// CreateCatalogueCategoryProperty godoc
+// @Summary Create catalogue category property
+// @Description Create a new property in a group under a category. type.uid required; unit, listOfValues, defaultValue, order are optional.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param gid path string true "Group UID"
+// @Param body body object true "Property payload"
+// @Success 201 {object} models.CatalogueCategoryProperty
+// @Failure 400 "Bad Request — missing/invalid fields or unknown type/unit UID"
+// @Failure 404 "Not Found — category or group does not exist"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/group/{gid}/property [post]
+func (h *CatalogueHandlers) CreateCatalogueCategoryProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		gid := c.Param("gid")
+
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+		fields, err := parseCreateCategoryPropertyPayload(body)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+		created, err := h.catalogueService.CreateCatalogueCategoryProperty(uid, gid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusCreated, created)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, ErrPatchValidation) {
+			return helpers.BadRequest(err.Error())
+		}
+		log.Error().Err(err).Msg("Error creating catalogue category property")
+		return echo.ErrInternalServerError
+	}
+}
+
+// PatchCatalogueCategoryProperty godoc
+// @Summary Update catalogue category property
+// @Description Partial update. Optional fields: name, defaultValue, listOfValues, order, type, unit, groupUid (move).
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param pid path string true "Property UID"
+// @Param body body object true "Patch property payload"
+// @Success 200 {object} models.CatalogueCategoryProperty
+// @Failure 400 "Bad Request — malformed body or unknown ref UID"
+// @Failure 404 "Not Found — category or property does not exist, or property does not belong to this category"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/property/{pid} [patch]
+func (h *CatalogueHandlers) PatchCatalogueCategoryProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		pid := c.Param("pid")
+
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+		fields, err := parsePatchCategoryPropertyPayload(body)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+		updated, err := h.catalogueService.PatchCatalogueCategoryProperty(uid, pid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusOK, updated)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, ErrPatchValidation) {
+			return helpers.BadRequest(err.Error())
+		}
+		log.Error().Err(err).Msg("Error patching catalogue category property")
+		return echo.ErrInternalServerError
+	}
+}
+
+// DeleteCatalogueCategoryProperty godoc
+// @Summary Delete catalogue category property
+// @Description Delete a property. Blocked with 409 if any catalogue item references the property.
+// @Tags Catalogue
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param pid path string true "Property UID"
+// @Success 204 "No Content"
+// @Failure 404 "Not Found"
+// @Failure 409 "Conflict — property has item values; clear them first via item PATCH"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/property/{pid} [delete]
+func (h *CatalogueHandlers) DeleteCatalogueCategoryProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		uid := c.Param("uid")
+		pid := c.Param("pid")
+		userUID := c.Get("userUID").(string)
+
+		err := h.catalogueService.DeleteCatalogueCategoryProperty(uid, pid, userUID)
+		if err == nil {
+			return c.NoContent(http.StatusNoContent)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, helpers.ERR_DELETE_RELATED_ITEMS) {
+			return echo.NewHTTPError(http.StatusConflict, "property is referenced by catalogue items")
+		}
+		log.Error().Err(err).Msg("Error deleting catalogue category property")
+		return echo.ErrInternalServerError
+	}
+}
+
+func parseCreateCategoryPropertyPayload(body []byte) (*models.CreateCatalogueCategoryPropertyFields, error) {
+	raw := map[string]json.RawMessage{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("invalid JSON body")
+	}
+	fields := &models.CreateCatalogueCategoryPropertyFields{}
+
+	rname, ok := raw["name"]
+	if !ok || rawMessageIsNull(rname) {
+		return nil, fmt.Errorf("name is required")
+	}
+	if err := json.Unmarshal(rname, &fields.Name); err != nil {
+		return nil, fmt.Errorf("invalid name: %w", err)
+	}
+	if fields.Name == "" {
+		return nil, fmt.Errorf("name must not be empty")
+	}
+
+	rtype, ok := raw["type"]
+	if !ok || rawMessageIsNull(rtype) {
+		return nil, fmt.Errorf("type is required")
+	}
+	if err := json.Unmarshal(rtype, &fields.Type); err != nil {
+		return nil, fmt.Errorf("invalid type: %w", err)
+	}
+	if fields.Type.UID == "" {
+		return nil, fmt.Errorf("type.uid is required")
+	}
+
+	if r, ok := raw["defaultValue"]; ok && !rawMessageIsNull(r) {
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid defaultValue: %w", err)
+		}
+		fields.DefaultValue = &v
+	}
+	if r, ok := raw["listOfValues"]; ok && !rawMessageIsNull(r) {
+		if err := json.Unmarshal(r, &fields.ListOfValues); err != nil {
+			return nil, fmt.Errorf("invalid listOfValues: %w", err)
+		}
+	}
+	if r, ok := raw["order"]; ok && !rawMessageIsNull(r) {
+		var v int
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid order: %w", err)
+		}
+		fields.Order = &v
+	}
+	if r, ok := raw["unit"]; ok && !rawMessageIsNull(r) {
+		var cb codebookModels.Codebook
+		if err := json.Unmarshal(r, &cb); err != nil {
+			return nil, fmt.Errorf("invalid unit: %w", err)
+		}
+		if cb.UID == "" {
+			return nil, fmt.Errorf("unit.uid is required; omit unit to leave it unset")
+		}
+		fields.Unit = &cb
+	}
+	return fields, nil
+}
+
+func parsePatchCategoryPropertyPayload(body []byte) (*models.PatchCatalogueCategoryPropertyFields, error) {
+	raw := map[string]json.RawMessage{}
+	if err := json.Unmarshal(body, &raw); err != nil {
+		return nil, fmt.Errorf("invalid JSON body")
+	}
+	fields := &models.PatchCatalogueCategoryPropertyFields{}
+
+	if r, ok := raw["name"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("name cannot be null")
+		}
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid name: %w", err)
+		}
+		fields.Name = &v
+	}
+	if r, ok := raw["defaultValue"]; ok {
+		if rawMessageIsNull(r) {
+			fields.DefaultValue = &models.Optional[string]{Value: nil}
+		} else {
+			var v string
+			if err := json.Unmarshal(r, &v); err != nil {
+				return nil, fmt.Errorf("invalid defaultValue: %w", err)
+			}
+			fields.DefaultValue = &models.Optional[string]{Value: &v}
+		}
+	}
+	if r, ok := raw["listOfValues"]; ok {
+		if rawMessageIsNull(r) {
+			empty := []string{}
+			fields.ListOfValues = &empty
+		} else {
+			var v []string
+			if err := json.Unmarshal(r, &v); err != nil {
+				return nil, fmt.Errorf("invalid listOfValues: %w", err)
+			}
+			fields.ListOfValues = &v
+		}
+	}
+	if r, ok := raw["order"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("order cannot be null")
+		}
+		var v int
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid order: %w", err)
+		}
+		fields.Order = &v
+	}
+	if r, ok := raw["type"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("type cannot be null")
+		}
+		var t models.CatalogueCategoryPropertyType
+		if err := json.Unmarshal(r, &t); err != nil {
+			return nil, fmt.Errorf("invalid type: %w", err)
+		}
+		if t.UID == "" {
+			return nil, fmt.Errorf("type.uid is required")
+		}
+		fields.Type = &t
+	}
+	if r, ok := raw["unit"]; ok {
+		if rawMessageIsNull(r) {
+			fields.Unit = &models.Optional[codebookModels.Codebook]{Value: nil}
+		} else {
+			var cb codebookModels.Codebook
+			if err := json.Unmarshal(r, &cb); err != nil {
+				return nil, fmt.Errorf("invalid unit: %w", err)
+			}
+			if cb.UID == "" {
+				return nil, fmt.Errorf("unit.uid is required; to clear unit send unit: null")
+			}
+			fields.Unit = &models.Optional[codebookModels.Codebook]{Value: &cb}
+		}
+	}
+	if r, ok := raw["groupUid"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("groupUid cannot be null")
+		}
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid groupUid: %w", err)
+		}
+		if v == "" {
+			return nil, fmt.Errorf("groupUid must not be empty")
+		}
+		fields.GroupUID = &v
+	}
+	return fields, nil
+}
+
 func parseCreateCategoryGroupPayload(body []byte) (*models.CreateCatalogueCategoryGroupFields, error) {
 	raw := map[string]json.RawMessage{}
 	if err := json.Unmarshal(body, &raw); err != nil {

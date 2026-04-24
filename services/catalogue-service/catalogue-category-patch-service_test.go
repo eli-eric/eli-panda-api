@@ -315,6 +315,198 @@ func TestDeleteCatalogueCategoryGroup_EmptyGroup_Succeeds(t *testing.T) {
 	}
 }
 
+// ===== Property CRUD integration tests =====
+
+// seedCategoryWithGroupsAndTypes adds a text-type node so create-property tests have a
+// valid type.uid to reference. Returns both group UIDs as before plus the type UID.
+func seedCategoryWithGroupsAndTypes(t *testing.T) (f categoryPatchFixture, gA, gB, typeUID string) {
+	f, gA, gB = seedCategoryWithGroups(t)
+	res, err := testsetup.TestSession.Run(
+		`MERGE (t:CatalogueCategoryPropertyType {code: 'text'}) ON CREATE SET t.uid = randomUUID(), t.name = 'Text' RETURN t.uid as uid`,
+		nil,
+	)
+	assert.NoError(t, err)
+	if res.Next() {
+		u, _ := res.Record().Get("uid")
+		typeUID, _ = u.(string)
+	}
+	return f, gA, gB, typeUID
+}
+
+func TestCreateCatalogueCategoryProperty_HappyPath_AutoOrder(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	p, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Voltage",
+		Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(p.UID)
+	assert.NotEmpty(t, p.UID)
+	assert.Equal(t, "Voltage", p.Name)
+	assert.NotNil(t, p.Order)
+	assert.Equal(t, 10, *p.Order, "first property in empty group gets order=10")
+	assert.Equal(t, typeUID, p.Type.UID)
+}
+
+func TestCreateCatalogueCategoryProperty_UnknownType_ReturnsValidationError(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	_, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "X",
+		Type: models.CatalogueCategoryPropertyType{UID: "missing-" + uuid.NewString()},
+	}, f.userUID)
+	assert.ErrorIs(t, err, ErrPatchValidation)
+	assert.Contains(t, err.Error(), "property type not found")
+}
+
+func TestPatchCatalogueCategoryProperty_RenameAndDefault(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	original, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Voltage", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(original.UID)
+
+	newName := "Peak Voltage"
+	newDefault := "230"
+	updated, err := svc.PatchCatalogueCategoryProperty(f.categoryUID, original.UID, &models.PatchCatalogueCategoryPropertyFields{
+		Name:         &newName,
+		DefaultValue: &models.Optional[string]{Value: &newDefault},
+	}, f.userUID)
+	assert.NoError(t, err)
+	assert.Equal(t, "Peak Voltage", updated.Name)
+	assert.Equal(t, "230", updated.DefaultValue)
+
+	changes, action := readLatestCategoryChanges(t, f.categoryUID)
+	assert.Equal(t, "UPDATE", action)
+	var parsed []map[string]interface{}
+	assert.NoError(t, json.Unmarshal([]byte(changes), &parsed))
+	assert.Len(t, parsed, 2, "expected 2 change entries (name + defaultValue)")
+}
+
+func TestPatchCatalogueCategoryProperty_Move_BetweenGroups(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	p, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Moves", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(p.UID)
+
+	_, err = svc.PatchCatalogueCategoryProperty(f.categoryUID, p.UID, &models.PatchCatalogueCategoryPropertyFields{
+		GroupUID: &gB,
+	}, f.userUID)
+	assert.NoError(t, err)
+
+	// Verify CONTAINS_PROPERTY now comes from gB, not gA.
+	res, qerr := testsetup.TestSession.Run(`
+		MATCH(p:CatalogueCategoryProperty{uid: $pid})
+		OPTIONAL MATCH(g:CatalogueCategoryPropertyGroup)-[:CONTAINS_PROPERTY]->(p)
+		RETURN g.uid as gid
+	`, map[string]interface{}{"pid": p.UID})
+	assert.NoError(t, qerr)
+	seenGroups := []string{}
+	for res.Next() {
+		if gid, _ := res.Record().Get("gid"); gid != nil {
+			if s, ok := gid.(string); ok {
+				seenGroups = append(seenGroups, s)
+			}
+		}
+	}
+	assert.Equal(t, []string{gB}, seenGroups, "property must be under gB only after move")
+}
+
+func TestPatchCatalogueCategoryProperty_PropertyFromDifferentCategory_Returns404(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+
+	// Seed an unrelated category with its own group and property.
+	otherCat := "cp-other-" + uuid.NewString()
+	otherGroup := "cp-otherG-" + uuid.NewString()
+	otherProp := "cp-otherP-" + uuid.NewString()
+	_, err := testsetup.TestSession.Run(`
+		MATCH(t:CatalogueCategoryPropertyType{uid: $tid})
+		CREATE (c:CatalogueCategory{uid: $cid, name: 'Other', code: 'OT'})
+		CREATE (g:CatalogueCategoryPropertyGroup{uid: $gid, name: 'Other G'})
+		CREATE (c)-[:HAS_GROUP]->(g)
+		CREATE (p:CatalogueCategoryProperty{uid: $pid, name: 'Other P'})
+		CREATE (p)-[:IS_PROPERTY_TYPE]->(t)
+		CREATE (g)-[:CONTAINS_PROPERTY]->(p)
+	`, map[string]interface{}{"cid": otherCat, "gid": otherGroup, "pid": otherProp, "tid": typeUID})
+	assert.NoError(t, err)
+	defer cleanupGroups(otherCat, otherGroup, otherProp)
+
+	svc := newPatchSvc()
+	newName := "Tampered"
+	_, err = svc.PatchCatalogueCategoryProperty(f.categoryUID, otherProp, &models.PatchCatalogueCategoryPropertyFields{
+		Name: &newName,
+	}, f.userUID)
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND, "flat URL with wrong category must 404")
+}
+
+func TestDeleteCatalogueCategoryProperty_Empty_Succeeds(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	p, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Deletable", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+
+	err = svc.DeleteCatalogueCategoryProperty(f.categoryUID, p.UID, f.userUID)
+	assert.NoError(t, err)
+
+	_, err = svc.fetchCategoryProperty(f.categoryUID, p.UID)
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}
+
+func TestDeleteCatalogueCategoryProperty_BlocksWhenItemReferences(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	p, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Referenced", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(p.UID)
+
+	itemUID := "cp-item-" + uuid.NewString()
+	_, err = testsetup.TestSession.Run(`
+		MATCH(c:CatalogueCategory{uid: $cid})
+		MATCH(p:CatalogueCategoryProperty{uid: $pid})
+		CREATE (i:CatalogueItem{uid: $iid, name: 'I', catalogueNumber: 'CN', lastUpdateTime: datetime()})
+		CREATE (i)-[:BELONGS_TO_CATEGORY]->(c)
+		CREATE (i)-[:HAS_CATALOGUE_PROPERTY {value: '42'}]->(p)
+	`, map[string]interface{}{"cid": f.categoryUID, "pid": p.UID, "iid": itemUID})
+	assert.NoError(t, err)
+	defer cleanupGroups(itemUID)
+
+	err = svc.DeleteCatalogueCategoryProperty(f.categoryUID, p.UID, f.userUID)
+	assert.ErrorIs(t, err, helpers.ERR_DELETE_RELATED_ITEMS)
+
+	_, err = svc.fetchCategoryProperty(f.categoryUID, p.UID)
+	assert.NoError(t, err, "property must survive a rejected DELETE")
+}
+
 func TestDeleteCatalogueCategoryGroup_BlocksWhenPropertyHasItemValue(t *testing.T) {
 	f, gA, gB := seedCategoryWithGroups(t)
 	defer cleanupCategoryPatchFixture(f)
