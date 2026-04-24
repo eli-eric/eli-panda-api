@@ -503,6 +503,51 @@ const docTemplate = `{
             }
         },
         "/v1/catalogue/category/{uid}/group/{gid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single group scoped to a category. 404 if the group doesn't belong to the given category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get a single catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -801,6 +846,51 @@ const docTemplate = `{
             }
         },
         "/v1/catalogue/category/{uid}/physical-property/{pid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single physical property attached to a category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get a single physical item property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Physical property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {
@@ -948,6 +1038,51 @@ const docTemplate = `{
             }
         },
         "/v1/catalogue/category/{uid}/property/{pid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single property scoped to a category. 404 if the property doesn't belong to this category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get a single catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
             "delete": {
                 "security": [
                     {

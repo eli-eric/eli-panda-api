@@ -34,6 +34,33 @@ func (svc *CatalogueService) listCategoryGroups(categoryUID string) ([]models.Ca
 	return helpers.GetNeo4jArrayOfNodes[models.CatalogueCategoryPropertyGroup](session, ListCatalogueCategoryGroupsQuery(categoryUID))
 }
 
+// GetCatalogueCategoryGroup returns a single group with its UID, name, and order.
+// Returns ERR_NOT_FOUND when either UID is unknown or the group doesn't belong to
+// the given category (flat URL consistency check).
+func (svc *CatalogueService) GetCatalogueCategoryGroup(categoryUID, groupUID string) (models.CatalogueCategoryPropertyGroup, error) {
+	return svc.fetchCategoryGroup(categoryUID, groupUID)
+}
+
+// GetCatalogueCategoryProperty returns a single property with its type, unit, order,
+// and parent groupUid. Enforces category↔property consistency via HAS_GROUP→CONTAINS_PROPERTY.
+func (svc *CatalogueService) GetCatalogueCategoryProperty(categoryUID, propertyUID string) (models.CatalogueCategoryProperty, error) {
+	fetched, err := svc.fetchCategoryProperty(categoryUID, propertyUID)
+	if err != nil {
+		return models.CatalogueCategoryProperty{}, err
+	}
+	return toCatalogueCategoryProperty(fetched), nil
+}
+
+// GetCatalogueCategoryPhysicalProperty returns a single physical property attached
+// directly to a category via CONTAINS_PHYSICAL_ITEM_PROPERTY.
+func (svc *CatalogueService) GetCatalogueCategoryPhysicalProperty(categoryUID, propertyUID string) (models.CatalogueCategoryProperty, error) {
+	fetched, err := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID)
+	if err != nil {
+		return models.CatalogueCategoryProperty{}, err
+	}
+	return toCatalogueCategoryProperty(fetched), nil
+}
+
 func (svc *CatalogueService) CreateCatalogueCategoryGroup(categoryUID string, fields *models.CreateCatalogueCategoryGroupFields, userUID string) (result models.CatalogueCategoryPropertyGroup, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 

@@ -577,6 +577,73 @@ func TestDeleteCatalogueCategoryPhysicalProperty_AlwaysSucceeds(t *testing.T) {
 	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
 }
 
+// ===== GET endpoints =====
+
+func TestGetCatalogueCategoryGroup_HappyPath(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	got, err := svc.GetCatalogueCategoryGroup(f.categoryUID, gA)
+	assert.NoError(t, err)
+	assert.Equal(t, gA, got.UID)
+	assert.Equal(t, "Group A", got.Name)
+}
+
+func TestGetCatalogueCategoryGroup_WrongCategory_Returns404(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+
+	otherCat := "cp-other-" + uuid.NewString()
+	_, err := testsetup.TestSession.Run(`CREATE (c:CatalogueCategory{uid: $uid, name: 'Other', code: 'OT'})`,
+		map[string]interface{}{"uid": otherCat})
+	assert.NoError(t, err)
+	defer cleanupGroups(otherCat)
+
+	svc := newPatchSvc()
+	_, err = svc.GetCatalogueCategoryGroup(otherCat, gA)
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}
+
+func TestGetCatalogueCategoryProperty_HappyPath(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	created, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Fetched", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(created.UID)
+
+	got, err := svc.GetCatalogueCategoryProperty(f.categoryUID, created.UID)
+	assert.NoError(t, err)
+	assert.Equal(t, created.UID, got.UID)
+	assert.Equal(t, "Fetched", got.Name)
+	assert.Equal(t, typeUID, got.Type.UID)
+}
+
+func TestGetCatalogueCategoryPhysicalProperty_HappyPath(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	created, err := svc.CreateCatalogueCategoryPhysicalProperty(f.categoryUID, &models.CreateCatalogueCategoryPhysicalPropertyFields{
+		Name: "Depth", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(created.UID)
+
+	got, err := svc.GetCatalogueCategoryPhysicalProperty(f.categoryUID, created.UID)
+	assert.NoError(t, err)
+	assert.Equal(t, created.UID, got.UID)
+	assert.Equal(t, "Depth", got.Name)
+}
+
 func TestParsePatchCategoryPhysicalProperty_RejectsGroupUid(t *testing.T) {
 	body := []byte(`{"name":"X","groupUid":"g1"}`)
 	_, err := parsePatchCategoryPhysicalPropertyPayload(body)

@@ -66,6 +66,81 @@ func (h *CatalogueHandlers) PatchCatalogueCategory() echo.HandlerFunc {
 	}
 }
 
+// GetCatalogueCategoryGroup godoc
+// @Summary Get a single catalogue category group
+// @Description Returns a single group scoped to a category. 404 if the group doesn't belong to the given category.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param gid path string true "Group UID"
+// @Success 200 {object} models.CatalogueCategoryPropertyGroup
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/group/{gid} [get]
+func (h *CatalogueHandlers) GetCatalogueCategoryGroup() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		got, err := h.catalogueService.GetCatalogueCategoryGroup(c.Param("uid"), c.Param("gid"))
+		if err == nil {
+			return c.JSON(http.StatusOK, got)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		}
+		log.Error().Err(err).Msg("Error getting catalogue category group")
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetCatalogueCategoryProperty godoc
+// @Summary Get a single catalogue category property
+// @Description Returns a single property scoped to a category. 404 if the property doesn't belong to this category.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param pid path string true "Property UID"
+// @Success 200 {object} models.CatalogueCategoryProperty
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/property/{pid} [get]
+func (h *CatalogueHandlers) GetCatalogueCategoryProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		got, err := h.catalogueService.GetCatalogueCategoryProperty(c.Param("uid"), c.Param("pid"))
+		if err == nil {
+			return c.JSON(http.StatusOK, got)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		}
+		log.Error().Err(err).Msg("Error getting catalogue category property")
+		return echo.ErrInternalServerError
+	}
+}
+
+// GetCatalogueCategoryPhysicalProperty godoc
+// @Summary Get a single physical item property
+// @Description Returns a single physical property attached to a category.
+// @Tags Catalogue
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Category UID"
+// @Param pid path string true "Physical property UID"
+// @Success 200 {object} models.CatalogueCategoryProperty
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/category/{uid}/physical-property/{pid} [get]
+func (h *CatalogueHandlers) GetCatalogueCategoryPhysicalProperty() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		got, err := h.catalogueService.GetCatalogueCategoryPhysicalProperty(c.Param("uid"), c.Param("pid"))
+		if err == nil {
+			return c.JSON(http.StatusOK, got)
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		}
+		log.Error().Err(err).Msg("Error getting physical property")
+		return echo.ErrInternalServerError
+	}
+}
+
 // CreateCatalogueCategoryGroup godoc
 // @Summary Create catalogue category group
 // @Description Create a new property group under a category. Order is optional — server auto-assigns max(siblings)+10 if omitted.
