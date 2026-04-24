@@ -434,16 +434,24 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 
 func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery) {
 
+	// NOTE: the HAS_GROUP and CONTAINS_PROPERTY matches are SPLIT into two OPTIONAL MATCHes
+	// so empty groups (HAS_GROUP but no CONTAINS_PROPERTY edges) still appear in the response
+	// with an empty properties array. The previous chained pattern
+	// `OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)`
+	// treated the path atomically — either the whole chain matched or the group was dropped.
+	// The collect() for properties is now wrapped in a CASE so rows with a null property
+	// (empty group) produce [] instead of [{uid:null,...}].
 	result.Query = `MATCH(category:CatalogueCategory{uid:$uid})
-	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)-[:CONTAINS_PROPERTY]->(property)
-	WITH category, group,property
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(group)
+	OPTIONAL MATCH(group)-[:CONTAINS_PROPERTY]->(property)
+	WITH category, group, property
 	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
-	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)	
+	OPTIONAL MATCH(property)-[:IS_PROPERTY_TYPE]->(propertyType)
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(physicalItemProperty)
 	OPTIONAL MATCH(physicalItemProperty)-[:IS_PROPERTY_TYPE]->(propertyTypePhysical)
 	OPTIONAL MATCH(physicalItemProperty)-[:HAS_UNIT]->(unitPhysical)
-	WITH category,systemType, group, property, propertyType, physicalItemProperty, propertyTypePhysical, unitPhysical, unit order by id(property)
+	WITH category,systemType, group, property, propertyType, physicalItemProperty, propertyTypePhysical, unitPhysical, unit order by coalesce(id(property), 2147483647)
 	WITH category, group, systemType, CASE WHEN physicalItemProperty IS NULL THEN NULL ELSE {
 		uid: physicalItemProperty.uid,
 		name: physicalItemProperty.name,
@@ -451,14 +459,14 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		type: { uid: propertyTypePhysical.uid, name: propertyTypePhysical.name, code: propertyTypePhysical.code},
 		unit: case when unitPhysical is not null then { uid: unitPhysical.uid, name: unitPhysical.name } else null end,
 		listOfValues: apoc.text.split(case when physicalItemProperty.listOfValues = "" then null else  physicalItemProperty.listOfValues END, ";")
-	} END as physicalItemProperties,	
-	collect({
-		uid: property.uid, 
+	} END as physicalItemProperties,
+	collect(CASE WHEN property IS NULL THEN NULL ELSE {
+		uid: property.uid,
 		name: property.name,
-		defaultValue: property.defaultValue, 
-		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 		
-		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
-		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
+		defaultValue: property.defaultValue,
+		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
+		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end,
+		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")} END) as properties order by id(group)
 	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups, physicalItemProperties
 	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups,  physicalItemProperties
 	WITH { uid: category.uid, name: category.name, code: category.code, miniImageUrl: split(category.miniImageUrl, ";"), groups: groups, physicalItemProperties: collect(physicalItemProperties), systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category

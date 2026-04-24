@@ -577,6 +577,28 @@ func TestDeleteCatalogueCategoryPhysicalProperty_AlwaysSucceeds(t *testing.T) {
 	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
 }
 
+// Regression — the legacy GET /category/:uid used to omit groups that had no properties.
+// Splitting the chained OPTIONAL MATCH into two separate ones lets empty groups surface
+// with properties=[]. Important for FE workflows where a user creates a group and then
+// adds properties to it — without the fix the group was invisible until the first property
+// landed.
+func TestGetCatalogueCategoryWithDetailsByUid_IncludesEmptyGroups(t *testing.T) {
+	f, gA, gB := seedCategoryWithGroups(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	got, err := svc.GetCatalogueCategoryWithDetailsByUid(f.categoryUID)
+	assert.NoError(t, err)
+
+	uids := make(map[string]bool)
+	for _, g := range got.Groups {
+		uids[g.UID] = true
+	}
+	assert.True(t, uids[gA], "empty group gA must be in the response")
+	assert.True(t, uids[gB], "empty group gB must be in the response")
+}
+
 // ===== GET endpoints =====
 
 func TestGetCatalogueCategoryGroup_HappyPath(t *testing.T) {
