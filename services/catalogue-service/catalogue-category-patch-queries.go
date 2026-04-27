@@ -126,7 +126,7 @@ func CreateCatalogueCategoryGroupQuery(categoryUID, newGroupUID, userUID, name s
 	`
 
 	changes := []helpers.ChangeEntry{{
-		Field:    "createdAt",
+		Field:    "name",
 		Type:     string(helpers.ChangeTypeString),
 		OldValue: nil,
 		NewValue: name,
@@ -199,7 +199,7 @@ func DeleteCatalogueCategoryGroupQuery(categoryUID, groupUID, userUID, originalN
 	`
 
 	changes := []helpers.ChangeEntry{{
-		Field:    "deletedAt",
+		Field:    "name",
 		Type:     string(helpers.ChangeTypeString),
 		OldValue: originalName,
 		NewValue: nil,
@@ -413,7 +413,7 @@ func CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newPropertyUID,
 	result.Query += ` WITH u, category `
 
 	changes := []helpers.ChangeEntry{{
-		Field:    "createdAt",
+		Field:    "name",
 		Type:     string(helpers.ChangeTypeString),
 		OldValue: nil,
 		NewValue: fields.Name,
@@ -572,7 +572,7 @@ func DeleteCatalogueCategoryPropertyQuery(categoryUID, propertyUID, userUID, ori
 	`
 
 	changes := []helpers.ChangeEntry{{
-		Field:    "deletedAt",
+		Field:    "name",
 		Type:     string(helpers.ChangeTypeString),
 		OldValue: originalName,
 		NewValue: nil,
@@ -692,7 +692,7 @@ func CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newPropertyUID, u
 	result.Query += ` WITH u, category `
 
 	changes := []helpers.ChangeEntry{{
-		Field:    "createdAt",
+		Field:    "name",
 		Type:     string(helpers.ChangeTypeString),
 		OldValue: nil,
 		NewValue: fields.Name,
@@ -812,7 +812,7 @@ func DeleteCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID, user
 	`
 
 	changes := []helpers.ChangeEntry{{
-		Field:    "deletedAt",
+		Field:    "name",
 		Type:     string(helpers.ChangeTypeString),
 		OldValue: originalName,
 		NewValue: nil,
