@@ -1,7 +1,6 @@
 package catalogueService
 
 import (
-	"fmt"
 	"strings"
 
 	"panda/apigateway/helpers"
@@ -51,6 +50,10 @@ func PatchCatalogueCategoryQuery(uid string, fields *models.PatchCatalogueCatego
 	var changes []helpers.ChangeEntry
 	carry := []string{"u", "category"}
 
+	// Audit entity for category-level scalar changes — captures the category's name at
+	// change time so older audit entries keep their context after rename.
+	categoryEntity := &helpers.ChangeEntity{Type: "category", UID: uid, Name: original.Name}
+
 	// -- PHASE 1 — additional MATCHes --
 
 	settingSystemType := fields.SystemType != nil && fields.SystemType.Value != nil && fields.SystemType.Value.UID != ""
@@ -68,13 +71,13 @@ func PatchCatalogueCategoryQuery(uid string, fields *models.PatchCatalogueCatego
 	if fields.Name != nil {
 		result.Parameters["name"] = *fields.Name
 		result.Query += ` SET category.name = $name `
-		changes = helpers.AppendIfChanged(changes, "name", helpers.ChangeTypeString, original.Name, *fields.Name)
+		changes = helpers.AppendIfChangedFor(changes, categoryEntity, "name", helpers.ChangeTypeString, original.Name, *fields.Name)
 	}
 
 	if fields.Code != nil {
 		result.Parameters["code"] = *fields.Code
 		result.Query += ` SET category.code = $code `
-		changes = helpers.AppendIfChanged(changes, "code", helpers.ChangeTypeString, original.Code, *fields.Code)
+		changes = helpers.AppendIfChangedFor(changes, categoryEntity, "code", helpers.ChangeTypeString, original.Code, *fields.Code)
 	}
 
 	if fields.SystemType != nil {
@@ -90,7 +93,7 @@ func PatchCatalogueCategoryQuery(uid string, fields *models.PatchCatalogueCatego
 		if fields.SystemType.Value != nil {
 			newST = fields.SystemType.Value
 		}
-		changes = helpers.AppendIfChanged(changes, "systemType", helpers.ChangeTypeCodebook, oldST, newST)
+		changes = helpers.AppendIfChangedFor(changes, categoryEntity, "systemType", helpers.ChangeTypeCodebook, oldST, newST)
 	}
 
 	// -- PHASE 3 — audit + return --
@@ -122,9 +125,13 @@ func CreateCatalogueCategoryGroupQuery(categoryUID, newGroupUID, userUID, name s
 	WITH u, category
 	`
 
-	changes := []helpers.ChangeEntry{
-		{Field: "group", Type: string(helpers.ChangeTypeString), OldValue: nil, NewValue: name},
-	}
+	changes := []helpers.ChangeEntry{{
+		Field:    "createdAt",
+		Type:     string(helpers.ChangeTypeString),
+		OldValue: nil,
+		NewValue: name,
+		Entity:   &helpers.ChangeEntity{Type: "group", UID: newGroupUID, Name: name},
+	}}
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += categoryAuditSuffix
 	result.ReturnAlias = "uid"
@@ -144,11 +151,12 @@ func PatchCatalogueCategoryGroupQuery(categoryUID, groupUID string, fields *mode
 	result.Query += ` WITH u, category MATCH(category)-[:HAS_GROUP]->(g:CatalogueCategoryPropertyGroup{uid: $groupUid}) WITH u, category, g `
 
 	var changes []helpers.ChangeEntry
+	groupEntity := &helpers.ChangeEntity{Type: "group", UID: groupUID, Name: original.Name}
 
 	if fields.Name != nil {
 		result.Parameters["name"] = *fields.Name
 		result.Query += ` SET g.name = $name `
-		changes = helpers.AppendIfChanged(changes, fmt.Sprintf("group.%s.name", groupUID), helpers.ChangeTypeString, original.Name, *fields.Name)
+		changes = helpers.AppendIfChangedFor(changes, groupEntity, "name", helpers.ChangeTypeString, original.Name, *fields.Name)
 	}
 
 	if fields.Order != nil {
@@ -158,7 +166,7 @@ func PatchCatalogueCategoryGroupQuery(categoryUID, groupUID string, fields *mode
 		if original.Order != nil {
 			oldOrder = *original.Order
 		}
-		changes = helpers.AppendIfChanged(changes, fmt.Sprintf("group.%s.order", groupUID), helpers.ChangeTypeNumber, oldOrder, *fields.Order)
+		changes = helpers.AppendIfChangedFor(changes, groupEntity, "order", helpers.ChangeTypeNumber, oldOrder, *fields.Order)
 	}
 
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
@@ -190,9 +198,13 @@ func DeleteCatalogueCategoryGroupQuery(categoryUID, groupUID, userUID, originalN
 	WITH u, category
 	`
 
-	changes := []helpers.ChangeEntry{
-		{Field: "group", Type: string(helpers.ChangeTypeString), OldValue: originalName, NewValue: nil},
-	}
+	changes := []helpers.ChangeEntry{{
+		Field:    "deletedAt",
+		Type:     string(helpers.ChangeTypeString),
+		OldValue: originalName,
+		NewValue: nil,
+		Entity:   &helpers.ChangeEntity{Type: "group", UID: groupUID, Name: originalName},
+	}}
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += categoryAuditSuffix
 	result.ReturnAlias = "uid"
@@ -400,9 +412,13 @@ func CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newPropertyUID,
 	}
 	result.Query += ` WITH u, category `
 
-	changes := []helpers.ChangeEntry{
-		{Field: "property", Type: string(helpers.ChangeTypeString), OldValue: nil, NewValue: fields.Name},
-	}
+	changes := []helpers.ChangeEntry{{
+		Field:    "createdAt",
+		Type:     string(helpers.ChangeTypeString),
+		OldValue: nil,
+		NewValue: fields.Name,
+		Entity:   &helpers.ChangeEntity{Type: "property", UID: newPropertyUID, Name: fields.Name},
+	}}
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += categoryAuditSuffix
 	result.ReturnAlias = "uid"
@@ -456,11 +472,12 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 
 	// -- PHASE 2 — writes --
 	var changes []helpers.ChangeEntry
+	propertyEntity := &helpers.ChangeEntity{Type: "property", UID: propertyUID, Name: original.Name}
 
 	if fields.Name != nil {
 		result.Parameters["name"] = *fields.Name
 		result.Query += ` SET p.name = $name `
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "name"), helpers.ChangeTypeString, original.Name, *fields.Name)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "name", helpers.ChangeTypeString, original.Name, *fields.Name)
 	}
 
 	if fields.DefaultValue != nil {
@@ -474,7 +491,7 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 		if fields.DefaultValue.Value != nil {
 			newVal = *fields.DefaultValue.Value
 		}
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "defaultValue"), helpers.ChangeTypeString, original.DefaultValue, newVal)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "defaultValue", helpers.ChangeTypeString, original.DefaultValue, newVal)
 	}
 
 	if fields.ListOfValues != nil {
@@ -482,7 +499,7 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 		result.Parameters["listOfValues"] = joined
 		result.Query += ` SET p.listOfValues = $listOfValues `
 		oldJoined := strings.Join(original.ListOfValues, ";")
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "listOfValues"), helpers.ChangeTypeString, oldJoined, joined)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "listOfValues", helpers.ChangeTypeString, oldJoined, joined)
 	}
 
 	if fields.Order != nil {
@@ -492,7 +509,7 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 		if original.Order != nil {
 			oldOrder = *original.Order
 		}
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "order"), helpers.ChangeTypeNumber, oldOrder, *fields.Order)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "order", helpers.ChangeTypeNumber, oldOrder, *fields.Order)
 	}
 
 	if settingType {
@@ -503,7 +520,7 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 			oldTy = original.Type
 		}
 		newTy = fields.Type
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "type"), helpers.ChangeTypeCodebook, oldTy, newTy)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "type", helpers.ChangeTypeCodebook, oldTy, newTy)
 	}
 
 	if fields.Unit != nil {
@@ -518,13 +535,13 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 		if fields.Unit.Value != nil {
 			newUnit = fields.Unit.Value
 		}
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "unit"), helpers.ChangeTypeCodebook, oldUnit, newUnit)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "unit", helpers.ChangeTypeCodebook, oldUnit, newUnit)
 	}
 
 	if movingGroup {
 		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (oldGroup)-[oldCP:CONTAINS_PROPERTY]->(p) DELETE oldCP `
 		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` MERGE(newGroup)-[:CONTAINS_PROPERTY]->(p) `
-		changes = helpers.AppendIfChanged(changes, propertyField(propertyUID, "groupUid"), helpers.ChangeTypeString, original.GroupUID, *fields.GroupUID)
+		changes = helpers.AppendIfChangedFor(changes, propertyEntity, "groupUid", helpers.ChangeTypeString, original.GroupUID, *fields.GroupUID)
 	}
 
 	// -- PHASE 3 --
@@ -554,25 +571,17 @@ func DeleteCatalogueCategoryPropertyQuery(categoryUID, propertyUID, userUID, ori
 	WITH u, category
 	`
 
-	changes := []helpers.ChangeEntry{
-		{Field: "property", Type: string(helpers.ChangeTypeString), OldValue: originalName, NewValue: nil},
-	}
+	changes := []helpers.ChangeEntry{{
+		Field:    "deletedAt",
+		Type:     string(helpers.ChangeTypeString),
+		OldValue: originalName,
+		NewValue: nil,
+		Entity:   &helpers.ChangeEntity{Type: "property", UID: propertyUID, Name: originalName},
+	}}
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += categoryAuditSuffix
 	result.ReturnAlias = "uid"
 	return result
-}
-
-// propertyField builds the path-like field name "property.<uid>.<scalar>" used in the
-// audit changes array to identify which property + attribute was touched.
-func propertyField(propertyUID, scalar string) string {
-	return fmt.Sprintf("property.%s.%s", propertyUID, scalar)
-}
-
-// physicalPropertyField mirrors propertyField for physical properties —
-// "physicalProperty.<uid>.<scalar>".
-func physicalPropertyField(propertyUID, scalar string) string {
-	return fmt.Sprintf("physicalProperty.%s.%s", propertyUID, scalar)
 }
 
 // =====  Physical property CRUD — CONTAINS_PHYSICAL_ITEM_PROPERTY attached to category  =====
@@ -682,9 +691,13 @@ func CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newPropertyUID, u
 	}
 	result.Query += ` WITH u, category `
 
-	changes := []helpers.ChangeEntry{
-		{Field: "physicalProperty", Type: string(helpers.ChangeTypeString), OldValue: nil, NewValue: fields.Name},
-	}
+	changes := []helpers.ChangeEntry{{
+		Field:    "createdAt",
+		Type:     string(helpers.ChangeTypeString),
+		OldValue: nil,
+		NewValue: fields.Name,
+		Entity:   &helpers.ChangeEntity{Type: "physicalProperty", UID: newPropertyUID, Name: fields.Name},
+	}}
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += categoryAuditSuffix
 	result.ReturnAlias = "uid"
@@ -721,10 +734,12 @@ func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string
 	result.Query += ` WITH ` + strings.Join(carry, ", ") + ` `
 
 	var changes []helpers.ChangeEntry
+	physicalEntity := &helpers.ChangeEntity{Type: "physicalProperty", UID: propertyUID, Name: original.Name}
+
 	if fields.Name != nil {
 		result.Parameters["name"] = *fields.Name
 		result.Query += ` SET p.name = $name `
-		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "name"), helpers.ChangeTypeString, original.Name, *fields.Name)
+		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "name", helpers.ChangeTypeString, original.Name, *fields.Name)
 	}
 	if fields.DefaultValue != nil {
 		var v string
@@ -733,14 +748,14 @@ func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string
 		}
 		result.Parameters["defaultValue"] = v
 		result.Query += ` SET p.defaultValue = $defaultValue `
-		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "defaultValue"), helpers.ChangeTypeString, original.DefaultValue, v)
+		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "defaultValue", helpers.ChangeTypeString, original.DefaultValue, v)
 	}
 	if fields.ListOfValues != nil {
 		joined := strings.Join(*fields.ListOfValues, ";")
 		result.Parameters["listOfValues"] = joined
 		result.Query += ` SET p.listOfValues = $listOfValues `
 		oldJoined := strings.Join(original.ListOfValues, ";")
-		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "listOfValues"), helpers.ChangeTypeString, oldJoined, joined)
+		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "listOfValues", helpers.ChangeTypeString, oldJoined, joined)
 	}
 	if fields.Order != nil {
 		result.Parameters["order"] = *fields.Order
@@ -749,7 +764,7 @@ func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string
 		if original.Order != nil {
 			oldOrder = *original.Order
 		}
-		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "order"), helpers.ChangeTypeNumber, oldOrder, *fields.Order)
+		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "order", helpers.ChangeTypeNumber, oldOrder, *fields.Order)
 	}
 	if settingType {
 		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (p)-[oldTypeRel:IS_PROPERTY_TYPE]->() DELETE oldTypeRel `
@@ -759,7 +774,7 @@ func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string
 			oldTy = original.Type
 		}
 		newTy = fields.Type
-		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "type"), helpers.ChangeTypeCodebook, oldTy, newTy)
+		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "type", helpers.ChangeTypeCodebook, oldTy, newTy)
 	}
 	if fields.Unit != nil {
 		result.Query += ` WITH ` + strings.Join(carry, ", ") + ` OPTIONAL MATCH (p)-[oldUnitRel:HAS_UNIT]->() DELETE oldUnitRel `
@@ -773,7 +788,7 @@ func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string
 		if fields.Unit.Value != nil {
 			newUnit = fields.Unit.Value
 		}
-		changes = helpers.AppendIfChanged(changes, physicalPropertyField(propertyUID, "unit"), helpers.ChangeTypeCodebook, oldUnit, newUnit)
+		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "unit", helpers.ChangeTypeCodebook, oldUnit, newUnit)
 	}
 
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
@@ -796,9 +811,13 @@ func DeleteCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID, user
 	WITH u, category
 	`
 
-	changes := []helpers.ChangeEntry{
-		{Field: "physicalProperty", Type: string(helpers.ChangeTypeString), OldValue: originalName, NewValue: nil},
-	}
+	changes := []helpers.ChangeEntry{{
+		Field:    "deletedAt",
+		Type:     string(helpers.ChangeTypeString),
+		OldValue: originalName,
+		NewValue: nil,
+		Entity:   &helpers.ChangeEntity{Type: "physicalProperty", UID: propertyUID, Name: originalName},
+	}}
 	result.Parameters["changes"] = helpers.MarshalChanges(changes)
 	result.Query += categoryAuditSuffix
 	result.ReturnAlias = "uid"

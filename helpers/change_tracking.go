@@ -15,17 +15,38 @@ const (
 	ChangeTypeCodebook ChangeType = "codebook"
 )
 
+// ChangeEntity identifies the entity whose attribute changed. Optional — top-level
+// scalar changes (e.g. category.name) typically include it pointing at the parent;
+// nested changes (e.g. property under category) point at the nested entity so the FE
+// can render "<entity.name>: <field>" without parsing the field string.
+//
+// Name is captured at change time (snapshot semantics) — if the entity is later renamed,
+// historical audit entries still display the name as it was at the moment of change.
+type ChangeEntity struct {
+	Type string `json:"type"` // e.g. "category", "group", "property", "physicalProperty", "item"
+	UID  string `json:"uid"`
+	Name string `json:"name"`
+}
+
 type ChangeEntry struct {
-	Field    string      `json:"field"`
-	Type     string      `json:"type"`
-	OldValue interface{} `json:"oldValue"`
-	NewValue interface{} `json:"newValue"`
+	Field    string        `json:"field"`
+	Type     string        `json:"type"`
+	OldValue interface{}   `json:"oldValue"`
+	NewValue interface{}   `json:"newValue"`
+	Entity   *ChangeEntity `json:"entity,omitempty"`
 }
 
 // AppendIfChanged appends a ChangeEntry to entries when oldVal and newVal differ.
 // Codebook values are compared by UID field; everything else via reflect.DeepEqual.
 // Typed-nil pointers are normalized to untyped nil in the serialized output.
 func AppendIfChanged(entries []ChangeEntry, field string, t ChangeType, oldVal, newVal interface{}) []ChangeEntry {
+	return AppendIfChangedFor(entries, nil, field, t, oldVal, newVal)
+}
+
+// AppendIfChangedFor is the entity-aware variant. Pass nil entity for top-level scalar
+// changes; pass a ChangeEntity describing the nested target (group, property, physical
+// property) so the audit row carries the entity identity for FE display.
+func AppendIfChangedFor(entries []ChangeEntry, entity *ChangeEntity, field string, t ChangeType, oldVal, newVal interface{}) []ChangeEntry {
 	if valuesEqual(t, oldVal, newVal) {
 		return entries
 	}
@@ -34,6 +55,7 @@ func AppendIfChanged(entries []ChangeEntry, field string, t ChangeType, oldVal, 
 		Type:     string(t),
 		OldValue: normalizeNil(oldVal),
 		NewValue: normalizeNil(newVal),
+		Entity:   entity,
 	})
 }
 
