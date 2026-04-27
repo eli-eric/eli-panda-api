@@ -456,6 +456,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		uid: physicalItemProperty.uid,
 		name: physicalItemProperty.name,
 		defaultValue: physicalItemProperty.defaultValue,
+		order: physicalItemProperty.order,
 		type: { uid: propertyTypePhysical.uid, name: propertyTypePhysical.name, code: propertyTypePhysical.code},
 		unit: case when unitPhysical is not null then { uid: unitPhysical.uid, name: unitPhysical.name } else null end,
 		listOfValues: apoc.text.split(case when physicalItemProperty.listOfValues = "" then null else  physicalItemProperty.listOfValues END, ";")
@@ -464,11 +465,12 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		uid: property.uid,
 		name: property.name,
 		defaultValue: property.defaultValue,
+		order: property.order,
 		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end,
 		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")} END) as properties order by id(group)
 	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups, physicalItemProperties
-	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups,  physicalItemProperties
+	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, order: groups.group.order, properties: groups.properties }) ELSE NULL END as groups,  physicalItemProperties
 	WITH { uid: category.uid, name: category.name, code: category.code, miniImageUrl: split(category.miniImageUrl, ";"), groups: groups, physicalItemProperties: collect(physicalItemProperties), systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
 	return category`
 
