@@ -242,7 +242,12 @@ func TestPatchCatalogueCategoryGroup_RenameOnly(t *testing.T) {
 	var parsed []map[string]interface{}
 	assert.NoError(t, json.Unmarshal([]byte(changes), &parsed))
 	assert.Len(t, parsed, 1)
-	assert.Equal(t, "group."+gA+".name", parsed[0]["field"])
+	assert.Equal(t, "name", parsed[0]["field"], "field is now the bare scalar name")
+	entity, _ := parsed[0]["entity"].(map[string]interface{})
+	assert.NotNil(t, entity, "audit entry must include entity context for nested ops")
+	assert.Equal(t, "group", entity["type"])
+	assert.Equal(t, gA, entity["uid"])
+	assert.Equal(t, "Group A", entity["name"], "entity.name is the snapshot at change time")
 }
 
 func TestPatchCatalogueCategoryGroup_WrongCategory_ReturnsNotFound(t *testing.T) {
@@ -554,8 +559,9 @@ func TestPatchCatalogueCategoryPhysicalProperty_RenameAndDefault(t *testing.T) {
 	assert.NoError(t, json.Unmarshal([]byte(changes), &parsed))
 	assert.Len(t, parsed, 2)
 	for _, c := range parsed {
-		field, _ := c["field"].(string)
-		assert.Contains(t, field, "physicalProperty.", "audit field must be namespaced under physicalProperty")
+		entity, _ := c["entity"].(map[string]interface{})
+		assert.NotNil(t, entity, "physical property audit entries must carry entity context")
+		assert.Equal(t, "physicalProperty", entity["type"])
 	}
 }
 
