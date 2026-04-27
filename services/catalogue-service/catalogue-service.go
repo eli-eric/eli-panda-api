@@ -32,6 +32,19 @@ type ICatalogueService interface {
 	GetCatalogueCategoryImageByUid(uid string) (imageBase64 string, err error)
 	GetCatalogueItemImageByUid(uid string) (imageBase64 string, err error)
 	UpdateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
+	PatchCatalogueCategory(uid string, fields *models.PatchCatalogueCategoryFields, userUID string) (result models.CatalogueCategory, err error)
+	CreateCatalogueCategoryGroup(categoryUID string, fields *models.CreateCatalogueCategoryGroupFields, userUID string) (result models.CatalogueCategoryPropertyGroup, err error)
+	GetCatalogueCategoryGroup(categoryUID, groupUID string) (result models.CatalogueCategoryPropertyGroup, err error)
+	PatchCatalogueCategoryGroup(categoryUID, groupUID string, fields *models.PatchCatalogueCategoryGroupFields, userUID string) (result models.CatalogueCategoryPropertyGroup, err error)
+	DeleteCatalogueCategoryGroup(categoryUID, groupUID, userUID string) (err error)
+	CreateCatalogueCategoryProperty(categoryUID, groupUID string, fields *models.CreateCatalogueCategoryPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error)
+	GetCatalogueCategoryProperty(categoryUID, propertyUID string) (result models.CatalogueCategoryProperty, err error)
+	PatchCatalogueCategoryProperty(categoryUID, propertyUID string, fields *models.PatchCatalogueCategoryPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error)
+	DeleteCatalogueCategoryProperty(categoryUID, propertyUID, userUID string) (err error)
+	CreateCatalogueCategoryPhysicalProperty(categoryUID string, fields *models.CreateCatalogueCategoryPhysicalPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error)
+	GetCatalogueCategoryPhysicalProperty(categoryUID, propertyUID string) (result models.CatalogueCategoryProperty, err error)
+	PatchCatalogueCategoryPhysicalProperty(categoryUID, propertyUID string, fields *models.PatchCatalogueCategoryPhysicalPropertyFields, userUID string) (result models.CatalogueCategoryProperty, err error)
+	DeleteCatalogueCategoryPhysicalProperty(categoryUID, propertyUID, userUID string) (err error)
 	CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error)
 	DeleteCatalogueCategory(uid string) (err error)
 	GetUnitsCodebook() (result []codebookModels.Codebook, err error)
@@ -204,6 +217,42 @@ func (svc *CatalogueService) UpdateCatalogueCategory(catalogueCategory *models.C
 	}
 
 	return err
+}
+
+func (svc *CatalogueService) PatchCatalogueCategory(uid string, fields *models.PatchCatalogueCategoryFields, userUID string) (result models.CatalogueCategory, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	original, err := svc.GetCatalogueCategoryWithDetailsByUid(uid)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+
+	if fields.SystemType != nil && fields.SystemType.Value != nil && fields.SystemType.Value.UID != "" {
+		if exists, nerr := svc.nodeExists("SystemType", fields.SystemType.Value.UID); nerr != nil {
+			return result, nerr
+		} else if !exists {
+			return result, fmt.Errorf("%w: systemType not found: %s", ErrPatchValidation, fields.SystemType.Value.UID)
+		}
+	}
+
+	query := PatchCatalogueCategoryQuery(uid, fields, &original, userUID)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_NOT_FOUND
+	}
+
+	result, err = svc.GetCatalogueCategoryWithDetailsByUid(uid)
+	return result, err
 }
 
 func (svc *CatalogueService) CreateCatalogueCategory(catalogueCategory *models.CatalogueCategory) (err error) {
