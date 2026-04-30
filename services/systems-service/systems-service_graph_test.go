@@ -11,10 +11,50 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIsAllowedSystemGraphRelationshipType(t *testing.T) {
-	assert.True(t, isAllowedSystemRelationshipType("HAS_SUBSYSTEM"))
-	assert.True(t, isAllowedSystemRelationshipType("IS_COOLED_FROM"))
-	assert.False(t, isAllowedSystemRelationshipType("INVALID_REL"))
+func TestCreateNewSystemRelationship_RejectsNonSpareType(t *testing.T) {
+	svc := &SystemsService{}
+
+	for _, code := range []string{
+		"HAS_SUBSYSTEM",
+		"IS_POWERED_FROM",
+		"IS_CONTROLLED_BY",
+		"PROVIDES_DATA_TO",
+		"",
+		"INVALID",
+	} {
+		req := &models.SystemRelationshipRequest{
+			SystemFromUID:    "sys-a",
+			SystemToUID:      "sys-b",
+			RelationTypeCode: code,
+		}
+		_, err := svc.CreateNewSystemRelationship(req, "B", "user-1")
+		assert.True(t, errors.Is(err, helpers.ERR_INVALID_INPUT), "expected ERR_INVALID_INPUT for code=%q", code)
+	}
+}
+
+func TestIsAllowedSystemRelationshipType(t *testing.T) {
+	for _, allowed := range []string{
+		"HAS_SUBSYSTEM",
+		"IS_SPARE_FOR",
+		"IS_CONTROLLED_BY",
+		"IS_COOLED_FROM",
+		"IS_POWERED_FROM",
+		"IS_INTERLOCKED_BY",
+		"PROVIDES_DATA_TO",
+		"DIRECTS_BEAM_TO",
+		"PROVIDES_VACUUM_FOR",
+	} {
+		assert.True(t, isAllowedSystemRelationshipType(allowed), allowed)
+	}
+
+	for _, rejected := range []string{
+		"IS_POWERED_BY",
+		"IS_COOLED_BY",
+		"INVALID_REL",
+		"",
+	} {
+		assert.False(t, isAllowedSystemRelationshipType(rejected), rejected)
+	}
 }
 
 func TestCollectSystemGraphNodeUIDs(t *testing.T) {
