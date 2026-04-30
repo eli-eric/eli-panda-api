@@ -2424,27 +2424,19 @@ func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationship
 	result.Parameters["relationshipTypeCode"] = newRelationship.RelationTypeCode
 	result.Parameters["lastUpdateBy"] = userUID
 
+	// Single endpoint only supports IS_SPARE_FOR; service layer enforces.
 	result.Query = `
-	MATCH(f:Facility{code: $facilityCode}) WITH f	
+	MATCH(f:Facility{code: $facilityCode}) WITH f
 	MATCH(u:User{uid: $lastUpdateBy}) WITH u, f
 	MATCH(fromSystem:System{uid: $fromSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(toSystem:System{uid: $toSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)`
-
-	if newRelationship.RelationTypeCode == "IS_SPARE_FOR" {
-		result.Query += `CREATE(fromSystem)-[newRel:IS_SPARE_FOR]->(toSystem) `
-	} else {
-		result.Query += `REALTIONSHIP NOT DEFINED`
-	}
-
-	result.Query += `
+	MATCH(toSystem:System{uid: $toSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(fromSystem)-[newRel:IS_SPARE_FOR]->(toSystem)
 	WITH fromSystem, toSystem, u, newRel
-	CREATE(fromSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)	
+	CREATE(fromSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
 	WITH fromSystem, toSystem, newRel
-	CREATE(toSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)	
+	CREATE(toSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
 	WITH fromSystem, toSystem, newRel
-	`
-
-	result.Query += `RETURN id(newRel) as result`
+	RETURN id(newRel) as result`
 
 	result.ReturnAlias = "result"
 

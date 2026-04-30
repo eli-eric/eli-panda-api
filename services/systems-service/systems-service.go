@@ -1009,6 +1009,10 @@ func (svc *SystemsService) DeleteSystemRelationship(uid int64, userUID string) (
 
 func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error) {
 
+	if newRelationship.RelationTypeCode != "IS_SPARE_FOR" {
+		return 0, helpers.ERR_INVALID_INPUT
+	}
+
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	relId, err = helpers.WriteNeo4jAndReturnSingleValue[int64](session, CreateNewSystemRelationshipQuery(newRelationship, facilityCode, userUID))
 
