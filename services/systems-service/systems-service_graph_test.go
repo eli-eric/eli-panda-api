@@ -12,9 +12,9 @@ import (
 )
 
 func TestIsAllowedSystemGraphRelationshipType(t *testing.T) {
-	assert.True(t, isAllowedSystemGraphRelationshipType("HAS_SUBSYSTEM"))
-	assert.True(t, isAllowedSystemGraphRelationshipType("IS_COOLED_BY"))
-	assert.False(t, isAllowedSystemGraphRelationshipType("INVALID_REL"))
+	assert.True(t, isAllowedSystemRelationshipType("HAS_SUBSYSTEM"))
+	assert.True(t, isAllowedSystemRelationshipType("IS_COOLED_FROM"))
+	assert.False(t, isAllowedSystemRelationshipType("INVALID_REL"))
 }
 
 func TestCollectSystemGraphNodeUIDs(t *testing.T) {
@@ -42,20 +42,20 @@ func TestGetSystemGraphRelationshipTypes(t *testing.T) {
 	defaultTypes := getSystemGraphRelationshipTypes(models.SystemGraphQueryOptions{})
 
 	assert.Equal(t, []string{"HAS_SUBSYSTEM"}, custom)
-	assert.Equal(t, allowedSystemGraphRelationshipTypes, defaultTypes)
+	assert.Equal(t, allowedSystemRelationshipTypes, defaultTypes)
 }
 
 func TestIsSystemGraphRelationshipTypeAllowedByFilter(t *testing.T) {
 	assert.True(t, isSystemGraphRelationshipTypeAllowedByFilter("HAS_SUBSYSTEM", nil))
-	assert.True(t, isSystemGraphRelationshipTypeAllowedByFilter("HAS_SUBSYSTEM", []string{"HAS_SUBSYSTEM", "IS_POWERED_BY"}))
-	assert.False(t, isSystemGraphRelationshipTypeAllowedByFilter("IS_COOLED_BY", []string{"HAS_SUBSYSTEM"}))
+	assert.True(t, isSystemGraphRelationshipTypeAllowedByFilter("HAS_SUBSYSTEM", []string{"HAS_SUBSYSTEM", "IS_POWERED_FROM"}))
+	assert.False(t, isSystemGraphRelationshipTypeAllowedByFilter("IS_COOLED_FROM", []string{"HAS_SUBSYSTEM"}))
 }
 
 func TestBuildSystemGraphRelationshipStats(t *testing.T) {
 	links := []models.SystemGraphLink{
 		{Relationship: "HAS_SUBSYSTEM"},
 		{Relationship: "HAS_SUBSYSTEM"},
-		{Relationship: "IS_POWERED_BY"},
+		{Relationship: "IS_POWERED_FROM"},
 	}
 
 	stats := buildSystemGraphRelationshipStats(links)
@@ -63,21 +63,21 @@ func TestBuildSystemGraphRelationshipStats(t *testing.T) {
 	assert.Equal(t, int64(2), stats["HAS_SUBSYSTEM"].Total)
 	assert.Equal(t, int64(2), stats["HAS_SUBSYSTEM"].Returned)
 	assert.False(t, stats["HAS_SUBSYSTEM"].HasMore)
-	assert.Equal(t, int64(1), stats["IS_POWERED_BY"].Total)
+	assert.Equal(t, int64(1), stats["IS_POWERED_FROM"].Total)
 }
 
 func TestBuildSystemGraphRelationshipTotalMap(t *testing.T) {
-	relationshipTypes := []string{"HAS_SUBSYSTEM", "IS_POWERED_BY", "IS_COOLED_BY"}
+	relationshipTypes := []string{"HAS_SUBSYSTEM", "IS_POWERED_FROM", "IS_COOLED_FROM"}
 	counts := []systemGraphRelationshipCount{
 		{Relationship: "HAS_SUBSYSTEM", Total: 5},
-		{Relationship: "IS_POWERED_BY", Total: 2},
+		{Relationship: "IS_POWERED_FROM", Total: 2},
 	}
 
 	result := buildSystemGraphRelationshipTotalMap(relationshipTypes, counts)
 
 	assert.Equal(t, int64(5), result["HAS_SUBSYSTEM"])
-	assert.Equal(t, int64(2), result["IS_POWERED_BY"])
-	assert.Equal(t, int64(0), result["IS_COOLED_BY"])
+	assert.Equal(t, int64(2), result["IS_POWERED_FROM"])
+	assert.Equal(t, int64(0), result["IS_COOLED_FROM"])
 }
 
 func TestCalculateSystemGraphHiddenLinksTotal(t *testing.T) {

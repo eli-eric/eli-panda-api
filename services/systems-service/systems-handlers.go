@@ -775,7 +775,7 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 		return options, err
 	}
 	for _, relationship := range relationshipTypes {
-		if !isAllowedSystemGraphRelationshipType(relationship) {
+		if !isAllowedSystemRelationshipType(relationship) {
 			return options, errors.New("invalid relationshipTypes")
 		}
 	}
@@ -803,7 +803,7 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 			return options, errors.New("relationshipType cannot be combined with limitPerRelationshipType")
 		}
 
-		if !isAllowedSystemGraphRelationshipType(relationshipType) {
+		if !isAllowedSystemRelationshipType(relationshipType) {
 			return options, errors.New("invalid relationshipType")
 		}
 

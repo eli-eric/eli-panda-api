@@ -583,22 +583,28 @@ func (svc *SystemsService) GetSystemLeavesByParentUIDCount(parentUID string, fac
 	return count, err
 }
 
-var allowedSystemGraphRelationshipTypes = []string{
+var allowedSystemRelationshipTypes = []string{
 	"HAS_SUBSYSTEM",
-	"IS_COOLED_BY",
-	"IS_POWERED_BY",
 	"IS_SPARE_FOR",
 	"IS_CONTROLLED_BY",
+	"IS_COOLED_FROM",
+	"IS_POWERED_FROM",
+	"IS_INTERLOCKED_BY",
+	"PROVIDES_DATA_TO",
+	"DIRECTS_BEAM_TO",
+	"PROVIDES_VACUUM_FOR",
 }
 
-func isAllowedSystemGraphRelationshipType(relationType string) bool {
-	for _, allowedType := range allowedSystemGraphRelationshipTypes {
-		if relationType == allowedType {
-			return true
-		}
+var allowedSystemRelationshipTypeSet = func() map[string]bool {
+	m := make(map[string]bool, len(allowedSystemRelationshipTypes))
+	for _, t := range allowedSystemRelationshipTypes {
+		m[t] = true
 	}
+	return m
+}()
 
-	return false
+func isAllowedSystemRelationshipType(relationType string) bool {
+	return allowedSystemRelationshipTypeSet[relationType]
 }
 
 type systemGraphRelationshipCount struct {
@@ -637,7 +643,7 @@ func getSystemGraphRelationshipTypes(options models.SystemGraphQueryOptions) []s
 		return options.RelationshipTypes
 	}
 
-	return allowedSystemGraphRelationshipTypes
+	return allowedSystemRelationshipTypes
 }
 
 func isSystemGraphRelationshipTypeAllowedByFilter(relationshipType string, relationshipTypes []string) bool {
@@ -734,7 +740,7 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 	}
 
 	if options.RelationshipType != "" {
-		if !isAllowedSystemGraphRelationshipType(options.RelationshipType) {
+		if !isAllowedSystemRelationshipType(options.RelationshipType) {
 			return result, invalidSystemGraphInput("invalid relationshipType")
 		}
 
@@ -943,13 +949,13 @@ func (svc *SystemsService) GetSystemGraphByUid(uid string, facilityCode string, 
 		return result, nil
 	}
 
-	nodesQuery := GetSystemGraphNodesByUidQuery(uid, facilityCode, allowedSystemGraphRelationshipTypes)
+	nodesQuery := GetSystemGraphNodesByUidQuery(uid, facilityCode, allowedSystemRelationshipTypes)
 	nodes, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphNode](session, nodesQuery)
 	if err != nil {
 		return result, err
 	}
 
-	linksQuery := GetSystemGraphLinksByUidQuery(uid, facilityCode, allowedSystemGraphRelationshipTypes)
+	linksQuery := GetSystemGraphLinksByUidQuery(uid, facilityCode, allowedSystemRelationshipTypes)
 	links, err := helpers.GetNeo4jArrayOfNodes[models.SystemGraphLink](session, linksQuery)
 	if err != nil {
 		return result, err
@@ -1543,18 +1549,11 @@ func (svc *SystemsService) RecalculateSpareParts() (err error) {
 	return err
 }
 
-var allowedBatchRelationshipTypes = map[string]bool{
-	"IS_SPARE_FOR":     true,
-	"IS_COOLED_BY":     true,
-	"IS_POWERED_BY":    true,
-	"IS_CONTROLLED_BY": true,
-}
-
 func (svc *SystemsService) CreateBatchRelationships(request *models.BatchRelationshipRequest, facilityCode, userUID string) (models.BatchRelationshipResponse, error) {
 	var response models.BatchRelationshipResponse
 
 	// validate relationship type
-	if !allowedBatchRelationshipTypes[request.RelationshipType] {
+	if !isAllowedSystemRelationshipType(request.RelationshipType) {
 		return response, fmt.Errorf("relationship type '%s' is not allowed", request.RelationshipType)
 	}
 
