@@ -1008,7 +1008,8 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 		}
 
 		if errors.Is(err, helpers.ERR_INVALID_INPUT) {
-			return helpers.BadRequest(err.Error())
+			msg := strings.TrimSuffix(err.Error(), ": "+helpers.ERR_INVALID_INPUT.Error())
+			return helpers.BadRequest(msg)
 		}
 
 		log.Error().Msg(err.Error())
