@@ -11,6 +11,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestIsAllowedBatchRelationshipType(t *testing.T) {
+	for _, allowed := range []string{
+		"IS_SPARE_FOR",
+		"IS_CONTROLLED_BY",
+		"IS_COOLED_FROM",
+		"IS_POWERED_FROM",
+		"IS_INTERLOCKED_BY",
+		"PROVIDES_DATA_TO",
+		"DIRECTS_BEAM_TO",
+		"PROVIDES_VACUUM_FOR",
+	} {
+		assert.True(t, isAllowedBatchRelationshipType(allowed), allowed)
+	}
+
+	assert.False(t, isAllowedBatchRelationshipType("HAS_SUBSYSTEM"),
+		"HAS_SUBSYSTEM must be excluded from batch (hierarchy invariants)")
+	assert.False(t, isAllowedBatchRelationshipType("INVALID_REL"))
+}
+
 func TestCreateNewSystemRelationship_RejectsNonSpareType(t *testing.T) {
 	svc := &SystemsService{}
 

@@ -603,8 +603,26 @@ var allowedSystemRelationshipTypeSet = func() map[string]bool {
 	return m
 }()
 
+// Batch endpoint excludes HAS_SUBSYSTEM: hierarchy edges have single-parent /
+// acyclic invariants enforced elsewhere; bypassing them via batch could corrupt
+// the system tree.
+var allowedBatchRelationshipTypeSet = func() map[string]bool {
+	m := make(map[string]bool, len(allowedSystemRelationshipTypes))
+	for _, t := range allowedSystemRelationshipTypes {
+		if t == "HAS_SUBSYSTEM" {
+			continue
+		}
+		m[t] = true
+	}
+	return m
+}()
+
 func isAllowedSystemRelationshipType(relationType string) bool {
 	return allowedSystemRelationshipTypeSet[relationType]
+}
+
+func isAllowedBatchRelationshipType(relationType string) bool {
+	return allowedBatchRelationshipTypeSet[relationType]
 }
 
 type systemGraphRelationshipCount struct {
@@ -1557,7 +1575,7 @@ func (svc *SystemsService) CreateBatchRelationships(request *models.BatchRelatio
 	var response models.BatchRelationshipResponse
 
 	// validate relationship type
-	if !isAllowedSystemRelationshipType(request.RelationshipType) {
+	if !isAllowedBatchRelationshipType(request.RelationshipType) {
 		return response, fmt.Errorf("relationship type '%s' is not allowed", request.RelationshipType)
 	}
 
