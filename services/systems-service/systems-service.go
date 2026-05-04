@@ -1028,7 +1028,7 @@ func (svc *SystemsService) DeleteSystemRelationship(uid int64, userUID string) (
 func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error) {
 
 	if newRelationship.RelationTypeCode != "IS_SPARE_FOR" {
-		return 0, helpers.ERR_INVALID_INPUT
+		return 0, fmt.Errorf("only IS_SPARE_FOR is supported on this endpoint; use /v1/system/relationships/batch for other types: %w", helpers.ERR_INVALID_INPUT)
 	}
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
