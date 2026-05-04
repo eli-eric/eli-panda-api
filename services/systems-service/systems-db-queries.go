@@ -2418,7 +2418,6 @@ func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationship
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
-	result.Parameters["uid"] = uuid.NewString()
 	result.Parameters["fromSystemUID"] = newRelationship.SystemFromUID
 	result.Parameters["toSystemUID"] = newRelationship.SystemToUID
 	result.Parameters["lastUpdateBy"] = userUID
