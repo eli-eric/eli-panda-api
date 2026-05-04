@@ -2432,9 +2432,8 @@ func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationship
 	CREATE(fromSystem)-[newRel:IS_SPARE_FOR]->(toSystem)
 	WITH fromSystem, toSystem, u, newRel
 	CREATE(fromSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-	WITH fromSystem, toSystem, newRel
+	WITH fromSystem, toSystem, u, newRel
 	CREATE(toSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-	WITH fromSystem, toSystem, newRel
 	RETURN id(newRel) as result`
 
 	result.ReturnAlias = "result"
