@@ -2421,7 +2421,6 @@ func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationship
 	result.Parameters["uid"] = uuid.NewString()
 	result.Parameters["fromSystemUID"] = newRelationship.SystemFromUID
 	result.Parameters["toSystemUID"] = newRelationship.SystemToUID
-	result.Parameters["relationshipTypeCode"] = newRelationship.RelationTypeCode
 	result.Parameters["lastUpdateBy"] = userUID
 
 	// Single endpoint only supports IS_SPARE_FOR; service layer enforces.
