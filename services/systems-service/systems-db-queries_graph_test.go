@@ -15,7 +15,7 @@ func TestGetSystemGraphNodesByUidsQuery(t *testing.T) {
 }
 
 func TestGetSystemGraphFilteredLinksByUidQuery(t *testing.T) {
-	query := GetSystemGraphFilteredLinksByUidQuery("sys-1", "B", []string{"HAS_SUBSYSTEM", "IS_POWERED_BY"}, "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling")
+	query := GetSystemGraphFilteredLinksByUidQuery("sys-1", "B", []string{"HAS_SUBSYSTEM", "IS_POWERED_FROM"}, "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling")
 
 	assert.Equal(t, "links", query.ReturnAlias)
 	assert.Contains(t, query.Query, "uid: toString(id(r))")
@@ -33,7 +33,7 @@ func TestGetSystemGraphFilteredLinksByUidQuery(t *testing.T) {
 }
 
 func TestGetSystemGraphLinksByUidAndTypeFilteredQuery_HasStablePagingOrder(t *testing.T) {
-	query := GetSystemGraphLinksByUidAndTypeFilteredQuery("sys-1", "B", "IS_POWERED_BY", "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling", 20, 10)
+	query := GetSystemGraphLinksByUidAndTypeFilteredQuery("sys-1", "B", "IS_POWERED_FROM", "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling", 20, 10)
 
 	assert.Equal(t, "links", query.ReturnAlias)
 	assert.Contains(t, query.Query, "ORDER BY link.relId ASC")
@@ -52,7 +52,7 @@ func TestGetSystemGraphLinksByUidAndTypeFilteredQuery_HasStablePagingOrder(t *te
 }
 
 func TestGetSystemGraphLinksByUidAndTypeFilteredCountQuery(t *testing.T) {
-	query := GetSystemGraphLinksByUidAndTypeFilteredCountQuery("sys-1", "B", "IS_POWERED_BY", "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling")
+	query := GetSystemGraphLinksByUidAndTypeFilteredCountQuery("sys-1", "B", "IS_POWERED_FROM", "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling")
 
 	assert.Equal(t, "totalCount", query.ReturnAlias)
 	assert.Contains(t, query.Query, "count(DISTINCT relationId) as totalCount")
@@ -65,7 +65,7 @@ func TestGetSystemGraphLinksByUidAndTypeFilteredCountQuery(t *testing.T) {
 }
 
 func TestGetSystemGraphFilteredCountsByTypesQuery(t *testing.T) {
-	query := GetSystemGraphFilteredCountsByTypesQuery("sys-1", "B", []string{"HAS_SUBSYSTEM", "IS_POWERED_BY"}, "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling")
+	query := GetSystemGraphFilteredCountsByTypesQuery("sys-1", "B", []string{"HAS_SUBSYSTEM", "IS_POWERED_FROM"}, "pump", []string{"TECHNOLOGY_UNIT"}, "Cooling")
 
 	assert.Equal(t, "counts", query.ReturnAlias)
 	assert.Contains(t, query.Query, "WITH relationship, count(DISTINCT relationId) as total")
