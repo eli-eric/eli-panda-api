@@ -729,6 +729,62 @@
                         "description": "Internal server error"
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Applies a partial update to a catalogue item. Only fields present in the JSON body are modified.\nRequired: lastUpdateTime (for conflict detection). Supported keys: name, catalogueNumber, description, manufacturerUrl, manufacturerNumber, supplier, category, details.\nScalar fields set to JSON null are cleared. Missing keys are left untouched. Details are merged (no deletion); send value:null to clear a single detail's value.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Partially update catalogue item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial catalogue item payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body, missing lastUpdateTime, or unknown supplier/category/property UID"
+                    },
+                    "404": {
+                        "description": "Not Found — catalogue item does not exist"
+                    },
+                    "409": {
+                        "description": "Conflict — lastUpdateTime mismatch or concurrent update detected"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
             }
         },
         "/v1/catalogue/item/{uid}/image": {

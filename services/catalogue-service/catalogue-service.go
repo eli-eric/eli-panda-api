@@ -3,6 +3,7 @@ package catalogueService
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"panda/apigateway/config"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
@@ -17,6 +18,10 @@ type CatalogueService struct {
 	neo4jDriver *neo4j.Driver
 	jwtSecret   string
 }
+
+// ErrPatchValidation marks errors from PATCH reference validation (unknown supplier/
+// category/property UID, missing property UID). The handler uses errors.Is to surface 400.
+var ErrPatchValidation = errors.New("patch validation failed")
 
 type ICatalogueService interface {
 	GetCatalogueCategoriesByParentPath(parentPath string) (categories []models.CatalogueCategory, err error)
@@ -40,6 +45,7 @@ type ICatalogueService interface {
 	GetCatalogueCategoryPropertiesByUid(uid string, itemUID *string) (properties []models.CatalogueItemDetail, err error)
 	GetCatalogueCategoryPhysicalItemPropertiesByUid(uid string) (properties []models.CatalogueItemDetail, err error)
 	UpdateCatalogueItem(catalogueItem *models.CatalogueItem, userUID string) (result models.CatalogueItem, err error)
+	PatchCatalogueItem(uid string, fields *models.PatchCatalogueItemFields, userUID string) (result models.CatalogueItem, err error)
 	DeleteCatalogueItem(uid string, userUID string) (err error)
 	GetCatalogueItemStatistics(uid string) (result []models.CatalogueStatistics, err error)
 	CatalogueItemsOverallStatistics() (result []models.CatalogueStatistics, err error)
@@ -419,6 +425,127 @@ func (svc *CatalogueService) UpdateCatalogueItem(catalogueItem *models.Catalogue
 	}
 
 	return result, err
+}
+
+func (svc *CatalogueService) PatchCatalogueItem(uid string, fields *models.PatchCatalogueItemFields, userUID string) (result models.CatalogueItem, err error) {
+
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	originalItem, err := svc.GetCatalogueItemWithDetailsByUid(uid)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_NOT_FOUND
+		}
+		return result, err
+	}
+
+	if !fields.LastUpdateTime.Equal(originalItem.LastUpdateTime) {
+		return result, helpers.ERR_CONFLICT
+	}
+
+	if isCombinedCategoryAndDetailsPatch(fields, originalItem.Category.UID) {
+		newCatProps, propErr := svc.GetCatalogueCategoryPropertiesByUid(fields.Category.UID, nil)
+		if propErr != nil {
+			return result, propErr
+		}
+		for _, p := range newCatProps {
+			if findDetailByPropUID(originalItem.Details, p.Property.UID) == nil {
+				originalItem.Details = append(originalItem.Details, models.CatalogueItemDetail{Property: p.Property, PropertyGroup: p.PropertyGroup, Value: nil})
+			}
+		}
+	}
+
+	if err := svc.validatePatchReferences(fields, &originalItem); err != nil {
+		return result, err
+	}
+
+	query := PatchCatalogueItemQuery(uid, fields, &originalItem, userUID)
+	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
+	if err != nil {
+		// Empty result = MATCH on uid+lastUpdateTime yielded no rows, i.e. a concurrent
+		// write raced us between the initial read and the PATCH execution.
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return result, helpers.ERR_CONFLICT
+		}
+		return result, err
+	}
+	if returnedUID == "" {
+		return result, helpers.ERR_CONFLICT
+	}
+
+	result, err = svc.GetCatalogueItemWithDetailsByUid(uid)
+	return result, err
+}
+
+// isCombinedCategoryAndDetailsPatch reports whether a PATCH swaps category AND also
+// supplies details. In that case the service augments originalItem.Details with the new
+// category's property set so detail UIDs from the target category pass validation
+// and the Cypher builder can source DB-backed Name/Type.Code for audit entries.
+func isCombinedCategoryAndDetailsPatch(fields *models.PatchCatalogueItemFields, oldCategoryUID string) bool {
+	if fields.Details == nil || fields.Category == nil {
+		return false
+	}
+	if fields.Category.UID == "" {
+		return false
+	}
+	return fields.Category.UID != oldCategoryUID
+}
+
+// validatePatchReferences rejects references to non-existent supplier/category/property
+// nodes before the main PATCH query runs, so an invalid UID produces a clear 400 instead
+// of silently stripping relationships. Returned errors wrap ErrPatchValidation.
+func (svc *CatalogueService) validatePatchReferences(fields *models.PatchCatalogueItemFields, originalItem *models.CatalogueItem) error {
+	if fields.Supplier != nil && fields.Supplier.Value != nil && fields.Supplier.Value.UID != "" {
+		if exists, err := svc.nodeExists("Supplier", fields.Supplier.Value.UID); err != nil {
+			return err
+		} else if !exists {
+			return fmt.Errorf("%w: supplier not found: %s", ErrPatchValidation, fields.Supplier.Value.UID)
+		}
+	}
+
+	if fields.Category != nil && fields.Category.UID != "" {
+		if exists, err := svc.nodeExists("CatalogueCategory", fields.Category.UID); err != nil {
+			return err
+		} else if !exists {
+			return fmt.Errorf("%w: category not found: %s", ErrPatchValidation, fields.Category.UID)
+		}
+	}
+
+	if fields.Details != nil {
+		knownProps := map[string]bool{}
+		for _, d := range originalItem.Details {
+			knownProps[d.Property.UID] = true
+		}
+		seen := map[string]bool{}
+		for _, d := range *fields.Details {
+			if d.Property.UID == "" {
+				return fmt.Errorf("%w: detail.property.uid is required", ErrPatchValidation)
+			}
+			if seen[d.Property.UID] {
+				return fmt.Errorf("%w: duplicate property UID in details: %s", ErrPatchValidation, d.Property.UID)
+			}
+			seen[d.Property.UID] = true
+			if !knownProps[d.Property.UID] {
+				return fmt.Errorf("%w: property %s is not part of the item's category; change the category first or send a valid property UID", ErrPatchValidation, d.Property.UID)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (svc *CatalogueService) nodeExists(label, uid string) (bool, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	q := helpers.DatabaseQuery{
+		Query:       fmt.Sprintf("MATCH(n:%s{uid: $uid}) RETURN count(n) as c", label),
+		ReturnAlias: "c",
+		Parameters:  map[string]interface{}{"uid": uid},
+	}
+	c, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, q)
+	if err != nil {
+		return false, err
+	}
+	return c > 0, nil
 }
 
 func (svc *CatalogueService) DeleteCatalogueItem(uid string, userUID string) (err error) {

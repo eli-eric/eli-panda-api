@@ -65,6 +65,28 @@ type CatalogueItemSimple struct {
 	LastUpdateBy *string `json:"lastUpdateBy"`
 }
 
+// Optional signals presence of a field in a PATCH payload.
+// A nil *Optional pointer means the JSON key was absent; a non-nil pointer with
+// Value == nil means the JSON key was explicitly null (clear operation).
+type Optional[T any] struct {
+	Value *T
+}
+
+// PatchCatalogueItemFields is the parsed PATCH request body passed from handler to service.
+// Each field uses either a plain pointer (nil = absent) or *Optional[T] (nil = absent;
+// non-nil with Value=nil = explicit null clear) depending on whether the field is nullable.
+type PatchCatalogueItemFields struct {
+	Name               *string
+	CatalogueNumber    *string
+	Description        *Optional[string]
+	ManufacturerUrl    *Optional[string]
+	ManufacturerNumber *Optional[string]
+	Supplier           *Optional[models.Codebook]
+	Category           *models.Codebook
+	Details            *[]CatalogueItemDetail
+	LastUpdateTime     time.Time
+}
+
 type CatalogueItemDetailSimple struct {
 	PropertyName string `json:"propertyName,omitempty"`
 

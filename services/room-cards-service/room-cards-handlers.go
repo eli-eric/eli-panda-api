@@ -1,6 +1,7 @@
 package roomcardsservice
 
 import (
+	"errors"
 	"net/http"
 	"panda/apigateway/helpers"
 
@@ -71,8 +72,7 @@ func (h *RoomCardsHandlers) GetLayoutRoomCardInfo() echo.HandlerFunc {
 
 		result, err := h.RoomCardsService.GetLayoutRoomCardInfo(locationCode)
 		if err != nil {
-			// return 404 if not found - in error message will be result contains no more records
-			if err.Error() == "Result contains no more records" {
+			if errors.Is(err, helpers.ERR_NO_ROWS) {
 				return echo.ErrNotFound
 			}
 			log.Error().Err(err).Msg("Error getting room cards for location")
