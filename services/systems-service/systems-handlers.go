@@ -775,7 +775,7 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 		return options, err
 	}
 	for _, relationship := range relationshipTypes {
-		if !isAllowedSystemGraphRelationshipType(relationship) {
+		if !isAllowedSystemRelationshipType(relationship) {
 			return options, errors.New("invalid relationshipTypes")
 		}
 	}
@@ -803,7 +803,7 @@ func parseSystemGraphQueryOptions(c echo.Context) (options models.SystemGraphQue
 			return options, errors.New("relationshipType cannot be combined with limitPerRelationshipType")
 		}
 
-		if !isAllowedSystemGraphRelationshipType(relationshipType) {
+		if !isAllowedSystemRelationshipType(relationshipType) {
 			return options, errors.New("invalid relationshipType")
 		}
 
@@ -994,23 +994,26 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 		// lets bind catalogue category data from request body
 		systemRelationshipRequest := new(models.SystemRelationshipRequest)
 		err := c.Bind(systemRelationshipRequest)
-		if err == nil {
-
-			userUID := c.Get("userUID").(string)
-			facilityCode := c.Get("facilityCode").(string)
-
-			newId, err := h.systemsService.CreateNewSystemRelationship(systemRelationshipRequest, facilityCode, userUID)
-
-			if err == nil {
-				return c.String(http.StatusCreated, strconv.FormatInt(newId, 10))
-			}
-
-			return echo.ErrInternalServerError
-
-		} else {
+		if err != nil {
 			log.Error().Msg(err.Error())
+			return helpers.BadRequest(err.Error())
 		}
-		return helpers.BadRequest(err.Error())
+
+		userUID := c.Get("userUID").(string)
+		facilityCode := c.Get("facilityCode").(string)
+
+		newId, err := h.systemsService.CreateNewSystemRelationship(systemRelationshipRequest, facilityCode, userUID)
+		if err == nil {
+			return c.String(http.StatusCreated, strconv.FormatInt(newId, 10))
+		}
+
+		if errors.Is(err, helpers.ERR_INVALID_INPUT) {
+			msg := strings.TrimSuffix(err.Error(), ": "+helpers.ERR_INVALID_INPUT.Error())
+			return helpers.BadRequest(msg)
+		}
+
+		log.Error().Msg(err.Error())
+		return echo.ErrInternalServerError
 	}
 }
 

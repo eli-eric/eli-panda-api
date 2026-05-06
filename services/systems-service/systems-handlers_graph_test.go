@@ -43,7 +43,7 @@ func TestParseSystemGraphQueryOptions_InitialMode(t *testing.T) {
 }
 
 func TestParseSystemGraphQueryOptions_FilteredMode(t *testing.T) {
-	c := newGraphQueryContext("search=power&systemLevels=technology_unit,key_systems&systemType=Cooling&relationshipTypes=is_powered_by,has_subsystem")
+	c := newGraphQueryContext("search=power&systemLevels=technology_unit,key_systems&systemType=Cooling&relationshipTypes=is_powered_from,has_subsystem")
 
 	options, err := parseSystemGraphQueryOptions(c)
 
@@ -51,13 +51,13 @@ func TestParseSystemGraphQueryOptions_FilteredMode(t *testing.T) {
 	assert.Equal(t, "power", options.Search)
 	assert.Equal(t, []string{"TECHNOLOGY_UNIT", "KEY_SYSTEMS"}, options.SystemLevels)
 	assert.Equal(t, "Cooling", options.SystemType)
-	assert.Equal(t, []string{"IS_POWERED_BY", "HAS_SUBSYSTEM"}, options.RelationshipTypes)
+	assert.Equal(t, []string{"IS_POWERED_FROM", "HAS_SUBSYSTEM"}, options.RelationshipTypes)
 	assert.Nil(t, options.LimitPerRelationshipType)
 	assert.Equal(t, "", options.RelationshipType)
 }
 
 func TestParseSystemGraphQueryOptions_RelationshipTypeWithLimitPerTypeIsInvalid(t *testing.T) {
-	c := newGraphQueryContext("relationshipType=IS_POWERED_BY&offset=20&limit=10&limitPerRelationshipType=20")
+	c := newGraphQueryContext("relationshipType=IS_POWERED_FROM&offset=20&limit=10&limitPerRelationshipType=20")
 
 	_, err := parseSystemGraphQueryOptions(c)
 
@@ -65,7 +65,7 @@ func TestParseSystemGraphQueryOptions_RelationshipTypeWithLimitPerTypeIsInvalid(
 }
 
 func TestParseSystemGraphQueryOptions_InvalidOffset(t *testing.T) {
-	c := newGraphQueryContext("relationshipType=IS_POWERED_BY&offset=-1")
+	c := newGraphQueryContext("relationshipType=IS_POWERED_FROM&offset=-1")
 
 	_, err := parseSystemGraphQueryOptions(c)
 
@@ -89,12 +89,12 @@ func TestParseSystemGraphQueryOptions_InvalidIncludeStats(t *testing.T) {
 }
 
 func TestParseSystemGraphQueryOptions_LoadMoreWithFiltersIsValid(t *testing.T) {
-	c := newGraphQueryContext("relationshipType=IS_POWERED_BY&search=abc")
+	c := newGraphQueryContext("relationshipType=IS_POWERED_FROM&search=abc")
 
 	options, err := parseSystemGraphQueryOptions(c)
 
 	assert.NoError(t, err)
-	assert.Equal(t, "IS_POWERED_BY", options.RelationshipType)
+	assert.Equal(t, "IS_POWERED_FROM", options.RelationshipType)
 	assert.Equal(t, "abc", options.Search)
 }
 
