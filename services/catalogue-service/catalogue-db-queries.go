@@ -293,7 +293,7 @@ func buildCatalogueItemsSortClause(
 				paramKey := fmt.Sprintf("sortPropKey%d", i)
 
 				matchClauses = append(matchClauses, fmt.Sprintf(
-					"OPTIONAL MATCH (itm)-[%s:HAS_CATALOGUE_PROPERTY]->(%s{uid: $%s})",
+					"OPTIONAL MATCH (itm)-[%s:HAS_CATALOGUE_PROPERTY]->(%s:CatalogueCategoryProperty{uid: $%s})",
 					pvAlias, propAlias, paramKey,
 				))
 
@@ -325,7 +325,7 @@ func buildCatalogueItemsSortClause(
 			sb.WriteString(m)
 			sb.WriteString("\n")
 		}
-		sb.WriteString("WITH itm, cat, sname")
+		sb.WriteString("WITH DISTINCT itm, cat, sname")
 		for _, w := range withExprs {
 			sb.WriteString(", ")
 			sb.WriteString(w)
@@ -423,7 +423,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			},
 			propertyGroup: groupName,
 			value: value
-		}) ELSE NULL END
+		}) ELSE [] END
 	} AS items
 	`
 

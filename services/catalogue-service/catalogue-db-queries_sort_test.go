@@ -67,14 +67,14 @@ func TestBuildSortClause_CustomProperty_Text(t *testing.T) {
 	opt, ret, orderBy, params := buildCatalogueItemsSortClause(
 		&[]helpers.Sorting{{ID: uid, DESC: false}}, propTypes)
 
-	if !strings.Contains(opt, "OPTIONAL MATCH (itm)-[pvSort0:HAS_CATALOGUE_PROPERTY]->(propSort0{uid: $sortPropKey0})") {
+	if !strings.Contains(opt, "OPTIONAL MATCH (itm)-[pvSort0:HAS_CATALOGUE_PROPERTY]->(propSort0:CatalogueCategoryProperty{uid: $sortPropKey0})") {
 		t.Errorf("missing OPTIONAL MATCH; opt=%q", opt)
 	}
 	if !strings.Contains(opt, "toLower(toString(pvSort0.value)) AS sortValue0") {
 		t.Errorf("missing text expression; opt=%q", opt)
 	}
-	if !strings.Contains(opt, "WITH itm, cat, sname,") {
-		t.Errorf("missing narrowing WITH; opt=%q", opt)
+	if !strings.Contains(opt, "WITH DISTINCT itm, cat, sname,") {
+		t.Errorf("missing narrowing WITH DISTINCT; opt=%q", opt)
 	}
 	if len(ret) != 1 || ret[0] != "sortValue0" {
 		t.Errorf("extraReturnVars = %v", ret)
