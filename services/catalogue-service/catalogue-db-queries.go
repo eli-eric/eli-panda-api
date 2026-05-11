@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/rs/zerolog/log"
 )
 
 func CatalogueItemsFiltersPrepareQuery(search string, categoryUid string, filering *[]helpers.ColumnFilter, skip, limit int) (result helpers.DatabaseQuery) {
@@ -205,8 +206,145 @@ func buildCatalogueItemsFilterConditions(filering *[]helpers.ColumnFilter) (filt
 	return filterConditions, parameters
 }
 
+type sortPropertyTypes map[string]string
+
+type sortPropertyTypeRow struct {
+	Uid  string `json:"uid"`
+	Code string `json:"code"`
+}
+
+func resolveSortPropertyTypesQuery(uids []string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `
+			MATCH (p:CatalogueCategoryProperty)
+			WHERE p.uid IN $uids
+			OPTIONAL MATCH (p)-[:IS_PROPERTY_TYPE]->(t)
+			RETURN { uid: p.uid, code: coalesce(t.code, '') } AS row`,
+		Parameters:  map[string]interface{}{"uids": uids},
+		ReturnAlias: "row",
+	}
+}
+
+var catalogueItemSortWhitelist = map[string]string{
+	"name":            "itm.name",
+	"catalogueNumber": "itm.catalogueNumber",
+	"partNumber":      "itm.catalogueNumber",
+	"categoryName":    "cat.name",
+	"description":     "itm.description",
+	"manufacturerUrl": "itm.manufacturerUrl",
+	"supplier":        "sname",
+	"lastUpdateTime":  "lastUpdateTime",
+	"lastUpdateBy":    "lastUpdateUser",
+}
+
+func collectCustomPropertySortUids(sorting *[]helpers.Sorting) []string {
+	if sorting == nil {
+		return nil
+	}
+	var uids []string
+	for _, s := range *sorting {
+		if _, ok := catalogueItemSortWhitelist[s.ID]; ok {
+			continue
+		}
+		if _, err := uuid.Parse(s.ID); err == nil {
+			uids = append(uids, s.ID)
+		}
+	}
+	return uids
+}
+
+// Items missing the sorted custom property surface at the head in DESC and tail
+// in ASC — toggling direction does not just reverse the order. This follows
+// Cypher's default NULL ordering and is intentional per design discussion.
+func buildCatalogueItemsSortClause(
+	sorting *[]helpers.Sorting,
+	propTypes sortPropertyTypes,
+) (optionalMatchSQL string, extraReturnVars []string, orderByClause string, params map[string]interface{}) {
+
+	params = make(map[string]interface{})
+
+	var (
+		matchClauses []string
+		withExprs    []string
+		orderByParts []string
+	)
+
+	if sorting != nil {
+		for _, entry := range *sorting {
+			id := entry.ID
+			direction := helpers.GetSortingDirectionString(entry.DESC)
+
+			if expr, ok := catalogueItemSortWhitelist[id]; ok {
+				orderByParts = append(orderByParts, fmt.Sprintf("%s %s", expr, direction))
+				continue
+			}
+
+			if _, parseErr := uuid.Parse(id); parseErr == nil {
+				code, known := propTypes[id]
+				if !known {
+					log.Warn().Str("sortId", id).Msg("catalogue items sort: property uid not found, skipping")
+					continue
+				}
+
+				i := len(matchClauses)
+				pvAlias := fmt.Sprintf("pvSort%d", i)
+				propAlias := fmt.Sprintf("propSort%d", i)
+				sortValueAlias := fmt.Sprintf("sortValue%d", i)
+				paramKey := fmt.Sprintf("sortPropKey%d", i)
+
+				matchClauses = append(matchClauses, fmt.Sprintf(
+					"OPTIONAL MATCH (itm)-[%s:HAS_CATALOGUE_PROPERTY]->(%s:CatalogueCategoryProperty{uid: $%s})",
+					pvAlias, propAlias, paramKey,
+				))
+
+				var valueExpr string
+				switch code {
+				case "number":
+					valueExpr = fmt.Sprintf("toFloat(%s.value)", pvAlias)
+				case "range":
+					valueExpr = fmt.Sprintf("toFloat(apoc.convert.fromJsonMap(%s.value).min)", pvAlias)
+				default:
+					valueExpr = fmt.Sprintf("toLower(toString(%s.value))", pvAlias)
+				}
+
+				withExprs = append(withExprs, fmt.Sprintf("%s AS %s", valueExpr, sortValueAlias))
+				extraReturnVars = append(extraReturnVars, sortValueAlias)
+				orderByParts = append(orderByParts, fmt.Sprintf("%s %s", sortValueAlias, direction))
+				params[paramKey] = id
+				continue
+			}
+
+			log.Warn().Str("sortId", id).Msg("catalogue items sort: unknown id, skipping")
+		}
+	}
+
+	if len(matchClauses) > 0 {
+		var sb strings.Builder
+		sb.WriteString("\n")
+		for _, m := range matchClauses {
+			sb.WriteString(m)
+			sb.WriteString("\n")
+		}
+		sb.WriteString("WITH DISTINCT itm, cat, sname")
+		for _, w := range withExprs {
+			sb.WriteString(", ")
+			sb.WriteString(w)
+		}
+		sb.WriteString("\n")
+		optionalMatchSQL = sb.String()
+	}
+
+	if len(orderByParts) == 0 {
+		orderByParts = append(orderByParts, "lastUpdateTime DESC")
+	}
+	orderByParts = append(orderByParts, "itm.uid ASC")
+
+	orderByClause = " ORDER BY " + strings.Join(orderByParts, ", ") + " "
+	return
+}
+
 // Get catalogue items with pagination and filters
-func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.DatabaseQuery) {
+func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, skip int, limit int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting, propTypes sortPropertyTypes) (result helpers.DatabaseQuery) {
 
 	result = CatalogueItemsFiltersPrepareQuery(search, categoryUid, filering, skip, limit)
 
@@ -220,7 +358,13 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 		result.Query += " AND (" + strings.Join(filterConditions, " AND ") + ")"
 	}
 
-	// Add latest update subquery and pagination
+	sortMatchSQL, sortReturnVars, orderByClause, sortParams := buildCatalogueItemsSortClause(sorting, propTypes)
+	for k, v := range sortParams {
+		result.Parameters[k] = v
+	}
+
+	result.Query += sortMatchSQL
+
 	result.Query += `
 
 		// Latest update per item via ordered subquery
@@ -233,35 +377,13 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 		}
 
 		// Page on the reduced set
-		RETURN itm, cat, lastUpdateTime, lastUpdateUser`
+		RETURN itm, cat, lastUpdateTime, lastUpdateUser, sname`
 
-	// Add sorting
-	if sorting != nil && len(*sorting) > 0 {
-		result.Query += " ORDER BY "
-		for ids, sort := range *sorting {
-			sortName := sort.ID
-			// handle special cases
-			if sortName == "partNumber" {
-				sortName = "itm.catalogueNumber"
-			} else if sortName == "catalogueNumber" {
-				sortName = "itm.catalogueNumber"
-			} else if sortName == "categoryName" {
-				sortName = "cat.name"
-			} else if sortName == "name" {
-				sortName = "itm.name"
-			} else if sortName == "lastUpdateTime" {
-				sortName = "lastUpdateTime"
-			}
-
-			if ids == len(*sorting)-1 {
-				result.Query += fmt.Sprintf(" %s %s ", sortName, helpers.GetSortingDirectionString(sort.DESC))
-			} else {
-				result.Query += fmt.Sprintf(" %s %s, ", sortName, helpers.GetSortingDirectionString(sort.DESC))
-			}
-		}
-	} else {
-		result.Query += " ORDER BY lastUpdateTime DESC "
+	for _, v := range sortReturnVars {
+		result.Query += ", " + v
 	}
+
+	result.Query += orderByClause
 
 	result.Query += `
 		SKIP toInteger($skip)
@@ -301,7 +423,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 			},
 			propertyGroup: groupName,
 			value: value
-		}) ELSE NULL END
+		}) ELSE [] END
 	} AS items
 	`
 
