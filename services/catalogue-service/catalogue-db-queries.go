@@ -216,7 +216,7 @@ type sortPropertyTypeRow struct {
 func ResolveSortPropertyTypesQuery(uids []string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `
-			MATCH (p:CatalogueProperty)
+			MATCH (p:CatalogueCategoryProperty)
 			WHERE p.uid IN $uids
 			OPTIONAL MATCH (p)-[:IS_PROPERTY_TYPE]->(t)
 			RETURN { uid: p.uid, code: coalesce(t.code, '') } AS row`,
