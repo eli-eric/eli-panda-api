@@ -213,7 +213,7 @@ type sortPropertyTypeRow struct {
 	Code string `json:"code"`
 }
 
-func ResolveSortPropertyTypesQuery(uids []string) helpers.DatabaseQuery {
+func resolveSortPropertyTypesQuery(uids []string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `
 			MATCH (p:CatalogueCategoryProperty)
@@ -237,6 +237,25 @@ var catalogueItemSortWhitelist = map[string]string{
 	"lastUpdateBy":    "lastUpdateUser",
 }
 
+func collectCustomPropertySortUids(sorting *[]helpers.Sorting) []string {
+	if sorting == nil {
+		return nil
+	}
+	var uids []string
+	for _, s := range *sorting {
+		if _, ok := catalogueItemSortWhitelist[s.ID]; ok {
+			continue
+		}
+		if _, err := uuid.Parse(s.ID); err == nil {
+			uids = append(uids, s.ID)
+		}
+	}
+	return uids
+}
+
+// Items missing the sorted custom property surface at the head in DESC and tail
+// in ASC — toggling direction does not just reverse the order. This follows
+// Cypher's default NULL ordering and is intentional per design discussion.
 func buildCatalogueItemsSortClause(
 	sorting *[]helpers.Sorting,
 	propTypes sortPropertyTypes,

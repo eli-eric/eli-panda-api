@@ -86,25 +86,12 @@ func (svc *CatalogueService) GetCatalogueCategoriesRecursiveByParentUID(parentUI
 }
 
 func (svc *CatalogueService) resolveSortPropertyTypes(session neo4j.Session, sorting *[]helpers.Sorting) (sortPropertyTypes, error) {
-	if sorting == nil || len(*sorting) == 0 {
-		return sortPropertyTypes{}, nil
-	}
-
-	var uids []string
-	for _, s := range *sorting {
-		if _, ok := catalogueItemSortWhitelist[s.ID]; ok {
-			continue
-		}
-		if _, err := uuid.Parse(s.ID); err == nil {
-			uids = append(uids, s.ID)
-		}
-	}
-
+	uids := collectCustomPropertySortUids(sorting)
 	if len(uids) == 0 {
 		return sortPropertyTypes{}, nil
 	}
 
-	rows, err := helpers.GetNeo4jArrayOfNodes[sortPropertyTypeRow](session, ResolveSortPropertyTypesQuery(uids))
+	rows, err := helpers.GetNeo4jArrayOfNodes[sortPropertyTypeRow](session, resolveSortPropertyTypesQuery(uids))
 	if err != nil {
 		return nil, err
 	}

@@ -232,6 +232,47 @@ func TestPaginationQuery_SupplierSort_ProjectsSname(t *testing.T) {
 	}
 }
 
+func TestCollectCustomPropertySortUids(t *testing.T) {
+	uid1 := "1adeae21-ab0f-40f3-868d-36f7d40210ca"
+	uid2 := "2bdeae21-ab0f-40f3-868d-36f7d40210cb"
+
+	cases := []struct {
+		name    string
+		sorting *[]helpers.Sorting
+		want    []string
+	}{
+		{"nil sorting", nil, nil},
+		{"empty sorting", &[]helpers.Sorting{}, nil},
+		{"only builtins skipped", &[]helpers.Sorting{
+			{ID: "name"}, {ID: "supplier"}, {ID: "lastUpdateTime"},
+		}, nil},
+		{"only garbage skipped", &[]helpers.Sorting{
+			{ID: "Inletflangesize"}, {ID: "x; DROP DATABASE neo4j"},
+		}, nil},
+		{"single uuid kept", &[]helpers.Sorting{{ID: uid1}}, []string{uid1}},
+		{"mixed builtin + uuid + garbage", &[]helpers.Sorting{
+			{ID: "name"}, {ID: uid1}, {ID: "Inletflangesize"}, {ID: uid2},
+		}, []string{uid1, uid2}},
+		{"preserves order", &[]helpers.Sorting{
+			{ID: uid2}, {ID: "supplier"}, {ID: uid1},
+		}, []string{uid2, uid1}},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got := collectCustomPropertySortUids(c.sorting)
+			if len(got) != len(c.want) {
+				t.Fatalf("len=%d want=%d (got=%v want=%v)", len(got), len(c.want), got, c.want)
+			}
+			for i := range got {
+				if got[i] != c.want[i] {
+					t.Errorf("idx %d: got %q want %q", i, got[i], c.want[i])
+				}
+			}
+		})
+	}
+}
+
 func TestPaginationQuery_CustomPropertySort_BoundParam(t *testing.T) {
 	uid := "1adeae21-ab0f-40f3-868d-36f7d40210ca"
 	propTypes := sortPropertyTypes{uid: "number"}
