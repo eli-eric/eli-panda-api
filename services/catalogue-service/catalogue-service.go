@@ -85,12 +85,34 @@ func (svc *CatalogueService) GetCatalogueCategoriesRecursiveByParentUID(parentUI
 	return categories, err
 }
 
+func (svc *CatalogueService) resolveSortPropertyTypes(session neo4j.Session, sorting *[]helpers.Sorting) (sortPropertyTypes, error) {
+	uids := collectCustomPropertySortUids(sorting)
+	if len(uids) == 0 {
+		return sortPropertyTypes{}, nil
+	}
+
+	rows, err := helpers.GetNeo4jArrayOfNodes[sortPropertyTypeRow](session, resolveSortPropertyTypesQuery(uids))
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(sortPropertyTypes, len(rows))
+	for _, r := range rows {
+		result[r.Uid] = r.Code
+	}
+	return result, nil
+}
+
 func (svc *CatalogueService) GetCatalogueItems(search string, categoryUid string, pageSize int, page int, filering *[]helpers.ColumnFilter, sorting *[]helpers.Sorting) (result helpers.PaginationResult[models.CatalogueItemSimple], err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	//get all categories by parent path
-	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize, filering, sorting)
+	propTypes, err := svc.resolveSortPropertyTypes(session, sorting)
+	if err != nil {
+		return result, err
+	}
+
+	query := CatalogueItemsFiltersPaginationQuery(search, categoryUid, pageSize*(page-1), pageSize, filering, sorting, propTypes)
 
 	items, err := helpers.GetNeo4jArrayOfNodes[models.CatalogueItemSimple](session, query)
 	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CatalogueItemsFiltersTotalCountQuery(search, categoryUid, filering))

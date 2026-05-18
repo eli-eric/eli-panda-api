@@ -68,6 +68,14 @@ docker-compose -f docker-compose-local.yml down
    make install
    ```
 
+   `make swagger` and `make run` use `go run github.com/swaggo/swag/cmd/swag@v1.16.3`, so a separate global `swag` installation is not required.
+
+   If you want the standalone CLI anyway:
+
+   ```bash
+   go install github.com/swaggo/swag/cmd/swag@v1.16.3
+   ```
+
 3. Run API (includes Swagger generation):
 
    ```bash

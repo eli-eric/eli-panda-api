@@ -16,9 +16,6 @@
 apigateway
 config.json
 
-# AI tools
-CLAUDE.md
-
 # Enviroment variables
 .env
 *.local.*

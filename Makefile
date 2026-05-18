@@ -1,6 +1,8 @@
 # Main go commands
+SWAG := go run github.com/swaggo/swag/cmd/swag@v1.16.3
+
 swagger:
-	swag init -g server.go
+	$(SWAG) init -g server.go
 	cp -r ./docs/swagger.yaml ./open-api-specification/panda-api.yaml
 
 run: swagger
