@@ -56,7 +56,7 @@ type CatalogueItemSimple struct {
 
 	ManufacturerUrl string `json:"manufacturerUrl,omitempty"`
 
-	Details []CatalogueItemDetail `json:"details,omitempty"`
+	Details []CatalogueItemDetail `json:"details"`
 
 	MiniImageUrl *[]string `json:"miniImageUrl" neo4j:"ignore"`
 
