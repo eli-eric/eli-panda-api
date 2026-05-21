@@ -277,7 +277,7 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 			property: {
 				uid: prop.uid,
 				name: prop.name,
-				listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
+				listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then split(prop.listOfValues, ";") else null end,
 				type: {
 					uid: propType.uid,
 					name: propType.name,
@@ -736,7 +736,7 @@ func UpdateOrderLineDeliveryQuery(itemUID string, isDelivered bool, serialNumber
 	result.Parameters = make(map[string]interface{})
 
 	result.Query = `
-	WITH apoc.text.split(toString(date.truncate('month', date())), '-') as dateParts
+	WITH split(toString(date.truncate('month', date())), '-') as dateParts
 	WITH $facilityCode + right(dateParts[0],2) + dateParts[1] as eunPrefix
 	MATCH(u:User{uid: $userUID})
 	WITH u, eunPrefix
@@ -997,7 +997,7 @@ func InsertNewServiceLineQuery(orderUID string, serviceLine *models.ServiceLine,
 	result.Query = `
     MATCH (o:Order{uid: $orderUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
     CREATE (si:ServiceItem { 
-        uid: apoc.create.uuid(),
+        uid: randomUUID(),
         name: $name,
 		notes: $notes,
         isDelivered: $isDelivered,

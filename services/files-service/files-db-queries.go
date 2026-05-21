@@ -12,7 +12,7 @@ func GetFileLinksByParentUidQuery(parentUid string) (result helpers.DatabaseQuer
 					RETURN {
 							uid: fl.uid, 
 							name: fl.name, 
-							tags: case when fl.tags is not null and fl.tags <> "" then apoc.text.split(fl.tags, ";") else null end, 
+							tags: case when fl.tags is not null and fl.tags <> "" then split(fl.tags, ";") else null end, 
 							url: fl.url} as result`
 
 	result.Parameters = map[string]interface{}{}
@@ -26,7 +26,7 @@ func CreateFileLinkQuery(parentUid string, fileLink models.FileLink) (result hel
 
 	result.Query = `MERGE(n{uid: $parentUid})
 	CREATE(fl:FileLink{ 
-		uid: apoc.create.uuid(), 
+		uid: randomUUID(), 
 		name: $name, 
 		url: $url, 
 		tags: $tags })
@@ -34,7 +34,7 @@ func CreateFileLinkQuery(parentUid string, fileLink models.FileLink) (result hel
 	RETURN {
 		uid: fl.uid, 
 		name: fl.name, 
-		tags: case when fl.tags is not null and fl.tags <> "" then apoc.text.split(fl.tags, ";") else null end, 
+		tags: case when fl.tags is not null and fl.tags <> "" then split(fl.tags, ";") else null end, 
 		url: fl.url} as result`
 
 	result.Parameters = map[string]interface{}{}
@@ -55,7 +55,7 @@ func UpdateFileLinkQuery(fileLink models.FileLink) (result helpers.DatabaseQuery
 					RETURN {
 							uid: fl.uid,
 							name: fl.name,
-							tags: case when fl.tags is not null and fl.tags <> "" then apoc.text.split(fl.tags, ";") else null end,
+							tags: case when fl.tags is not null and fl.tags <> "" then split(fl.tags, ";") else null end,
 							url: fl.url} as result`
 
 	result.Parameters = map[string]interface{}{}

@@ -15,12 +15,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type SecurityService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 	jwtSecret   string
 }
 
@@ -38,7 +38,7 @@ type ISecurityService interface {
 }
 
 // Create new security service instance
-func NewSecurityService(settings *config.Config, driver *neo4j.Driver) ISecurityService {
+func NewSecurityService(settings *config.Config, driver *neo4j.DriverWithContext) ISecurityService {
 
 	return &SecurityService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }

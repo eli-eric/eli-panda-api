@@ -9,7 +9,7 @@ func LogCronJobStartQuery(jobUid, jobType, jobName string) (result helpers.Datab
 
 	result.Query = `
 	CREATE (c:CronJobHistory{
-		uid: apoc.create.uuid(),
+		uid: randomUUID(),
 		jobUid: $jobUid,
 		jobName: $jobName,
 		jobType: $jobType,
@@ -73,7 +73,7 @@ func GetCronJobHistoryQuery() (result helpers.DatabaseQuery) {
 func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Query = `MERGE(empl:Employee{employeeNumber: $employeeNumber})
-	WITH empl, case when empl.uid IS NULL THEN apoc.create.uuid() ELSE empl.uid END as uid
+	WITH empl, case when empl.uid IS NULL THEN randomUUID() ELSE empl.uid END as uid
 	SET 
 	empl.uid = uid, 
 	empl.email = toLower($email),

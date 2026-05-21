@@ -1,11 +1,12 @@
 package ordersService
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
@@ -13,7 +14,7 @@ import (
 )
 
 type OrdersService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 }
 
 type IOrdersService interface {
@@ -35,7 +36,7 @@ type IOrdersService interface {
 	UpdateMultipleServiceLineDelivery(serviceItemUids []string, userUID string, facilityCode string) (result []models.ServiceLine, err error)
 }
 
-func NewOrdersService(driver *neo4j.Driver) IOrdersService {
+func NewOrdersService(driver *neo4j.DriverWithContext) IOrdersService {
 	return &OrdersService{neo4jDriver: driver}
 }
 
@@ -169,7 +170,7 @@ func (svc *OrdersService) DeleteOrder(orderUid string, userUID string) (err erro
 func (svc *OrdersService) UpdateOrder(order *models.OrderDetail, facilityCode string, userUID string) (err error) {
 	if order != nil {
 		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-		defer session.Close()
+		defer session.Close(context.Background())
 
 		oldOrder, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.OrderDetail](session, GetOrderWithOrderLinesByUidQuery(order.UID, facilityCode))
 
@@ -344,7 +345,7 @@ func (svc *OrdersService) UpdateMultipleServiceLineDelivery(serviceItemUids []st
 }
 
 // checkSystemExists validates if a system exists in the specified facility
-func (svc *OrdersService) checkSystemExists(systemUID string, facilityCode string, session neo4j.Session) (bool, error) {
+func (svc *OrdersService) checkSystemExists(systemUID string, facilityCode string, session neo4j.SessionWithContext) (bool, error) {
 	query := helpers.DatabaseQuery{
 		Query: `
 			MATCH (s:System {uid: $systemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility {code: $facilityCode})
@@ -361,7 +362,7 @@ func (svc *OrdersService) checkSystemExists(systemUID string, facilityCode strin
 // validateOrderLineSystemExists validates system existence for a single order line.
 // It checks System first (new logic), then ParentSystem (old logic).
 // Returns nil if validation passes, or an error if the system doesn't exist.
-func (svc *OrdersService) validateOrderLineSystemExists(orderLine *models.OrderLine, facilityCode string, session neo4j.Session) error {
+func (svc *OrdersService) validateOrderLineSystemExists(orderLine *models.OrderLine, facilityCode string, session neo4j.SessionWithContext) error {
 	// Priority: check System first (new logic), then ParentSystem (old logic)
 	if orderLine.System != nil && orderLine.System.UID != "" {
 		exists, err := svc.checkSystemExists(orderLine.System.UID, facilityCode, session)

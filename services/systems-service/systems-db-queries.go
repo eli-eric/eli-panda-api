@@ -929,7 +929,7 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 	UNWIND range(0, $batch - 1) AS i
 	WITH f, u, z, st, parent, $systemCodePrefix + apoc.text.lpad(toString(startSerial + i), $serialNumberLength, "0") AS code
 	CREATE(sys:System{
-		uid: apoc.create.uuid(),
+		uid: randomUUID(),
 		name: code,
 		systemCode: code,
 		lastUpdateTime: datetime(),
@@ -2640,7 +2640,7 @@ func GetPhysicalItemPropertiesQuery(physicalItemUID string) (result helpers.Data
 						property: {
 						uid: prop.uid,					
 						name: prop.name,
-						listOfValues: apoc.text.split(case when prop.listOfValues = "" then null else  prop.listOfValues END, ";"),
+						listOfValues: split(case when prop.listOfValues = "" then null else  prop.listOfValues END, ";"),
 						defaultValue: prop.defaultValue,
 						type: CASE WHEN ptype IS NOT NULL THEN {name: ptype.name, uid: ptype.uid} ELSE null END,
 						unit: CASE WHEN punit IS NOT NULL THEN {name: punit.name, uid: punit.uid} ELSE null END					
@@ -2697,40 +2697,40 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:WAS_UPDATED_BY]->(usr)
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL", action: upd.action, changes: upd.changes} as history
+		RETURN {uid: randomUUID(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL", action: upd.action, changes: upd.changes} as history
 		UNION		
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)<-[upd:IS_ORIGINATED_FROM]-(physicalItem)<-[:CONTAINS_ITEM]-(s2)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM", changes: upd.changes, detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
+		RETURN {uid: randomUUID(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM", changes: upd.changes, detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:WAS_MOVED_FROM]->(s2:System)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , changes: upd.changes, detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
+		RETURN {uid: randomUUID(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE" , changes: upd.changes, detail: { systemUid: s2.uid, systemName: s2.name, direction: "OUT" }} as history
 		UNION		
 		MATCH(s:System{uid: $systemUID})
 		MATCH(itm)-[upd:WAS_MOVED_FROM]->(s)
 		WITH s,upd,itm
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , changes: upd.changes, detail: { systemUid: upd.movedToUid, systemName: itm.name, direction: "IN" }} as history
+		RETURN {uid: randomUUID(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , changes: upd.changes, detail: { systemUid: upd.movedToUid, systemName: itm.name, direction: "IN" }} as history
 		UNION		
 		MATCH(s:System{uid: $systemUID})
 		MATCH(itm)-[upd:WAS_MOVED_TO]->(s)
 		WITH s,upd,itm
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , changes: upd.changes, detail: { systemUid: upd.movedFromUid, systemName: itm.name, direction: "OUT" }} as history		
+		RETURN {uid: randomUUID(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "ITEM_MOVE" , changes: upd.changes, detail: { systemUid: upd.movedFromUid, systemName: itm.name, direction: "OUT" }} as history		
 		UNION
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)<-[upd:WAS_MOVED_FROM]-(s2:System)
 		WITH s,upd,s2
 		MATCH(usr:User{uid: upd.userUid})
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", changes: upd.changes, detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
+		RETURN {uid: randomUUID(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "MOVE", changes: upd.changes, detail: { systemUid: s2.uid, systemName: s2.name, direction: "IN" }} as history
 		}
 		RETURN history
 		ORDER BY history.changedAt DESC;
@@ -3072,7 +3072,7 @@ func CreateNewSystemForNewSystemCodeQuery(parentUID, systemCode, systemTypeUID, 
 	MATCH(parent:System{uid: $parentUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	MATCH(st:SystemType{uid: $systemTypeUID})
 	MATCH(z:Zone{uid: $zoneUID})
-	CREATE(s:System{uid: apoc.create.uuid(), name: st.name + " " + $systemCode, systemCode: $systemCode, systemLevel: $systemLevel, isTechnologicalUnit: false, lastUpdateTime: datetime(), lastUpdateBy: u.username, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+	CREATE(s:System{uid: randomUUID(), name: st.name + " " + $systemCode, systemCode: $systemCode, systemLevel: $systemLevel, isTechnologicalUnit: false, lastUpdateTime: datetime(), lastUpdateBy: u.username, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	CREATE(s)-[:HAS_SYSTEM_TYPE]->(st)
 	CREATE(s)-[:HAS_ZONE]->(z)
 	CREATE(parent)-[:HAS_SUBSYSTEM]->(s)
@@ -3410,7 +3410,7 @@ func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, us
 		WITH root, destination, f, u,
 			 CASE WHEN $copyRecursive THEN allDescendants ELSE [root] END AS nodes
 		UNWIND nodes AS n
-		WITH root, destination, f, u, n, apoc.create.uuid() AS newUid
+		WITH root, destination, f, u, n, randomUUID() AS newUid
 		CREATE (c:System{uid:newUid, deleted:false, lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
 		SET c.name = n.name,
 			c.systemLevel = n.systemLevel
@@ -3472,7 +3472,7 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	
 	MERGE(s:System{systemCode: $systemCode})
 	ON CREATE SET 
-		s.uid = apoc.create.uuid(),
+		s.uid = randomUUID(),
 		s.name = $name,
     s.description = $description,
 		s.systemLevel = "SUBSYSTEMS_AND_PARTS",
@@ -3493,7 +3493,7 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	WITH DISTINCT s
 	FOREACH (ignoreMe IN CASE WHEN $linkUrl <> "" AND $linkName <> "" THEN [1] ELSE [] END |
 		CREATE(fl:FileLink{ 
-			uid: apoc.create.uuid(), 
+			uid: randomUUID(), 
 			name: $linkName, 
 			url: $linkUrl, 
 			tags: "jira" })

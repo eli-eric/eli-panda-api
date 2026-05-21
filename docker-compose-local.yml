@@ -41,7 +41,7 @@ services:
     platform: linux/amd64
   panda-dev-neo4j:
     container_name: panda-dev-neo4j
-    image: neo4j:4.4.15@sha256:acf0ba298d912f3dc1649e482866368a816a3a38b21b59c68834c6da39493497
+    image: neo4j:5.26.0-community
     # user: "1020:1020"
     restart: unless-stopped
     healthcheck:
@@ -52,9 +52,14 @@ services:
       start_period: 3s
     environment:
       - NEO4J_AUTH=neo4j/elipanda2022
-      - NEO4JLABS_PLUGINS=["apoc"]
+      # Neo4j 5: NEO4J_PLUGINS installs APOC Core; for APOC Extended procedures
+      # (apoc.convert.*, apoc.text.join, apoc.map.*, apoc.do.*, etc.) download the
+      # apoc-5.x.x-extended.jar from https://github.com/neo4j/apoc/releases and
+      # place it in ./db/neo4j/dev-instance/plugins/
+      - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_allowlist=apoc.*
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_server_bolt_listen__address=0.0.0.0:7687
     volumes:
       - "./db/neo4j/dev-instance/data:/data"
       - "./db/neo4j/dev-instance/logs:/logs"

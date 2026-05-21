@@ -417,7 +417,7 @@ func CatalogueItemsFiltersPaginationQuery(search string, categoryUid string, ski
 				name: prop.name,
 				listOfValues: CASE
 					WHEN prop.listOfValues IS NOT NULL AND prop.listOfValues <> ''
-					THEN apoc.text.split(prop.listOfValues, ';') ELSE NULL END,
+					THEN split(prop.listOfValues, ';') ELSE NULL END,
 				type: CASE WHEN propType IS NOT NULL THEN { uid: propType.uid, name: propType.name, code: propType.code } ELSE NULL END,
 				unit: CASE WHEN unit IS NOT NULL THEN { uid: unit.uid, name: unit.name } ELSE NULL END
 			},
@@ -538,7 +538,7 @@ func CatalogueItemWithDetailsByUidQuery(uid string) (result helpers.DatabaseQuer
 					property:{
 						uid: prop.uid,
 						name: prop.name, 
-						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then apoc.text.split(prop.listOfValues, ";") else null end,
+						listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then split(prop.listOfValues, ";") else null end,
 						type: { uid: propType.uid, name: propType.name, code: propType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
@@ -572,7 +572,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		defaultValue: physicalItemProperty.defaultValue,
 		type: { uid: propertyTypePhysical.uid, name: propertyTypePhysical.name, code: propertyTypePhysical.code},
 		unit: case when unitPhysical is not null then { uid: unitPhysical.uid, name: unitPhysical.name } else null end,
-		listOfValues: apoc.text.split(case when physicalItemProperty.listOfValues = "" then null else  physicalItemProperty.listOfValues END, ";")
+		listOfValues: split(case when physicalItemProperty.listOfValues = "" then null else  physicalItemProperty.listOfValues END, ";")
 	} END as physicalItemProperties,	
 	collect({
 		uid: property.uid, 
@@ -580,7 +580,7 @@ func CatalogueCategoryWithDetailsQuery(uid string) (result helpers.DatabaseQuery
 		defaultValue: property.defaultValue, 
 		type: {uid: propertyType.uid, name: propertyType.name, code: propertyType.code}, 		
 		unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end, 
-		listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
+		listOfValues: split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups, physicalItemProperties
 	WITH category,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: groups.group.uid, name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups,  physicalItemProperties
 	WITH { uid: category.uid, name: category.name, code: category.code, miniImageUrl: split(category.miniImageUrl, ";"), groups: groups, physicalItemProperties: collect(physicalItemProperties), systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
@@ -606,7 +606,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						uid: property.uid,
 						name: property.name, 
 						defaultValue: property.defaultValue,
-						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then split(property.listOfValues, ";") else null end,
 						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
@@ -625,7 +625,7 @@ func CatalogueCategoryPropertiesQuery(uid string) (result helpers.DatabaseQuery)
 						uid: property.uid,
 						name: property.name, 
 						defaultValue: property.defaultValue,
-						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then split(property.listOfValues, ";") else null end,
 						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
@@ -654,7 +654,7 @@ func CatalogueCategoryPhysicalItemPropertiesQuery(uid string) (result helpers.Da
 						uid: property.uid,
 						name: property.name, 
 						defaultValue: property.defaultValue,
-						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then split(property.listOfValues, ";") else null end,
 						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
@@ -673,7 +673,7 @@ func CatalogueCategoryPhysicalItemPropertiesQuery(uid string) (result helpers.Da
 						uid: property.uid,
 						name: property.name, 
 						defaultValue: property.defaultValue,
-						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then apoc.text.split(property.listOfValues, ";") else null end,
+						listOfValues: case when property.listOfValues is not null and property.listOfValues <> "" then split(property.listOfValues, ";") else null end,
 						type: { uid: propertyType.uid, name: propertyType.name, code: propertyType.code},
 						unit: case when unit is not null then { uid: unit.uid, name: unit.name } else null end 
 						},
@@ -699,7 +699,7 @@ func CatalogueCategoryWithDetailsForCopyQuery(uid string) (result helpers.Databa
 	OPTIONAL MATCH(property)-[:HAS_UNIT]->(unit)
 	OPTIONAL MATCH(parent)-[:HAS_SUBCATEGORY]->(category)
 	WITH category,systemType, group,property, parent, propertyType, unit order by id(property)
-	WITH category,parent,systemType, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: apoc.text.split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
+	WITH category,parent,systemType, group, collect({uid: "", name: property.name,defaultValue: property.defaultValue, typeUID: propertyType.uid, unitUID: unit.uid, listOfValues: split(case when property.listOfValues = "" then null else  property.listOfValues END, ";")}) as properties order by id(group)
 	WITH category,parent,systemType, CASE WHEN group IS NOT NULL THEN { group: group, properties: properties } ELSE NULL END as groups
 	WITH category,parent,systemType, CASE WHEN groups IS NOT NULL THEN  collect({uid: "", name: groups.group.name, properties: groups.properties }) ELSE NULL END as groups	
 	WITH { uid: "", name: category.name, code: category.code,miniImageUrl: split(category.miniImageUrl, ";"), groups: groups, parentUID: parent.uid, image: category.image, systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end } as category
@@ -1041,7 +1041,7 @@ func NewCatalogueItemQuery(item *models.CatalogueItem, userUID string) (result h
 	WITH u
 	MATCH(cat:CatalogueCategory{uid: $categoryUid})
 	WITH u, cat
-	CREATE(item:CatalogueItem{  uid: apoc.create.uuid(),
+	CREATE(item:CatalogueItem{  uid: randomUUID(),
 								name: $name, 
 								catalogueNumber: $catalogueNumber,
 								description: $description,	

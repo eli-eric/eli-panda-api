@@ -4,12 +4,12 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/general/models"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/rs/zerolog/log"
 )
 
 type GeneralService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 }
 
 type IGeneralService interface {
@@ -19,7 +19,7 @@ type IGeneralService interface {
 	GlobalSearch(searchText string, page int, pageSize int) (result models.GlobalSearchResponse, err error)
 }
 
-func NewGeneralService(driver *neo4j.Driver) IGeneralService {
+func NewGeneralService(driver *neo4j.DriverWithContext) IGeneralService {
 	return &GeneralService{neo4jDriver: driver}
 }
 

@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 type PublicationsService struct {
-	neo4jDriver      *neo4j.Driver
+	neo4jDriver      *neo4j.DriverWithContext
 	wosStarterApiUrl string
 	wosStarterApiKey string
 }
@@ -48,7 +48,7 @@ type IPublicationsService interface {
 	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
 }
 
-func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
+func NewPublicationsService(driver *neo4j.DriverWithContext, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
 	return &PublicationsService{neo4jDriver: driver, wosStarterApiUrl: wosSAPIURL, wosStarterApiKey: wosSAPIKEY}
 }
 

@@ -14,11 +14,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/gommon/log"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 type CodebookService struct {
-	neo4jDriver         *neo4j.Driver
+	neo4jDriver         *neo4j.DriverWithContext
 	catalogueService    catalogueService.ICatalogueService
 	securityService     securityService.ISecurityService
 	systemsService      systemsService.ISystemsService
@@ -38,7 +38,7 @@ type ICodebookService interface {
 
 // Create new security service instance
 func NewCodebookService(settings *config.Config,
-	driver *neo4j.Driver,
+	driver *neo4j.DriverWithContext,
 	catalogueService catalogueService.ICatalogueService,
 	securityService securityService.ISecurityService,
 	systemsService systemsService.ISystemsService,
@@ -118,7 +118,7 @@ func (svc *CodebookService) GetCodebook(codebookCode string, searchString string
 	return codebookResponse, err
 }
 
-func getSimpleCodebookRecords(neo4jDriver *neo4j.Driver, codebookCode string, facilityCode string, userUID string, userRoles []string) (result []models.Codebook, err error) {
+func getSimpleCodebookRecords(neo4jDriver *neo4j.DriverWithContext, codebookCode string, facilityCode string, userUID string, userRoles []string) (result []models.Codebook, err error) {
 
 	codebookDefinition := codebooksMap[codebookCode]
 

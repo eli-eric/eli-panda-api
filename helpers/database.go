@@ -1,10 +1,10 @@
 package helpers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"panda/apigateway/ioutils"
 	"panda/apigateway/services/codebook-service/models"
 	"reflect"
 	"strings"
@@ -13,16 +13,12 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/google/uuid"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-func NewNeo4jSession(driver neo4j.Driver) (neo4j.Session, error) {
-	session := driver.NewSession(neo4j.SessionConfig{})
-	var err error
-	defer func() {
-		err = ioutils.DeferredClose(session, err)
-	}()
-	return session, err
+func NewNeo4jSession(driver neo4j.DriverWithContext) (neo4j.SessionWithContext, error) {
+	session := driver.NewSession(context.Background(), neo4j.SessionConfig{})
+	return session, nil
 }
 
 // not used yet - its for the future
@@ -84,7 +80,7 @@ func CreateOrUpdateNodeQuery(node interface{}) (DatabaseQuery, error) {
 }
 
 // get single node by uid
-func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
+func GetSingleNode(session neo4j.SessionWithContext, node interface{}) (err error) {
 
 	typ := reflect.TypeOf(node)
 	uid := ""
@@ -153,16 +149,16 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 		strings.Join(fields, ","))
 
 	// Run the query
-	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	resultMap, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
 
-		result, err := tx.Run(query, map[string]interface{}{"uid": uid})
+		result, err := tx.Run(context.Background(), query, map[string]interface{}{"uid": uid})
 		if err != nil {
 			return nil, err
 		}
 
-		record, err := result.Single()
+		record, err := result.Single(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		rec, _ := record.Get("n")
@@ -176,7 +172,7 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 	return err
 }
 
-func GetMultipleNodes[T any](session neo4j.Session, skip, limit int, searchText string) (result []T, totalCount int64, err error) {
+func GetMultipleNodes[T any](session neo4j.SessionWithContext, skip, limit int, searchText string) (result []T, totalCount int64, err error) {
 
 	dbQuery := DatabaseQuery{}
 	dbQuery.Parameters = make(map[string]interface{})
@@ -334,16 +330,16 @@ func HistoryLogQuery(uid, action, userUID string) (result DatabaseQuery) {
 	return result
 }
 
-func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
-	resultMap, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		result, err := tx.Run(query.Query, query.Parameters)
+func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.SessionWithContext, query DatabaseQuery) (result T, err error) {
+	resultMap, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(context.Background(), query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
 
-		record, err := result.Single()
+		record, err := result.Single(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -358,16 +354,16 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query Data
 	return result, err
 }
 
-func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
-	resultValue, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		result, err := tx.Run(query.Query, query.Parameters)
+func GetNeo4jSingleRecordSingleValue[T any](session neo4j.SessionWithContext, query DatabaseQuery) (result T, err error) {
+	resultValue, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(context.Background(), query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
 
-		record, err := result.Single()
+		record, err := result.Single(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -384,17 +380,17 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 	return result, err
 }
 
-func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
+func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.SessionWithContext, query DatabaseQuery) (result T, err error) {
 
-	resultMap, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		result, err := tx.Run(query.Query, query.Parameters)
+	resultMap, err := session.ExecuteWrite(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(context.Background(), query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
 
-		record, err := result.Single()
+		record, err := result.Single(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -409,16 +405,16 @@ func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, qu
 	return result, err
 }
 
-func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query DatabaseQuery) (result T, err error) {
-	resultValue, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		result, err := tx.Run(query.Query, query.Parameters)
+func WriteNeo4jAndReturnSingleValue[T any](session neo4j.SessionWithContext, query DatabaseQuery) (result T, err error) {
+	resultValue, err := session.ExecuteWrite(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
+		result, err := tx.Run(context.Background(), query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
 
-		record, err := result.Single()
+		record, err := result.Single(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -433,9 +429,9 @@ func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query Database
 	return result, err
 }
 
-func WriteNeo4jAndReturnNothing(session neo4j.Session, query DatabaseQuery) (err error) {
-	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
-		_, err := tx.Run(query.Query, query.Parameters)
+func WriteNeo4jAndReturnNothing(session neo4j.SessionWithContext, query DatabaseQuery) (err error) {
+	_, err = session.ExecuteWrite(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
+		_, err := tx.Run(context.Background(), query.Query, query.Parameters)
 
 		return nil, err
 	})
@@ -444,11 +440,11 @@ func WriteNeo4jAndReturnNothing(session neo4j.Session, query DatabaseQuery) (err
 }
 
 // write transaction with multiple queries
-func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries ...DatabaseQuery) (err error) {
+func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.SessionWithContext, queries ...DatabaseQuery) (err error) {
 
-	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	_, err = session.ExecuteWrite(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
 		for _, query := range queries {
-			_, err := tx.Run(query.Query, query.Parameters)
+			_, err := tx.Run(context.Background(), query.Query, query.Parameters)
 
 			if err != nil {
 				log.Info().Msg(err.Error())
@@ -462,17 +458,17 @@ func WriteNeo4jAndReturnNothingMultipleQueries(session neo4j.Session, queries ..
 	return err
 }
 
-func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (resultArray []T, err error) {
+func GetNeo4jArrayOfNodes[T any](session neo4j.SessionWithContext, query DatabaseQuery) (resultArray []T, err error) {
 	// Execute a query in a new Read Transaction
-	results, err := session.ReadTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+	results, err := session.ExecuteRead(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
 
-		result, err := tx.Run(query.Query, query.Parameters)
+		result, err := tx.Run(context.Background(), query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
 
 		// Get a list of Movies from the Result
-		records, err := result.Collect()
+		records, err := result.Collect(context.Background())
 		if err != nil {
 			return nil, err
 		}
@@ -494,15 +490,15 @@ func GetNeo4jArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (re
 	return resultArray, err
 }
 
-func WriteNeo4jAndReturnArrayOfNodes[T any](session neo4j.Session, query DatabaseQuery) (resultArray []T, err error) {
-	results, err := session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+func WriteNeo4jAndReturnArrayOfNodes[T any](session neo4j.SessionWithContext, query DatabaseQuery) (resultArray []T, err error) {
+	results, err := session.ExecuteWrite(context.Background(), func(tx neo4j.ManagedTransaction) (any, error) {
 
-		result, err := tx.Run(query.Query, query.Parameters)
+		result, err := tx.Run(context.Background(), query.Query, query.Parameters)
 		if err != nil {
 			return nil, err
 		}
 
-		records, err := result.Collect()
+		records, err := result.Collect(context.Background())
 		if err != nil {
 			return nil, err
 		}
@@ -713,7 +709,7 @@ func AutoResolveObjectToUpdateQuery(dbQuery *DatabaseQuery, newObject any, origi
 	}
 }
 
-func LogDBHistory(session neo4j.Session, objectUID string, originObject any, newObject any, userUID string, action string) (uid string, err error) {
+func LogDBHistory(session neo4j.SessionWithContext, objectUID string, originObject any, newObject any, userUID string, action string) (uid string, err error) {
 
 	originSystemJSON := ""
 

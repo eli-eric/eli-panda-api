@@ -1,10 +1,11 @@
 package roomcardsservice
 
 import (
+	"context"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/room-cards-service/models"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 // Room card status constants
@@ -15,20 +16,20 @@ const (
 )
 
 type RoomCardsService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 }
 
 type IRoomCardsService interface {
 	GetLayoutRoomCardInfo(locationCode string) (models.LayoutRoomCard, error)
 }
 
-func NewRoomCardsService(driver *neo4j.Driver) IRoomCardsService {
+func NewRoomCardsService(driver *neo4j.DriverWithContext) IRoomCardsService {
 	return &RoomCardsService{neo4jDriver: driver}
 }
 
 func (svc *RoomCardsService) GetLayoutRoomCardInfo(locationCode string) (result models.LayoutRoomCard, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	// Use the database query to get room card by location code
 	dbQuery := GetRoomCardsByLocationCodeQuery(locationCode)

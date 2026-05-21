@@ -3,6 +3,7 @@ package zoneservice
 import (
 	"bytes"
 	"panda/apigateway/services/zone-service/models"
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,6 +16,7 @@ const testFacilityCode = "TEST_FACILITY"
 
 func setupTestFacility(t *testing.T) {
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`MERGE (f:Facility {code: $code}) RETURN f`,
 		map[string]interface{}{"code": testFacilityCode},
 	)
@@ -22,15 +24,16 @@ func setupTestFacility(t *testing.T) {
 }
 
 func cleanupZone(uid string) {
-	testsetup.TestSession.Run(`MATCH (z:Zone {uid: $uid}) DETACH DELETE z`, map[string]interface{}{"uid": uid})
+	testsetup.TestSession.Run(context.Background(), `MATCH (z:Zone {uid: $uid}) DETACH DELETE z`, map[string]interface{}{"uid": uid})
 }
 
 func cleanupUser(uid string) {
-	testsetup.TestSession.Run(`MATCH (u:User {uid: $uid}) DETACH DELETE u`, map[string]interface{}{"uid": uid})
+	testsetup.TestSession.Run(context.Background(), `MATCH (u:User {uid: $uid}) DETACH DELETE u`, map[string]interface{}{"uid": uid})
 }
 
 func createTestUser(t *testing.T, uid string) {
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`MERGE (u:User {uid: $uid}) RETURN u`,
 		map[string]interface{}{"uid": uid},
 	)
@@ -326,10 +329,11 @@ func TestDeleteZone(t *testing.T) {
 
 	// verify soft deleted
 	verifyResult, _ := testsetup.TestSession.Run(
+		context.Background(),
 		`MATCH (z:Zone {uid: $uid}) RETURN z.deleted as deleted`,
 		map[string]interface{}{"uid": zone.UID},
 	)
-	if verifyResult.Next() {
+	if verifyResult.Next(context.Background()) {
 		deleted, _ := verifyResult.Record().Get("deleted")
 		assert.Equal(t, true, deleted)
 	}
@@ -376,6 +380,7 @@ func TestDeleteZone_WithSystemRef_Rejected(t *testing.T) {
 	// create system referencing existing zone (MATCH, not CREATE duplicate)
 	sysUID := "test-sys-" + uuid.New().String()
 	_, err = testsetup.TestSession.Run(
+		context.Background(),
 		`MATCH (z:Zone {uid: $zoneUID})
 		 CREATE (s:System {uid: $sysUID, deleted: false})-[:HAS_ZONE]->(z)`,
 		map[string]interface{}{"sysUID": sysUID, "zoneUID": zone.UID},
@@ -386,7 +391,7 @@ func TestDeleteZone_WithSystemRef_Rejected(t *testing.T) {
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrConflictSys)
 
-	testsetup.TestSession.Run(`MATCH (s:System {uid: $uid}) DETACH DELETE s`, map[string]interface{}{"uid": sysUID})
+	testsetup.TestSession.Run(context.Background(), `MATCH (s:System {uid: $uid}) DETACH DELETE s`, map[string]interface{}{"uid": sysUID})
 	cleanupZone(zone.UID)
 	cleanupUser(userUID)
 }
@@ -409,6 +414,7 @@ func TestImportZones_NewZones(t *testing.T) {
 	assert.Equal(t, 0, result.Skipped)
 
 	testsetup.TestSession.Run(
+		context.Background(),
 		`MATCH (z:Zone) WHERE z.code IN [$c1, $c2] DETACH DELETE z`,
 		map[string]interface{}{"c1": code1, "c2": code2},
 	)
@@ -470,6 +476,7 @@ func TestImportZones_WithParentCode(t *testing.T) {
 	}
 
 	testsetup.TestSession.Run(
+		context.Background(),
 		`MATCH (z:Zone) WHERE z.code IN [$c1, $c2] DETACH DELETE z`,
 		map[string]interface{}{"c1": parentCode, "c2": childCode},
 	)
