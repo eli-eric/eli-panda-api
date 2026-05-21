@@ -8,7 +8,7 @@ import (
 
 	"panda/apigateway/helpers"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 type IUserStatusValidator interface {
@@ -29,13 +29,13 @@ type userStatusCacheEntry struct {
 }
 
 type UserStatusValidator struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 	ttl         time.Duration
 	cache       map[string]userStatusCacheEntry
 	cacheMux    sync.RWMutex
 }
 
-func NewUserStatusValidator(driver *neo4j.Driver, ttlSeconds int) IUserStatusValidator {
+func NewUserStatusValidator(driver *neo4j.DriverWithContext, ttlSeconds int) IUserStatusValidator {
 	ttl := time.Duration(ttlSeconds) * time.Second
 	if ttl <= 0 {
 		ttl = time.Minute

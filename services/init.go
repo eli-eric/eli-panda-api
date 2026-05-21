@@ -18,10 +18,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/labstack/echo/v4"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
-func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4jDriver *neo4j.Driver, jwtMiddleware echo.MiddlewareFunc, userStatusValidator middlewares.IUserStatusValidator) {
+func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4jDriver *neo4j.DriverWithContext, jwtMiddleware echo.MiddlewareFunc, userStatusValidator middlewares.IUserStatusValidator) {
 
 	//security services used in handlers and maped in routes...
 	securitySvc := securityService.NewSecurityService(settings, neo4jDriver)

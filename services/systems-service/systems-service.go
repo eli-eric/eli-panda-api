@@ -1,6 +1,7 @@
 package systemsService
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"panda/apigateway/config"
@@ -13,11 +14,11 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 type SystemsService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 	jwtSecret   string
 }
 
@@ -90,7 +91,7 @@ var (
 )
 
 // Create new security service instance
-func NewSystemsService(settings *config.Config, driver *neo4j.Driver) ISystemsService {
+func NewSystemsService(settings *config.Config, driver *neo4j.DriverWithContext) ISystemsService {
 
 	return &SystemsService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }
@@ -283,7 +284,7 @@ func (svc *SystemsService) CreateNewSystemFromJira(facilityCode string, userUID 
 	// check if system code already exists
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	exists, err := helpers.GetNeo4jSingleRecordSingleValue[bool](session, checkSystemCodeExistsQuery(request.Code))
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	if err != nil {
 		return "", err
@@ -382,13 +383,14 @@ func (svc *SystemsService) GetSystemsWithSearchAndPagination(search string, faci
 }
 
 func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error) {
-	session := (*svc.neo4jDriver).NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	ctx := context.Background()
+	session := (*svc.neo4jDriver).NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
 	defer func() {
-		_ = session.Close()
+		_ = session.Close(ctx)
 	}()
 
 	query := GetSystemsHierarchyEdgesQuery(facilityCode)
-	rows, err := session.Run(query.Query, query.Parameters)
+	rows, err := session.Run(ctx, query.Query, query.Parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +412,7 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 		set[childUID] = struct{}{}
 	}
 
-	for rows.Next() {
+	for rows.Next(ctx) {
 		rec := rows.Record()
 
 		uidVal, ok := rec.Get("uid")
@@ -488,11 +490,11 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 			uids = append(uids, uid)
 		}
 		leafQuery := GetSystemsHasLeafChildrenByUidsQuery(facilityCode, uids)
-		leafRows, qErr := session.Run(leafQuery.Query, leafQuery.Parameters)
+		leafRows, qErr := session.Run(ctx, leafQuery.Query, leafQuery.Parameters)
 		if qErr != nil {
 			return nil, qErr
 		}
-		for leafRows.Next() {
+		for leafRows.Next(ctx) {
 			rec := leafRows.Record()
 			uidVal, ok := rec.Get(leafQuery.ReturnAlias)
 			if !ok {
@@ -1152,7 +1154,7 @@ func (svc *SystemsService) GetSystemCode(systemTypeUid, zoneUID, locationUID, pa
 	return result, err
 }
 
-func (svc *SystemsService) getSystemCodePrefixAndSerialLength(session neo4j.Session, systemTypeUid, zoneUID, locationUID, facilityCode string) (systemCodePrefix string, serialNumberLength int, err error) {
+func (svc *SystemsService) getSystemCodePrefixAndSerialLength(session neo4j.SessionWithContext, systemTypeUid, zoneUID, locationUID, facilityCode string) (systemCodePrefix string, serialNumberLength int, err error) {
 
 	if systemTypeUid == "" {
 		return "", 0, errors.New("missing system type")
@@ -1984,11 +1986,12 @@ func ValidateSystemCopyRequest(request *models.SystemCopyRequest) error {
 }
 
 func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error) {
+	ctx := context.Background()
 	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	if err != nil {
 		return models.AssignSpareResponse{}, err
 	}
-	defer session.Close()
+	defer session.Close(ctx)
 
 	var response models.AssignSpareResponse
 	response.UpdatedSystemUid = request.SystemUid
@@ -2000,14 +2003,14 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
         RETURN s.uid as systemUid, count(currentItem) as itemCount, collect(currentItem.uid) as currentItems
     `
 
-	result, err := session.Run(validateSystemQuery, map[string]interface{}{
+	result, err := session.Run(ctx, validateSystemQuery, map[string]interface{}{
 		"systemUid": request.SystemUid,
 	})
 	if err != nil {
 		return response, err
 	}
 
-	record, err := result.Single()
+	record, err := result.Single(ctx)
 	if err != nil {
 		return response, errors.New("system not found")
 	}
@@ -2031,7 +2034,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
         RETURN spareItem.uid as spareUid, spareSystem.uid as spareSystemUid
     `
 
-	result, err = session.Run(validateSpareQuery, map[string]interface{}{
+	result, err = session.Run(ctx, validateSpareQuery, map[string]interface{}{
 		"spareItemUid": request.SpareItemUid,
 		"systemUid":    request.SystemUid,
 	})
@@ -2039,7 +2042,7 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 		return response, err
 	}
 
-	if !result.Next() {
+	if !result.Next(ctx) {
 		return response, errors.New("spare item does not have IS_SPARE_FOR relationship with target system")
 	}
 
@@ -2057,10 +2060,10 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 			OPTIONAL MATCH (item)-[:HAS_ITEM_USAGE]->(usage:ItemUsage)
 			RETURN usage.code as usageCode
 		`
-		usageResult, err := session.Run(getCurrentItemUsageQuery, map[string]interface{}{
+		usageResult, err := session.Run(ctx, getCurrentItemUsageQuery, map[string]interface{}{
 			"itemUid": currentItemUid,
 		})
-		if err == nil && usageResult.Next() {
+		if err == nil && usageResult.Next(ctx) {
 			usageRecord := usageResult.Record()
 			if usageRecord.Values[0] != nil {
 				currentItemUsageCode = usageRecord.Values[0].(string)
@@ -2265,9 +2268,10 @@ func (svc *SystemsService) AssignSpareItem(request models.AssignSpareRequest, us
 
 // GetSystemSparePartsDetail returns comprehensive system and physical item information with all spare relations
 func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode string) (result models.SystemSparePartsDetail, err error) {
+	ctx := context.Background()
 	driver := *s.neo4jDriver
-	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
-	defer session.Close()
+	session := driver.NewSession(ctx, neo4j.SessionConfig{AccessMode: neo4j.AccessModeRead})
+	defer session.Close(ctx)
 
 	// Execute multiple queries to avoid nested aggregations
 	// Query 1: Get basic system information
@@ -2344,7 +2348,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 		} AS result
 	`
 
-	systemResult, err := session.Run(systemQuery, map[string]interface{}{
+	systemResult, err := session.Run(ctx, systemQuery, map[string]interface{}{
 		"systemId":     systemId,
 		"facilityCode": facilityCode,
 	})
@@ -2354,7 +2358,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 	}
 
 	var basicInfo map[string]interface{}
-	if systemResult.Next() {
+	if systemResult.Next(ctx) {
 		record := systemResult.Record()
 		if resultValue, ok := record.Get("result"); ok {
 			basicInfo = resultValue.(map[string]interface{})
@@ -2370,7 +2374,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 		}) AS systemAttributes
 	`
 
-	attrResult, err := session.Run(attributesQuery, map[string]interface{}{
+	attrResult, err := session.Run(ctx, attributesQuery, map[string]interface{}{
 		"systemId": systemId,
 	})
 	if err != nil {
@@ -2379,7 +2383,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 	}
 
 	var systemAttributes []interface{}
-	if attrResult.Next() {
+	if attrResult.Next(ctx) {
 		record := attrResult.Record()
 		if attrs, ok := record.Get("systemAttributes"); ok {
 			systemAttributes = attrs.([]interface{})
@@ -2440,7 +2444,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 		}) AS physicalItems
 	`
 
-	itemsResult, err := session.Run(itemsQuery, map[string]interface{}{
+	itemsResult, err := session.Run(ctx, itemsQuery, map[string]interface{}{
 		"systemId": systemId,
 	})
 	if err != nil {
@@ -2449,7 +2453,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 	}
 
 	var physicalItems []interface{}
-	if itemsResult.Next() {
+	if itemsResult.Next(ctx) {
 		record := itemsResult.Record()
 		if items, ok := record.Get("physicalItems"); ok {
 			physicalItems = items.([]interface{})
@@ -2484,7 +2488,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 		}) AS spareSystems
 	`
 
-	spareSystemsResult, err := session.Run(spareSystemsQuery, map[string]interface{}{
+	spareSystemsResult, err := session.Run(ctx, spareSystemsQuery, map[string]interface{}{
 		"systemId": systemId,
 	})
 	if err != nil {
@@ -2493,7 +2497,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 	}
 
 	var spareSystems []interface{}
-	if spareSystemsResult.Next() {
+	if spareSystemsResult.Next(ctx) {
 		record := spareSystemsResult.Record()
 		if systems, ok := record.Get("spareSystems"); ok {
 			spareSystems = systems.([]interface{})
@@ -2512,7 +2516,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 		}) AS parentSystems
 	`
 
-	parentSystemsResult, err := session.Run(parentSystemsQuery, map[string]interface{}{
+	parentSystemsResult, err := session.Run(ctx, parentSystemsQuery, map[string]interface{}{
 		"systemId": systemId,
 	})
 	if err != nil {
@@ -2521,7 +2525,7 @@ func (s *SystemsService) GetSystemSparePartsDetail(systemId string, facilityCode
 	}
 
 	var parentSystems []interface{}
-	if parentSystemsResult.Next() {
+	if parentSystemsResult.Next(ctx) {
 		record := parentSystemsResult.Record()
 		if systems, ok := record.Get("parentSystems"); ok {
 			parentSystems = systems.([]interface{})

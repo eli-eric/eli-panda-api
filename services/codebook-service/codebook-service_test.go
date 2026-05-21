@@ -1,6 +1,7 @@
 package codebookService
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -59,13 +60,13 @@ func TestUpdateCodebook_NameOnly_DoesNotChangeCode(t *testing.T) {
 
 func createTestUser(t *testing.T, uid string) {
 	t.Helper()
-	_, err := testsetup.TestSession.Run(`CREATE (:User {uid: $uid})`, map[string]interface{}{"uid": uid})
+	_, err := testsetup.TestSession.Run(context.Background(), `CREATE (:User {uid: $uid})`, map[string]interface{}{"uid": uid})
 	assert.NoError(t, err)
 }
 
 func createTestUnit(t *testing.T, uid string, name string, code string) {
 	t.Helper()
-	_, err := testsetup.TestSession.Run(`CREATE (:Unit {uid: $uid, name: $name, code: $code})`, map[string]interface{}{
+	_, err := testsetup.TestSession.Run(context.Background(), `CREATE (:Unit {uid: $uid, name: $name, code: $code})`, map[string]interface{}{
 		"uid":  uid,
 		"name": name,
 		"code": code,
@@ -75,9 +76,9 @@ func createTestUnit(t *testing.T, uid string, name string, code string) {
 
 func getUnitNameAndCode(t *testing.T, uid string) (name string, code string) {
 	t.Helper()
-	result, err := testsetup.TestSession.Run(`MATCH (u:Unit {uid: $uid}) RETURN u.name as name, u.code as code`, map[string]interface{}{"uid": uid})
+	result, err := testsetup.TestSession.Run(context.Background(), `MATCH (u:Unit {uid: $uid}) RETURN u.name as name, u.code as code`, map[string]interface{}{"uid": uid})
 	assert.NoError(t, err)
-	assert.True(t, result.Next())
+	assert.True(t, result.Next(context.Background()))
 
 	rawName, _ := result.Record().Get("name")
 	rawCode, _ := result.Record().Get("code")
@@ -91,7 +92,7 @@ func getUnitNameAndCode(t *testing.T, uid string) (name string, code string) {
 func cleanupTestCodebookData(t *testing.T, uids ...string) {
 	t.Helper()
 	for _, uid := range uids {
-		_, err := testsetup.TestSession.Run(`MATCH (n {uid: $uid}) DETACH DELETE n`, map[string]interface{}{"uid": uid})
+		_, err := testsetup.TestSession.Run(context.Background(), `MATCH (n {uid: $uid}) DETACH DELETE n`, map[string]interface{}{"uid": uid})
 		assert.NoError(t, err)
 	}
 }

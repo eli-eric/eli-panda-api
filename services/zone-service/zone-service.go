@@ -1,6 +1,7 @@
 package zoneservice
 
 import (
+	"context"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 var (
@@ -26,7 +27,7 @@ var (
 )
 
 type ZoneService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 }
 
 type IZoneService interface {
@@ -38,13 +39,13 @@ type IZoneService interface {
 	ImportZones(facilityCode, userUID string, file io.Reader) (models.ZoneImportResult, error)
 }
 
-func NewZoneService(driver *neo4j.Driver) IZoneService {
+func NewZoneService(driver *neo4j.DriverWithContext) IZoneService {
 	return &ZoneService{neo4jDriver: driver}
 }
 
 func (svc *ZoneService) GetAllZones(facilityCode, search string, page, pageSize int, sorting *[]helpers.Sorting) (result []models.Zone, totalCount int64, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	limit := pageSize
 	if limit <= 0 {
@@ -71,7 +72,7 @@ func (svc *ZoneService) GetAllZones(facilityCode, search string, page, pageSize 
 
 func (svc *ZoneService) GetZoneByUID(uid, facilityCode string) (result models.Zone, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	query := GetZoneByUIDQuery(uid, facilityCode)
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, query)
@@ -80,12 +81,12 @@ func (svc *ZoneService) GetZoneByUID(uid, facilityCode string) (result models.Zo
 
 func (svc *ZoneService) CreateZone(facilityCode, userUID string, req *models.ZoneCreateRequest) (result models.Zone, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	return svc.createZoneWithSession(session, facilityCode, userUID, req)
 }
 
-func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCode, userUID string, req *models.ZoneCreateRequest) (result models.Zone, err error) {
+func (svc *ZoneService) createZoneWithSession(session neo4j.SessionWithContext, facilityCode, userUID string, req *models.ZoneCreateRequest) (result models.Zone, err error) {
 	// validate code uniqueness per facility
 	codeCount, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneCodeExistsQuery(req.Code, facilityCode, ""))
 	if err != nil {
@@ -114,7 +115,7 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 
 func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *models.ZoneUpdateRequest) (result models.Zone, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	// check zone exists in this facility
 	_, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
@@ -177,7 +178,7 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 
 func (svc *ZoneService) DeleteZone(uid, facilityCode, userUID string) error {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	// check zone exists in this facility
 	_, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
@@ -231,7 +232,7 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 
 	// single session for entire import (including creates)
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	defer session.Close()
+	defer session.Close(context.Background())
 
 	rowNum := 1
 	for {
@@ -314,7 +315,7 @@ func (svc *ZoneService) ImportZones(facilityCode, userUID string, file io.Reader
 	return result, nil
 }
 
-func validateParentIsRoot(session neo4j.Session, parentUID, facilityCode string) error {
+func validateParentIsRoot(session neo4j.SessionWithContext, parentUID, facilityCode string) error {
 	type parentCheck struct {
 		UID       string `json:"uid"`
 		HasParent bool   `json:"hasParent"`

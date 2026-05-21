@@ -1,18 +1,19 @@
 package testsetup
 
 import (
+	"context"
 	"log"
 	"panda/apigateway/config"
 	"panda/apigateway/db"
 	"path/filepath"
 
 	"github.com/joho/godotenv"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 // Shared test driver and session
-var TestDriver neo4j.Driver
-var TestSession neo4j.Session
+var TestDriver neo4j.DriverWithContext
+var TestSession neo4j.SessionWithContext
 var Config config.Config
 
 func init() {
@@ -39,7 +40,7 @@ func InitTestDatabase() {
 	// Initialize Neo4j driver
 	td := db.CreateNeo4jMainInstanceOrPanics(Config.Neo4jUsername, Config.Neo4jPassword, Config.Neo4jHost, Config.Neo4jPort, Config.Neo4jSchema)
 	TestDriver = *td
-	TestSession = TestDriver.NewSession(neo4j.SessionConfig{})
+	TestSession = TestDriver.NewSession(context.Background(), neo4j.SessionConfig{})
 }
 
 // CleanTestDatabase removes all test data after each test
@@ -52,6 +53,7 @@ func CleanTestDatabase() {
 
 // CloseTestDatabase closes the Neo4j driver after tests
 func CloseTestDatabase() {
-	TestSession.Close()
-	TestDriver.Close()
+	ctx := context.Background()
+	TestSession.Close(ctx)
+	TestDriver.Close(ctx)
 }

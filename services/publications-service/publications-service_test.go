@@ -2,6 +2,7 @@ package publicationsservice
 
 import (
 	"panda/apigateway/services/publications-service/models"
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ func TestGetPublicationByUid(t *testing.T) {
 	service := NewPublicationsService(&testsetup.TestDriver, "", "")
 
 	// Insert test data
-	_, err := testsetup.TestSession.Run(`CREATE (p:Publication {uid: "test123"}) RETURN p`, nil)
+	_, err := testsetup.TestSession.Run(context.Background(), `CREATE (p:Publication {uid: "test123"}) RETURN p`, nil)
 	assert.NoError(t, err)
 
 	// Run the actual test
@@ -25,7 +26,7 @@ func TestGetPublicationByUid(t *testing.T) {
 	assert.Equal(t, "test123", result.Uid)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
 	assert.NoError(t, err)
 }
 
@@ -38,7 +39,7 @@ func TestGetPublicationByUidNotFound(t *testing.T) {
 	// Assertions
 	assert.Error(t, err)
 
-	_, cleanupErr := testsetup.TestSession.Run(`MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
+	_, cleanupErr := testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: "test123"}) DETACH DELETE p`, nil)
 	assert.NoError(t, cleanupErr)
 }
 
@@ -50,6 +51,7 @@ func TestGetResearcherByUid(t *testing.T) {
 
 	// Insert test data
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (r:Researcher {uid: $uid, firstName: "John", lastName: "Doe"}) RETURN r`,
 		map[string]interface{}{"uid": testUid},
 	)
@@ -65,7 +67,7 @@ func TestGetResearcherByUid(t *testing.T) {
 	assert.Equal(t, "Doe", result.LastName)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
 }
 
@@ -112,9 +114,9 @@ func TestCreateResearcher(t *testing.T) {
 	assert.Equal(t, "Jane", dbResult.FirstName)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
 }
 
 func TestUpdateResearcher(t *testing.T) {
@@ -124,6 +126,7 @@ func TestUpdateResearcher(t *testing.T) {
 
 	// Insert test data
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (r:Researcher {uid: $uid, firstName: "Original", lastName: "Name"}) RETURN r`,
 		map[string]interface{}{"uid": testUid},
 	)
@@ -149,9 +152,9 @@ func TestUpdateResearcher(t *testing.T) {
 	assert.Equal(t, "Updated", dbResult.FirstName)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
 }
 
 func TestDeleteResearcher(t *testing.T) {
@@ -161,6 +164,7 @@ func TestDeleteResearcher(t *testing.T) {
 
 	// Insert test data
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (r:Researcher {uid: $uid, firstName: "ToDelete", lastName: "Researcher"}) RETURN r`,
 		map[string]interface{}{"uid": testUid},
 	)
@@ -174,18 +178,19 @@ func TestDeleteResearcher(t *testing.T) {
 
 	// Verify soft delete (deleted flag should be true)
 	verifyResult, _ := testsetup.TestSession.Run(
+		context.Background(),
 		`MATCH (r:Researcher {uid: $uid}) RETURN r.deleted as deleted`,
 		map[string]interface{}{"uid": testUid},
 	)
-	if verifyResult.Next() {
+	if verifyResult.Next(context.Background()) {
 		deleted, _ := verifyResult.Record().Get("deleted")
 		assert.Equal(t, true, deleted)
 	}
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
 }
 
 func TestGetResearchers(t *testing.T) {
@@ -195,6 +200,7 @@ func TestGetResearchers(t *testing.T) {
 	// Insert test data
 	for i := 1; i <= 3; i++ {
 		_, err := testsetup.TestSession.Run(
+			context.Background(),
 			`CREATE (r:Researcher {uid: $uid, firstName: $firstName, lastName: "TestLastName"}) RETURN r`,
 			map[string]interface{}{
 				"uid":       testPrefix + "-" + string(rune('0'+i)),
@@ -213,7 +219,7 @@ func TestGetResearchers(t *testing.T) {
 	assert.GreaterOrEqual(t, len(results), 3)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid STARTS WITH $prefix DETACH DELETE r`, map[string]interface{}{"prefix": testPrefix})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher) WHERE r.uid STARTS WITH $prefix DETACH DELETE r`, map[string]interface{}{"prefix": testPrefix})
 	assert.NoError(t, err)
 }
 
@@ -246,9 +252,9 @@ func TestCreateResearchers(t *testing.T) {
 	}
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid STARTS WITH $prefix DETACH DELETE r`, map[string]interface{}{"prefix": testPrefix})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher) WHERE r.uid STARTS WITH $prefix DETACH DELETE r`, map[string]interface{}{"prefix": testPrefix})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History) WHERE h.objectUID STARTS WITH $prefix DETACH DELETE h`, map[string]interface{}{"prefix": testPrefix})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History) WHERE h.objectUID STARTS WITH $prefix DETACH DELETE h`, map[string]interface{}{"prefix": testPrefix})
 }
 
 func TestGetResearcherWithCitizenship(t *testing.T) {
@@ -258,6 +264,7 @@ func TestGetResearcherWithCitizenship(t *testing.T) {
 
 	// Insert test data with citizenship relationship
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (r:Researcher {uid: $uid, firstName: "Czech", lastName: "Researcher"})
 		 WITH r
 		 MATCH (c:Country {uid: $countryUid})
@@ -279,7 +286,7 @@ func TestGetResearcherWithCitizenship(t *testing.T) {
 	}
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
 }
 
@@ -294,6 +301,7 @@ func TestCreatePublicationWithResearchers(t *testing.T) {
 
 	// Create researchers first
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (r1:Researcher {uid: $uid1, firstName: "John", lastName: "Doe"})
 		 CREATE (r2:Researcher {uid: $uid2, firstName: "Jane", lastName: "Smith"})`,
 		map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid},
@@ -326,9 +334,9 @@ func TestCreatePublicationWithResearchers(t *testing.T) {
 	assert.Equal(t, "YES", dbResult.EliPublication)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
 
 func TestGetPublicationWithResearchers(t *testing.T) {
@@ -338,6 +346,7 @@ func TestGetPublicationWithResearchers(t *testing.T) {
 
 	// Insert test data with HAS_RESEARCHER relationship
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (r:Researcher {uid: $resUid, firstName: "Test", lastName: "Researcher"})
 		 CREATE (p)-[:HAS_RESEARCHER]->(r)`,
@@ -357,8 +366,8 @@ func TestGetPublicationWithResearchers(t *testing.T) {
 	assert.Equal(t, "Researcher", result.EliResearchers[0].LastName)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
 }
 
 func TestUpdatePublicationAddResearchers(t *testing.T) {
@@ -369,6 +378,7 @@ func TestUpdatePublicationAddResearchers(t *testing.T) {
 
 	// Create publication without researchers
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (r:Researcher {uid: $resUid, firstName: "New", lastName: "Researcher"})`,
 		map[string]interface{}{"pubUid": pubUid, "resUid": resUid},
@@ -396,9 +406,9 @@ func TestUpdatePublicationAddResearchers(t *testing.T) {
 	assert.Equal(t, "NO", dbResult.EliPublication)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
 
 func TestUpdatePublicationRemoveResearchers(t *testing.T) {
@@ -409,6 +419,7 @@ func TestUpdatePublicationRemoveResearchers(t *testing.T) {
 
 	// Create publication with researcher
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (r:Researcher {uid: $resUid, firstName: "ToRemove", lastName: "Researcher"})
 		 CREATE (p)-[:HAS_RESEARCHER]->(r)`,
@@ -442,9 +453,9 @@ func TestUpdatePublicationRemoveResearchers(t *testing.T) {
 	assert.Equal(t, resUid, resResult.Uid)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher {uid: $uid}) DETACH DELETE r`, map[string]interface{}{"uid": resUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
 
 func TestUpdatePublicationReplaceResearchers(t *testing.T) {
@@ -456,6 +467,7 @@ func TestUpdatePublicationReplaceResearchers(t *testing.T) {
 
 	// Create publication with one researcher
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (r1:Researcher {uid: $res1Uid, firstName: "Old", lastName: "Researcher"})
 		 CREATE (r2:Researcher {uid: $res2Uid, firstName: "New", lastName: "Researcher"})
@@ -489,9 +501,9 @@ func TestUpdatePublicationReplaceResearchers(t *testing.T) {
 	assert.Equal(t, res2Uid, dbResult.EliResearchers[0].Uid)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (r:Researcher) WHERE r.uid IN [$uid1, $uid2] DETACH DELETE r`, map[string]interface{}{"uid1": res1Uid, "uid2": res2Uid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
 
 // ==================== Grant Tests ====================
@@ -502,6 +514,7 @@ func TestGetGrantByUid(t *testing.T) {
 
 	// Insert test data
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (g:Grant {uid: $uid, code: "TEST-001", name: "Test Grant"}) RETURN g`,
 		map[string]interface{}{"uid": testUid},
 	)
@@ -517,7 +530,7 @@ func TestGetGrantByUid(t *testing.T) {
 	assert.Equal(t, "Test Grant", result.Name)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
 }
 
@@ -559,9 +572,9 @@ func TestCreateGrant(t *testing.T) {
 	assert.Equal(t, "TEST-CREATE-001", dbResult.Code)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
 }
 
 func TestUpdateGrant(t *testing.T) {
@@ -571,6 +584,7 @@ func TestUpdateGrant(t *testing.T) {
 
 	// Insert test data
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (g:Grant {uid: $uid, code: "ORIG-001", name: "Original Grant"}) RETURN g`,
 		map[string]interface{}{"uid": testUid},
 	)
@@ -596,9 +610,9 @@ func TestUpdateGrant(t *testing.T) {
 	assert.Equal(t, "UPDATED-001", dbResult.Code)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
 }
 
 func TestDeleteGrant(t *testing.T) {
@@ -608,6 +622,7 @@ func TestDeleteGrant(t *testing.T) {
 
 	// Insert test data
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (g:Grant {uid: $uid, code: "DELETE-001", name: "To Delete Grant"}) RETURN g`,
 		map[string]interface{}{"uid": testUid},
 	)
@@ -621,18 +636,19 @@ func TestDeleteGrant(t *testing.T) {
 
 	// Verify soft delete (deleted flag should be true)
 	verifyResult, _ := testsetup.TestSession.Run(
+		context.Background(),
 		`MATCH (g:Grant {uid: $uid}) RETURN g.deleted as deleted`,
 		map[string]interface{}{"uid": testUid},
 	)
-	if verifyResult.Next() {
+	if verifyResult.Next(context.Background()) {
 		deleted, _ := verifyResult.Record().Get("deleted")
 		assert.Equal(t, true, deleted)
 	}
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
 	assert.NoError(t, err)
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": testUid})
 }
 
 func TestGetGrants(t *testing.T) {
@@ -643,6 +659,7 @@ func TestGetGrants(t *testing.T) {
 	// Insert test data with facility relationship
 	for i := 1; i <= 3; i++ {
 		_, err := testsetup.TestSession.Run(
+			context.Background(),
 			`MATCH (f:Facility {code: $facilityCode})
 			 CREATE (g:Grant {uid: $uid, code: $code, name: $name})
 			 CREATE (g)-[:BELONGS_TO_FACILITY]->(f)
@@ -666,7 +683,7 @@ func TestGetGrants(t *testing.T) {
 	assert.GreaterOrEqual(t, len(results), 3)
 
 	// Clean up
-	_, err = testsetup.TestSession.Run(`MATCH (g:Grant) WHERE g.uid STARTS WITH $prefix DETACH DELETE g`, map[string]interface{}{"prefix": testPrefix})
+	_, err = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant) WHERE g.uid STARTS WITH $prefix DETACH DELETE g`, map[string]interface{}{"prefix": testPrefix})
 	assert.NoError(t, err)
 }
 
@@ -681,6 +698,7 @@ func TestCreatePublicationWithGrants(t *testing.T) {
 
 	// Create grants first
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (g1:Grant {uid: $uid1, code: "G1", name: "Grant One"})
 		 CREATE (g2:Grant {uid: $uid2, code: "G2", name: "Grant Two"})`,
 		map[string]interface{}{"uid1": grant1Uid, "uid2": grant2Uid},
@@ -710,9 +728,9 @@ func TestCreatePublicationWithGrants(t *testing.T) {
 	assert.Equal(t, 2, len(dbResult.Grants))
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant) WHERE g.uid IN [$uid1, $uid2] DETACH DELETE g`, map[string]interface{}{"uid1": grant1Uid, "uid2": grant2Uid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant) WHERE g.uid IN [$uid1, $uid2] DETACH DELETE g`, map[string]interface{}{"uid1": grant1Uid, "uid2": grant2Uid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
 
 func TestGetPublicationWithGrants(t *testing.T) {
@@ -722,6 +740,7 @@ func TestGetPublicationWithGrants(t *testing.T) {
 
 	// Insert test data with HAS_GRANT relationship
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (g:Grant {uid: $grantUid, code: "TEST-G", name: "Test Grant"})
 		 CREATE (p)-[:HAS_GRANT]->(g)`,
@@ -741,8 +760,8 @@ func TestGetPublicationWithGrants(t *testing.T) {
 	assert.Equal(t, "Test Grant", result.Grants[0].Name)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
 }
 
 func TestUpdatePublicationAddGrants(t *testing.T) {
@@ -753,6 +772,7 @@ func TestUpdatePublicationAddGrants(t *testing.T) {
 
 	// Create publication without grants
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (g:Grant {uid: $grantUid, code: "NEW-G", name: "New Grant"})`,
 		map[string]interface{}{"pubUid": pubUid, "grantUid": grantUid},
@@ -778,9 +798,9 @@ func TestUpdatePublicationAddGrants(t *testing.T) {
 	assert.Equal(t, grantUid, dbResult.Grants[0].Uid)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }
 
 func TestUpdatePublicationRemoveGrants(t *testing.T) {
@@ -791,6 +811,7 @@ func TestUpdatePublicationRemoveGrants(t *testing.T) {
 
 	// Create publication with grant
 	_, err := testsetup.TestSession.Run(
+		context.Background(),
 		`CREATE (p:Publication {uid: $pubUid, title: "Test Publication"})
 		 CREATE (g:Grant {uid: $grantUid, code: "REMOVE-G", name: "To Remove Grant"})
 		 CREATE (p)-[:HAS_GRANT]->(g)`,
@@ -824,7 +845,7 @@ func TestUpdatePublicationRemoveGrants(t *testing.T) {
 	assert.Equal(t, grantUid, grantResult.Uid)
 
 	// Clean up
-	_, _ = testsetup.TestSession.Run(`MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
-	_, _ = testsetup.TestSession.Run(`MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (p:Publication {uid: $uid}) DETACH DELETE p`, map[string]interface{}{"uid": pubUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": grantUid})
+	_, _ = testsetup.TestSession.Run(context.Background(), `MATCH (h:History {objectUID: $uid}) DETACH DELETE h`, map[string]interface{}{"uid": pubUid})
 }

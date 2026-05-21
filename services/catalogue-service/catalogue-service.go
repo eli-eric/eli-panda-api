@@ -9,12 +9,12 @@ import (
 	codebookModels "panda/apigateway/services/codebook-service/models"
 
 	"github.com/google/uuid"
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/rs/zerolog/log"
 )
 
 type CatalogueService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 	jwtSecret   string
 }
 
@@ -52,7 +52,7 @@ type ICatalogueService interface {
 }
 
 // Create new security service instance
-func NewCatalogueService(settings *config.Config, driver *neo4j.Driver) ICatalogueService {
+func NewCatalogueService(settings *config.Config, driver *neo4j.DriverWithContext) ICatalogueService {
 
 	return &CatalogueService{neo4jDriver: driver, jwtSecret: settings.JwtSecret}
 }
@@ -85,7 +85,7 @@ func (svc *CatalogueService) GetCatalogueCategoriesRecursiveByParentUID(parentUI
 	return categories, err
 }
 
-func (svc *CatalogueService) resolveSortPropertyTypes(session neo4j.Session, sorting *[]helpers.Sorting) (sortPropertyTypes, error) {
+func (svc *CatalogueService) resolveSortPropertyTypes(session neo4j.SessionWithContext, sorting *[]helpers.Sorting) (sortPropertyTypes, error) {
 	uids := collectCustomPropertySortUids(sorting)
 	if len(uids) == 0 {
 		return sortPropertyTypes{}, nil

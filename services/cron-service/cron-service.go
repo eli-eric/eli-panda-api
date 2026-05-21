@@ -8,13 +8,13 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/cron-service/models"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
 
 type CronService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 	scheduler   *cron.Cron
 	jwtSecret   string
 }
@@ -25,7 +25,7 @@ type ICronService interface {
 	GetCronJobHistory() (cronJobHistory []models.CronJobHistory, err error)
 }
 
-func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService {
+func NewCronService(settings *config.Config, driver *neo4j.DriverWithContext) ICronService {
 
 	// Schedule a job for Sync eli-bm employees
 	c := createScheduler(driver, settings)
@@ -36,7 +36,7 @@ func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService 
 	return &CronService{neo4jDriver: driver, jwtSecret: settings.JwtSecret, scheduler: c}
 }
 
-func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
+func createScheduler(driver *neo4j.DriverWithContext, settings *config.Config) *cron.Cron {
 	c := cron.New()
 	if c == nil {
 		return nil
@@ -105,7 +105,7 @@ func (svc *CronService) GetCronJobHistory() (cronJobHistory []models.CronJobHist
 	return cronJobHistory, err
 }
 
-func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Config) (errs []error) {
+func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.DriverWithContext, settings *config.Config) (errs []error) {
 	session, _ := helpers.NewNeo4jSession(*neo4jDriver)
 
 	// call the API to get the employees - POST method and result is JSON
@@ -175,7 +175,7 @@ func GetEmployeesFromApi(url, apiKey string) models.SyncEliBeamlinesEmployeesRes
 	return models.SyncEliBeamlinesEmployeesResponse{}
 }
 
-func SetAllSystemTypes(neo4jDriver *neo4j.Driver, settings *config.Config) (err error) {
+func SetAllSystemTypes(neo4jDriver *neo4j.DriverWithContext, settings *config.Config) (err error) {
 
 	session, _ := helpers.NewNeo4jSession(*neo4jDriver)
 

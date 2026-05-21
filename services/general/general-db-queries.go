@@ -37,7 +37,7 @@ func GetGraphLinksByUidQuery(uid string) (result helpers.DatabaseQuery) {
 }
 
 func GetUUIDQuery() (result helpers.DatabaseQuery) {
-	result.Query = `RETURN apoc.create.uuid() as uuid`
+	result.Query = `RETURN randomUUID() as uuid`
 	result.Parameters = make(map[string]interface{})
 	result.ReturnAlias = "uuid"
 

@@ -4,11 +4,11 @@ import (
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/files-service/models"
 
-	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
+	"github.com/neo4j/neo4j-go-driver/v5/neo4j"
 )
 
 type FilesService struct {
-	neo4jDriver *neo4j.Driver
+	neo4jDriver *neo4j.DriverWithContext
 }
 
 type IFilesService interface {
@@ -19,7 +19,7 @@ type IFilesService interface {
 	SetMiniImageUrlToNode(uid string, urls *[]string, nodeLabel string) (err error)
 }
 
-func NewFilesService(driver *neo4j.Driver) IFilesService {
+func NewFilesService(driver *neo4j.DriverWithContext) IFilesService {
 	return &FilesService{neo4jDriver: driver}
 }
 
