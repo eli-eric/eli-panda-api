@@ -978,14 +978,18 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, order, ol, itemUsage, catalogueItem, ciCategory, supplier,
+		count(DISTINCT subsys) AS subsystemsCount,
+		count(DISTINCT spareIN) AS sparesIn,
+		count(DISTINCT spareOUT) AS sparesOut
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: parentPath,
-	hasSubsystems: case when subsys is not null then true else false end,
-	sparesIn: count(distinct spareIN),
-	sparesOut: count(distinct spareOUT),
+	hasSubsystems: subsystemsCount > 0,
+	sparesIn: sparesIn,
+	sparesOut: sparesOut,
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
@@ -1020,7 +1024,7 @@ func GetSystemsBySearchTextFullTextQuery(searchString string, facilityCode strin
 			} else null end	
 	} else null end,
 	statistics: {
-			subsystemsCount: count(DISTINCT subsys),
+			subsystemsCount: subsystemsCount,
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -1087,15 +1091,19 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
 	OPTIONAL MATCH (physicalItem)<-[ol:HAS_ORDER_LINE]-(order)
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, order, ol, itemUsage, catalogueItem, ciCategory, supplier,
+		count(DISTINCT subsys) AS subsystemsCount,
+		count(DISTINCT spareIN) AS sparesIn,
+		count(DISTINCT spareOUT) AS sparesOut
 	
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: parentPath,
-	hasSubsystems: case when subsys is not null then true else false end,
-	sparesIn: count(distinct spareIN),
-	sparesOut: count(distinct spareOUT),
+	hasSubsystems: subsystemsCount > 0,
+	sparesIn: sparesIn,
+	sparesOut: sparesOut,
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,
@@ -1130,7 +1138,7 @@ func GetSubSystemsQuery(parentUID string, facilityCode string) (result helpers.D
 		} else null end	
 		} else null end,
 		statistics: {
-			subsystemsCount: count(DISTINCT subsys),
+			subsystemsCount: subsystemsCount,
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -1214,18 +1222,18 @@ func GetSystemLeavesOrderByClauses(sorting *[]helpers.Sorting) string {
 	}
 
 	allowed := map[string]string{
-		"name":             "toLower(systems.name)",
-		"systemCode":       "toLower(systems.systemCode)",
-		"code":             "toLower(systems.systemCode)",
-		"systemType":       "toLower(systems.systemType.name)",
-		"zone":             "toLower(systems.zone.code)",
-		"location":         "toLower(systems.location.name)",
-		"eun":              "toLower(systems.physicalItem.eun)",
-		"serialNumber":     "toLower(systems.physicalItem.serialNumber)",
-		"catalogueName":    "toLower(systems.physicalItem.catalogueItem.name)",
-		"catalogueNumber":  "toLower(systems.physicalItem.catalogueItem.catalogueNumber)",
-		"importance":       "toLower(systems.importance.name)",
-		"responsible":      "toLower(systems.responsible.name)",
+		"name":            "toLower(systems.name)",
+		"systemCode":      "toLower(systems.systemCode)",
+		"code":            "toLower(systems.systemCode)",
+		"systemType":      "toLower(systems.systemType.name)",
+		"zone":            "toLower(systems.zone.code)",
+		"location":        "toLower(systems.location.name)",
+		"eun":             "toLower(systems.physicalItem.eun)",
+		"serialNumber":    "toLower(systems.physicalItem.serialNumber)",
+		"catalogueName":   "toLower(systems.physicalItem.catalogueItem.name)",
+		"catalogueNumber": "toLower(systems.physicalItem.catalogueItem.catalogueNumber)",
+		"importance":      "toLower(systems.importance.name)",
+		"responsible":     "toLower(systems.responsible.name)",
 	}
 
 	clauses := make([]string, 0, len(*sorting))
@@ -1542,15 +1550,19 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
 	OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, order, ol, itemUsage, catalogueItem, ciCategory, supplier,
+		count(DISTINCT subsys) AS subsystemsCount,
+		count(DISTINCT spareIN) AS sparesIn,
+		count(DISTINCT spareOUT) AS sparesOut
 
 	RETURN DISTINCT {
 		uid: sys.uid,
 		description: sys.description,
 		name: sys.name,
 		parentPath: parentPath,
-		hasSubsystems: case when subsys is not null then true else false end,
-		sparesIn: count(distinct spareIN),
-		sparesOut: count(distinct spareOUT),
+		hasSubsystems: subsystemsCount > 0,
+		sparesIn: sparesIn,
+		sparesOut: sparesOut,
 		systemCode: sys.systemCode,
 		systemAlias: sys.systemAlias,
 		systemLevel: sys.systemLevel,
@@ -1585,7 +1597,7 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 			} else null end
 		} else null end,
 		statistics: {
-			subsystemsCount: count(DISTINCT subsys),
+			subsystemsCount: subsystemsCount,
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -1849,14 +1861,18 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
 	OPTIONAL MATCH (sys)-[:IS_SPARE_FOR]->(spareOUT)
     OPTIONAL MATCH (sys)<-[:IS_SPARE_FOR]-(spareIN)
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, order, itemUsage, catalogueItem, ciCategory, supplier,
+		count(DISTINCT subsys) AS subsystemsCount,
+		count(DISTINCT spareIN) AS sparesIn,
+		count(DISTINCT spareOUT) AS sparesOut
 	RETURN DISTINCT {  
 		uid: sys.uid,
 	description: sys.description,
 	name: sys.name,
 	parentPath: parentPath,
-	hasSubsystems: case when subsys is not null then true else false end,
-	sparesIn: count(distinct spareIN),
-	sparesOut: count(distinct spareOUT),
+	hasSubsystems: subsystemsCount > 0,
+	sparesIn: sparesIn,
+	sparesOut: sparesOut,
 	systemCode: sys.systemCode,
 	systemAlias: sys.systemAlias,
 	systemLevel: sys.systemLevel,	
@@ -1887,7 +1903,7 @@ func GetSystemsByUidsQuery(uids []string) (result helpers.DatabaseQuery) {
 		} else null end	
 		} else null end,
 	statistics: {
-			subsystemsCount: count(DISTINCT subsys),
+			subsystemsCount: subsystemsCount,
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -1924,6 +1940,8 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 		END as parentPath
 	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})	
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, itemUsage, catalogueItem, ciCategory,
+		count(DISTINCT subsys) AS subsystemsCount
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -1959,7 +1977,7 @@ func SystemDetailQuery(uid string, facilityCode string) (result helpers.Database
 		} else null end	
 	} else null end,
 	statistics: {
-			subsystemsCount: count(DISTINCT subsys),
+			subsystemsCount: subsystemsCount,
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage
@@ -1992,6 +2010,11 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 		END as parentPath
 	}
 	OPTIONAL MATCH (sys)-[:HAS_SUBSYSTEM*1..50]->(subsys{deleted: false})
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, itemUsage, catalogueItem, ciCategory,
+		collect(DISTINCT CASE WHEN subsys IS NOT NULL THEN {uid: subsys.uid, name: subsys.name} END) AS rawSubsystems,
+		count(DISTINCT subsys) AS subsystemsCount
+	WITH sys, parentPath, loc, zone, st, responsible, imp, physicalItem, itemUsage, catalogueItem, ciCategory, subsystemsCount,
+		[subsystem IN rawSubsystems WHERE subsystem IS NOT NULL] AS subsystems
 	RETURN DISTINCT {  
 	uid: sys.uid,
 	description: sys.description,
@@ -2006,7 +2029,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 	systemType: case when st is not null then {uid: st.uid, name: st.name} else null end,
 	responsible: case when responsible is not null then {uid: responsible.uid, name: responsible.lastName + " " + responsible.firstName} else null end,
 	importance: case when imp is not null then {uid: imp.uid, name: imp.name} else null end,	
-	subsystems: case when subsys is not null then collect({uid: subsys.uid, name: subsys.name}) else null end,
+	subsystems: case when size(subsystems) = 0 then null else subsystems end,
 	physicalItem: case when physicalItem is not null then {
 		uid: physicalItem.uid, 
 		eun: physicalItem.eun, 
@@ -2022,7 +2045,7 @@ func GetSystemByEunQuery(eun string) (result helpers.DatabaseQuery) {
 		} else null end	
 	} else null end,
 	statistics: {
-			subsystemsCount: count(DISTINCT subsys),
+			subsystemsCount: subsystemsCount,
 			minimalSpareParstCount: sys.minimalSpareParstCount,
 			sparePartsCoverageSum: sys.sparePartsCoverageSum,
 			sp_coverage: sys.sp_coverage

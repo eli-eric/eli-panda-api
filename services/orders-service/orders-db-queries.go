@@ -236,74 +236,84 @@ func GetOrderWithOrderLinesByUidQuery(uid string, facilityCode string) (result h
 	OPTIONAL MATCH (o)-[:HAS_ORDER_STATUS]->(os)	
 	OPTIONAL MATCH (o)-[:HAS_REQUESTOR]->(req)
 	OPTIONAL MATCH (o)-[:HAS_PROCUREMENT_RESPONSIBLE]->(proc)
-	OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)
-	WITH o, s, os, itm, ci, req, proc, ol order by ol.isDelivered desc, ol.name
-	OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
-	OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)
-	OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
-	OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
-	// Add this part to get service item information for physical items
-	OPTIONAL MATCH (itm)-[:IS_SERVICED_BY]->(serviceItem:ServiceItem)
-	OPTIONAL MATCH (serviceOrder:Order)-[:HAS_SERVICE_LINE]->(serviceItem)
-	WITH o, s, os, req, proc, itm, ci, ol, sys, parentSystem, loc, itemUsage, serviceItem, serviceOrder
-	WITH o, s, os, req, proc, CASE WHEN itm IS NOT NULL THEN collect({ uid: itm.uid,
-		price: ol.price,
-		currency: ol.currency,
-		notes: ol.notes,
-		name: ci.name,
-		eun: itm.eun,
-		serialNumber: itm.serialNumber,
-		isDelivered: ol.isDelivered,
-		deliveredTime: ol.deliveredTime,
-		lastUpdateTime: ol.lastUpdateTime,
-		catalogueNumber: ci.catalogueNumber,
-		catalogueUid: ci.uid,
-		system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid,name: sys.name} ELSE NULL END,
-		parentSystem: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid,name: parentSystem.name} ELSE NULL END,
-		location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid,name: loc.name} ELSE NULL END,
-		itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid,name: itemUsage.name} ELSE NULL END,
-		serviceItemName: CASE WHEN serviceItem IS NOT NULL THEN serviceItem.name ELSE NULL END,
-		serviceOrderUid: CASE WHEN serviceOrder IS NOT NULL THEN serviceOrder.uid ELSE NULL END
-	}) ELSE NULL END as orderLines
+	CALL {
+		WITH o
+		OPTIONAL MATCH (o)-[ol:HAS_ORDER_LINE]->(itm)-[:IS_BASED_ON]->(ci)
+		WITH itm, ci, ol
+		ORDER BY ol.isDelivered DESC, ol.name
+		OPTIONAL MATCH (sys)-[:CONTAINS_ITEM]->(itm)
+		OPTIONAL MATCH (parentSystem)-[:HAS_SUBSYSTEM]->(sys)
+		OPTIONAL MATCH (itm)-[:HAS_ITEM_USAGE]->(itemUsage)
+		OPTIONAL MATCH (sys)-[:HAS_LOCATION]->(loc)
+		OPTIONAL MATCH (itm)-[:IS_SERVICED_BY]->(serviceItem:ServiceItem)
+		OPTIONAL MATCH (serviceOrder:Order)-[:HAS_SERVICE_LINE]->(serviceItem)
+		WITH collect(CASE WHEN itm IS NOT NULL THEN {
+			uid: itm.uid,
+			price: ol.price,
+			currency: ol.currency,
+			notes: ol.notes,
+			name: ci.name,
+			eun: itm.eun,
+			serialNumber: itm.serialNumber,
+			isDelivered: ol.isDelivered,
+			deliveredTime: ol.deliveredTime,
+			lastUpdateTime: ol.lastUpdateTime,
+			catalogueNumber: ci.catalogueNumber,
+			catalogueUid: ci.uid,
+			system: CASE WHEN sys IS NOT NULL THEN {uid: sys.uid, name: sys.name} ELSE NULL END,
+			parentSystem: CASE WHEN parentSystem IS NOT NULL THEN {uid: parentSystem.uid, name: parentSystem.name} ELSE NULL END,
+			location: CASE WHEN loc IS NOT NULL THEN {uid: loc.uid, name: loc.name} ELSE NULL END,
+			itemUsage: CASE WHEN itemUsage IS NOT NULL THEN {uid: itemUsage.uid, name: itemUsage.name} ELSE NULL END,
+			serviceItemName: CASE WHEN serviceItem IS NOT NULL THEN serviceItem.name ELSE NULL END,
+			serviceOrderUid: CASE WHEN serviceOrder IS NOT NULL THEN serviceOrder.uid ELSE NULL END
+		} END) AS rawOrderLines
+		WITH [orderLine IN rawOrderLines WHERE orderLine IS NOT NULL] AS orderLines
+		RETURN CASE WHEN size(orderLines) = 0 THEN NULL ELSE orderLines END AS orderLines
+	}
 
-	OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
-	OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
-	OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)-[:IS_PROPERTY_TYPE]->(propType:CatalogueCategoryPropertyType)
-	OPTIONAL MATCH (group:CatalogueCategoryPropertyGroup)-[:CONTAINS_PROPERTY]->(prop)
-	OPTIONAL MATCH (prop)-[:HAS_UNIT]->(unit)
-	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st, prop, propType, unit, group, cp
-	WITH o, s, os, req, proc, orderLines, si, sl, servitm, st,
-		 CASE WHEN prop IS NOT NULL THEN collect({
-			property: {
-				uid: prop.uid,
-				name: prop.name,
-				listOfValues: case when prop.listOfValues is not null and prop.listOfValues <> "" then split(prop.listOfValues, ";") else null end,
-				type: {
-					uid: propType.uid,
-					name: propType.name,
-					code: propType.code
+	CALL {
+		WITH o
+		OPTIONAL MATCH (o)-[sl:HAS_SERVICE_LINE]->(si:ServiceItem)-[:IS_BASED_ON]->(st:CatalogueServiceType)
+		OPTIONAL MATCH (si)<-[:IS_SERVICED_BY]-(servitm:Item)
+		OPTIONAL MATCH (si)-[cp:HAS_CATALOGUE_PROPERTY]->(prop:CatalogueCategoryProperty)-[:IS_PROPERTY_TYPE]->(propType:CatalogueCategoryPropertyType)
+		OPTIONAL MATCH (group:CatalogueCategoryPropertyGroup)-[:CONTAINS_PROPERTY]->(prop)
+		OPTIONAL MATCH (prop)-[:HAS_UNIT]->(unit)
+		WITH si, sl, servitm, st,
+			collect(CASE WHEN prop IS NOT NULL THEN {
+				property: {
+					uid: prop.uid,
+					name: prop.name,
+					listOfValues: CASE WHEN prop.listOfValues IS NOT NULL AND prop.listOfValues <> "" THEN split(prop.listOfValues, ";") ELSE NULL END,
+					type: {
+						uid: propType.uid,
+						name: propType.name,
+						code: propType.code
+					},
+					unit: CASE WHEN unit IS NOT NULL THEN {uid: unit.uid, name: unit.name} ELSE NULL END
 				},
-				unit: CASE WHEN unit IS NOT NULL THEN {uid: unit.uid, name: unit.name} ELSE NULL END
-			},
-			propertyGroup: group.name,
-			value: cp.value
-		 }) ELSE NULL END as details
-	WITH o, s, os, req, proc, orderLines, 
-	CASE WHEN si IS NOT NULL THEN collect({ 
-		uid: si.uid,
-		name: si.name,
-		price: sl.price,
-		currency: sl.currency,
-		isDelivered: si.isDelivered,
-		deliveredTime: si.deliveredTime,
-		notes: si.notes,
-		lastUpdateTime: si.lastUpdateTime,
-		item: {uid: servitm.uid, name: servitm.name},
-		eun: servitm.eun,
-		serialNumber: servitm.serialNumber,
-		serviceType: {uid: st.uid, name: st.name},
-		details: details
-	}) ELSE NULL END as serviceLines
+				propertyGroup: group.name,
+				value: cp.value
+			} END) AS rawDetails
+		WITH si, sl, servitm, st,
+			[detail IN rawDetails WHERE detail IS NOT NULL] AS details
+		WITH collect(CASE WHEN si IS NOT NULL THEN {
+			uid: si.uid,
+			name: si.name,
+			price: sl.price,
+			currency: sl.currency,
+			isDelivered: si.isDelivered,
+			deliveredTime: si.deliveredTime,
+			notes: si.notes,
+			lastUpdateTime: si.lastUpdateTime,
+			item: CASE WHEN servitm IS NOT NULL THEN {uid: servitm.uid, name: servitm.name} ELSE NULL END,
+			eun: servitm.eun,
+			serialNumber: servitm.serialNumber,
+			serviceType: CASE WHEN st IS NOT NULL THEN {uid: st.uid, name: st.name} ELSE NULL END,
+			details: CASE WHEN size(details) = 0 THEN NULL ELSE details END
+		} END) AS rawServiceLines
+		WITH [serviceLine IN rawServiceLines WHERE serviceLine IS NOT NULL] AS serviceLines
+		RETURN CASE WHEN size(serviceLines) = 0 THEN NULL ELSE serviceLines END AS serviceLines
+	}
 
 	RETURN DISTINCT {  
 	uid: o.uid,

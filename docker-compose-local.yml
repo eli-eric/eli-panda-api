@@ -59,6 +59,12 @@ services:
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_allowlist=apoc.*
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_security_allow__csv__import__from__file__urls=true
+      - NEO4J_dbms_cypher_lenient__create__relationship=true
+      - NEO4J_server_directories_import=import
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_db_temporal_timezone=Europe/Prague
       - NEO4J_server_bolt_listen__address=0.0.0.0:7687
     volumes:
       - "./db/neo4j/dev-instance/data:/data"
