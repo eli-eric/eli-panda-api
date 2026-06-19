@@ -162,7 +162,10 @@ func GetSingleNode(session neo4j.Session, node interface{}) (err error) {
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
+			return nil, err
 		}
 
 		rec, _ := record.Get("n")
@@ -343,7 +346,10 @@ func GetNeo4jSingleRecordAndMapToStruct[T any](session neo4j.Session, query Data
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -367,7 +373,10 @@ func GetNeo4jSingleRecordSingleValue[T any](session neo4j.Session, query Databas
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -394,7 +403,10 @@ func WriteNeo4jReturnSingleRecordAndMapToStruct[T any](session neo4j.Session, qu
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -418,7 +430,10 @@ func WriteNeo4jAndReturnSingleValue[T any](session neo4j.Session, query Database
 
 		record, err := result.Single()
 		if err != nil {
-			return nil, fmt.Errorf(err.Error())
+			if isNoRowsError(err) {
+				return nil, ERR_NO_ROWS
+			}
+			return nil, err
 		}
 
 		rec, _ := record.Get(query.ReturnAlias)
@@ -1054,3 +1069,15 @@ var ERR_DELETE_RELATED_ITEMS = errors.New("DELETE_NOT_POSSIBLE_RELATED_ITEMS")
 var ERR_CONFLICT = errors.New("CONFLICT")
 var ERR_DUPLICATE_SYSTEM_CODE = errors.New("DUPLICATE_SYSTEM_CODE")
 var ERR_MISSING_REQUIRED_FIELD = errors.New("MISSING_REQUIRED_FIELD")
+
+// ERR_NO_ROWS is returned by the single-record neo4j helpers when Result.Single()
+// reports zero matching rows. Callers should use errors.Is(err, helpers.ERR_NO_ROWS)
+// rather than string-match the message.
+var ERR_NO_ROWS = errors.New("no matching records")
+
+// isNoRowsError detects the neo4j driver's "no more records" UsageError that
+// Result.Single() emits when a query returns zero rows. Used by the single-record
+// helpers to convert the driver's stringy error into our typed ERR_NO_ROWS sentinel.
+func isNoRowsError(err error) bool {
+	return err != nil && strings.Contains(err.Error(), "no more records")
+}

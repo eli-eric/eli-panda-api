@@ -1,10 +1,15 @@
 package catalogueService
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/catalogue-service/models"
+	codebookModels "panda/apigateway/services/codebook-service/models"
 
 	"github.com/rs/zerolog/log"
 
@@ -30,6 +35,7 @@ type ICatalogueHandlers interface {
 	GetCatalogueCategoryPropertiesByUid() echo.HandlerFunc
 	GetCatalogueCategoryPhysicalItemPropertiesByUid() echo.HandlerFunc
 	UpdateCatalogueItem() echo.HandlerFunc
+	PatchCatalogueItem() echo.HandlerFunc
 	DeleteCatalogueItem() echo.HandlerFunc
 	GetCatalogueItemStatistics() echo.HandlerFunc
 	CatalogueItemsOverallStatistics() echo.HandlerFunc
@@ -534,6 +540,169 @@ func (h *CatalogueHandlers) UpdateCatalogueItem() echo.HandlerFunc {
 
 		return echo.ErrInternalServerError
 	}
+}
+
+// PatchCatalogueItem godoc
+// @Summary Partially update catalogue item
+// @Description Applies a partial update to a catalogue item. Only fields present in the JSON body are modified.
+// @Description Required: lastUpdateTime (for conflict detection). Supported keys: name, catalogueNumber, description, manufacturerUrl, manufacturerNumber, supplier, category, details.
+// @Description Scalar fields set to JSON null are cleared. Missing keys are left untouched. Details are merged (no deletion); send value:null to clear a single detail's value.
+// @Tags Catalogue
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param uid path string true "Catalogue item UID"
+// @Param body body object true "Partial catalogue item payload"
+// @Success 200 {object} models.CatalogueItem
+// @Failure 400 "Bad Request — malformed body, missing lastUpdateTime, or unknown supplier/category/property UID"
+// @Failure 404 "Not Found — catalogue item does not exist"
+// @Failure 409 "Conflict — lastUpdateTime mismatch or concurrent update detected"
+// @Failure 500 "Internal server error"
+// @Router /v1/catalogue/item/{uid} [patch]
+func (h *CatalogueHandlers) PatchCatalogueItem() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		body, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return helpers.BadRequest("cannot read request body")
+		}
+
+		raw := map[string]json.RawMessage{}
+		if err := json.Unmarshal(body, &raw); err != nil {
+			return helpers.BadRequest("invalid JSON body")
+		}
+
+		fields, err := parsePatchCatalogueItemPayload(raw)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		userUID := c.Get("userUID").(string)
+
+		updatedItem, err := h.catalogueService.PatchCatalogueItem(uid, fields, userUID)
+		if err == nil {
+			return c.JSON(http.StatusOK, updatedItem)
+		} else if errors.Is(err, helpers.ERR_CONFLICT) {
+			log.Err(helpers.ERR_CONFLICT).Msg("Catalogue item was updated by another user")
+			return echo.ErrConflict
+		} else if errors.Is(err, helpers.ERR_NOT_FOUND) {
+			return echo.ErrNotFound
+		} else if errors.Is(err, ErrPatchValidation) {
+			return helpers.BadRequest(err.Error())
+		}
+
+		log.Error().Err(err).Msg("Error patching catalogue item")
+		return echo.ErrInternalServerError
+	}
+}
+
+// rawMessageIsNull reports whether a json.RawMessage contains the literal token
+// "null", tolerating surrounding whitespace (encoding/json preserves it in RawMessage).
+func rawMessageIsNull(r json.RawMessage) bool {
+	return bytes.Equal(bytes.TrimSpace(r), []byte("null"))
+}
+
+// parsePatchCatalogueItemPayload maps a json.RawMessage map into the typed
+// PatchCatalogueItemFields struct. Keys absent from the map stay nil; explicit
+// JSON null is captured via Optional[T] with Value=nil.
+func parsePatchCatalogueItemPayload(raw map[string]json.RawMessage) (*models.PatchCatalogueItemFields, error) {
+	fields := &models.PatchCatalogueItemFields{}
+
+	lutRaw, ok := raw["lastUpdateTime"]
+	if !ok {
+		return nil, fmt.Errorf("lastUpdateTime is required")
+	}
+	if err := json.Unmarshal(lutRaw, &fields.LastUpdateTime); err != nil {
+		return nil, fmt.Errorf("invalid lastUpdateTime: %w", err)
+	}
+
+	if r, ok := raw["name"]; ok {
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid name: %w", err)
+		}
+		fields.Name = &v
+	}
+	if r, ok := raw["catalogueNumber"]; ok {
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid catalogueNumber: %w", err)
+		}
+		fields.CatalogueNumber = &v
+	}
+
+	parseOptString := func(key string) (*models.Optional[string], error) {
+		r, ok := raw[key]
+		if !ok {
+			return nil, nil
+		}
+		if rawMessageIsNull(r) {
+			return &models.Optional[string]{Value: nil}, nil
+		}
+		var v string
+		if err := json.Unmarshal(r, &v); err != nil {
+			return nil, fmt.Errorf("invalid %s: %w", key, err)
+		}
+		return &models.Optional[string]{Value: &v}, nil
+	}
+
+	if v, err := parseOptString("description"); err != nil {
+		return nil, err
+	} else {
+		fields.Description = v
+	}
+	if v, err := parseOptString("manufacturerUrl"); err != nil {
+		return nil, err
+	} else {
+		fields.ManufacturerUrl = v
+	}
+	if v, err := parseOptString("manufacturerNumber"); err != nil {
+		return nil, err
+	} else {
+		fields.ManufacturerNumber = v
+	}
+
+	if r, ok := raw["supplier"]; ok {
+		if rawMessageIsNull(r) {
+			fields.Supplier = &models.Optional[codebookModels.Codebook]{Value: nil}
+		} else {
+			var cb codebookModels.Codebook
+			if err := json.Unmarshal(r, &cb); err != nil {
+				return nil, fmt.Errorf("invalid supplier: %w", err)
+			}
+			if cb.UID == "" {
+				return nil, fmt.Errorf("supplier.uid is required; to clear the supplier send supplier: null")
+			}
+			fields.Supplier = &models.Optional[codebookModels.Codebook]{Value: &cb}
+		}
+	}
+
+	if r, ok := raw["category"]; ok {
+		if rawMessageIsNull(r) {
+			return nil, fmt.Errorf("category cannot be null; category is required for catalogue items")
+		}
+		var cb codebookModels.Codebook
+		if err := json.Unmarshal(r, &cb); err != nil {
+			return nil, fmt.Errorf("invalid category: %w", err)
+		}
+		if cb.UID == "" {
+			return nil, fmt.Errorf("category.uid is required")
+		}
+		fields.Category = &cb
+	}
+
+	if r, ok := raw["details"]; ok {
+		var details []models.CatalogueItemDetail
+		if err := json.Unmarshal(r, &details); err != nil {
+			return nil, fmt.Errorf("invalid details: %w", err)
+		}
+		fields.Details = &details
+	}
+
+	return fields, nil
 }
 
 // DeleteCatalogueItem godoc
