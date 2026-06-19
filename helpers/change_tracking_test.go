@@ -96,6 +96,47 @@ func TestAppendIfChanged_AllChangeTypes(t *testing.T) {
 	}
 }
 
+func TestAppendIfChangedFor_NilEntity_BehavesLikeAppendIfChanged(t *testing.T) {
+	entries := AppendIfChangedFor(nil, nil, "name", ChangeTypeString, "old", "new")
+	assert.Len(t, entries, 1)
+	assert.Nil(t, entries[0].Entity, "nil entity must stay nil (omitted on serialization)")
+}
+
+func TestAppendIfChangedFor_CarriesEntity(t *testing.T) {
+	entity := &ChangeEntity{Type: "property", UID: "p-1", Name: "Voltage"}
+	entries := AppendIfChangedFor(nil, entity, "defaultValue", ChangeTypeString, "5", "10")
+	assert.Len(t, entries, 1)
+	assert.Equal(t, entity, entries[0].Entity)
+}
+
+func TestAppendIfChangedFor_NoChange_DoesNotAppendEvenWithEntity(t *testing.T) {
+	entity := &ChangeEntity{Type: "group", UID: "g-1", Name: "Group"}
+	entries := AppendIfChangedFor(nil, entity, "order", ChangeTypeNumber, 10, 10)
+	assert.Empty(t, entries, "equal values must not append regardless of entity context")
+}
+
+func TestMarshalChanges_OmitsEntityWhenNil(t *testing.T) {
+	out := MarshalChanges([]ChangeEntry{{Field: "name", Type: "string", OldValue: "a", NewValue: "b"}})
+	var parsed []map[string]interface{}
+	assert.NoError(t, json.Unmarshal([]byte(out), &parsed))
+	_, present := parsed[0]["entity"]
+	assert.False(t, present, "nil entity must be omitted from JSON via omitempty")
+}
+
+func TestMarshalChanges_SerializesEntity(t *testing.T) {
+	entries := AppendIfChangedFor(nil, &ChangeEntity{Type: "property", UID: "p-1", Name: "Voltage"},
+		"defaultValue", ChangeTypeString, "5", "10")
+	out := MarshalChanges(entries)
+
+	var parsed []map[string]interface{}
+	assert.NoError(t, json.Unmarshal([]byte(out), &parsed))
+	entity, ok := parsed[0]["entity"].(map[string]interface{})
+	assert.True(t, ok, "entity must serialize as a nested object")
+	assert.Equal(t, "property", entity["type"])
+	assert.Equal(t, "p-1", entity["uid"])
+	assert.Equal(t, "Voltage", entity["name"])
+}
+
 func TestMarshalChanges_Empty(t *testing.T) {
 	assert.Equal(t, "[]", MarshalChanges(nil))
 	assert.Equal(t, "[]", MarshalChanges([]ChangeEntry{}))
