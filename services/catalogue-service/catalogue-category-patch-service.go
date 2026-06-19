@@ -64,24 +64,10 @@ func (svc *CatalogueService) GetCatalogueCategoryPhysicalProperty(categoryUID, p
 func (svc *CatalogueService) CreateCatalogueCategoryGroup(categoryUID string, fields *models.CreateCatalogueCategoryGroupFields, userUID string) (result models.CatalogueCategoryPropertyGroup, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	// Resolve the target order upfront: payload value wins; otherwise compute
-	// max(siblings.order)+10 via a lightweight read so the write is a single round-trip.
-	var order int
-	if fields.Order != nil {
-		order = *fields.Order
-	} else {
-		nextOrder, qerr := helpers.GetNeo4jSingleRecordSingleValue[int64](session, NextGroupOrderQuery(categoryUID))
-		if qerr != nil {
-			if errors.Is(qerr, helpers.ERR_NO_ROWS) {
-				return result, helpers.ERR_NOT_FOUND
-			}
-			return result, qerr
-		}
-		order = int(nextOrder)
-	}
-
+	// Order resolves inside the create transaction (payload value, else max(siblings)+10) —
+	// no pre-read, so concurrent creates can't race on a stale max.
 	newUID := uuid.NewString()
-	query := CreateCatalogueCategoryGroupQuery(categoryUID, newUID, userUID, fields.Name, order)
+	query := CreateCatalogueCategoryGroupQuery(categoryUID, newUID, userUID, fields.Name, fields.Order)
 	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 	if err != nil {
 		if errors.Is(err, helpers.ERR_NO_ROWS) {
@@ -93,12 +79,8 @@ func (svc *CatalogueService) CreateCatalogueCategoryGroup(categoryUID string, fi
 		return result, helpers.ERR_NOT_FOUND
 	}
 
-	result = models.CatalogueCategoryPropertyGroup{
-		UID:   newUID,
-		Name:  fields.Name,
-		Order: &order,
-	}
-	return result, nil
+	// Re-fetch to surface the in-query-resolved order in the response.
+	return svc.fetchCategoryGroup(categoryUID, newUID)
 }
 
 func (svc *CatalogueService) PatchCatalogueCategoryGroup(categoryUID, groupUID string, fields *models.PatchCatalogueCategoryGroupFields, userUID string) (result models.CatalogueCategoryPropertyGroup, err error) {
@@ -187,23 +169,9 @@ func (svc *CatalogueService) CreateCatalogueCategoryProperty(categoryUID, groupU
 		}
 	}
 
-	// Resolve the target order upfront (payload value wins; otherwise max(siblings)+10).
-	var order int
-	if fields.Order != nil {
-		order = *fields.Order
-	} else {
-		next, qerr := helpers.GetNeo4jSingleRecordSingleValue[int64](session, NextPropertyOrderQuery(categoryUID, groupUID))
-		if qerr != nil {
-			if errors.Is(qerr, helpers.ERR_NO_ROWS) {
-				return result, helpers.ERR_NOT_FOUND
-			}
-			return result, qerr
-		}
-		order = int(next)
-	}
-
+	// Order resolves inside the create transaction (payload value, else max(group siblings)+10).
 	newUID := uuid.NewString()
-	query := CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newUID, userUID, fields, order)
+	query := CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newUID, userUID, fields, fields.Order)
 	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 	if err != nil {
 		if errors.Is(err, helpers.ERR_NO_ROWS) {
@@ -377,22 +345,9 @@ func (svc *CatalogueService) CreateCatalogueCategoryPhysicalProperty(categoryUID
 		}
 	}
 
-	var order int
-	if fields.Order != nil {
-		order = *fields.Order
-	} else {
-		next, qerr := helpers.GetNeo4jSingleRecordSingleValue[int64](session, NextPhysicalPropertyOrderQuery(categoryUID))
-		if qerr != nil {
-			if errors.Is(qerr, helpers.ERR_NO_ROWS) {
-				return result, helpers.ERR_NOT_FOUND
-			}
-			return result, qerr
-		}
-		order = int(next)
-	}
-
+	// Order resolves inside the create transaction (payload value, else max(physicals)+10).
 	newUID := uuid.NewString()
-	query := CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newUID, userUID, fields, order)
+	query := CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newUID, userUID, fields, fields.Order)
 	returnedUID, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query)
 	if err != nil {
 		if errors.Is(err, helpers.ERR_NO_ROWS) {

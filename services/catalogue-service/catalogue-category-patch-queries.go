@@ -9,6 +9,16 @@ import (
 
 // =====  Shared helpers for category granular PATCH queries  =====
 
+// nullableIntParam converts an optional order pointer into a Cypher parameter value: a nil
+// pointer becomes a NULL parameter (so coalesce in the query computes the default), a set
+// pointer becomes its int value.
+func nullableIntParam(v *int) interface{} {
+	if v == nil {
+		return nil
+	}
+	return *v
+}
+
 // categoryAuditSuffix is the last two Cypher phases common to every granular category
 // mutation: the WAS_UPDATED_BY audit edge carrying the JSON-stringified changes and the
 // RETURN that produces the category UID the service uses to detect zero-row failures.
@@ -126,21 +136,24 @@ func PatchCatalogueCategoryQuery(uid string, fields *models.PatchCatalogueCatego
 
 // =====  POST /v1/catalogue/category/:uid/group  =====
 
-// CreateCatalogueCategoryGroupQuery creates a new group under a category. The caller
-// (service layer) is responsible for computing newGroupUID and resolvedOrder (payload
-// order, or max(siblings)+10 when absent). Single Cypher transaction: MATCH category,
-// CREATE new group + HAS_GROUP edge, emit audit.
-func CreateCatalogueCategoryGroupQuery(categoryUID, newGroupUID, userUID, name string, resolvedOrder int) (result helpers.DatabaseQuery) {
+// CreateCatalogueCategoryGroupQuery creates a new group under a category. Order resolution
+// happens inside the transaction: the payload value wins, otherwise max(siblings.order)+10
+// is computed atomically with the insert — so concurrent creates can't race on a stale
+// read and assign duplicate orders. Pass order=nil to auto-assign. Single Cypher
+// transaction: MATCH category, compute order, CREATE group + HAS_GROUP edge, emit audit.
+func CreateCatalogueCategoryGroupQuery(categoryUID, newGroupUID, userUID, name string, order *int) (result helpers.DatabaseQuery) {
 	params, skeleton := initCategoryPatchQuery(categoryUID, userUID, "INSERT")
 	result.Parameters = params
 	result.Parameters["newGroupUid"] = newGroupUID
 	result.Parameters["name"] = name
-	result.Parameters["order"] = resolvedOrder
+	result.Parameters["order"] = nullableIntParam(order)
 	result.Query = skeleton
 
 	result.Query += `
 	WITH u, category
-	CREATE(newGroup:CatalogueCategoryPropertyGroup{uid: $newGroupUid, name: $name, order: $order})
+	OPTIONAL MATCH(category)-[:HAS_GROUP]->(sib:CatalogueCategoryPropertyGroup)
+	WITH u, category, coalesce($order, coalesce(max(sib.order), 0) + 10) as resolvedOrder
+	CREATE(newGroup:CatalogueCategoryPropertyGroup{uid: $newGroupUid, name: $name, order: resolvedOrder})
 	CREATE(category)-[:HAS_GROUP]->(newGroup)
 	WITH u, category
 	`
@@ -257,20 +270,6 @@ func SeedCategoryGroupOrdersQuery(categoryUID string) (result helpers.DatabaseQu
 	return result
 }
 
-// NextGroupOrderQuery returns max(order of existing groups under this category) + 10,
-// or 10 if no sibling has an order yet. Used by the create-group service to auto-assign
-// a sensible default when the POST payload omits order.
-func NextGroupOrderQuery(categoryUID string) (result helpers.DatabaseQuery) {
-	result.Parameters = map[string]interface{}{"uid": categoryUID}
-	result.Query = `
-	MATCH(c:CatalogueCategory{uid: $uid})
-	OPTIONAL MATCH(c)-[:HAS_GROUP]->(g:CatalogueCategoryPropertyGroup)
-	RETURN coalesce(max(g.order), 0) + 10 as nextOrder
-	`
-	result.ReturnAlias = "nextOrder"
-	return result
-}
-
 // GetCatalogueCategoryGroupByUidsQuery fetches a single group under a category. The MATCH
 // enforces category↔group consistency — if the group doesn't belong to this category (or
 // either UID is unknown) the query returns zero rows and the caller gets ERR_NO_ROWS.
@@ -335,7 +334,7 @@ type codebookRef struct {
 }
 
 // ListCatalogueCategoryPropertiesInGroupQuery returns every property under a specific
-// group, used for NextPropertyOrderQuery's sibling lookup and for lazy-seed triggers.
+// group, used by the lazy-seed trigger to decide whether siblings need renumbering.
 func ListCatalogueCategoryPropertiesInGroupQuery(categoryUID, groupUID string) (result helpers.DatabaseQuery) {
 	result.Parameters = map[string]interface{}{"uid": categoryUID, "groupUid": groupUID}
 	result.Query = `
@@ -344,19 +343,6 @@ func ListCatalogueCategoryPropertiesInGroupQuery(categoryUID, groupUID string) (
 	RETURN { uid: p.uid, name: p.name, order: p.order } as property
 	`
 	result.ReturnAlias = "property"
-	return result
-}
-
-// NextPropertyOrderQuery returns max(order of existing properties in this group) + 10,
-// or 10 when the group is empty. Used by create-property service when payload omits order.
-func NextPropertyOrderQuery(categoryUID, groupUID string) (result helpers.DatabaseQuery) {
-	result.Parameters = map[string]interface{}{"uid": categoryUID, "groupUid": groupUID}
-	result.Query = `
-	MATCH(c:CatalogueCategory{uid: $uid})-[:HAS_GROUP]->(g:CatalogueCategoryPropertyGroup{uid: $groupUid})
-	OPTIONAL MATCH(g)-[:CONTAINS_PROPERTY]->(p:CatalogueCategoryProperty)
-	RETURN coalesce(max(p.order), 0) + 10 as nextOrder
-	`
-	result.ReturnAlias = "nextOrder"
 	return result
 }
 
@@ -384,14 +370,16 @@ func SeedCategoryPropertyOrdersQuery(categoryUID, groupUID string) (result helpe
 
 // CreateCatalogueCategoryPropertyQuery creates a new property under a group with its type
 // and optional unit. Phase-1 MATCHes enforce category↔group consistency and validate
-// type/unit UIDs. The service pre-computes resolvedOrder (payload value or max+10).
-func CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newPropertyUID, userUID string, fields *models.CreateCatalogueCategoryPropertyFields, resolvedOrder int) (result helpers.DatabaseQuery) {
+// type/unit UIDs. Order resolves inside the transaction (payload value, else
+// max(group siblings)+10) so concurrent creates can't race on a stale read. order=nil
+// auto-assigns.
+func CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newPropertyUID, userUID string, fields *models.CreateCatalogueCategoryPropertyFields, order *int) (result helpers.DatabaseQuery) {
 	params, skeleton := initCategoryPatchQuery(categoryUID, userUID, "INSERT")
 	result.Parameters = params
 	result.Parameters["groupUid"] = groupUID
 	result.Parameters["newPropUid"] = newPropertyUID
 	result.Parameters["name"] = fields.Name
-	result.Parameters["order"] = resolvedOrder
+	result.Parameters["order"] = nullableIntParam(order)
 	result.Parameters["typeUid"] = fields.Type.UID
 
 	defaultValue := ""
@@ -411,17 +399,19 @@ func CreateCatalogueCategoryPropertyQuery(categoryUID, groupUID, newPropertyUID,
 	WITH u, category
 	MATCH(category)-[:HAS_GROUP]->(g:CatalogueCategoryPropertyGroup{uid: $groupUid})
 	WITH u, category, g
+	OPTIONAL MATCH(g)-[:CONTAINS_PROPERTY]->(sib:CatalogueCategoryProperty)
+	WITH u, category, g, coalesce($order, coalesce(max(sib.order), 0) + 10) as resolvedOrder
 	MATCH(propType:CatalogueCategoryPropertyType{uid: $typeUid})
-	WITH u, category, g, propType
+	WITH u, category, g, resolvedOrder, propType
 	`
 	if settingUnit {
 		result.Query += `
 		MATCH(unit:Unit{uid: $unitUid})
-		WITH u, category, g, propType, unit
+		WITH u, category, g, resolvedOrder, propType, unit
 		`
 	}
 	result.Query += `
-	CREATE(newProp:CatalogueCategoryProperty{uid: $newPropUid, name: $name, defaultValue: $defaultValue, listOfValues: $listOfValues, order: $order})
+	CREATE(newProp:CatalogueCategoryProperty{uid: $newPropUid, name: $name, defaultValue: $defaultValue, listOfValues: $listOfValues, order: resolvedOrder})
 	CREATE(g)-[:CONTAINS_PROPERTY]->(newProp)
 	CREATE(newProp)-[:IS_PROPERTY_TYPE]->(propType)
 	`
@@ -634,18 +624,6 @@ func GetCatalogueCategoryPhysicalPropertyByUidsQuery(categoryUID, propertyUID st
 	return result
 }
 
-// NextPhysicalPropertyOrderQuery — max(existing physical prop order)+10 for auto-order on create.
-func NextPhysicalPropertyOrderQuery(categoryUID string) (result helpers.DatabaseQuery) {
-	result.Parameters = map[string]interface{}{"uid": categoryUID}
-	result.Query = `
-	MATCH(c:CatalogueCategory{uid: $uid})
-	OPTIONAL MATCH(c)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(p:CatalogueCategoryProperty)
-	RETURN coalesce(max(p.order), 0) + 10 as nextOrder
-	`
-	result.ReturnAlias = "nextOrder"
-	return result
-}
-
 // SeedCategoryPhysicalPropertyOrdersQuery — per-category lazy order seed for physicals.
 func SeedCategoryPhysicalPropertyOrdersQuery(categoryUID string) (result helpers.DatabaseQuery) {
 	result.Parameters = map[string]interface{}{"uid": categoryUID}
@@ -669,12 +647,12 @@ func SeedCategoryPhysicalPropertyOrdersQuery(categoryUID string) (result helpers
 // CreateCatalogueCategoryPhysicalPropertyQuery — attaches a new physical property under
 // a category via CONTAINS_PHYSICAL_ITEM_PROPERTY. Same type + optional unit MATCHes as
 // regular property create.
-func CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newPropertyUID, userUID string, fields *models.CreateCatalogueCategoryPhysicalPropertyFields, resolvedOrder int) (result helpers.DatabaseQuery) {
+func CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newPropertyUID, userUID string, fields *models.CreateCatalogueCategoryPhysicalPropertyFields, order *int) (result helpers.DatabaseQuery) {
 	params, skeleton := initCategoryPatchQuery(categoryUID, userUID, "INSERT")
 	result.Parameters = params
 	result.Parameters["newPropUid"] = newPropertyUID
 	result.Parameters["name"] = fields.Name
-	result.Parameters["order"] = resolvedOrder
+	result.Parameters["order"] = nullableIntParam(order)
 	result.Parameters["typeUid"] = fields.Type.UID
 
 	defaultValue := ""
@@ -692,17 +670,19 @@ func CreateCatalogueCategoryPhysicalPropertyQuery(categoryUID, newPropertyUID, u
 	result.Query = skeleton
 	result.Query += `
 	WITH u, category
+	OPTIONAL MATCH(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(sib:CatalogueCategoryProperty)
+	WITH u, category, coalesce($order, coalesce(max(sib.order), 0) + 10) as resolvedOrder
 	MATCH(propType:CatalogueCategoryPropertyType{uid: $typeUid})
-	WITH u, category, propType
+	WITH u, category, resolvedOrder, propType
 	`
 	if settingUnit {
 		result.Query += `
 		MATCH(unit:Unit{uid: $unitUid})
-		WITH u, category, propType, unit
+		WITH u, category, resolvedOrder, propType, unit
 		`
 	}
 	result.Query += `
-	CREATE(newProp:CatalogueCategoryProperty{uid: $newPropUid, name: $name, defaultValue: $defaultValue, listOfValues: $listOfValues, order: $order})
+	CREATE(newProp:CatalogueCategoryProperty{uid: $newPropUid, name: $name, defaultValue: $defaultValue, listOfValues: $listOfValues, order: resolvedOrder})
 	CREATE(category)-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(newProp)
 	CREATE(newProp)-[:IS_PROPERTY_TYPE]->(propType)
 	`
