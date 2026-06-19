@@ -48,6 +48,11 @@ type CatalogueCategoryProperty struct {
 	Type CatalogueCategoryPropertyType `json:"type,omitempty"`
 
 	Unit *models.Codebook `json:"unit,omitempty"`
+
+	// GroupUID is the parent group a property belongs to. Populated on grouped-property
+	// reads (so edit flows can discover the current group without the full category-detail
+	// payload); nil for physical properties, which are attached directly to the category.
+	GroupUID *string `json:"groupUid,omitempty"`
 }
 
 type CatalogueCategoryPropertyType struct {

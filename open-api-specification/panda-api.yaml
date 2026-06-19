@@ -195,6 +195,12 @@ definitions:
     properties:
       defaultValue:
         type: string
+      groupUid:
+        description: |-
+          GroupUID is the parent group a property belongs to. Populated on grouped-property
+          reads (so edit flows can discover the current group without the full category-detail
+          payload); nil for physical properties, which are attached directly to the category.
+        type: string
       listOfValues:
         items:
           type: string

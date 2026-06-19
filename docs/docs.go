@@ -6905,6 +6905,10 @@ const docTemplate = `{
                 "defaultValue": {
                     "type": "string"
                 },
+                "groupUid": {
+                    "description": "GroupUID is the parent group a property belongs to. Populated on grouped-property\nreads (so edit flows can discover the current group without the full category-detail\npayload); nil for physical properties, which are attached directly to the category.",
+                    "type": "string"
+                },
                 "listOfValues": {
                     "type": "array",
                     "items": {

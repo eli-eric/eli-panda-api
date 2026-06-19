@@ -355,6 +355,14 @@ func TestCreateCatalogueCategoryProperty_HappyPath_AutoOrder(t *testing.T) {
 	assert.NotNil(t, p.Order)
 	assert.Equal(t, 10, *p.Order, "first property in empty group gets order=10")
 	assert.Equal(t, typeUID, p.Type.UID)
+	assert.NotNil(t, p.GroupUID, "grouped property response must carry its parent groupUid")
+	assert.Equal(t, gA, *p.GroupUID)
+
+	// GET must also surface the parent group so edit flows can read it directly.
+	got, err := svc.GetCatalogueCategoryProperty(f.categoryUID, p.UID)
+	assert.NoError(t, err)
+	assert.NotNil(t, got.GroupUID)
+	assert.Equal(t, gA, *got.GroupUID)
 }
 
 func TestCreateCatalogueCategoryProperty_UnknownType_ReturnsValidationError(t *testing.T) {
@@ -529,6 +537,7 @@ func TestCreateCatalogueCategoryPhysicalProperty_HappyPath(t *testing.T) {
 	assert.Equal(t, "Weight", p.Name)
 	assert.NotNil(t, p.Order)
 	assert.Equal(t, 10, *p.Order)
+	assert.Nil(t, p.GroupUID, "physical properties have no parent group")
 }
 
 func TestPatchCatalogueCategoryPhysicalProperty_RenameAndDefault(t *testing.T) {

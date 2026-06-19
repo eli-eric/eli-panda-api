@@ -500,6 +500,12 @@ func toCatalogueCategoryProperty(p CategoryPropertyWithGroup) models.CatalogueCa
 	if p.Unit != nil {
 		out.Unit = &codebookModels.Codebook{UID: p.Unit.UID, Name: p.Unit.Name}
 	}
+	// Surface the parent group on grouped-property responses so edit flows can read the
+	// current group directly. Physical-property reads leave GroupUID empty → stays nil.
+	if p.GroupUID != "" {
+		groupUID := p.GroupUID
+		out.GroupUID = &groupUID
+	}
 	return out
 }
 
