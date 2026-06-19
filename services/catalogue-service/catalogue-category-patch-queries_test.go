@@ -82,8 +82,13 @@ func TestPatchCatalogueCategoryQuery_IdempotentName(t *testing.T) {
 	same := "Old Cat"
 	q := PatchCatalogueCategoryQuery("cat-1", &models.PatchCatalogueCategoryFields{Name: &same}, newOriginalCategory(), "user-1")
 
+	// The SET still runs (the field is present in the payload), but because the value is
+	// unchanged the query records NO audit edge — the history UI renders one row per
+	// WAS_UPDATED_BY edge, so a no-op must not leave a content-free "updated" row.
 	assert.Contains(t, q.Query, "SET category.name = $name")
-	assert.Equal(t, "[]", q.Parameters["changes"], "no-op PATCH still writes audit row with empty changes")
+	assert.NotContains(t, q.Query, "WAS_UPDATED_BY", "no-op PATCH must not write an audit edge")
+	assert.Nil(t, q.Parameters["changes"], "no-op PATCH sets no changes param")
+	assert.Contains(t, q.Query, "RETURN category.uid as uid", "must still RETURN for zero-row detection")
 }
 
 func indexOfStr(haystack, needle string) int {

@@ -94,6 +94,14 @@ func (svc *CatalogueService) PatchCatalogueCategoryGroup(categoryUID, groupUID s
 	// Lazy order seed: if the caller is setting order but some siblings still lack
 	// explicit order values (legacy data), renumber all unseeded siblings before applying
 	// the requested value so the resulting ordering is deterministic.
+	//
+	// NOTE: the seed and the patch below run as two separate auto-commit transactions, so
+	// they are not atomic. This is tolerated because the seed only fires once per group —
+	// the first time legacy (all-NULL) data is reordered — and is idempotent (it touches
+	// only IS NULL siblings). After that first reorder allSeeded is true and the seed is
+	// skipped entirely. A failure between the two writes leaves siblings renumbered but the
+	// requested value unapplied; the next reorder converges. Folding both into one
+	// WriteTransaction is a deferred follow-up (tracked with the optimistic-lock work).
 	if fields.Order != nil {
 		siblings, lerr := svc.listCategoryGroups(categoryUID)
 		if lerr != nil {
@@ -209,11 +217,9 @@ func (svc *CatalogueService) PatchCatalogueCategoryProperty(categoryUID, propert
 			return result, fmt.Errorf("%w: target group not found: %s", ErrPatchValidation, *fields.GroupUID)
 		}
 		// Ensure the new group belongs to this category (flat URL enforcement).
-		gr, gerr := svc.fetchCategoryGroup(categoryUID, *fields.GroupUID)
-		if gerr != nil {
+		if _, gerr := svc.fetchCategoryGroup(categoryUID, *fields.GroupUID); gerr != nil {
 			return result, fmt.Errorf("%w: target group not under this category: %s", ErrPatchValidation, *fields.GroupUID)
 		}
-		_ = gr
 	}
 	if fields.Type != nil && fields.Type.UID != "" {
 		exists, nerr := svc.nodeExists("CatalogueCategoryPropertyType", fields.Type.UID)
@@ -393,14 +399,28 @@ func (svc *CatalogueService) PatchCatalogueCategoryPhysicalProperty(categoryUID,
 		}
 	}
 
-	// Lazy order seed across all physical properties in this category.
+	// Lazy order seed across all physical properties in this category — skip the write when
+	// every sibling already has an explicit order (mirrors the group/property paths).
 	if fields.Order != nil {
-		_, serr := helpers.WriteNeo4jAndReturnSingleValue[int64](session, SeedCategoryPhysicalPropertyOrdersQuery(categoryUID))
-		if serr != nil && !errors.Is(serr, helpers.ERR_NO_ROWS) {
-			return result, serr
+		siblings, lerr := helpers.GetNeo4jArrayOfNodes[models.CatalogueCategoryProperty](session, ListCatalogueCategoryPhysicalPropertiesQuery(categoryUID))
+		if lerr != nil && !errors.Is(lerr, helpers.ERR_NO_ROWS) {
+			return result, lerr
 		}
-		if refreshed, ferr := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID); ferr == nil {
-			original = refreshed
+		allSeeded := true
+		for _, p := range siblings {
+			if p.Order == nil {
+				allSeeded = false
+				break
+			}
+		}
+		if !allSeeded {
+			_, serr := helpers.WriteNeo4jAndReturnSingleValue[int64](session, SeedCategoryPhysicalPropertyOrdersQuery(categoryUID))
+			if serr != nil && !errors.Is(serr, helpers.ERR_NO_ROWS) {
+				return result, serr
+			}
+			if refreshed, ferr := svc.fetchCategoryPhysicalProperty(categoryUID, propertyUID); ferr == nil {
+				original = refreshed
+			}
 		}
 	}
 

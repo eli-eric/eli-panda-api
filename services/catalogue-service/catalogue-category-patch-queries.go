@@ -27,6 +27,28 @@ const categoryAuditSuffix = `
 	RETURN category.uid as uid
 	`
 
+// categoryReturnOnlySuffix closes a mutation WITHOUT an audit edge — used when an UPDATE
+// produced no real field changes (a no-op PATCH). The category history UI renders one row
+// per WAS_UPDATED_BY edge, so emitting an edge with empty changes would surface a
+// content-free "user updated" row. The bare RETURN keeps the service's zero-row detection.
+const categoryReturnOnlySuffix = `
+	RETURN category.uid as uid
+	`
+
+// appendCategoryAudit terminates a mutation query: it writes the WAS_UPDATED_BY edge when
+// there are real changes, otherwise closes with a bare RETURN so no-op UPDATEs leave no
+// audit noise. INSERT/DELETE builders always pass a non-empty slice (the created/deleted
+// entity is itself the change), so they always record an edge.
+func appendCategoryAudit(result *helpers.DatabaseQuery, changes []helpers.ChangeEntry) {
+	result.ReturnAlias = "uid"
+	if len(changes) == 0 {
+		result.Query += categoryReturnOnlySuffix
+		return
+	}
+	result.Parameters["changes"] = helpers.MarshalChanges(changes)
+	result.Query += categoryAuditSuffix
+}
+
 // initCategoryPatchQuery seeds the common parameters (uid, userUID, action) and returns
 // the phase-1 skeleton that every category mutation shares: MATCH(user) → MATCH(category).
 // Additional phase-1 MATCHes (supplier/category/property-specific) are appended by each
@@ -128,9 +150,7 @@ func PatchCatalogueCategoryQuery(uid string, fields *models.PatchCatalogueCatego
 
 	// -- PHASE 3 — audit + return --
 
-	result.Parameters["changes"] = helpers.MarshalChanges(changes)
-	result.Query += categoryAuditSuffix
-	result.ReturnAlias = "uid"
+	appendCategoryAudit(&result, changes)
 	return result
 }
 
@@ -202,9 +222,7 @@ func PatchCatalogueCategoryGroupQuery(categoryUID, groupUID string, fields *mode
 		changes = helpers.AppendIfChangedFor(changes, groupEntity, "order", helpers.ChangeTypeNumber, oldOrder, *fields.Order)
 	}
 
-	result.Parameters["changes"] = helpers.MarshalChanges(changes)
-	result.Query += categoryAuditSuffix
-	result.ReturnAlias = "uid"
+	appendCategoryAudit(&result, changes)
 	return result
 }
 
@@ -555,9 +573,7 @@ func PatchCatalogueCategoryPropertyQuery(categoryUID, propertyUID string, fields
 	}
 
 	// -- PHASE 3 --
-	result.Parameters["changes"] = helpers.MarshalChanges(changes)
-	result.Query += categoryAuditSuffix
-	result.ReturnAlias = "uid"
+	appendCategoryAudit(&result, changes)
 	return result
 }
 
@@ -619,6 +635,20 @@ func GetCatalogueCategoryPhysicalPropertyByUidsQuery(categoryUID, propertyUID st
 		type: case when t is not null then {uid: t.uid, name: t.name, code: t.code} else null end,
 		unit: case when u is not null then {uid: u.uid, name: u.name} else null end
 	} as property
+	`
+	result.ReturnAlias = "property"
+	return result
+}
+
+// ListCatalogueCategoryPhysicalPropertiesQuery returns every physical property under a
+// category, used by the PATCH lazy-seed trigger to decide whether siblings need renumbering
+// (mirrors the group/property allSeeded check so the seed write is skipped when unnecessary).
+func ListCatalogueCategoryPhysicalPropertiesQuery(categoryUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = map[string]interface{}{"uid": categoryUID}
+	result.Query = `
+	MATCH(c:CatalogueCategory{uid: $uid})-[:CONTAINS_PHYSICAL_ITEM_PROPERTY]->(p:CatalogueCategoryProperty)
+	WITH p ORDER BY coalesce(p.order, 2147483647), id(p)
+	RETURN { uid: p.uid, name: p.name, order: p.order } as property
 	`
 	result.ReturnAlias = "property"
 	return result
@@ -791,9 +821,7 @@ func PatchCatalogueCategoryPhysicalPropertyQuery(categoryUID, propertyUID string
 		changes = helpers.AppendIfChangedFor(changes, physicalEntity, "unit", helpers.ChangeTypeCodebook, oldUnit, newUnit)
 	}
 
-	result.Parameters["changes"] = helpers.MarshalChanges(changes)
-	result.Query += categoryAuditSuffix
-	result.ReturnAlias = "uid"
+	appendCategoryAudit(&result, changes)
 	return result
 }
 

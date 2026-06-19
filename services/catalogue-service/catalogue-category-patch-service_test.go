@@ -77,6 +77,33 @@ func readLatestCategoryChanges(t *testing.T, categoryUID string) (string, string
 	return "", ""
 }
 
+func countCategoryAuditEdges(t *testing.T, categoryUID string) int {
+	t.Helper()
+	res, err := testsetup.TestSession.Run(`
+		MATCH (c:CatalogueCategory{uid: $uid})-[r:WAS_UPDATED_BY]->()
+		RETURN count(r) as total
+	`, map[string]interface{}{"uid": categoryUID})
+	assert.NoError(t, err)
+	if res.Next() {
+		total, _ := res.Record().Get("total")
+		n, _ := total.(int64)
+		return int(n)
+	}
+	return 0
+}
+
+func TestPatchCatalogueCategory_NoOpUpdate_WritesNoAuditEdge(t *testing.T) {
+	f := seedCategoryPatchFixture(t)
+	defer cleanupCategoryPatchFixture(f)
+	svc := newPatchSvc()
+
+	sameName := "CP Original" // identical to the seeded value → no real change
+	_, err := svc.PatchCatalogueCategory(f.categoryUID, &models.PatchCatalogueCategoryFields{Name: &sameName}, f.userUID)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, countCategoryAuditEdges(t, f.categoryUID),
+		"a no-op PATCH (value unchanged) must not record a WAS_UPDATED_BY edge")
+}
+
 func TestPatchCatalogueCategory_UpdatesNameOnly(t *testing.T) {
 	f := seedCategoryPatchFixture(t)
 	defer cleanupCategoryPatchFixture(f)
