@@ -266,9 +266,15 @@ func (svc *CatalogueService) PatchCatalogueCategoryProperty(categoryUID, propert
 		}
 	}
 
-	// Lazy order seed for the group the property currently lives in.
+	// Lazy order seed for the group the property will live in. On a move-and-reorder the
+	// requested order is applied in the destination group, so seed that group's siblings —
+	// seeding the source group would leave the destination partially unordered.
 	if fields.Order != nil {
-		siblings, lerr := helpers.GetNeo4jArrayOfNodes[models.CatalogueCategoryProperty](session, ListCatalogueCategoryPropertiesInGroupQuery(categoryUID, original.GroupUID))
+		targetGroup := original.GroupUID
+		if fields.GroupUID != nil && *fields.GroupUID != "" && *fields.GroupUID != original.GroupUID {
+			targetGroup = *fields.GroupUID
+		}
+		siblings, lerr := helpers.GetNeo4jArrayOfNodes[models.CatalogueCategoryProperty](session, ListCatalogueCategoryPropertiesInGroupQuery(categoryUID, targetGroup))
 		if lerr != nil && !errors.Is(lerr, helpers.ERR_NO_ROWS) {
 			return result, lerr
 		}
@@ -280,7 +286,7 @@ func (svc *CatalogueService) PatchCatalogueCategoryProperty(categoryUID, propert
 			}
 		}
 		if !allSeeded {
-			_, serr := helpers.WriteNeo4jAndReturnSingleValue[int64](session, SeedCategoryPropertyOrdersQuery(categoryUID, original.GroupUID))
+			_, serr := helpers.WriteNeo4jAndReturnSingleValue[int64](session, SeedCategoryPropertyOrdersQuery(categoryUID, targetGroup))
 			if serr != nil && !errors.Is(serr, helpers.ERR_NO_ROWS) {
 				return result, serr
 			}

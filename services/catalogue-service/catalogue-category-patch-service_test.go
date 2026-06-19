@@ -443,6 +443,51 @@ func TestPatchCatalogueCategoryProperty_Move_BetweenGroups(t *testing.T) {
 	assert.Equal(t, []string{gB}, seenGroups, "property must be under gB only after move")
 }
 
+func TestPatchCatalogueCategoryProperty_MoveAndReorder_SeedsDestinationGroup(t *testing.T) {
+	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
+	defer cleanupCategoryPatchFixture(f)
+	defer cleanupGroups(gA, gB)
+	svc := newPatchSvc()
+
+	// Property to move lives in gA (auto order=10).
+	p, err := svc.CreateCatalogueCategoryProperty(f.categoryUID, gA, &models.CreateCatalogueCategoryPropertyFields{
+		Name: "Mover", Type: models.CatalogueCategoryPropertyType{UID: typeUID},
+	}, f.userUID)
+	assert.NoError(t, err)
+	defer cleanupGroups(p.UID)
+
+	// Destination gB holds legacy properties with NULL order (unseeded data).
+	legacyA, legacyB := "legacy-a-"+uuid.NewString(), "legacy-b-"+uuid.NewString()
+	_, err = testsetup.TestSession.Run(`
+		MATCH(g:CatalogueCategoryPropertyGroup{uid: $gid})
+		CREATE(g)-[:CONTAINS_PROPERTY]->(:CatalogueCategoryProperty{uid: $la, name: 'Legacy A'})
+		CREATE(g)-[:CONTAINS_PROPERTY]->(:CatalogueCategoryProperty{uid: $lb, name: 'Legacy B'})
+	`, map[string]interface{}{"gid": gB, "la": legacyA, "lb": legacyB})
+	assert.NoError(t, err)
+	defer cleanupGroups(legacyA, legacyB)
+
+	// Move into gB while setting an explicit order — must seed gB's unordered siblings.
+	order := 15
+	_, err = svc.PatchCatalogueCategoryProperty(f.categoryUID, p.UID, &models.PatchCatalogueCategoryPropertyFields{
+		GroupUID: &gB,
+		Order:    &order,
+	}, f.userUID)
+	assert.NoError(t, err)
+
+	// Destination legacy siblings must have been renumbered (no longer NULL).
+	res, qerr := testsetup.TestSession.Run(`
+		MATCH(g:CatalogueCategoryPropertyGroup{uid: $gid})-[:CONTAINS_PROPERTY]->(p:CatalogueCategoryProperty)
+		WHERE p.uid IN [$la, $lb]
+		RETURN count(p) as total, count(p.order) as seeded
+	`, map[string]interface{}{"gid": gB, "la": legacyA, "lb": legacyB})
+	assert.NoError(t, qerr)
+	assert.True(t, res.Next())
+	total, _ := res.Record().Get("total")
+	seeded, _ := res.Record().Get("seeded")
+	assert.Equal(t, int64(2), total)
+	assert.Equal(t, int64(2), seeded, "destination group's legacy siblings must be seeded after move+reorder")
+}
+
 func TestPatchCatalogueCategoryProperty_PropertyFromDifferentCategory_Returns404(t *testing.T) {
 	f, gA, gB, typeUID := seedCategoryWithGroupsAndTypes(t)
 	defer cleanupCategoryPatchFixture(f)
