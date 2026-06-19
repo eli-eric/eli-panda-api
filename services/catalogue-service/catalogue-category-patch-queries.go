@@ -35,6 +35,26 @@ func initCategoryPatchQuery(categoryUID, userUID, action string) (params map[str
 	return
 }
 
+// GetCatalogueCategoryScalarsByUidQuery fetches only the scalar fields a scalar PATCH needs
+// to diff/audit — uid, name, code, systemType — instead of the full category-detail graph
+// (all groups, properties, physical properties). Keeps scalar edits O(1) regardless of how
+// large the category's schema grows. Zero rows when the category UID is unknown.
+func GetCatalogueCategoryScalarsByUidQuery(categoryUID string) (result helpers.DatabaseQuery) {
+	result.Parameters = map[string]interface{}{"uid": categoryUID}
+	result.Query = `
+	MATCH(category:CatalogueCategory{uid: $uid})
+	OPTIONAL MATCH(category)-[:HAS_SYSTEM_TYPE]->(systemType)
+	RETURN {
+		uid: category.uid,
+		name: category.name,
+		code: category.code,
+		systemType: case when systemType is not null then { uid: systemType.uid, name: systemType.name, code: systemType.code } else null end
+	} as category
+	`
+	result.ReturnAlias = "category"
+	return result
+}
+
 // =====  PATCH /v1/catalogue/category/:uid  =====
 
 // PatchCatalogueCategoryQuery builds the Cypher for a scalar-field PATCH on a category.

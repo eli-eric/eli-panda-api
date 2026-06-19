@@ -245,7 +245,9 @@ func (svc *CatalogueService) PatchCatalogueCategory(uid string, fields *models.P
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	original, err := svc.GetCatalogueCategoryWithDetailsByUid(uid)
+	// Only the scalar fields (name, code, systemType) are needed to diff/audit — read just
+	// those rather than the full category-detail graph.
+	original, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.CatalogueCategory](session, GetCatalogueCategoryScalarsByUidQuery(uid))
 	if err != nil {
 		if errors.Is(err, helpers.ERR_NO_ROWS) {
 			return result, helpers.ERR_NOT_FOUND
