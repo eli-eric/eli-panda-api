@@ -3,7 +3,22 @@
     { "start": ["User"], "end": ["Role"], "type": "HAS_ROLE", "properties": [] },
     { "start": ["SystemTypeGroup"], "end": ["SystemType"], "type": "CONTAINS_SYSTEM_TYPE", "properties": [] },
     {
-      "start": ["SystemTypeGroup", "Zone", "Location", "User", "Order", "System", "ContactPersonRole", "Team", "SystemAttribute", "Grant", "ExperimentalSystem", "UserExperiment"],
+      "start": [
+        "SystemTypeGroup",
+        "Zone",
+        "Location",
+        "User",
+        "Order",
+        "System",
+        "ContactPersonRole",
+        "Team",
+        "SystemAttribute",
+        "ExperimentalSystem",
+        "UserExperiment",
+        "MediaType",
+        "GrantGroup",
+        "Grant"
+      ],
       "end": ["Facility"],
       "type": "BELONGS_TO_FACILITY",
       "properties": []
@@ -34,22 +49,32 @@
       "start": [
         "SystemType",
         "SystemTypeGroup",
+        "Zone",
         "CatalogueItem",
         "Order",
         "System",
         "Supplier",
         "Employee",
-        "User",
-        "Item",
         "CatalogueItemDeleted",
+        "Item",
+        "User",
+        "Publication",
+        "Researcher",
         "Manufacturer",
+        "RoomCard",
         "ContactPersonRole",
         "SystemAttribute",
         "Unit",
+        "Department",
+        "OpenAccessType",
         "CatalogueServiceType",
-        "Publication",
-        "Researcher",
-        "Grant"
+        "UserCall",
+        "ExperimentalSystem",
+        "UserExperiment",
+        "Grant",
+        "GrantGroup",
+        "PublishFormat",
+        "ConferenceScope"
       ],
       "end": ["User"],
       "type": "WAS_UPDATED_BY",
@@ -76,198 +101,32 @@
     { "start": ["Location"], "end": ["RoomCard"], "type": "HAS_ROOM_CARD", "properties": [] },
     { "start": ["RoomCard"], "end": ["Team"], "type": "HAS_TEAM", "properties": [] },
     { "start": ["System", "Item"], "end": ["System"], "type": "WAS_MOVED_FROM", "properties": [] },
-    { "start": ["System", "Order", "CatalogueItem", "Item"], "end": ["FileLink"], "type": "HAS_FILE_LINK", "properties": [] },
+    { "start": ["CatalogueItem", "System", "Order", "Item"], "end": ["FileLink"], "type": "HAS_FILE_LINK", "properties": [] },
     { "start": ["Item"], "end": ["System"], "type": "IS_ORIGINATED_FROM", "properties": [] },
     { "start": ["CatalogueCategory"], "end": ["CatalogueCategoryProperty"], "type": "CONTAINS_PHYSICAL_ITEM_PROPERTY", "properties": [] },
     { "start": ["Item"], "end": ["CatalogueCategoryProperty"], "type": "HAS_PHYSICAL_ITEM_PROPERTY", "properties": [] },
     { "start": ["CatalogueItem"], "end": ["CatalogueItem"], "type": "IS_RELATED_TO", "properties": [] },
-    { "start": ["SystemType", "System"], "end": ["SystemAttribute"], "type": "HAS_SYSTEM_ATTRIBUTE", "properties": [] },
+    { "start": ["SystemType"], "end": ["SystemAttribute"], "type": "HAS_SYSTEM_ATTRIBUTE", "properties": [] },
     { "start": ["Item"], "end": ["System"], "type": "WAS_MOVED_TO", "properties": [] },
     { "start": ["Item"], "end": ["ServiceItem"], "type": "IS_SERVICED_BY", "properties": [] },
     { "start": ["Order"], "end": ["ServiceItem"], "type": "HAS_SERVICE_LINE", "properties": [] },
     { "start": ["Publication"], "end": ["Country"], "type": "HAS_PUBLISHING_COUNTRY", "properties": [] },
     { "start": ["Publication"], "end": ["OpenAccessType"], "type": "HAS_OPEN_ACCESS_TYPE", "properties": [] },
     { "start": ["Publication"], "end": ["UserCall"], "type": "HAS_USER_CALL", "properties": [] },
-    { "start": ["Publication"], "end": ["Researcher"], "type": "HAS_RESEARCHER", "properties": [] },
-    { "start": ["Publication"], "end": ["Grant"], "type": "HAS_GRANT", "properties": [] },
-    { "start": ["Publication"], "end": ["MediaType"], "type": "HAS_MEDIA_TYPE", "properties": [] },
-    { "start": ["Publication"], "end": ["UserExperiment"], "type": "HAS_USER_EXPERIMENT", "properties": [] },
+    { "start": ["RoomCard"], "end": ["OperationalState"], "type": "HAS_OPERATIONAL_STATE", "properties": [] },
+    { "start": ["Zone"], "end": ["System"], "type": "HAS_DEFAULT_PARENT_SYSTEM", "properties": [] },
     { "start": ["Publication"], "end": ["ExperimentalSystem"], "type": "HAS_EXPERIMENTAL_SYSTEM", "properties": [] },
-    { "start": ["Grant"], "end": ["GrantGroup"], "type": "BELONGS_TO_GROUP", "properties": [] },
     { "start": ["Researcher"], "end": ["Country"], "type": "HAS_CITIZENSHIP", "properties": [] },
+    { "start": ["Publication"], "end": ["MediaType"], "type": "HAS_MEDIA_TYPE", "properties": [] },
+    { "start": ["Publication"], "end": ["Researcher"], "type": "HAS_RESEARCHER", "properties": [] },
+    { "start": ["Grant"], "end": ["GrantGroup"], "type": "BELONGS_TO_GROUP", "properties": [] },
+    { "start": ["Publication"], "end": ["Grant"], "type": "HAS_GRANT", "properties": [] },
+    { "start": ["Publication"], "end": ["UserExperiment"], "type": "HAS_USER_EXPERIMENT", "properties": [] },
     { "start": ["Publication"], "end": ["PublishFormat"], "type": "HAS_PUBLISH_FORMAT", "properties": [] },
-    { "start": ["Publication"], "end": ["ConferenceScope"], "type": "HAS_CONFERENCE_SCOPE", "properties": [] }
+    { "start": ["Publication"], "end": ["ConferenceScope"], "type": "HAS_CONFERENCE_SCOPE", "properties": [] },
+    { "start": ["System"], "end": ["System"], "type": "PROVIDES_VACUUM_FOR", "properties": [] }
   ],
   "nodes": [
-    {
-      "label": "PbsData",
-      "properties": [
-        { "name": "name", "type": "String" },
-        { "name": "itemPriceEUR", "type": "String" },
-        { "name": "pbsFis", "type": "String" },
-        { "name": "itemPriceCzk", "type": "String" },
-        { "name": "pbsTenderReference", "type": "String" },
-        { "name": "quantity", "type": "String" },
-        { "name": "serialNumber", "type": "String" },
-        { "name": "eun", "type": "String" },
-        { "name": "isOrderInPanda", "type": "Boolean" },
-        { "name": "cataloguePartNumber", "type": "String" },
-        { "name": "description", "type": "String" },
-        { "name": "isEunInPanda", "type": "Boolean" },
-        { "name": "sectionName", "type": "String" },
-        { "name": "hasImage", "type": "String" },
-        { "name": "destination", "type": "String" },
-        { "name": "pbsNumber", "type": "String" },
-        { "name": "pbsSupplier", "type": "String" },
-        { "name": "filesCount", "type": "String" },
-        { "name": "notes", "type": "String" },
-        { "name": "pbsVerso", "type": "String" },
-        { "name": "cartName", "type": "String" },
-        { "name": "pandaOrderGUID", "type": "String" },
-        { "name": "deliveredDate", "type": "String" }
-      ]
-    },
-    {
-      "label": "SystemAttribute",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" }
-      ]
-    },
-    {
-      "label": "Publication",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "code", "type": "String" },
-        { "name": "experimentalSystem", "type": "String" },
-        { "name": "allAuthorsCount", "type": "Long" },
-        { "name": "language", "type": "String" },
-        { "name": "eliAuthorsCount", "type": "Long" },
-        { "name": "note", "type": "String" },
-        { "name": "issn", "type": "String" },
-        { "name": "doi", "type": "String" },
-        { "name": "impactFactor", "type": "Double" },
-        { "name": "authorsDepartmentsArray", "type": "StringArray" },
-        { "name": "keywords", "type": "String" },
-        { "name": "wosNumber", "type": "String" },
-        { "name": "shortJournalTitle", "type": "String" },
-        { "name": "allAuthors", "type": "String" },
-        { "name": "userExperiment", "type": "String" },
-        { "name": "eissn", "type": "String" },
-        { "name": "pagesCount", "type": "Long" },
-        { "name": "mediaType", "type": "String" },
-        { "name": "dateOfPublication", "type": "String" },
-        { "name": "webLink", "type": "String" },
-        { "name": "eidScopus", "type": "String" },
-        { "name": "deleted", "type": "Boolean" },
-        { "name": "quartil", "type": "String" },
-        { "name": "abstract", "type": "String" },
-        { "name": "eliAuthors", "type": "String" },
-        { "name": "issue", "type": "Long" },
-        { "name": "grant", "type": "String" },
-        { "name": "longJournalTitle", "type": "String" },
-        { "name": "oecdFord", "type": "String" },
-        { "name": "quartilBasis", "type": "String" },
-        { "name": "updatedAt", "type": "DateTime" },
-        { "name": "citeAs", "type": "String" },
-        { "name": "yearOfPublication", "type": "String" },
-        { "name": "volume", "type": "Long" },
-        { "name": "title", "type": "String" },
-        { "name": "pages", "type": "String" },
-        { "name": "pdfFileName", "type": "String" },
-        { "name": "pdfFileUrl", "type": "String" },
-        { "name": "eliPublication", "type": "String" },
-        { "name": "otherGrants", "type": "String" },
-        { "name": "publisher", "type": "String" },
-        { "name": "publishPlace", "type": "String" },
-        { "name": "isbn", "type": "String" },
-        { "name": "bookTitle", "type": "String" },
-        { "name": "bookPagesCount", "type": "Long" },
-        { "name": "editionVolume", "type": "String" },
-        { "name": "proceedingsIsbn", "type": "String" },
-        { "name": "conferenceDate", "type": "String" },
-        { "name": "conferencePlace", "type": "String" }
-      ]
-    },
-    {
-      "label": "LidDevice",
-      "properties": [
-        { "name": "code", "type": "String" },
-        { "name": "zone", "type": "String" },
-        { "name": "type", "type": "String" },
-        { "name": "serial", "type": "String" },
-        { "name": "description", "type": "String" },
-        { "name": "pandaCode", "type": "String" }
-      ]
-    },
-    {
-      "label": "Country",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" },
-        { "name": "code", "type": "String" },
-        { "name": "latitude", "type": "Double" },
-        { "name": "longitude", "type": "Double" }
-      ]
-    },
-    {
-      "label": "Department",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" }
-      ]
-    },
-    {
-      "label": "OpenAccessType",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" }
-      ]
-    },
-    {
-      "label": "Language",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" }
-      ]
-    },
-    {
-      "label": "UserCall",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" }
-      ]
-    },
-    {
-      "label": "dumny",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" }
-      ]
-    },
-    {
-      "label": "CatalogueServiceType",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" },
-        { "name": "updatedAt", "type": "DateTime" },
-        { "name": "deleted", "type": "Boolean" },
-        { "name": "description", "type": "String" },
-        { "name": "properties", "type": "StringArray" }
-      ]
-    },
-    {
-      "label": "ServiceItem",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" },
-        { "name": "lastUpdateBy", "type": "String" },
-        { "name": "notes", "type": "String" },
-        { "name": "deliveredTime", "type": "DateTime" },
-        { "name": "isDelivered", "type": "Boolean" },
-        { "name": "lastUpdateTime", "type": "DateTime" }
-      ]
-    },
     {
       "label": "SchemaMigration",
       "properties": [
@@ -360,7 +219,9 @@
       "properties": [
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
-        { "name": "code", "type": "String" }
+        { "name": "code", "type": "String" },
+        { "name": "notes", "type": "String" },
+        { "name": "deleted", "type": "Boolean" }
       ]
     },
     {
@@ -378,8 +239,8 @@
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
         { "name": "code", "type": "String" },
-        { "name": "miniImageUrl", "type": "String" },
-        { "name": "image", "type": "String" }
+        { "name": "image", "type": "String" },
+        { "name": "miniImageUrl", "type": "String" }
       ]
     },
     {
@@ -403,18 +264,18 @@
       "properties": [
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
+        { "name": "lastUpdateTime", "type": "DateTime" },
         { "name": "imported", "type": "Boolean" },
         { "name": "imported_qr_code", "type": "Boolean" },
         { "name": "lastUpdatedBy", "type": "String" },
         { "name": "deleted", "type": "Boolean" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "catalogueNumber", "type": "String" },
         { "name": "touch_by_import", "type": "Boolean" },
+        { "name": "manufacturerUrl", "type": "String" },
         { "name": "image", "type": "String" },
         { "name": "miniImageUrl", "type": "String" },
-        { "name": "lastUpdateTime", "type": "DateTime" },
-        { "name": "description", "type": "String" },
-        { "name": "catalogueNumber", "type": "String" },
-        { "name": "lastUpdateBy", "type": "String" },
-        { "name": "manufacturerUrl", "type": "String" }
+        { "name": "description", "type": "String" }
       ]
     },
     {
@@ -449,28 +310,25 @@
         { "name": "minimalSpareParstCount", "type": "Long" },
         { "name": "imported_qr_code", "type": "Boolean" },
         { "name": "lastUpdatedBy", "type": "String" },
-        { "name": "status", "type": "String" },
-        { "name": "isTechnologicalUnit", "type": "Boolean" },
         { "name": "deleted", "type": "Boolean" },
-        { "name": "type", "type": "String" },
+        { "name": "isTechnologicalUnit", "type": "Boolean" },
         { "name": "lidZone", "type": "String" },
         { "name": "touch_by_import", "type": "Boolean" },
         { "name": "sp_coverage", "type": "Long" },
         { "name": "image", "type": "String" },
-        { "name": "description", "type": "String" },
         { "name": "importedFromLID", "type": "Boolean" },
-        { "name": "lastUpdateTime", "type": "DateTime" },
         { "name": "miniImageUrl", "type": "String" },
+        { "name": "lastUpdateTime", "type": "DateTime" },
+        { "name": "description", "type": "String" },
         { "name": "lidCode", "type": "String" },
-        { "name": "createdAt", "type": "DateTime" },
-        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "lastUpdateBy", "type": "String" },
         { "name": "backupSystemCodeDate", "type": "String" },
         { "name": "lidSerial", "type": "String" },
         { "name": "lidType", "type": "String" },
-        { "name": "systemCode", "type": "String" },
+        { "name": "fixedSystemStructureCode", "type": "String" },
         { "name": "systemCodeOld", "type": "String" },
         { "name": "systemCode_old", "type": "String" },
-        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "systemCode", "type": "String" },
         { "name": "systemLevel", "type": "String" },
         { "name": "systemAlias", "type": "String" },
         { "name": "isCritical", "type": "Boolean" },
@@ -547,10 +405,9 @@
         { "name": "currency", "type": "String" },
         { "name": "serialNumber", "type": "String" },
         { "name": "imported", "type": "Boolean" },
+        { "name": "imported_qr_code", "type": "Boolean" },
         { "name": "deleted", "type": "Boolean" },
         { "name": "lastUpdatedBy", "type": "String" },
-        { "name": "status", "type": "String" },
-        { "name": "imported_qr_code", "type": "Boolean" },
         { "name": "eun", "type": "String" },
         { "name": "touch_by_import", "type": "Boolean" },
         { "name": "price", "type": "String" },
@@ -560,7 +417,6 @@
         { "name": "importedNotes", "type": "String" },
         { "name": "lastUpdateTime", "type": "DateTime" },
         { "name": "itemUsageImport", "type": "String" },
-        { "name": "updatedAt", "type": "DateTime" },
         { "name": "notes", "type": "String" },
         { "name": "printEUN", "type": "Boolean" }
       ]
@@ -586,13 +442,20 @@
         { "name": "phoneNumber", "type": "String" },
         { "name": "lastUpdateBy", "type": "String" },
         { "name": "workplaceName", "type": "String" },
-        { "name": "employeeNumber", "type": "String" },
         { "name": "superiorNumber", "type": "String" },
+        { "name": "employeeNumber", "type": "String" },
         { "name": "lastUpdatedTime", "type": "DateTime" },
         { "name": "phone", "type": "String" }
       ]
     },
-    { "label": "CatalogueItemDeleted", "properties": [{ "name": "uid", "type": "String" }] },
+    {
+      "label": "CatalogueItemDeleted",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "duplicateOf", "type": "String" },
+        { "name": "miniImageUrl", "type": "String" }
+      ]
+    },
     {
       "label": "UserSettings",
       "properties": [
@@ -621,22 +484,23 @@
       "properties": [
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
-        { "name": "indoorEnvironmentQualityClient", "type": "String" },
-        { "name": "compressedAirDistribution", "type": "String" },
         { "name": "nitrogenCentralDistributionClient", "type": "String" },
-        { "name": "maxPressureInColdDistributionClient", "type": "String" },
-        { "name": "coolingWater", "type": "String" },
-        { "name": "status", "type": "String" },
-        { "name": "entryToHvacTent", "type": "String" },
         { "name": "coolingWaterClient", "type": "String" },
-        { "name": "compressedAirDistributionClient", "type": "String" },
-        { "name": "nitrogenCentralDistribution", "type": "String" },
+        { "name": "entryToHvacTent", "type": "String" },
+        { "name": "additionalRequirements", "type": "String" },
+        { "name": "coolingWater", "type": "String" },
         { "name": "maxPressureInColdDistribution", "type": "String" },
         { "name": "prescribedClothing", "type": "StringArray" },
-        { "name": "purityClass", "type": "String" },
-        { "name": "additionalRequirements", "type": "String" },
+        { "name": "cleaningScheduleDays", "type": "StringArray" },
+        { "name": "indoorEnvironmentQualityClient", "type": "String" },
+        { "name": "status", "type": "String" },
+        { "name": "compressedAirDistributionClient", "type": "String" },
+        { "name": "nitrogenCentralDistribution", "type": "String" },
         { "name": "indoorEnvironmentQuality", "type": "String" },
-        { "name": "cleaningScheduleDays", "type": "StringArray" }
+        { "name": "compressedAirDistribution", "type": "String" },
+        { "name": "maxPressureInColdDistributionClient", "type": "String" },
+        { "name": "operationalStateLastUpdated", "type": "DateTime" },
+        { "name": "purityClass", "type": "String" }
       ]
     },
     { "label": "HallContactPerson", "properties": [{ "name": "uid", "type": "String" }] },
@@ -650,17 +514,213 @@
       ]
     },
     {
-      "label": "Grant",
+      "label": "PbsData",
+      "properties": [
+        { "name": "name", "type": "String" },
+        { "name": "itemPriceEUR", "type": "String" },
+        { "name": "pbsFis", "type": "String" },
+        { "name": "itemPriceCzk", "type": "String" },
+        { "name": "pbsTenderReference", "type": "String" },
+        { "name": "quantity", "type": "String" },
+        { "name": "serialNumber", "type": "String" },
+        { "name": "eun", "type": "String" },
+        { "name": "isOrderInPanda", "type": "Boolean" },
+        { "name": "cataloguePartNumber", "type": "String" },
+        { "name": "description", "type": "String" },
+        { "name": "isEunInPanda", "type": "Boolean" },
+        { "name": "sectionName", "type": "String" },
+        { "name": "hasImage", "type": "String" },
+        { "name": "destination", "type": "String" },
+        { "name": "pbsNumber", "type": "String" },
+        { "name": "pbsSupplier", "type": "String" },
+        { "name": "filesCount", "type": "String" },
+        { "name": "notes", "type": "String" },
+        { "name": "pbsVerso", "type": "String" },
+        { "name": "cartName", "type": "String" },
+        { "name": "pandaOrderGUID", "type": "String" },
+        { "name": "deliveredDate", "type": "String" }
+      ]
+    },
+    {
+      "label": "SystemAttribute",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "Publication",
       "properties": [
         { "name": "uid", "type": "String" },
         { "name": "code", "type": "String" },
+        { "name": "experimentalSystem", "type": "String" },
+        { "name": "allAuthorsCount", "type": "Long" },
+        { "name": "bookTitle", "type": "String" },
+        { "name": "language", "type": "String" },
+        { "name": "conferenceDate", "type": "String" },
+        { "name": "eliAuthorsCount", "type": "Long" },
+        { "name": "note", "type": "String" },
+        { "name": "issn", "type": "String" },
+        { "name": "doi", "type": "String" },
+        { "name": "isbn", "type": "String" },
+        { "name": "authorsDepartmentsArray", "type": "StringArray" },
+        { "name": "impactFactor", "type": "Double" },
+        { "name": "keywords", "type": "String" },
+        { "name": "publisher", "type": "String" },
+        { "name": "publishPlace", "type": "String" },
+        { "name": "editionVolume", "type": "String" },
+        { "name": "wosNumber", "type": "String" },
+        { "name": "shortJournalTitle", "type": "String" },
+        { "name": "allAuthors", "type": "String" },
+        { "name": "userExperiment", "type": "String" },
+        { "name": "eissn", "type": "String" },
+        { "name": "pagesCount", "type": "Long" },
+        { "name": "conferencePlace", "type": "String" },
+        { "name": "mediaType", "type": "String" },
+        { "name": "dateOfPublication", "type": "String" },
+        { "name": "webLink", "type": "String" },
+        { "name": "eidScopus", "type": "String" },
+        { "name": "deleted", "type": "Boolean" },
+        { "name": "quartil", "type": "String" },
+        { "name": "proceedingsIsbn", "type": "String" },
+        { "name": "abstract", "type": "String" },
+        { "name": "eliAuthors", "type": "String" },
+        { "name": "grant", "type": "String" },
+        { "name": "issue", "type": "Long" },
+        { "name": "longJournalTitle", "type": "String" },
+        { "name": "oecdFord", "type": "String" },
+        { "name": "eliPublication", "type": "String" },
+        { "name": "quartilBasis", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "citeAs", "type": "String" },
+        { "name": "yearOfPublication", "type": "String" },
+        { "name": "volume", "type": "Long" },
+        { "name": "title", "type": "String" },
+        { "name": "bookPagesCount", "type": "Long" },
+        { "name": "pages", "type": "String" },
+        { "name": "otherGrants", "type": "String" }
+      ]
+    },
+    {
+      "label": "LidDevice",
+      "properties": [
+        { "name": "code", "type": "String" },
+        { "name": "zone", "type": "String" },
+        { "name": "type", "type": "String" },
+        { "name": "serial", "type": "String" },
+        { "name": "description", "type": "String" },
+        { "name": "pandaCode", "type": "String" }
+      ]
+    },
+    {
+      "label": "Country",
+      "properties": [
+        { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
+        { "name": "latitude", "type": "Double" },
+        { "name": "longitude", "type": "Double" }
+      ]
+    },
+    {
+      "label": "Department",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "OpenAccessType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "Language",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "UserCall",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "dumny",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" }
+      ]
+    },
+    {
+      "label": "CatalogueServiceType",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" },
+        { "name": "description", "type": "String" },
+        { "name": "properties", "type": "StringArray" }
+      ]
+    },
+    {
+      "label": "ServiceItem",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "lastUpdateBy", "type": "String" },
+        { "name": "notes", "type": "String" },
+        { "name": "deliveredTime", "type": "DateTime" },
+        { "name": "isDelivered", "type": "Boolean" },
+        { "name": "lastUpdateTime", "type": "DateTime" }
+      ]
+    },
+    {
+      "label": "OperationalState",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "Researcher",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "lastName", "type": "String" },
+        { "name": "firstName", "type": "String" },
+        { "name": "identificationNumber", "type": "String" },
+        { "name": "orcid", "type": "String" },
+        { "name": "researcherId", "type": "String" },
+        { "name": "scopusId", "type": "String" },
+        { "name": "updatedAt", "type": "DateTime" }
+      ]
+    },
+    {
+      "label": "ExperimentalSystem",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "Grant",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "name", "type": "String" },
+        { "name": "code", "type": "String" },
         { "name": "updatedAt", "type": "DateTime" },
         { "name": "deleted", "type": "Boolean" }
       ]
     },
     {
-      "label": "GrantGroup",
+      "label": "UserExperiment",
       "properties": [
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
@@ -676,33 +736,11 @@
       ]
     },
     {
-      "label": "UserExperiment",
+      "label": "GrantGroup",
       "properties": [
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
         { "name": "code", "type": "String" }
-      ]
-    },
-    {
-      "label": "ExperimentalSystem",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "name", "type": "String" },
-        { "name": "code", "type": "String" }
-      ]
-    },
-    {
-      "label": "Researcher",
-      "properties": [
-        { "name": "uid", "type": "String" },
-        { "name": "firstName", "type": "String" },
-        { "name": "lastName", "type": "String" },
-        { "name": "identificationNumber", "type": "String" },
-        { "name": "orcid", "type": "String" },
-        { "name": "scopusId", "type": "String" },
-        { "name": "researcherId", "type": "String" },
-        { "name": "updatedAt", "type": "DateTime" },
-        { "name": "deleted", "type": "Boolean" }
       ]
     },
     {
