@@ -9,8 +9,8 @@ import (
 // GetAllTeamsQuery returns every team in the facility with its member count, sorted by name.
 func GetAllTeamsQuery(facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (t:Team)-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
-				OPTIONAL MATCH (t)<-[:BELONGS_TO_TEAM]-(u:User)
+		Query: `MATCH (t:Team)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
+				OPTIONAL MATCH (t)<-[:BELONGS_TO_TEAM]-(u:User)-[:BELONGS_TO_FACILITY]->(f)
 				WITH t, count(u) AS memberCount
 				RETURN {uid: t.uid, name: t.name, code: coalesce(t.code, ''),
 						description: coalesce(t.description, ''), memberCount: memberCount} AS team
@@ -26,8 +26,8 @@ func GetAllTeamsQuery(facilityCode string) helpers.DatabaseQuery {
 // (including disabled users, sorted by lastName then firstName).
 func GetTeamByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (t:Team{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
-				OPTIONAL MATCH (t)<-[:BELONGS_TO_TEAM]-(u:User)
+		Query: `MATCH (t:Team{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
+				OPTIONAL MATCH (t)<-[:BELONGS_TO_TEAM]-(u:User)-[:BELONGS_TO_FACILITY]->(f)
 				WITH t, u ORDER BY u.lastName, u.firstName
 				WITH t, collect(CASE WHEN u IS NULL THEN null ELSE {
 						uid: u.uid, firstName: coalesce(u.firstName, ''), lastName: coalesce(u.lastName, ''),
