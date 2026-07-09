@@ -13,6 +13,7 @@ import (
 	roomcardsservice "panda/apigateway/services/room-cards-service"
 	securityService "panda/apigateway/services/security-service"
 	systemsService "panda/apigateway/services/systems-service"
+	teamsservice "panda/apigateway/services/teams-service"
 	zoneservice "panda/apigateway/services/zone-service"
 
 	"github.com/rs/zerolog/log"
@@ -86,4 +87,10 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 	zoneHandlers := zoneservice.NewZoneHandlers(zoneSvc)
 	zoneservice.MapZoneRoutes(e, zoneHandlers, jwtMiddleware)
 	log.Info().Msg("Zone     service initialized successfully.")
+
+	// teams service
+	teamsSvc := teamsservice.NewTeamsService(neo4jDriver)
+	teamsHandlers := teamsservice.NewTeamsHandlers(teamsSvc)
+	teamsservice.MapTeamsRoutes(e, teamsHandlers, jwtMiddleware)
+	log.Info().Msg("Teams    service initialized successfully.")
 }
