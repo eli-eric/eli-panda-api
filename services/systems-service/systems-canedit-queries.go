@@ -12,7 +12,7 @@ import "panda/apigateway/helpers"
 // always returned (even when result is false) so the FE can show who to contact.
 func CanEditSystemQuery(systemUID, userUID string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (caller:User{uid:$userUID})
+		Query: `OPTIONAL MATCH (caller:User{uid:$userUID})
 				OPTIONAL MATCH (caller)-[:HAS_ROLE]->(adminR:Role{code:'admin'})
 				OPTIONAL MATCH (caller)-[:HAS_ROLE]->(editR:Role{code:'systems-edit'})
 				WITH caller, count(adminR) > 0 AS isAdmin, count(editR) > 0 AS hasEdit
