@@ -5232,6 +5232,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/can-edit": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns whether the caller may edit the system (responsibility bubbles up HAS_SUBSYSTEM) and the responsible users to contact.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Can the current user edit this system",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CanEditSystemResult"
+                        }
+                    },
+                    "404": {
+                        "description": "System not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/{uid}/graph": {
             "get": {
                 "security": [
@@ -6852,6 +6892,20 @@ const docTemplate = `{
                 },
                 "targetUid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.CanEditSystemResult": {
+            "type": "object",
+            "properties": {
+                "responsibles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemResponsible"
+                    }
+                },
+                "result": {
+                    "type": "boolean"
                 }
             }
         },
@@ -8785,6 +8839,26 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "systemToUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemResponsible": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }

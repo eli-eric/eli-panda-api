@@ -70,6 +70,7 @@ type ISystemsHandlers interface {
 	AssignSpareItem() echo.HandlerFunc
 	GetSystemSparePartsDetail() echo.HandlerFunc
 	CreateBatchRelationships() echo.HandlerFunc
+	CanEditSystem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -99,6 +100,10 @@ func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
 		if err == nil {
 
 			userUID := c.Get("userUID").(string)
+
+			if guardErr := h.guardSystemEdit(c, assignSpareRequest.SystemUid, assignSpareRequest.NewParentSystemUid); guardErr != nil {
+				return guardErr
+			}
 
 			response, err := h.systemsService.AssignSpareItem(*assignSpareRequest, userUID)
 
@@ -226,6 +231,13 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
 
+			// creating a subsystem requires edit rights on the parent (can't add under a locked system)
+			if system.ParentUID != nil {
+				if guardErr := h.guardSystemEdit(c, *system.ParentUID); guardErr != nil {
+					return guardErr
+				}
+			}
+
 			uid, err := h.systemsService.CreateNewSystem(system, facilityCode, userUID)
 
 			if err == nil {
@@ -271,6 +283,11 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
+		// importing under a parent requires edit rights on that parent
+		if guardErr := h.guardSystemEdit(c, request.ParentSystemUID); guardErr != nil {
+			return guardErr
+		}
+
 		result, err := h.systemsService.CreateNewSystemFromJira(facilityCode, userUID, userRoles, request)
 
 		if err == nil {
@@ -311,6 +328,10 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			system.UID = c.Param("uid")
 
+			if guardErr := h.guardSystemEdit(c, system.UID); guardErr != nil {
+				return guardErr
+			}
+
 			err := h.systemsService.UpdateSystem(system, facilityCode, userUID)
 
 			if err == nil {
@@ -341,6 +362,10 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 		//get uid path param
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
+
+		if guardErr := h.guardSystemEdit(c, uid); guardErr != nil {
+			return guardErr
+		}
 
 		// first check if there are systems with physical items
 		itemsInfo, err := h.systemsService.GetPhysicalItemsBySystemUidRecursive(uid)
@@ -1002,6 +1027,14 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 		userUID := c.Get("userUID").(string)
 		facilityCode := c.Get("facilityCode").(string)
 
+		// only structural HAS_SUBSYSTEM edges are guarded (functional relationships are exempt);
+		// guard the parent (SystemFromUID) - can't attach a subsystem under a locked system
+		if systemRelationshipRequest.RelationTypeCode == "HAS_SUBSYSTEM" {
+			if guardErr := h.guardSystemEdit(c, systemRelationshipRequest.SystemFromUID); guardErr != nil {
+				return guardErr
+			}
+		}
+
 		newId, err := h.systemsService.CreateNewSystemRelationship(systemRelationshipRequest, facilityCode, userUID)
 		if err == nil {
 			return c.String(http.StatusCreated, strconv.FormatInt(newId, 10))
@@ -1140,6 +1173,10 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
+
+		if guardErr := h.guardSystemEditByItem(c, uid); guardErr != nil {
+			return guardErr
+		}
 
 		properties := new([]models.PhysicalItemDetail)
 		err := c.Bind(properties)
@@ -1980,6 +2017,10 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
 
+			if guardErr := h.guardSystemEdit(c, movePhysicalItemRequest.SourceSystemUID, movePhysicalItemRequest.DestinationSystemUID, movePhysicalItemRequest.ParentSystemUID); guardErr != nil {
+				return guardErr
+			}
+
 			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
@@ -2025,6 +2066,10 @@ func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
 
+			if guardErr := h.guardSystemEdit(c, movePhysicalItemRequest.SourceSystemUID, movePhysicalItemRequest.DestinationSystemUID, movePhysicalItemRequest.ParentSystemUID); guardErr != nil {
+				return guardErr
+			}
+
 			destinationSystemUID, err := h.systemsService.ReplacePhysicalItems(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
@@ -2068,6 +2113,13 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 			log.Info().Msgf("Move systems request: %+v", moveSystemsRequest)
 
 			userUID := c.Get("userUID").(string)
+
+			// require edit rights on every moved system AND the destination parent (can't move under a locked system)
+			guardTargets := append([]string{}, moveSystemsRequest.SystemsToMoveUids...)
+			guardTargets = append(guardTargets, moveSystemsRequest.TargetParentSystemUid)
+			if guardErr := h.guardSystemEdit(c, guardTargets...); guardErr != nil {
+				return guardErr
+			}
 
 			destinationSystemUID, err := h.systemsService.MoveSystems(moveSystemsRequest, userUID)
 

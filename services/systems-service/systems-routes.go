@@ -30,17 +30,19 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	//get system image - base64string
 	e.GET("/v1/system/:uid/image", m.Authorization(h.GetSystemImageByUid(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
-	e.POST("/v1/system", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
-	e.POST("/v1/system/jira-import", m.Authorization(h.CreateNewSystemFromJira(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/system", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
+	e.POST("/v1/system/jira-import", m.Authorization(h.CreateNewSystemFromJira(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	// get system detail by uid
 	e.GET("/v1/system/:uid", m.Authorization(h.GetSystemDetail(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 	// get system spare parts detail by uid
 	e.GET("/v1/system/:uid/spare-parts-detail", m.Authorization(h.GetSystemSparePartsDetail(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
+	// can the current user edit this system (responsibility bubbles up HAS_SUBSYSTEM) - view-gated so viewers can pre-check
+	e.GET("/v1/system/:uid/can-edit", m.Authorization(h.CanEditSystem(), shared.ROLE_SYSTEMS_VIEW, shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	//save new system/sub-system
-	e.PUT("/v1/system/:uid", m.Authorization(h.UpdateSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
-	e.DELETE("/v1/system/:uid", m.Authorization(h.DeleteSystemRecursive(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.PUT("/v1/system/:uid", m.Authorization(h.UpdateSystem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
+	e.DELETE("/v1/system/:uid", m.Authorization(h.DeleteSystemRecursive(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	// this one is only becasue of bad request from ui for now
-	e.POST("/v1/system/:xxx", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/system/:xxx", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
 	// get systems for relationship
 	e.GET("/v1/systems/for-relationship", m.Authorization(h.GetSystemsForRelationship(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
@@ -54,8 +56,8 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	// delete system relationship
 	e.DELETE("/v1/system/relationship/:uid", m.Authorization(h.DeleteSystemRelationship(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
-	// create new system relationship
-	e.POST("/v1/system/relationship/:uid", m.Authorization(h.CreateNewSystemRelationship(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	// create new system relationship (guarded only when creating a HAS_SUBSYSTEM edge)
+	e.POST("/v1/system/relationship/:uid", m.Authorization(h.CreateNewSystemRelationship(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
 	// batch create system relationships
 	e.POST("/v1/system/relationships/batch", m.Authorization(h.CreateBatchRelationships(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
@@ -64,7 +66,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.GET("/v1/physical-item/:uid/properties", m.Authorization(h.GetPhysicalItemProperties(), shared.ROLE_SYSTEMS_VIEW, shared.ROLE_CATALOGUE_VIEW, shared.ROLE_ORDERS_VIEW), jwtMiddleware)
 
-	e.PUT("/v1/physical-item/:uid/properties", m.Authorization(h.UpdatePhysicalItemProperties(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.PUT("/v1/physical-item/:uid/properties", m.Authorization(h.UpdatePhysicalItemProperties(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
 	e.GET("/v1/system/:uid/history", m.Authorization(h.GetSystemHistory(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
@@ -112,14 +114,14 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 
 	e.POST("/v1/systems/reload", m.Authorization(h.GetSystemsTreeByUids(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
-	e.POST("/v1/physical-item/move", m.Authorization(h.MovePhysicalItem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/physical-item/move", m.Authorization(h.MovePhysicalItem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
-	e.POST("/v1/physical-item/replace", m.Authorization(h.ReplacePhysicalItems(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/physical-item/replace", m.Authorization(h.ReplacePhysicalItems(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
-	e.POST("/v1/systems/move", m.Authorization(h.MoveSystems(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/systems/move", m.Authorization(h.MoveSystems(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
 	// copy system(s) under an existing destination parent system
 	e.PUT("/v1/systems/copy", m.Authorization(h.CopySystem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
 
-	e.POST("/v1/system/:systemUid/assign-spare", m.Authorization(h.AssignSpareItem(), shared.ROLE_SYSTEMS_EDIT), jwtMiddleware)
+	e.POST("/v1/system/:systemUid/assign-spare", m.Authorization(h.AssignSpareItem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 }
