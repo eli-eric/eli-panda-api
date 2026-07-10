@@ -21,8 +21,8 @@ func CanEditSystemQuery(systemUID, userUID string) helpers.DatabaseQuery {
 				OPTIONAL MATCH (caller)-[:HAS_ROLE]->(editR:Role{code:'systems-edit'})
 				WITH caller, count(adminR) > 0 AS isAdmin, count(editR) > 0 AS hasEdit
 				MATCH (sys:System{uid:$systemUID, deleted:false})
-				OPTIONAL MATCH (ancestor:System)-[:HAS_SUBSYSTEM*1..50]->(sys)
-				WHERE ancestor.deleted = false
+				OPTIONAL MATCH ancestorPath = (ancestor:System)-[:HAS_SUBSYSTEM*1..50]->(sys)
+				WHERE all(n IN nodes(ancestorPath) WHERE n.deleted = false)
 				WITH isAdmin, hasEdit, [sys] + collect(DISTINCT ancestor) AS chain
 				UNWIND chain AS s
 				OPTIONAL MATCH (s)-[:HAS_RESPONSIBLE]->(:Employee)-[:HAS_USER]->(ru:User)
@@ -56,7 +56,7 @@ func CanEditSystemQuery(systemUID, userUID string) helpers.DatabaseQuery {
 // edit-guard can be applied to physical-item endpoints that identify the item, not the system.
 func GetSystemUIDByItemUIDQuery(itemUID string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
-		Query: `MATCH (sys:System{deleted:false})-[:CONTAINS_ITEM]->(item{uid:$itemUID})
+		Query: `MATCH (sys:System{deleted:false})-[:CONTAINS_ITEM]->(item:Item{uid:$itemUID})
 				RETURN sys.uid AS systemUID`,
 		ReturnAlias: "systemUID",
 		Parameters: map[string]interface{}{

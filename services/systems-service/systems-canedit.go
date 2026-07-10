@@ -15,6 +15,7 @@ import (
 // A non-existent/deleted system yields helpers.ERR_NO_ROWS (callers decide 404 vs. pass-through).
 func (svc *SystemsService) CanEditSystem(systemUID, userUID string) (models.CanEditSystemResult, error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
 	return helpers.GetNeo4jSingleRecordAndMapToStruct[models.CanEditSystemResult](session, CanEditSystemQuery(systemUID, userUID))
 }
 
@@ -22,6 +23,7 @@ func (svc *SystemsService) CanEditSystem(systemUID, userUID string) (models.CanE
 // can be applied to physical-item endpoints. Returns helpers.ERR_NO_ROWS if the item has no system.
 func (svc *SystemsService) GetSystemUIDByItemUID(itemUID string) (string, error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
 	return helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSystemUIDByItemUIDQuery(itemUID))
 }
 
