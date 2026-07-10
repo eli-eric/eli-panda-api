@@ -10,6 +10,10 @@ import "panda/apigateway/helpers"
 // Result precedence: admin -> true; no systems-edit role -> false; no responsibles anywhere
 // (orphan) -> true; otherwise true iff the caller is among the responsibles. Responsibles are
 // always returned (even when result is false) so the FE can show who to contact.
+//
+// The caller is matched with OPTIONAL MATCH so a missing User node (stale JWT / deleted user)
+// yields hasEdit=false -> result=false (fail-closed), while only a missing/deleted SYSTEM (the
+// required MATCH below) produces ERR_NO_ROWS.
 func CanEditSystemQuery(systemUID, userUID string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `OPTIONAL MATCH (caller:User{uid:$userUID})
