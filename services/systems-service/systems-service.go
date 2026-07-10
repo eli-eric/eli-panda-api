@@ -83,6 +83,7 @@ type ISystemsService interface {
 	AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error)
 	CreateBatchRelationships(request *models.BatchRelationshipRequest, facilityCode, userUID string) (models.BatchRelationshipResponse, error)
 	CanEditSystem(systemUID, userUID string) (models.CanEditSystemResult, error)
+	GetSystemUIDByItemUID(itemUID string) (string, error)
 }
 
 var (

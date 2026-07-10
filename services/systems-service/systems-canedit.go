@@ -18,6 +18,13 @@ func (svc *SystemsService) CanEditSystem(systemUID, userUID string) (models.CanE
 	return helpers.GetNeo4jSingleRecordAndMapToStruct[models.CanEditSystemResult](session, CanEditSystemQuery(systemUID, userUID))
 }
 
+// GetSystemUIDByItemUID resolves the System containing the given physical item, so the edit-guard
+// can be applied to physical-item endpoints. Returns helpers.ERR_NO_ROWS if the item has no system.
+func (svc *SystemsService) GetSystemUIDByItemUID(itemUID string) (string, error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	return helpers.GetNeo4jSingleRecordSingleValue[string](session, GetSystemUIDByItemUIDQuery(itemUID))
+}
+
 // CanEditSystem godoc
 // @Summary Can the current user edit this system
 // @Description Returns whether the caller may edit the system (responsibility bubbles up HAS_SUBSYSTEM) and the responsible users to contact.
@@ -69,4 +76,18 @@ func (h *SystemsHandlers) guardSystemEdit(c echo.Context, systemUIDs ...string) 
 		}
 	}
 	return nil
+}
+
+// guardSystemEditByItem resolves the physical item's system and applies guardSystemEdit to it.
+// If the item belongs to no system (ERR_NO_ROWS), the guard passes (handler handles the miss).
+func (h *SystemsHandlers) guardSystemEditByItem(c echo.Context, itemUID string) error {
+	systemUID, err := h.systemsService.GetSystemUIDByItemUID(itemUID)
+	if err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return nil
+		}
+		log.Error().Err(err).Msg("guardSystemEditByItem")
+		return echo.ErrInternalServerError
+	}
+	return h.guardSystemEdit(c, systemUID)
 }
