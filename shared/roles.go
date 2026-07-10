@@ -44,3 +44,7 @@ const ROLE_PUBLICATIONS_EDIT string = "publications-edit"
 // Zones
 const ROLE_ZONES_VIEW string = "zones-view"
 const ROLE_ZONES_EDIT string = "zones-edit"
+
+// Teams
+const ROLE_TEAMS_VIEW string = "teams-view"
+const ROLE_TEAMS_EDIT string = "teams-edit"
