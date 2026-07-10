@@ -70,6 +70,7 @@ type ISystemsHandlers interface {
 	AssignSpareItem() echo.HandlerFunc
 	GetSystemSparePartsDetail() echo.HandlerFunc
 	CreateBatchRelationships() echo.HandlerFunc
+	CanEditSystem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
