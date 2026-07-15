@@ -16,8 +16,9 @@ import (
 // teamsServiceMock is a hand-written ITeamsService stub; each method delegates to an
 // optional func field so individual tests control behavior and capture arguments.
 type teamsServiceMock struct {
-	getAllFn   func(facilityCode string) ([]models.TeamListItem, error)
-	getByUIDFn func(uid, facilityCode string) (models.TeamDetail, error)
+	getAllFn        func(facilityCode string) ([]models.TeamListItem, error)
+	getAssignableFn func(facilityCode, search string) ([]models.TeamMember, error)
+	getByUIDFn      func(uid, facilityCode string) (models.TeamDetail, error)
 	createFn   func(facilityCode, userUID string, req *models.TeamCreateRequest) (models.Team, error)
 	updateFn   func(uid, facilityCode, userUID string, req *models.TeamUpdateRequest) (models.Team, error)
 	patchFn    func(uid, facilityCode, userUID string, fields *models.PatchTeamFields) (models.Team, error)
@@ -32,6 +33,13 @@ func (m *teamsServiceMock) GetAllTeams(facilityCode string) ([]models.TeamListIt
 		return m.getAllFn(facilityCode)
 	}
 	return []models.TeamListItem{}, nil
+}
+
+func (m *teamsServiceMock) GetAssignableUsers(facilityCode, search string) ([]models.TeamMember, error) {
+	if m.getAssignableFn != nil {
+		return m.getAssignableFn(facilityCode, search)
+	}
+	return []models.TeamMember{}, nil
 }
 
 func (m *teamsServiceMock) GetTeamByUID(uid, facilityCode string) (models.TeamDetail, error) {
@@ -295,4 +303,52 @@ func TestPatchTeam_SetsNameAndDescription(t *testing.T) {
 	assert.NotNil(t, captured.Description)
 	assert.NotNil(t, captured.Description.Value)
 	assert.Equal(t, "cryogenics team", *captured.Description.Value)
+}
+
+func TestGetAssignableUsers_Success_PassesSearch(t *testing.T) {
+	c, rec := newContext(http.MethodGet, "/v1/teams/assignable-users?search=nov", "")
+
+	var capturedFC, capturedSearch string
+	svc := &teamsServiceMock{
+		getAssignableFn: func(fc, search string) ([]models.TeamMember, error) {
+			capturedFC, capturedSearch = fc, search
+			return []models.TeamMember{
+				{UID: "u-1", FirstName: "Jan", LastName: "Novak", Username: "jnovak", Email: "jan@x.io", IsEnabled: true},
+			}, nil
+		},
+	}
+	h := NewTeamsHandlers(svc)
+
+	err := h.GetAssignableUsers()(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "B", capturedFC)
+	assert.Equal(t, "nov", capturedSearch)
+	assert.JSONEq(t, `[{"uid":"u-1","firstName":"Jan","lastName":"Novak","username":"jnovak","email":"jan@x.io","isEnabled":true}]`, rec.Body.String())
+}
+
+func TestGetAssignableUsers_Empty_ReturnsEmptyArray(t *testing.T) {
+	c, rec := newContext(http.MethodGet, "/v1/teams/assignable-users", "")
+	h := NewTeamsHandlers(&teamsServiceMock{})
+
+	err := h.GetAssignableUsers()(c)
+
+	assert.NoError(t, err)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.JSONEq(t, `[]`, rec.Body.String())
+}
+
+func TestGetAssignableUsers_ServiceError_500(t *testing.T) {
+	c, _ := newContext(http.MethodGet, "/v1/teams/assignable-users", "")
+	svc := &teamsServiceMock{
+		getAssignableFn: func(fc, search string) ([]models.TeamMember, error) {
+			return nil, errors.New("db down")
+		},
+	}
+	h := NewTeamsHandlers(svc)
+
+	err := h.GetAssignableUsers()(c)
+
+	assertHTTPErrorCode(t, err, http.StatusInternalServerError)
 }
