@@ -19,6 +19,7 @@ type TeamsHandlers struct {
 
 type ITeamsHandlers interface {
 	GetAllTeams() echo.HandlerFunc
+	GetAssignableUsers() echo.HandlerFunc
 	GetTeamByUID() echo.HandlerFunc
 	CreateTeam() echo.HandlerFunc
 	UpdateTeam() echo.HandlerFunc
@@ -53,6 +54,31 @@ func (h *TeamsHandlers) GetAllTeams() echo.HandlerFunc {
 		}
 
 		return c.JSON(http.StatusOK, teams)
+	}
+}
+
+// GetAssignableUsers Get assignable facility users godoc
+// @Summary Get assignable facility users
+// @Description Get enabled users of the current facility for the team member picker. Optional case-insensitive search across name/username/email.
+// @Tags Teams
+// @Security BearerAuth
+// @Produce json
+// @Param search query string false "Case-insensitive substring filter across firstName/lastName/username/email"
+// @Success 200 {array} models.TeamMember
+// @Failure 500 "Internal Server Error"
+// @Router /v1/teams/assignable-users [get]
+func (h *TeamsHandlers) GetAssignableUsers() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		facilityCode := c.Get("facilityCode").(string)
+		search := c.QueryParam("search")
+
+		users, err := h.teamsService.GetAssignableUsers(facilityCode, search)
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting assignable users")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(http.StatusOK, users)
 	}
 }
 

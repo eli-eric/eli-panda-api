@@ -43,6 +43,7 @@ type TeamsService struct {
 
 type ITeamsService interface {
 	GetAllTeams(facilityCode string) ([]models.TeamListItem, error)
+	GetAssignableUsers(facilityCode, search string) ([]models.TeamMember, error)
 	GetTeamByUID(uid, facilityCode string) (models.TeamDetail, error)
 	CreateTeam(facilityCode, userUID string, req *models.TeamCreateRequest) (models.Team, error)
 	UpdateTeam(uid, facilityCode, userUID string, req *models.TeamUpdateRequest) (models.Team, error)
@@ -62,6 +63,17 @@ func (svc *TeamsService) GetAllTeams(facilityCode string) (result []models.TeamL
 	defer session.Close()
 
 	result, err = helpers.GetNeo4jArrayOfNodes[models.TeamListItem](session, GetAllTeamsQuery(facilityCode))
+	helpers.ProcessArrayResult(&result, err)
+	return result, err
+}
+
+// GetAssignableUsers returns enabled facility users for the team member picker,
+// optionally filtered by a case-insensitive search across name/username/email.
+func (svc *TeamsService) GetAssignableUsers(facilityCode, search string) (result []models.TeamMember, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
+
+	result, err = helpers.GetNeo4jArrayOfNodes[models.TeamMember](session, GetAssignableUsersQuery(facilityCode, search))
 	helpers.ProcessArrayResult(&result, err)
 	return result, err
 }
