@@ -6201,6 +6201,31 @@ paths:
       summary: Remove a team member
       tags:
       - Teams
+  /v1/teams/assignable-users:
+    get:
+      description: Get enabled users of the current facility for the team member picker.
+        Optional case-insensitive search across name/username/email.
+      parameters:
+      - description: Case-insensitive substring filter across firstName/lastName/username/email
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TeamMember'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get assignable facility users
+      tags:
+      - Teams
   /v1/users/{userUID}/disable:
     post:
       description: Disables user account and invalidates auth status cache.
