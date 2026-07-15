@@ -44,6 +44,29 @@ func GetTeamByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	}
 }
 
+// GetAssignableUsersQuery returns enabled Users in the facility, for the team member picker.
+// Disabled users are excluded. An empty search matches everyone; otherwise it is a
+// case-insensitive substring match across firstName, lastName, username and email.
+func GetAssignableUsersQuery(facilityCode, search string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `MATCH (u:User)-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
+				WHERE coalesce(u.isEnabled, false) = true
+				  AND ($search = '' OR toLower(coalesce(u.firstName, '')) CONTAINS toLower($search)
+				       OR toLower(coalesce(u.lastName, '')) CONTAINS toLower($search)
+				       OR toLower(coalesce(u.username, '')) CONTAINS toLower($search)
+				       OR toLower(coalesce(u.email, '')) CONTAINS toLower($search))
+				RETURN {uid: u.uid, firstName: coalesce(u.firstName, ''), lastName: coalesce(u.lastName, ''),
+						username: coalesce(u.username, ''), email: coalesce(u.email, ''),
+						isEnabled: coalesce(u.isEnabled, false)} AS user
+				ORDER BY user.lastName, user.firstName`,
+		ReturnAlias: "user",
+		Parameters: map[string]interface{}{
+			"facilityCode": facilityCode,
+			"search":       search,
+		},
+	}
+}
+
 // CheckTeamCodeExistsQuery counts teams (excluding excludeUID) with the given code in the
 // facility. Only invoked when code is non-empty.
 func CheckTeamCodeExistsQuery(code, facilityCode, excludeUID string) helpers.DatabaseQuery {
