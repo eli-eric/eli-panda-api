@@ -19,13 +19,13 @@ type teamsServiceMock struct {
 	getAllFn        func(facilityCode string) ([]models.TeamListItem, error)
 	getAssignableFn func(facilityCode, search string) ([]models.TeamMember, error)
 	getByUIDFn      func(uid, facilityCode string) (models.TeamDetail, error)
-	createFn   func(facilityCode, userUID string, req *models.TeamCreateRequest) (models.Team, error)
-	updateFn   func(uid, facilityCode, userUID string, req *models.TeamUpdateRequest) (models.Team, error)
-	patchFn    func(uid, facilityCode, userUID string, fields *models.PatchTeamFields) (models.Team, error)
-	deleteFn   func(uid, facilityCode, userUID string) error
-	addFn      func(teamUID, facilityCode, userUID string, userUids []string) (models.TeamDetail, error)
-	removeFn   func(teamUID, facilityCode, userUID, memberUID string) (models.TeamDetail, error)
-	replaceFn  func(teamUID, facilityCode, userUID string, userUids []string) (models.TeamDetail, error)
+	createFn        func(facilityCode, userUID string, req *models.TeamCreateRequest) (models.Team, error)
+	updateFn        func(uid, facilityCode, userUID string, req *models.TeamUpdateRequest) (models.Team, error)
+	patchFn         func(uid, facilityCode, userUID string, fields *models.PatchTeamFields) (models.Team, error)
+	deleteFn        func(uid, facilityCode, userUID string) error
+	addFn           func(teamUID, facilityCode, userUID string, userUids []string) (models.TeamDetail, error)
+	removeFn        func(teamUID, facilityCode, userUID, memberUID string) (models.TeamDetail, error)
+	replaceFn       func(teamUID, facilityCode, userUID string, userUids []string) (models.TeamDetail, error)
 }
 
 func (m *teamsServiceMock) GetAllTeams(facilityCode string) ([]models.TeamListItem, error) {
