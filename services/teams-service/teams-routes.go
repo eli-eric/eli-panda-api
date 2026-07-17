@@ -16,6 +16,9 @@ func MapTeamsRoutes(e *echo.Echo, h ITeamsHandlers, jwtMiddleware echo.Middlewar
 	e.PATCH("/v1/teams/:uid", m.Authorization(h.PatchTeam(), shared.ROLE_TEAMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	e.DELETE("/v1/teams/:uid", m.Authorization(h.DeleteTeam(), shared.ROLE_TEAMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
+	// assignable facility users for the member picker
+	e.GET("/v1/teams/assignable-users", m.Authorization(h.GetAssignableUsers(), shared.ROLE_TEAMS_VIEW, shared.ROLE_TEAMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
+
 	// team membership
 	e.POST("/v1/teams/:uid/members", m.Authorization(h.AddTeamMembers(), shared.ROLE_TEAMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	e.PUT("/v1/teams/:uid/members", m.Authorization(h.ReplaceTeamMembers(), shared.ROLE_TEAMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)

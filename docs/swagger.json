@@ -6369,6 +6369,45 @@
                 }
             }
         },
+        "/v1/teams/assignable-users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get enabled users of the current facility for the team member picker. Optional case-insensitive search across name/username/email.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Get assignable facility users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Case-insensitive substring filter across firstName/lastName/username/email",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TeamMember"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/teams/{uid}": {
             "get": {
                 "security": [
