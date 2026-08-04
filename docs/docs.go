@@ -5493,6 +5493,12 @@ const docTemplate = `{
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5501,6 +5507,9 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5542,6 +5551,12 @@ const docTemplate = `{
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5553,6 +5568,9 @@ const docTemplate = `{
                                 "type": "integer"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"

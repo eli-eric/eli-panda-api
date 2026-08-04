@@ -5490,6 +5490,12 @@
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5498,6 +5504,9 @@
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5539,6 +5548,12 @@
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5550,6 +5565,9 @@
                                 "type": "integer"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"

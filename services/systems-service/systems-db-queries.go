@@ -1243,7 +1243,21 @@ func GetSystemLeavesOrderByClauses(sorting *[]helpers.Sorting) string {
 	return " ORDER BY " + strings.Join(clauses, ", ") + " "
 }
 
-func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+// leavesTraversalDepth picks how far below the parent a leaf may sit.
+//
+// The caller-facing contract is a boolean ("direct children only") rather than a depth,
+// because the enclosing queries keep their `WHERE NOT (sys)-[:HAS_SUBSYSTEM]->()` clause
+// either way — depth 1 therefore yields exactly the end systems hanging directly off the
+// parent, which is a meaningful set. An arbitrary depth N would not be: it would blend
+// leaves from levels 1..N together.
+func leavesTraversalDepth(directOnly bool) string {
+	if directOnly {
+		return "*1..1"
+	}
+	return "*1..50"
+}
+
+func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter, directOnly bool) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["parentUID"] = parentUID
@@ -1261,16 +1275,17 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
 
-	result.Query = `
+	result.Query = fmt.Sprintf(`
 	MATCH(f:Facility{code:$facilityCode})
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM%s]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
 	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
 	WITH DISTINCT sys
-	`
+	`, leavesTraversalDepth(directOnly))
 
-	// catalogue category filter changes base query
+	// catalogue category filter appends its own MATCH to the base query (it does not
+	// replace it — the parent traversal and the leaf predicate above always apply)
 	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filtering, "category")
 	if catalogueCategoryFilter != nil {
 		result.Query += `
@@ -1600,20 +1615,20 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	return result
 }
 
-func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string, searchString string, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string, searchString string, filtering *[]helpers.ColumnFilter, directOnly bool) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["parentUID"] = parentUID
 	result.Parameters["search"] = strings.ToLower(strings.TrimSpace(searchString))
 
-	result.Query = `
+	result.Query = fmt.Sprintf(`
 	MATCH(f:Facility{code:$facilityCode})
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM%s]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
 	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
 	WITH DISTINCT sys
-	`
+	`, leavesTraversalDepth(directOnly))
 
 	// system-level filters (only need sys, run before physical item matches)
 	// system name

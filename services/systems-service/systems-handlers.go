@@ -458,6 +458,18 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 	}
 }
 
+// parseDirectOnlyParam reads the optional directOnly flag shared by both leaves
+// endpoints. Absent means false; anything ParseBool rejects is an error rather than a
+// silent false, so a client sending `directOnly=1` finds out instead of quietly getting
+// the whole subtree back. Mirrors the includeRelationshipStats handling below.
+func parseDirectOnlyParam(c echo.Context) (bool, error) {
+	raw := strings.TrimSpace(c.QueryParam("directOnly"))
+	if raw == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(raw)
+}
+
 // GetSystemLeavesByParentUID godoc
 // @Summary Get leaf systems for a parent
 // @Description Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.
@@ -469,7 +481,9 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 // @Param sorting query string false "Sorting JSON (array of {id, desc})"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
+// @Param directOnly query bool false "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)"
 // @Success 200 {object} helpers.PaginationResult[models.System]
+// @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves [get]
 func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
@@ -504,7 +518,12 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject)
+		directOnly, err := parseDirectOnlyParam(c)
+		if err != nil {
+			return helpers.BadRequest("invalid directOnly")
+		}
+
+		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject, directOnly)
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
 		}
@@ -523,7 +542,9 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 // @Param uid path string true "Parent system UID"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
+// @Param directOnly query bool false "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)"
 // @Success 200 {object} map[string]int64
+// @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves/count [get]
 func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
@@ -536,7 +557,12 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject)
+		directOnly, err := parseDirectOnlyParam(c)
+		if err != nil {
+			return helpers.BadRequest("invalid directOnly")
+		}
+
+		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject, directOnly)
 		if err == nil {
 			return c.JSON(http.StatusOK, map[string]int64{"count": count})
 		}
