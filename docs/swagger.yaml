@@ -4969,7 +4969,8 @@ paths:
         in: query
         name: columnFilter
         type: string
-      - description: Only the parent's direct children instead of all descendants
+      - description: Only leaf systems directly under the parent (excludes descendants
+          deeper than 1 level)
         in: query
         name: directOnly
         type: boolean
@@ -4980,6 +4981,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/helpers.PaginationResult-models_System'
+        "400":
+          description: Bad request
         "500":
           description: Internal server error
       security:
@@ -5005,7 +5008,8 @@ paths:
         in: query
         name: columnFilter
         type: string
-      - description: Only the parent's direct children instead of all descendants
+      - description: Only leaf systems directly under the parent (excludes descendants
+          deeper than 1 level)
         in: query
         name: directOnly
         type: boolean
@@ -5018,6 +5022,8 @@ paths:
             additionalProperties:
               type: integer
             type: object
+        "400":
+          description: Bad request
         "500":
           description: Internal server error
       security:

@@ -179,6 +179,12 @@ func TestGetSystemLeavesByParentUIDCountQuery_DirectOnlyMatchesListTraversal(t *
 	assert.NotContains(t, count.Query, "MATCH(parent)-[:HAS_SUBSYSTEM*1..50]")
 }
 
+func TestGetSystemLeavesByParentUIDCountQuery_DirectOnlyOffKeepsFullTraversal(t *testing.T) {
+	query := GetSystemLeavesByParentUIDCountQuery("parent-uid", "FAC", "", nil, false)
+
+	assert.Contains(t, query.Query, "MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})")
+}
+
 func TestGetSystemLeavesByParentUIDCountQuery_SystemLevelFilterBeforeCategory(t *testing.T) {
 	filters := []helpers.ColumnFilter{
 		{Id: "systemLevel", Value: []interface{}{"KEY_SYSTEMS"}},

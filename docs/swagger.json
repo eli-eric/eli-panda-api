@@ -5493,7 +5493,7 @@
                     },
                     {
                         "type": "boolean",
-                        "description": "Only the parent's direct children instead of all descendants",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
                         "name": "directOnly",
                         "in": "query"
                     }
@@ -5504,6 +5504,9 @@
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5548,7 +5551,7 @@
                     },
                     {
                         "type": "boolean",
-                        "description": "Only the parent's direct children instead of all descendants",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
                         "name": "directOnly",
                         "in": "query"
                     }
@@ -5562,6 +5565,9 @@
                                 "type": "integer"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"

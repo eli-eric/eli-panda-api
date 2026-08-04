@@ -1284,7 +1284,8 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	WITH DISTINCT sys
 	`, leavesTraversalDepth(directOnly))
 
-	// catalogue category filter changes base query
+	// catalogue category filter appends its own MATCH to the base query (it does not
+	// replace it — the parent traversal and the leaf predicate above always apply)
 	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filtering, "category")
 	if catalogueCategoryFilter != nil {
 		result.Query += `

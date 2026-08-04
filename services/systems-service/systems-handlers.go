@@ -481,8 +481,9 @@ func parseDirectOnlyParam(c echo.Context) (bool, error) {
 // @Param sorting query string false "Sorting JSON (array of {id, desc})"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
-// @Param directOnly query bool false "Only the parent's direct children instead of all descendants"
+// @Param directOnly query bool false "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)"
 // @Success 200 {object} helpers.PaginationResult[models.System]
+// @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves [get]
 func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
@@ -541,8 +542,9 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 // @Param uid path string true "Parent system UID"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
-// @Param directOnly query bool false "Only the parent's direct children instead of all descendants"
+// @Param directOnly query bool false "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)"
 // @Success 200 {object} map[string]int64
+// @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves/count [get]
 func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
