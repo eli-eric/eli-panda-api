@@ -5493,6 +5493,12 @@ const docTemplate = `{
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only the parent's direct children instead of all descendants",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -5541,6 +5547,12 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Column filter JSON",
                         "name": "columnFilter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only the parent's direct children instead of all descendants",
+                        "name": "directOnly",
                         "in": "query"
                     }
                 ],

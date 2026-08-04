@@ -469,6 +469,7 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 // @Param sorting query string false "Sorting JSON (array of {id, desc})"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
+// @Param directOnly query bool false "Only the parent's direct children instead of all descendants"
 // @Success 200 {object} helpers.PaginationResult[models.System]
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves [get]
@@ -504,7 +505,9 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject)
+		directOnly := c.QueryParam("directOnly") == "true"
+
+		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject, directOnly)
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
 		}
@@ -523,6 +526,7 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 // @Param uid path string true "Parent system UID"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
+// @Param directOnly query bool false "Only the parent's direct children instead of all descendants"
 // @Success 200 {object} map[string]int64
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves/count [get]
@@ -536,7 +540,9 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject)
+		directOnly := c.QueryParam("directOnly") == "true"
+
+		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject, directOnly)
 		if err == nil {
 			return c.JSON(http.StatusOK, map[string]int64{"count": count})
 		}

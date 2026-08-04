@@ -4969,6 +4969,10 @@ paths:
         in: query
         name: columnFilter
         type: string
+      - description: Only the parent's direct children instead of all descendants
+        in: query
+        name: directOnly
+        type: boolean
       produces:
       - application/json
       responses:
@@ -5001,6 +5005,10 @@ paths:
         in: query
         name: columnFilter
         type: string
+      - description: Only the parent's direct children instead of all descendants
+        in: query
+        name: directOnly
+        type: boolean
       produces:
       - application/json
       responses:

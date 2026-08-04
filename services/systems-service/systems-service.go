@@ -39,8 +39,8 @@ type ISystemsService interface {
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
 	GetSystemsHierarchy(facilityCode string) (result []models.SystemHierarchyNode, err error)
-	GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
-	GetSystemLeavesByParentUIDCount(parentUID string, facilityCode string, search string, filtering *[]helpers.ColumnFilter) (count int64, err error)
+	GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter, directOnly bool) (result helpers.PaginationResult[models.System], err error)
+	GetSystemLeavesByParentUIDCount(parentUID string, facilityCode string, search string, filtering *[]helpers.ColumnFilter, directOnly bool) (count int64, err error)
 	GetSystemGraphByUid(uid string, facilityCode string, options models.SystemGraphQueryOptions) (result models.SystemGraphResponse, err error)
 	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
@@ -566,21 +566,23 @@ func (svc *SystemsService) GetSystemsHierarchy(facilityCode string) (result []mo
 	return result, nil
 }
 
-func (svc *SystemsService) GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error) {
+func (svc *SystemsService) GetSystemLeavesByParentUID(parentUID string, facilityCode string, search string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter, directOnly bool) (result helpers.PaginationResult[models.System], err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	query := GetSystemLeavesByParentUIDQuery(parentUID, facilityCode, search, pagination, sorting, filtering)
+	query := GetSystemLeavesByParentUIDQuery(parentUID, facilityCode, search, pagination, sorting, filtering, directOnly)
 	items, err := helpers.GetNeo4jArrayOfNodes[models.System](session, query)
-	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemLeavesByParentUIDCountQuery(parentUID, facilityCode, search, filtering))
+	// directOnly must match the list query, otherwise the page count is computed over
+	// the full descendant set while the rows come from the direct children only.
+	totalCount, _ := helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemLeavesByParentUIDCountQuery(parentUID, facilityCode, search, filtering, directOnly))
 
 	result = helpers.GetPaginationResult(items, int64(totalCount), err)
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemLeavesByParentUIDCount(parentUID string, facilityCode string, search string, filtering *[]helpers.ColumnFilter) (count int64, err error) {
+func (svc *SystemsService) GetSystemLeavesByParentUIDCount(parentUID string, facilityCode string, search string, filtering *[]helpers.ColumnFilter, directOnly bool) (count int64, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	count, err = helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemLeavesByParentUIDCountQuery(parentUID, facilityCode, search, filtering))
+	count, err = helpers.GetNeo4jSingleRecordSingleValue[int64](session, GetSystemLeavesByParentUIDCountQuery(parentUID, facilityCode, search, filtering, directOnly))
 
 	return count, err
 }
