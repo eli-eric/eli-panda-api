@@ -458,6 +458,18 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 	}
 }
 
+// parseDirectOnlyParam reads the optional directOnly flag shared by both leaves
+// endpoints. Absent means false; anything ParseBool rejects is an error rather than a
+// silent false, so a client sending `directOnly=1` finds out instead of quietly getting
+// the whole subtree back. Mirrors the includeRelationshipStats handling below.
+func parseDirectOnlyParam(c echo.Context) (bool, error) {
+	raw := strings.TrimSpace(c.QueryParam("directOnly"))
+	if raw == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(raw)
+}
+
 // GetSystemLeavesByParentUID godoc
 // @Summary Get leaf systems for a parent
 // @Description Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.
@@ -505,7 +517,10 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		directOnly := c.QueryParam("directOnly") == "true"
+		directOnly, err := parseDirectOnlyParam(c)
+		if err != nil {
+			return helpers.BadRequest("invalid directOnly")
+		}
 
 		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject, directOnly)
 		if err == nil {
@@ -540,7 +555,10 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		directOnly := c.QueryParam("directOnly") == "true"
+		directOnly, err := parseDirectOnlyParam(c)
+		if err != nil {
+			return helpers.BadRequest("invalid directOnly")
+		}
 
 		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject, directOnly)
 		if err == nil {
