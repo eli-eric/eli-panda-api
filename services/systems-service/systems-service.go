@@ -1276,8 +1276,9 @@ func (svc *SystemsService) GetSystemsForControlsSystems(facilityCode string, pag
 func (svc *SystemsService) checkZoneHasDefaultParentSystem(session neo4j.Session, zoneUID string, facilityCode string) error {
 	count, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckZoneHasDefaultParentSystemQuery(zoneUID, facilityCode))
 	if err != nil {
+		// no rows means the zone itself is unknown in this facility, not that it lacks a parent
 		if errors.Is(err, helpers.ERR_NO_ROWS) {
-			return ErrMissingDefaultParentSystem
+			return invalidSystemCodesInput("zone not found")
 		}
 		return err
 	}

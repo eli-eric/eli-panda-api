@@ -30,7 +30,7 @@ func NewZoneHandlers(svc IZoneService) IZoneHandlers {
 
 // GetAllZones Get all zones godoc
 // @Summary Get all zones
-// @Description Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under), or null when not set.
+// @Description Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.
 // @Tags Zones
 // @Security BearerAuth
 // @Produce json
@@ -67,7 +67,7 @@ func (h *ZoneHandlers) GetAllZones() echo.HandlerFunc {
 
 // GetZoneByUID Get zone by uid godoc
 // @Summary Get zone by uid
-// @Description Get zone by uid, including its defaultParentSystem (the system new system codes are created under), or null when not set.
+// @Description Get zone by uid, including its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.
 // @Tags Zones
 // @Security BearerAuth
 // @Produce json

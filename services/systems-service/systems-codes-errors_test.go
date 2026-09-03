@@ -68,3 +68,18 @@ func TestSystemCodesClientError(t *testing.T) {
 		})
 	}
 }
+
+// The zone match must stay mandatory and the parent match optional: an unknown zone then returns no
+// rows and is reported as "zone not found" instead of "missing default parent system".
+func TestCheckZoneHasDefaultParentSystemQuery(t *testing.T) {
+	query := CheckZoneHasDefaultParentSystemQuery("zone-1", "B")
+
+	assert.Equal(t, "cnt", query.ReturnAlias)
+	assert.Contains(t, query.Query, "MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})")
+	assert.Contains(t, query.Query, "OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)-[:BELONGS_TO_FACILITY]->(f)")
+	assert.Contains(t, query.Query, "coalesce(parent.deleted, false) = false")
+	// z as grouping key: without it a bare count() returns a 0 row even for an unknown zone
+	assert.Contains(t, query.Query, "WITH z, count(parent) as cnt")
+	assert.Equal(t, "zone-1", query.Parameters["zoneUID"])
+	assert.Equal(t, "B", query.Parameters["facilityCode"])
+}

@@ -6319,8 +6319,8 @@ paths:
   /v1/zones:
     get:
       description: Get all zones for the current facility. Each zone includes its
-        defaultParentSystem (the system new system codes are created under), or null
-        when not set.
+        defaultParentSystem (the system new system codes are created under); the field
+        is omitted when the zone has none, like parentZone.
       produces:
       - application/json
       responses:
@@ -6389,7 +6389,8 @@ paths:
       - Zones
     get:
       description: Get zone by uid, including its defaultParentSystem (the system
-        new system codes are created under), or null when not set.
+        new system codes are created under); the field is omitted when the zone has
+        none, like parentZone.
       parameters:
       - description: uid
         in: path

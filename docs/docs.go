@@ -6874,7 +6874,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under), or null when not set.",
+                "description": "Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.",
                 "produces": [
                     "application/json"
                 ],
@@ -6988,7 +6988,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get zone by uid, including its defaultParentSystem (the system new system codes are created under), or null when not set.",
+                "description": "Get zone by uid, including its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.",
                 "produces": [
                     "application/json"
                 ],

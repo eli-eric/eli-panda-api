@@ -860,13 +860,18 @@ func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]hel
 // CheckZoneHasDefaultParentSystemQuery counts the non-deleted systems the zone is linked to via
 // HAS_DEFAULT_PARENT_SYSTEM. Generated system codes are created as subsystems of that system, so
 // zero means the system code generation cannot proceed.
+// The zone match is mandatory and the parent match optional, so an unknown zone stays
+// distinguishable from a known zone without a default parent system. Counting with z as the
+// grouping key is what makes that work: a bare count() would still return a single 0 row when the
+// zone does not match at all.
 func CheckZoneHasDefaultParentSystemQuery(zoneUID string, facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Query = `
 	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
-	MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)-[:BELONGS_TO_FACILITY]->(f)
+	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)-[:BELONGS_TO_FACILITY]->(f)
 	WHERE coalesce(parent.deleted, false) = false
-	RETURN count(parent) as cnt `
+	WITH z, count(parent) as cnt
+	RETURN cnt as cnt `
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["zoneUID"] = zoneUID
