@@ -30,7 +30,7 @@ func NewZoneHandlers(svc IZoneService) IZoneHandlers {
 
 // GetAllZones Get all zones godoc
 // @Summary Get all zones
-// @Description Get all zones for the current facility
+// @Description Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under), or null when not set.
 // @Tags Zones
 // @Security BearerAuth
 // @Produce json
@@ -67,7 +67,7 @@ func (h *ZoneHandlers) GetAllZones() echo.HandlerFunc {
 
 // GetZoneByUID Get zone by uid godoc
 // @Summary Get zone by uid
-// @Description Get zone by uid
+// @Description Get zone by uid, including its defaultParentSystem (the system new system codes are created under), or null when not set.
 // @Tags Zones
 // @Security BearerAuth
 // @Produce json
@@ -96,7 +96,7 @@ func (h *ZoneHandlers) GetZoneByUID() echo.HandlerFunc {
 
 // CreateZone Create zone godoc
 // @Summary Create zone
-// @Description Create a new zone
+// @Description Create a new zone. defaultParentSystemUid optionally links the zone to the system that new system codes are created under; it must be a non-deleted system of the same facility.
 // @Tags Zones
 // @Security BearerAuth
 // @Accept json
@@ -136,7 +136,8 @@ func (h *ZoneHandlers) CreateZone() echo.HandlerFunc {
 
 // UpdateZone Update zone godoc
 // @Summary Update zone
-// @Description Update zone name, code and optionally reassign parent
+// @Description Update zone name, code and optionally reassign parent or default parent system.
+// @Description parentUid and defaultParentSystemUid are tri-state: omitted/null keeps the current value, "" detaches, a uid sets it.
 // @Tags Zones
 // @Security BearerAuth
 // @Accept json
@@ -261,5 +262,6 @@ func isClientError(err error) bool {
 	return errors.Is(err, ErrDuplicateCode) ||
 		errors.Is(err, ErrSelfParent) ||
 		errors.Is(err, ErrParentNotFound) ||
-		errors.Is(err, ErrMaxDepth)
+		errors.Is(err, ErrMaxDepth) ||
+		errors.Is(err, ErrDefaultParentSystemNotFound)
 }

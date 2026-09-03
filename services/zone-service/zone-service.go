@@ -23,6 +23,8 @@ var (
 	ErrConflictSys    = errors.New("zone is referenced by systems")
 	ErrCSVHeader      = errors.New("failed to read CSV header")
 	ErrCSVColumns     = errors.New("CSV must have 'name' and 'code' columns")
+
+	ErrDefaultParentSystemNotFound = errors.New("default parent system not found in this facility")
 )
 
 type ZoneService struct {
@@ -95,6 +97,13 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 		return result, ErrDuplicateCode
 	}
 
+	// validate default parent system before any writes
+	if req.DefaultParentSystemUID != nil && *req.DefaultParentSystemUID != "" {
+		if err := validateDefaultParentSystem(session, *req.DefaultParentSystemUID, facilityCode); err != nil {
+			return result, err
+		}
+	}
+
 	uid := uuid.New().String()
 
 	if req.ParentUID != nil && *req.ParentUID != "" {
@@ -109,6 +118,20 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 		result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Zone](session, query)
 	}
 
+	if err != nil {
+		return result, err
+	}
+
+	if req.DefaultParentSystemUID != nil && *req.DefaultParentSystemUID != "" {
+		setQuery := SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode)
+		if err = helpers.WriteNeo4jAndReturnNothing(session, setQuery); err != nil {
+			return result, err
+		}
+	}
+
+	// re-read so the response carries the resolved relationships (the create queries build
+	// their return value inline and do not know about the default parent system)
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
 	return result, err
 }
 
@@ -144,6 +167,13 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		}
 	}
 
+	// validate default parent system before any writes (only when explicitly provided)
+	if req.DefaultParentSystemUID != nil && *req.DefaultParentSystemUID != "" {
+		if err := validateDefaultParentSystem(session, *req.DefaultParentSystemUID, facilityCode); err != nil {
+			return result, err
+		}
+	}
+
 	// update properties
 	updateQuery := UpdateZoneQuery(uid, req.Name, req.Code, req.Notes, facilityCode, userUID)
 	err = helpers.WriteNeo4jAndReturnNothing(session, updateQuery)
@@ -163,6 +193,24 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		// set new parent if non-empty (empty string = explicit detach to root)
 		if *req.ParentUID != "" {
 			setQuery := SetParentRelQuery(uid, *req.ParentUID, facilityCode)
+			err = helpers.WriteNeo4jAndReturnNothing(session, setQuery)
+			if err != nil {
+				return result, err
+			}
+		}
+	}
+
+	// mutate default parent system only when explicitly provided (nil = preserve current value)
+	if req.DefaultParentSystemUID != nil {
+		removeQuery := RemoveDefaultParentSystemRelQuery(uid, facilityCode)
+		err = helpers.WriteNeo4jAndReturnNothing(session, removeQuery)
+		if err != nil {
+			return result, err
+		}
+
+		// set new default parent system if non-empty (empty string = explicit detach)
+		if *req.DefaultParentSystemUID != "" {
+			setQuery := SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode)
 			err = helpers.WriteNeo4jAndReturnNothing(session, setQuery)
 			if err != nil {
 				return result, err
@@ -329,6 +377,21 @@ func validateParentIsRoot(session neo4j.Session, parentUID, facilityCode string)
 	}
 	if check.HasParent {
 		return ErrMaxDepth
+	}
+
+	return nil
+}
+
+func validateDefaultParentSystem(session neo4j.Session, systemUID, facilityCode string) error {
+	count, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckSystemExistsInFacilityQuery(systemUID, facilityCode))
+	if err != nil {
+		if isNoRecords(err) {
+			return ErrDefaultParentSystemNotFound
+		}
+		return fmt.Errorf("error validating default parent system: %w", err)
+	}
+	if count == 0 {
+		return ErrDefaultParentSystemNotFound
 	}
 
 	return nil

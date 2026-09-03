@@ -5,6 +5,20 @@ import (
 	"panda/apigateway/helpers"
 )
 
+// defaultParentSystemSubQuery resolves the zone's default parent system into the `dps` variable.
+// It is a CALL subquery (not a plain OPTIONAL MATCH) so a duplicated relationship can never
+// multiply the result rows of the outer query.
+const defaultParentSystemSubQuery = `
+				CALL {
+					WITH z
+					OPTIONAL MATCH (z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(dps:System)
+					WHERE (dps.deleted IS NULL OR dps.deleted <> true)
+					RETURN dps ORDER BY dps.systemCode LIMIT 1
+				}`
+
+// System code is stored in the systemCode property, not code.
+const defaultParentSystemProjection = `CASE WHEN dps IS NOT NULL THEN {uid: dps.uid, name: dps.name, code: dps.systemCode} ELSE null END`
+
 func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]helpers.Sorting) helpers.DatabaseQuery {
 	query := `MATCH (z:Zone)-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
@@ -17,8 +31,11 @@ func GetAllZonesQuery(facilityCode, search string, skip, limit int, sorting *[]h
 	query += getZoneSortingClause(sorting)
 	query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
 
+	query += defaultParentSystemSubQuery
+
 	query += ` RETURN {uid: z.uid, name: z.name, code: z.code, notes: coalesce(z.notes, ''),
-						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END,
+						defaultParentSystem: ` + defaultParentSystemProjection + `} as zone`
 
 	return helpers.DatabaseQuery{
 		Query:       query,
@@ -80,9 +97,11 @@ func GetZoneByUIDQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
-				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
+				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)` +
+			defaultParentSystemSubQuery + `
 				RETURN {uid: z.uid, name: z.name, code: z.code, notes: coalesce(z.notes, ''),
-						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`,
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END,
+						defaultParentSystem: ` + defaultParentSystemProjection + `} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
 			"uid":          uid,
@@ -215,6 +234,46 @@ func SetParentRelQuery(uid, parentUID, facilityCode string) helpers.DatabaseQuer
 	}
 }
 
+func RemoveDefaultParentSystemRelQuery(uid, facilityCode string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
+				MATCH (z)-[rel:HAS_DEFAULT_PARENT_SYSTEM]->(:System)
+				DELETE rel`,
+		Parameters: map[string]interface{}{
+			"uid":          uid,
+			"facilityCode": facilityCode,
+		},
+	}
+}
+
+func SetDefaultParentSystemRelQuery(uid, systemUID, facilityCode string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
+				WHERE (z.deleted IS NULL OR z.deleted <> true)
+				MATCH (s:System{uid:$systemUID})-[:BELONGS_TO_FACILITY]->(f)
+				WHERE (s.deleted IS NULL OR s.deleted <> true)
+				MERGE (z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(s)`,
+		Parameters: map[string]interface{}{
+			"uid":          uid,
+			"systemUID":    systemUID,
+			"facilityCode": facilityCode,
+		},
+	}
+}
+
+func CheckSystemExistsInFacilityQuery(systemUID, facilityCode string) helpers.DatabaseQuery {
+	return helpers.DatabaseQuery{
+		Query: `MATCH (s:System{uid:$systemUID})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
+				WHERE (s.deleted IS NULL OR s.deleted <> true)
+				RETURN count(s) as cnt`,
+		ReturnAlias: "cnt",
+		Parameters: map[string]interface{}{
+			"systemUID":    systemUID,
+			"facilityCode": facilityCode,
+		},
+	}
+}
+
 func CheckZoneHasSubzonesQuery(uid, facilityCode string) helpers.DatabaseQuery {
 	return helpers.DatabaseQuery{
 		Query: `MATCH (z:Zone{uid:$uid})-[:BELONGS_TO_FACILITY]->(:Facility{code:$facilityCode})
@@ -247,9 +306,11 @@ func GetZoneByCodeAndFacilityQuery(code, facilityCode string) helpers.DatabaseQu
 	return helpers.DatabaseQuery{
 		Query: `MATCH (z:Zone{code:$code})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode})
 				WHERE (z.deleted IS NULL OR z.deleted <> true)
-				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)
+				OPTIONAL MATCH (parent:Zone)-[:HAS_SUBZONE]->(z)` +
+			defaultParentSystemSubQuery + `
 				RETURN {uid: z.uid, name: z.name, code: z.code, notes: coalesce(z.notes, ''),
-						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END} as zone`,
+						parentZone: CASE WHEN parent IS NOT NULL THEN {uid: parent.uid, name: parent.name, code: parent.code} ELSE null END,
+						defaultParentSystem: ` + defaultParentSystemProjection + `} as zone`,
 		ReturnAlias: "zone",
 		Parameters: map[string]interface{}{
 			"code":         code,

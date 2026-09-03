@@ -1830,6 +1830,8 @@ definitions:
     properties:
       code:
         type: string
+      defaultParentSystem:
+        $ref: '#/definitions/models.Codebook'
       name:
         type: string
       notes:
@@ -1842,6 +1844,11 @@ definitions:
   models.ZoneCreateRequest:
     properties:
       code:
+        type: string
+      defaultParentSystemUid:
+        description: |-
+          DefaultParentSystemUID is the uid of the System new system codes are created under.
+          nil = not set, non-empty = set.
         type: string
       name:
         type: string
@@ -1864,6 +1871,11 @@ definitions:
   models.ZoneUpdateRequest:
     properties:
       code:
+        type: string
+      defaultParentSystemUid:
+        description: |-
+          DefaultParentSystemUID is tri-state like ParentUID:
+          nil = preserve current value, "" = detach, non-empty = set.
         type: string
       name:
         type: string
@@ -5850,9 +5862,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a batch of new systems with generated system codes for
-        the given system type and zone. System name is set to the generated system
-        code.
+      description: |-
+        Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.
+        The new systems are created under the zone's default parent system; when the zone has none, 400 is returned (set it via PUT /v1/zones/{uid}).
       parameters:
       - description: System codes request
         in: body
@@ -5880,8 +5892,9 @@ paths:
       - Systems
   /v1/systems/system-codes/preview:
     get:
-      description: Generates a preview of the next N system codes for a given system
-        type and zone without creating any systems.
+      description: |-
+        Generates a preview of the next N system codes for a given system type and zone without creating any systems.
+        Returns 400 when the zone has no default parent system, so the client can block the create up front.
       parameters:
       - description: System type UID
         in: query
@@ -6305,7 +6318,9 @@ paths:
       - General
   /v1/zones:
     get:
-      description: Get all zones for the current facility
+      description: Get all zones for the current facility. Each zone includes its
+        defaultParentSystem (the system new system codes are created under), or null
+        when not set.
       produces:
       - application/json
       responses:
@@ -6323,7 +6338,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new zone
+      description: Create a new zone. defaultParentSystemUid optionally links the
+        zone to the system that new system codes are created under; it must be a non-deleted
+        system of the same facility.
       parameters:
       - description: Zone
         in: body
@@ -6371,7 +6388,8 @@ paths:
       tags:
       - Zones
     get:
-      description: Get zone by uid
+      description: Get zone by uid, including its defaultParentSystem (the system
+        new system codes are created under), or null when not set.
       parameters:
       - description: uid
         in: path
@@ -6397,7 +6415,9 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update zone name, code and optionally reassign parent
+      description: |-
+        Update zone name, code and optionally reassign parent or default parent system.
+        parentUid and defaultParentSystemUid are tri-state: omitted/null keeps the current value, "" detaches, a uid sets it.
       parameters:
       - description: uid
         in: path

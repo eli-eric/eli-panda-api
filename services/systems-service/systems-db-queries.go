@@ -857,6 +857,25 @@ func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]hel
 	return result
 }
 
+// CheckZoneHasDefaultParentSystemQuery counts the non-deleted systems the zone is linked to via
+// HAS_DEFAULT_PARENT_SYSTEM. Generated system codes are created as subsystems of that system, so
+// zero means the system code generation cannot proceed.
+func CheckZoneHasDefaultParentSystemQuery(zoneUID string, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+	MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)-[:BELONGS_TO_FACILITY]->(f)
+	WHERE coalesce(parent.deleted, false) = false
+	RETURN count(parent) as cnt `
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["zoneUID"] = zoneUID
+	result.Parameters["facilityCode"] = facilityCode
+	result.ReturnAlias = "cnt"
+
+	return result
+}
+
 func GetNewSystemCodesPreviewQuery(systemTypeUID string, zoneUID string, systemCodePrefix string, serialNumberLength int, batch int, facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
@@ -915,7 +934,8 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 	MATCH(u:User{uid: $userUID})
 	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
 	MATCH(st:SystemType{uid: $systemTypeUID})
-	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System{deleted:false})
+	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)
+	WHERE coalesce(parent.deleted, false) = false
 	WITH f, u, z, st, parent
 	CALL apoc.util.validate(parent IS NULL, 'missing default parent system for selected zone', [])
 	MATCH(parent)-[:BELONGS_TO_FACILITY]->(f)
