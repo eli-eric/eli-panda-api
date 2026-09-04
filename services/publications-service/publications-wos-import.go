@@ -93,7 +93,7 @@ type wosImportRepository interface {
 	findExistingPublication(doi, currentPublicationUID string) (*models.WosExistingPublication, error)
 	listResearchersForWos() ([]wosResearcherRecord, error)
 	findMediaType(code, facilityCode string) (*codebookmodels.Codebook, error)
-	rememberResearcherID(researcherUID, researcherID, userUID string) ([]string, error)
+	rememberResearcherID(researcherUID, researcherID, userUID string, makePrimary bool) (rememberResearcherIDResult, error)
 }
 
 type publicationAPIError struct {
@@ -154,6 +154,57 @@ func normalizeDOI(raw string) (string, bool) {
 func normalizeResearcherID(raw string) (string, bool) {
 	value := strings.ToUpper(strings.TrimSpace(raw))
 	return value, researcherIDPattern.MatchString(value)
+}
+
+// researcherIDYear reports the issue year encoded in a ResearcherID's suffix.
+// Clarivate mints IDs as LETTERS-NNNN-YYYY, so the vintage travels with the
+// value and needs no separate bookkeeping. Anything that does not parse is
+// reported as unknown rather than as year zero, so an ID of unknown vintage
+// never silently outranks — or is outranked by — one we can actually read.
+func researcherIDYear(researcherID string) (int, bool) {
+	value, valid := normalizeResearcherID(researcherID)
+	if !valid {
+		return 0, false
+	}
+
+	year, err := strconv.Atoi(value[len(value)-4:])
+	if err != nil {
+		return 0, false
+	}
+
+	return year, true
+}
+
+// newestResearcherID returns the ID with the highest issue year. It reports
+// false when the answer is not defensible on its own: no readable candidate,
+// or a tie between the newest ones. Those go to a human instead of being
+// resolved by list order, because the wrong choice is exported to the
+// government and nothing downstream would flag it.
+func newestResearcherID(researcherIDs []string) (string, bool) {
+	newest := ""
+	newestYear := 0
+	tied := false
+
+	for _, candidate := range researcherIDs {
+		year, ok := researcherIDYear(candidate)
+		if !ok {
+			continue
+		}
+
+		normalized, _ := normalizeResearcherID(candidate)
+		switch {
+		case newest == "" || year > newestYear:
+			newest, newestYear, tied = normalized, year, false
+		case year == newestYear && normalized != newest:
+			tied = true
+		}
+	}
+
+	if newest == "" || tied {
+		return "", false
+	}
+
+	return newest, true
 }
 
 func (svc *PublicationsService) PreviewWosPublication(
@@ -225,6 +276,7 @@ func (svc *PublicationsService) RememberResearcherID(
 	researcherUID,
 	rawResearcherID,
 	userUID string,
+	makePrimary bool,
 ) (models.ResearcherIDsResponse, error) {
 	researcherID, valid := normalizeResearcherID(rawResearcherID)
 	if !valid {
@@ -241,7 +293,7 @@ func (svc *PublicationsService) RememberResearcherID(
 		return models.ResearcherIDsResponse{}, errors.New("WoS repository is unavailable")
 	}
 
-	researcherIDs, err := repository.rememberResearcherID(researcherUID, researcherID, userUID)
+	remembered, err := repository.rememberResearcherID(researcherUID, researcherID, userUID, makePrimary)
 	if errors.Is(err, errResearcherMissing) {
 		return models.ResearcherIDsResponse{}, newPublicationAPIError(
 			http.StatusNotFound,
@@ -262,7 +314,18 @@ func (svc *PublicationsService) RememberResearcherID(
 		return models.ResearcherIDsResponse{}, fmt.Errorf("remember researcher ID: %w", err)
 	}
 
-	return models.ResearcherIDsResponse{ResearcherIDs: researcherIDs}, nil
+	response := models.ResearcherIDsResponse{
+		ResearcherIDs: remembered.researcherIDs,
+		PrimaryID:     remembered.primaryID,
+	}
+
+	// Only worth raising when a newer ID exists and is not already current;
+	// an ambiguous newest is left for a human rather than guessed at here.
+	if newest, ok := newestResearcherID(remembered.researcherIDs); ok && newest != remembered.primaryID {
+		response.SuggestedPrimary = newest
+	}
+
+	return response, nil
 }
 
 func (svc *PublicationsService) importRepository() wosImportRepository {

@@ -137,14 +137,22 @@ func (repo *neo4jWosImportRepository) findMediaType(
 	return &mediaType, nil
 }
 
+// rememberResearcherIDResult carries the researcher's IDs after the write plus
+// whichever one is now current — the single value RIV export sends onward.
+type rememberResearcherIDResult struct {
+	researcherIDs []string
+	primaryID     string
+}
+
 func (repo *neo4jWosImportRepository) rememberResearcherID(
 	researcherUID,
 	researcherID,
 	userUID string,
-) ([]string, error) {
+	makePrimary bool,
+) (rememberResearcherIDResult, error) {
 	session, err := helpers.NewNeo4jSession(*repo.driver)
 	if err != nil {
-		return nil, err
+		return rememberResearcherIDResult{}, err
 	}
 	defer session.Close()
 
@@ -163,6 +171,7 @@ func (repo *neo4jWosImportRepository) rememberResearcherID(
 				[id IN coalesce(target.researcherIds, []) +
 					CASE WHEN target.researcherId IS NULL THEN [] ELSE [target.researcherId] END
 					WHERE id IS NOT NULL AND trim(id) <> "" | toUpper(trim(id))] AS currentIDs,
+				coalesce(toUpper(trim(target.researcherId)), "") AS currentPrimary,
 				[uid IN collect(other.uid) WHERE uid IS NOT NULL] AS conflictingUIDs`, map[string]interface{}{
 			"researcherUID": researcherUID,
 			"researcherID":  researcherID,
@@ -185,16 +194,23 @@ func (repo *neo4jWosImportRepository) rememberResearcherID(
 		currentValue, _ := record.Get("currentIDs")
 		researcherIDs := uniqueNormalizedResearcherIDs(stringSlice(currentValue), researcherID)
 
+		primaryValue, _ := record.Get("currentPrimary")
+		primaryID, _ := primaryValue.(string)
+		primaryID = resolvePrimaryResearcherID(primaryID, researcherID, researcherIDs, makePrimary)
+
 		updateResult, err := tx.Run(`
 			MATCH (target:Researcher {uid: $researcherUID})
 			WHERE target.deleted IS NULL OR target.deleted = false
 			MATCH (user:User {uid: $userUID})
 			SET target.researcherIds = $researcherIDs,
+				target.researcherId = $primaryID,
 				target.updatedAt = datetime()
 			CREATE (target)-[:WAS_UPDATED_BY {at: datetime(), action: "UPDATE"}]->(user)
-			RETURN target.researcherIds AS researcherIDs`, map[string]interface{}{
+			RETURN target.researcherIds AS researcherIDs,
+				coalesce(target.researcherId, "") AS primaryID`, map[string]interface{}{
 			"researcherUID": researcherUID,
 			"researcherIDs": researcherIDs,
+			"primaryID":     primaryID,
 			"userUID":       userUID,
 		})
 		if err != nil {
@@ -205,17 +221,47 @@ func (repo *neo4jWosImportRepository) rememberResearcherID(
 			return nil, fmt.Errorf("researcher or audit user not found: %w", err)
 		}
 		updatedValue, _ := updatedRecord.Get("researcherIDs")
-		return stringSlice(updatedValue), nil
+		updatedPrimary, _ := updatedRecord.Get("primaryID")
+		primary, _ := updatedPrimary.(string)
+		return rememberResearcherIDResult{
+			researcherIDs: stringSlice(updatedValue),
+			primaryID:     primary,
+		}, nil
 	})
 	if err != nil {
-		return nil, err
+		return rememberResearcherIDResult{}, err
 	}
 
-	researcherIDs, ok := result.([]string)
+	remembered, ok := result.(rememberResearcherIDResult)
 	if !ok {
-		return nil, fmt.Errorf("unexpected researcher ID result %T", result)
+		return rememberResearcherIDResult{}, fmt.Errorf("unexpected researcher ID result %T", result)
 	}
-	return researcherIDs, nil
+	return remembered, nil
+}
+
+// resolvePrimaryResearcherID decides which ID becomes current after a confirmed
+// match. An empty field is filled outright — nothing can be lost — preferring
+// the newest known ID and falling back to the one just confirmed when the
+// newest is ambiguous. Otherwise the field only moves when the caller asked for
+// it, so importing an old paper can never demote a current ID behind the
+// librarian's back.
+func resolvePrimaryResearcherID(
+	currentPrimary, confirmedID string,
+	researcherIDs []string,
+	makePrimary bool,
+) string {
+	if strings.TrimSpace(currentPrimary) == "" {
+		if newest, ok := newestResearcherID(researcherIDs); ok {
+			return newest
+		}
+		return confirmedID
+	}
+
+	if makePrimary {
+		return confirmedID
+	}
+
+	return currentPrimary
 }
 
 func stringSlice(value interface{}) []string {

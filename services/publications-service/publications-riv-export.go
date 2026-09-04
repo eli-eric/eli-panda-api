@@ -68,8 +68,9 @@ type rivPublicationRow struct {
 	ResearcherIdNumber *string `json:"researcherIdNumber"`
 	ResearcherOrcid    *string `json:"researcherOrcid"`
 	ResearcherScopus   *string `json:"researcherScopus"`
-	ResearcherRID      *string `json:"researcherRID"`
-	CitizenshipCode    *string `json:"citizenshipCode"`
+	ResearcherRID      *string  `json:"researcherRID"`
+	ResearcherRIDs     []string `json:"researcherRIDs"`
+	CitizenshipCode    *string  `json:"citizenshipCode"`
 
 	// Grant codes (collected per publication)
 	GrantCodes []string `json:"grantCodes"`
@@ -90,6 +91,7 @@ type rivResearcherData struct {
 	ORCID                string
 	ScopusID             string
 	ResearcherID         string
+	ResearcherIDs        []string
 	CitizenshipCode      string
 }
 
@@ -200,6 +202,7 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 				researcherIdNumber: res.identificationNumber,
 				researcherOrcid: res.orcid, researcherScopus: res.scopusId,
 				researcherRID: res.researcherId,
+				researcherRIDs: coalesce(res.researcherIds, []),
 				citizenshipCode: rc.code,
 				grantCodes: grantCodes
 			} as row
@@ -243,6 +246,7 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 					ORCID:                derefStr(row.ResearcherOrcid),
 					ScopusID:             derefStr(row.ResearcherScopus),
 					ResearcherID:         derefStr(row.ResearcherRID),
+					ResearcherIDs:        row.ResearcherRIDs,
 					CitizenshipCode:      derefStr(row.CitizenshipCode),
 				})
 			}
@@ -368,6 +372,30 @@ func (svc *PublicationsService) buildRivData(year string, provider string) ([]ri
 				warnings = append(warnings, models.RivValidationWarning{
 					PublicationCode: code,
 					Message:         fmt.Sprintf("researcher %s %s: no identification number", res.FirstName, res.LastName),
+				})
+			}
+
+			// The XML carries exactly one researcherid per author, so a stale or
+			// absent current ID is silently wrong in the delivery unless it is
+			// called out here.
+			if len(res.ResearcherIDs) > 0 && strings.TrimSpace(res.ResearcherID) == "" {
+				warnings = append(warnings, models.RivValidationWarning{
+					PublicationCode: code,
+					Message: fmt.Sprintf(
+						"researcher %s %s: no current ResearcherID set, %d on file (%s) — exporting none",
+						res.FirstName, res.LastName,
+						len(res.ResearcherIDs), strings.Join(res.ResearcherIDs, ", "),
+					),
+				})
+			} else if newest, ok := newestResearcherID(res.ResearcherIDs); ok &&
+				strings.TrimSpace(res.ResearcherID) != "" &&
+				!strings.EqualFold(strings.TrimSpace(res.ResearcherID), newest) {
+				warnings = append(warnings, models.RivValidationWarning{
+					PublicationCode: code,
+					Message: fmt.Sprintf(
+						"researcher %s %s: exporting ResearcherID %s, newer %s is on file",
+						res.FirstName, res.LastName, res.ResearcherID, newest,
+					),
 				})
 			}
 		}

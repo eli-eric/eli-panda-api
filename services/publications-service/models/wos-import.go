@@ -59,13 +59,21 @@ type WosAuthorMatch struct {
 }
 
 // RememberResearcherIDRequest explicitly links one Web of Science ResearcherID
-// to an existing PANDA researcher.
+// to an existing PANDA researcher. MakePrimary additionally promotes it to the
+// researcher's current ID, which is the one RIV export sends to the government.
 type RememberResearcherIDRequest struct {
 	ResearcherID string `json:"researcherId"`
+	MakePrimary  bool   `json:"makePrimary,omitempty"`
 }
 
+// ResearcherIDsResponse reports every ID the researcher now holds, which of
+// them is current, and — when the caller did not promote — whether a newer one
+// is sitting unused. SuggestedPrimary is empty when the current ID is already
+// the newest, or when the newest cannot be determined without a human.
 type ResearcherIDsResponse struct {
-	ResearcherIDs []string `json:"researcherIds"`
+	ResearcherIDs    []string `json:"researcherIds"`
+	PrimaryID        string   `json:"primaryResearcherId"`
+	SuggestedPrimary string   `json:"suggestedPrimaryResearcherId,omitempty"`
 }
 
 // PublicationAPIError is the stable error envelope returned by publication

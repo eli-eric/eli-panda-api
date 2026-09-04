@@ -29,7 +29,7 @@ type IPublicationsService interface {
 	GetPublications(searchText string, page, pageSize int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result []models.Publication, totalCount int64, err error)
 	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
 	PreviewWosPublication(ctx context.Context, doi, currentPublicationUID, facilityCode string) (models.WosPreviewResponse, error)
-	RememberResearcherID(researcherUID, researcherID, userUID string) (models.ResearcherIDsResponse, error)
+	RememberResearcherID(researcherUID, researcherID, userUID string, makePrimary bool) (models.ResearcherIDsResponse, error)
 	// Researcher methods
 	GetResearchers(searchText string, page, pageSize int, sorting *[]helpers.Sorting) (result []models.Researcher, totalCount int64, err error)
 	GetResearcherByUid(uid string) (models.Researcher, error)

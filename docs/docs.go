@@ -4234,7 +4234,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Adds a confirmed ResearcherID to an existing PANDA researcher without replacing previously stored IDs",
+                "description": "Adds a confirmed ResearcherID to an existing PANDA researcher without replacing previously stored IDs. Set makePrimary to also make it the current ID, which is the one RIV export sends.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8821,6 +8821,9 @@ const docTemplate = `{
         "models.RememberResearcherIDRequest": {
             "type": "object",
             "properties": {
+                "makePrimary": {
+                    "type": "boolean"
+                },
                 "researcherId": {
                     "type": "string"
                 }
@@ -8854,8 +8857,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "researcherId": {
-                    "description": "researcherId is the ResearcherID of the researcher",
+                    "description": "researcherId is the researcher's current ResearcherID — the one RIV export sends",
                     "type": "string"
+                },
+                "researcherIds": {
+                    "description": "researcherIds is every ResearcherID the researcher has held, used to match Web of Science authors",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "scopusId": {
                     "description": "scopusId is the Scopus identifier of the researcher",
@@ -8874,11 +8884,17 @@ const docTemplate = `{
         "models.ResearcherIDsResponse": {
             "type": "object",
             "properties": {
+                "primaryResearcherId": {
+                    "type": "string"
+                },
                 "researcherIds": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                },
+                "suggestedPrimaryResearcherId": {
+                    "type": "string"
                 }
             }
         },

@@ -1022,6 +1022,8 @@ definitions:
     type: object
   models.RememberResearcherIDRequest:
     properties:
+      makePrimary:
+        type: boolean
       researcherId:
         type: string
     type: object
@@ -1044,8 +1046,15 @@ definitions:
         description: orcid is the ORCID identifier of the researcher
         type: string
       researcherId:
-        description: researcherId is the ResearcherID of the researcher
+        description: researcherId is the researcher's current ResearcherID — the one
+          RIV export sends
         type: string
+      researcherIds:
+        description: researcherIds is every ResearcherID the researcher has held,
+          used to match Web of Science authors
+        items:
+          type: string
+        type: array
       scopusId:
         description: scopusId is the Scopus identifier of the researcher
         type: string
@@ -1058,10 +1067,14 @@ definitions:
     type: object
   models.ResearcherIDsResponse:
     properties:
+      primaryResearcherId:
+        type: string
       researcherIds:
         items:
           type: string
         type: array
+      suggestedPrimaryResearcherId:
+        type: string
     type: object
   models.ResearcherRef:
     properties:
@@ -4721,7 +4734,8 @@ paths:
       consumes:
       - application/json
       description: Adds a confirmed ResearcherID to an existing PANDA researcher without
-        replacing previously stored IDs
+        replacing previously stored IDs. Set makePrimary to also make it the current
+        ID, which is the one RIV export sends.
       parameters:
       - description: Researcher UID
         in: path

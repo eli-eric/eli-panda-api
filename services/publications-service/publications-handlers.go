@@ -331,7 +331,7 @@ func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
 
 // RememberResearcherID stores a confirmed Web of Science ResearcherID godoc
 // @Summary Remember a Web of Science ResearcherID
-// @Description Adds a confirmed ResearcherID to an existing PANDA researcher without replacing previously stored IDs
+// @Description Adds a confirmed ResearcherID to an existing PANDA researcher without replacing previously stored IDs. Set makePrimary to also make it the current ID, which is the one RIV export sends.
 // @Tags Publications
 // @Security BearerAuth
 // @Accept json
@@ -360,6 +360,7 @@ func (h *PublicationsHandlers) RememberResearcherID() echo.HandlerFunc {
 			c.Param("uid"),
 			request.ResearcherID,
 			userUID,
+			request.MakePrimary,
 		)
 		if err != nil {
 			return writePublicationAPIError(c, err, "Error remembering WOS ResearcherID")

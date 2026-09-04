@@ -32,6 +32,7 @@ type rememberResearcherIDCall struct {
 	researcherUID string
 	researcherID  string
 	userUID       string
+	makePrimary   bool
 }
 
 type stubWosImportRepository struct {
@@ -48,6 +49,7 @@ type stubWosImportRepository struct {
 	findMediaTypeCalls []findMediaTypeCall
 
 	rememberedResearcherIDs   []string
+	rememberedPrimaryID       string
 	rememberResearcherIDErr   error
 	rememberResearcherIDCalls []rememberResearcherIDCall
 }
@@ -83,16 +85,28 @@ func (repo *stubWosImportRepository) rememberResearcherID(
 	researcherUID,
 	researcherID,
 	userUID string,
-) ([]string, error) {
+	makePrimary bool,
+) (rememberResearcherIDResult, error) {
 	repo.rememberResearcherIDCalls = append(
 		repo.rememberResearcherIDCalls,
 		rememberResearcherIDCall{
 			researcherUID: researcherUID,
 			researcherID:  researcherID,
 			userUID:       userUID,
+			makePrimary:   makePrimary,
 		},
 	)
-	return repo.rememberedResearcherIDs, repo.rememberResearcherIDErr
+	if repo.rememberResearcherIDErr != nil {
+		return rememberResearcherIDResult{}, repo.rememberResearcherIDErr
+	}
+	primary := repo.rememberedPrimaryID
+	if primary == "" && len(repo.rememberedResearcherIDs) > 0 {
+		primary = repo.rememberedResearcherIDs[0]
+	}
+	return rememberResearcherIDResult{
+		researcherIDs: repo.rememberedResearcherIDs,
+		primaryID:     primary,
+	}, nil
 }
 
 func TestPreviewWosPublicationRejectsInvalidDOI(t *testing.T) {
