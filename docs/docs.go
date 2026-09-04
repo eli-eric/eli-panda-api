@@ -3787,7 +3787,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get publications",
+                "description": "Get publications with paging, full-text search, server-side sorting and column filters.\n\n**sorting** — JSON array of ` + "`" + `{\"id\":\"\u003ccolumn\u003e\",\"desc\":\u003cbool\u003e}` + "`" + `. Sortable ids are the publication\nproperties plus the codebook columns ` + "`" + `mediaType` + "`" + `, ` + "`" + `openAccessType` + "`" + `, ` + "`" + `publishingCountry` + "`" + `,\n` + "`" + `userCall` + "`" + `, ` + "`" + `userExperiment` + "`" + `, ` + "`" + `experimentalSystem` + "`" + `, ` + "`" + `publishFormat` + "`" + `, ` + "`" + `conferenceScope` + "`" + `, which sort\nby the related name. ` + "`" + `eliResearchers` + "`" + ` and ` + "`" + `grant` + "`" + ` are collected after sorting and are not sortable.\nAn unrecognised id is ignored; if none remain the default ` + "`" + `updatedAt DESC` + "`" + ` applies.\n\n**columnFilter** — JSON array of ` + "`" + `{\"id\":\"\u003cfilter\u003e\",\"value\":\u003cvalue\u003e}` + "`" + `, combined with AND. Empty\nvalues are ignored. Value shape by filter:\n\n- string, case-insensitive CONTAINS: ` + "`" + `title` + "`" + `, ` + "`" + `code` + "`" + `, ` + "`" + `doi` + "`" + `, ` + "`" + `allAuthors` + "`" + `, ` + "`" + `eliAuthors` + "`" + `, ` + "`" + `keywords` + "`" + `,\n` + "`" + `longJournalTitle` + "`" + `, ` + "`" + `shortJournalTitle` + "`" + `, ` + "`" + `abstract` + "`" + `, ` + "`" + `citeAs` + "`" + `, ` + "`" + `wosNumber` + "`" + `, ` + "`" + `issn` + "`" + `, ` + "`" + `eissn` + "`" + `,\n` + "`" + `eidScopus` + "`" + `, ` + "`" + `oecdFord` + "`" + `, ` + "`" + `note` + "`" + `, ` + "`" + `otherGrants` + "`" + `, ` + "`" + `webLink` + "`" + `, ` + "`" + `publisher` + "`" + `, ` + "`" + `publishPlace` + "`" + `, ` + "`" + `isbn` + "`" + `,\n` + "`" + `bookTitle` + "`" + `, ` + "`" + `editionVolume` + "`" + `, ` + "`" + `proceedingsIsbn` + "`" + `, ` + "`" + `conferencePlace` + "`" + `, ` + "`" + `pages` + "`" + `\n- array of strings, matched with IN: ` + "`" + `yearOfPublication` + "`" + `, ` + "`" + `eliPublication` + "`" + ` (YES/NO), ` + "`" + `quartil` + "`" + `,\n` + "`" + `quartilBasis` + "`" + `, ` + "`" + `language` + "`" + `\n- ` + "`" + `{\"min\":number,\"max\":number}` + "`" + `, either bound optional: ` + "`" + `impactFactor` + "`" + `, ` + "`" + `allAuthorsCount` + "`" + `,\n` + "`" + `eliAuthorsCount` + "`" + `, ` + "`" + `pagesCount` + "`" + `, ` + "`" + `bookPagesCount` + "`" + `, ` + "`" + `volume` + "`" + `, ` + "`" + `issue` + "`" + `\n- ` + "`" + `{\"min\":\"YYYY-MM-DD\",\"max\":\"YYYY-MM-DD\"}` + "`" + `, compared as text so partial ` + "`" + `YYYY` + "`" + ` and ` + "`" + `YYYY-MM` + "`" + `\nvalues work: ` + "`" + `dateOfPublication` + "`" + `, ` + "`" + `conferenceDate` + "`" + `\n- ` + "`" + `{\"uid\":\"\u003cuid\u003e\"}` + "`" + ` codebook: ` + "`" + `mediaType` + "`" + `, ` + "`" + `openAccessType` + "`" + `, ` + "`" + `publishingCountry` + "`" + `, ` + "`" + `userCall` + "`" + `,\n` + "`" + `userExperiment` + "`" + `, ` + "`" + `experimentalSystem` + "`" + `, ` + "`" + `publishFormat` + "`" + `, ` + "`" + `conferenceScope` + "`" + `, ` + "`" + `department` + "`" + `\n- array of uids, or a single ` + "`" + `{\"uid\":\"\u003cuid\u003e\"}` + "`" + `: ` + "`" + `grant` + "`" + `, ` + "`" + `eliResearchers` + "`" + `\n\n` + "`" + `totalCount` + "`" + ` describes the filtered set, and ` + "`" + `/v1/publications/export` + "`" + ` applies the same filters.",
                 "produces": [
                     "application/json"
                 ],
@@ -3796,6 +3796,36 @@ const docTemplate = `{
                 ],
                 "summary": "Get publications",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Full-text search across title, DOI, code, authors, keywords and year",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "1-based page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Rows per page",
+                        "name": "pageSize",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of sorting descriptors, see the description",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of column filters, see the description",
+                        "name": "columnFilter",
+                        "in": "query"
+                    },
                     {
                         "type": "string",
                         "description": "search",
@@ -3832,7 +3862,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI Researchers,Grants,Other Grants",
+                "description": "CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI Researchers,Grants,Other Grants\n\nExports the same rows GET /v1/publications would return for the given search, sorting and\ncolumnFilter, without paging. See that endpoint for the supported filter and sort ids.",
                 "produces": [
                     "text/csv"
                 ],
@@ -3843,8 +3873,20 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "search",
+                        "description": "Full-text search, as on /v1/publications",
                         "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of sorting descriptors, as on /v1/publications",
+                        "name": "sorting",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of column filters, as on /v1/publications",
+                        "name": "columnFilter",
                         "in": "query"
                     }
                 ],
