@@ -150,10 +150,41 @@ func (h *PublicationsHandlers) GetPublication() echo.HandlerFunc {
 
 // GetPublications Get publications godoc
 // @Summary Get publications
-// @Description Get publications
+// @Description Get publications with paging, full-text search, server-side sorting and column filters.
+// @Description
+// @Description **sorting** — JSON array of `{"id":"<column>","desc":<bool>}`. Sortable ids are the publication
+// @Description properties plus the codebook columns `mediaType`, `openAccessType`, `publishingCountry`,
+// @Description `userCall`, `userExperiment`, `experimentalSystem`, `publishFormat`, `conferenceScope`, which sort
+// @Description by the related name. `eliResearchers` and `grant` are collected after sorting and are not sortable.
+// @Description An unrecognised id is ignored; if none remain the default `updatedAt DESC` applies.
+// @Description
+// @Description **columnFilter** — JSON array of `{"id":"<filter>","value":<value>}`, combined with AND. Empty
+// @Description values are ignored. Value shape by filter:
+// @Description
+// @Description - string, case-insensitive CONTAINS: `title`, `code`, `doi`, `allAuthors`, `eliAuthors`, `keywords`,
+// @Description `longJournalTitle`, `shortJournalTitle`, `abstract`, `citeAs`, `wosNumber`, `issn`, `eissn`,
+// @Description `eidScopus`, `oecdFord`, `note`, `otherGrants`, `webLink`, `publisher`, `publishPlace`, `isbn`,
+// @Description `bookTitle`, `editionVolume`, `proceedingsIsbn`, `conferencePlace`, `pages`
+// @Description - array of strings, matched with IN: `yearOfPublication`, `eliPublication` (YES/NO), `quartil`,
+// @Description `quartilBasis`, `language`
+// @Description - `{"min":number,"max":number}`, either bound optional: `impactFactor`, `allAuthorsCount`,
+// @Description `eliAuthorsCount`, `pagesCount`, `bookPagesCount`, `volume`, `issue`
+// @Description - `{"min":"YYYY-MM-DD","max":"YYYY-MM-DD"}`, compared as text so partial `YYYY` and `YYYY-MM`
+// @Description values work: `dateOfPublication`, `conferenceDate`
+// @Description - codebook, either `{"uid":"<uid>"}` from a combobox or `["<uid>","<uid>"]` from a checkbox
+// @Description group: `mediaType`, `openAccessType`, `publishingCountry`, `userCall`, `userExperiment`,
+// @Description `experimentalSystem`, `publishFormat`, `conferenceScope`, `department`
+// @Description - array of uids, or a single `{"uid":"<uid>"}`: `grant`, `eliResearchers`
+// @Description
+// @Description `totalCount` describes the filtered set, and `/v1/publications/export` applies the same filters.
 // @Tags Publications
 // @Security BearerAuth
 // @Produce json
+// @Param search query string false "Full-text search across title, DOI, code, authors, keywords and year"
+// @Param page query int false "1-based page number"
+// @Param pageSize query int false "Rows per page"
+// @Param sorting query string false "JSON array of sorting descriptors, see the description"
+// @Param columnFilter query string false "JSON array of column filters, see the description"
 // @Success 200 {array} models.Publication
 // @Failure 500 "Internal Server Error"
 // @Router /v1/publications [get]
@@ -292,9 +323,14 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 // GetPublicationsAsCsv Get publications as CSV godoc
 // @Summary Get publications as CSV
 // @Description CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI Researchers,Grants,Other Grants
+// @Description
+// @Description Exports the same rows GET /v1/publications would return for the given search, sorting and
+// @Description columnFilter, without paging. See that endpoint for the supported filter and sort ids.
 // @Tags Publications
 // @Security BearerAuth
-// @Param search query string false "search"
+// @Param search query string false "Full-text search, as on /v1/publications"
+// @Param sorting query string false "JSON array of sorting descriptors, as on /v1/publications"
+// @Param columnFilter query string false "JSON array of column filters, as on /v1/publications"
 // @Produce text/csv
 // @Success 200 "CSV file"
 // @Failure 500 "Internal Server Error"

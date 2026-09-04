@@ -4295,8 +4295,56 @@ paths:
       - Publications
   /v1/publications:
     get:
-      description: Get publications
+      description: |-
+        Get publications with paging, full-text search, server-side sorting and column filters.
+
+        **sorting** — JSON array of `{"id":"<column>","desc":<bool>}`. Sortable ids are the publication
+        properties plus the codebook columns `mediaType`, `openAccessType`, `publishingCountry`,
+        `userCall`, `userExperiment`, `experimentalSystem`, `publishFormat`, `conferenceScope`, which sort
+        by the related name. `eliResearchers` and `grant` are collected after sorting and are not sortable.
+        An unrecognised id is ignored; if none remain the default `updatedAt DESC` applies.
+
+        **columnFilter** — JSON array of `{"id":"<filter>","value":<value>}`, combined with AND. Empty
+        values are ignored. Value shape by filter:
+
+        - string, case-insensitive CONTAINS: `title`, `code`, `doi`, `allAuthors`, `eliAuthors`, `keywords`,
+        `longJournalTitle`, `shortJournalTitle`, `abstract`, `citeAs`, `wosNumber`, `issn`, `eissn`,
+        `eidScopus`, `oecdFord`, `note`, `otherGrants`, `webLink`, `publisher`, `publishPlace`, `isbn`,
+        `bookTitle`, `editionVolume`, `proceedingsIsbn`, `conferencePlace`, `pages`
+        - array of strings, matched with IN: `yearOfPublication`, `eliPublication` (YES/NO), `quartil`,
+        `quartilBasis`, `language`
+        - `{"min":number,"max":number}`, either bound optional: `impactFactor`, `allAuthorsCount`,
+        `eliAuthorsCount`, `pagesCount`, `bookPagesCount`, `volume`, `issue`
+        - `{"min":"YYYY-MM-DD","max":"YYYY-MM-DD"}`, compared as text so partial `YYYY` and `YYYY-MM`
+        values work: `dateOfPublication`, `conferenceDate`
+        - codebook, either `{"uid":"<uid>"}` from a combobox or `["<uid>","<uid>"]` from a checkbox
+        group: `mediaType`, `openAccessType`, `publishingCountry`, `userCall`, `userExperiment`,
+        `experimentalSystem`, `publishFormat`, `conferenceScope`, `department`
+        - array of uids, or a single `{"uid":"<uid>"}`: `grant`, `eliResearchers`
+
+        `totalCount` describes the filtered set, and `/v1/publications/export` applies the same filters.
       parameters:
+      - description: Full-text search across title, DOI, code, authors, keywords and
+          year
+        in: query
+        name: search
+        type: string
+      - description: 1-based page number
+        in: query
+        name: page
+        type: integer
+      - description: Rows per page
+        in: query
+        name: pageSize
+        type: integer
+      - description: JSON array of sorting descriptors, see the description
+        in: query
+        name: sorting
+        type: string
+      - description: JSON array of column filters, see the description
+        in: query
+        name: columnFilter
+        type: string
       - description: search
         in: query
         name: search
@@ -4323,16 +4371,23 @@ paths:
       - Publications
   /v1/publications/export:
     get:
-      description: 'CSV header: Media Type,Code,Experimental System,User Call,User
-        Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI
-        Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite
-        As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD
-        Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI
-        Researchers,Grants,Other Grants'
+      description: |-
+        CSV header: Media Type,Code,Experimental System,User Call,User Experiment,DOI,Web Link,Open Access Type,Title,Authors,Authors Count,ELI Authors(old),ELI Authors Count,ELI Publication,Journal Title,Volume,Issue,Pages,Pages Count,Cite As,Impact Factor,Quartile Basis,Quartile,Year Of Publication,Date Of Publication,Abstract,Keywords,OECD Ford,Grant(old),WOS Number,ISSN,E-ISSN,EID Scopus,Publishing Country,Language,Note,UID,ELI Researchers,Grants,Other Grants
+
+        Exports the same rows GET /v1/publications would return for the given search, sorting and
+        columnFilter, without paging. See that endpoint for the supported filter and sort ids.
       parameters:
-      - description: search
+      - description: Full-text search, as on /v1/publications
         in: query
         name: search
+        type: string
+      - description: JSON array of sorting descriptors, as on /v1/publications
+        in: query
+        name: sorting
+        type: string
+      - description: JSON array of column filters, as on /v1/publications
+        in: query
+        name: columnFilter
         type: string
       produces:
       - text/csv
