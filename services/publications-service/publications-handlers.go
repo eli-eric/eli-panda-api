@@ -171,8 +171,9 @@ func (h *PublicationsHandlers) GetPublication() echo.HandlerFunc {
 // @Description `eliAuthorsCount`, `pagesCount`, `bookPagesCount`, `volume`, `issue`
 // @Description - `{"min":"YYYY-MM-DD","max":"YYYY-MM-DD"}`, compared as text so partial `YYYY` and `YYYY-MM`
 // @Description values work: `dateOfPublication`, `conferenceDate`
-// @Description - `{"uid":"<uid>"}` codebook: `mediaType`, `openAccessType`, `publishingCountry`, `userCall`,
-// @Description `userExperiment`, `experimentalSystem`, `publishFormat`, `conferenceScope`, `department`
+// @Description - codebook, either `{"uid":"<uid>"}` from a combobox or `["<uid>","<uid>"]` from a checkbox
+// @Description group: `mediaType`, `openAccessType`, `publishingCountry`, `userCall`, `userExperiment`,
+// @Description `experimentalSystem`, `publishFormat`, `conferenceScope`, `department`
 // @Description - array of uids, or a single `{"uid":"<uid>"}`: `grant`, `eliResearchers`
 // @Description
 // @Description `totalCount` describes the filtered set, and `/v1/publications/export` applies the same filters.

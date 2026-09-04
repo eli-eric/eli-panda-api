@@ -33,7 +33,7 @@ conference and department fields) use the property name.
 | List | `["2024","2025"]` — matched with IN | `yearOfPublication`, `eliPublication` (YES/NO), `quartil`, `quartilBasis`, `language` |
 | Numeric range | `{"min":1.5,"max":9}` — either bound optional | `impactFactor`, `allAuthorsCount`, `eliAuthorsCount`, `pagesCount`, `bookPagesCount`, `volume`, `issue` |
 | Date range | `{"min":"2024-01","max":"2024-12"}` | `dateOfPublication`, `conferenceDate` |
-| Codebook | `{"uid":"…"}` | `mediaType`, `openAccessType`, `publishingCountry`, `userCall`, `userExperiment`, `experimentalSystem`, `publishFormat`, `conferenceScope`, `department` |
+| Codebook | `{"uid":"…"}` from a combobox, or `["uid","uid"]` from a checkbox group | `mediaType`, `openAccessType`, `publishingCountry`, `userCall`, `userExperiment`, `experimentalSystem`, `publishFormat`, `conferenceScope`, `department` |
 | Relationship list | `["uid","uid"]`, or a single `{"uid":"…"}` | `grant`, `eliResearchers` |
 
 Empty values — a blank string, an empty list, a range with no bounds, a codebook with no uid — are

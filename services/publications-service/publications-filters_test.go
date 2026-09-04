@@ -124,6 +124,13 @@ func TestApplyPublicationFiltersEachFilterInIsolation(t *testing.T) {
 			wantCodes: []string{"PUB-A-" + suffix},
 		},
 		{
+			name: "codebook as a list of uids, from a checkbox group",
+			filter: helpers.ColumnFilter{Id: "mediaType", Value: []interface{}{
+				"media-j-" + suffix, "media-c-" + suffix,
+			}},
+			wantCodes: []string{"PUB-A-" + suffix, "PUB-B-" + suffix},
+		},
+		{
 			name:      "researcher relationship list",
 			filter:    helpers.ColumnFilter{Id: "eliResearchers", Value: []interface{}{"researcher-" + suffix}},
 			wantCodes: []string{"PUB-A-" + suffix},

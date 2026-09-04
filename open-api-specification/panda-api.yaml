@@ -4317,8 +4317,9 @@ paths:
         `eliAuthorsCount`, `pagesCount`, `bookPagesCount`, `volume`, `issue`
         - `{"min":"YYYY-MM-DD","max":"YYYY-MM-DD"}`, compared as text so partial `YYYY` and `YYYY-MM`
         values work: `dateOfPublication`, `conferenceDate`
-        - `{"uid":"<uid>"}` codebook: `mediaType`, `openAccessType`, `publishingCountry`, `userCall`,
-        `userExperiment`, `experimentalSystem`, `publishFormat`, `conferenceScope`, `department`
+        - codebook, either `{"uid":"<uid>"}` from a combobox or `["<uid>","<uid>"]` from a checkbox
+        group: `mediaType`, `openAccessType`, `publishingCountry`, `userCall`, `userExperiment`,
+        `experimentalSystem`, `publishFormat`, `conferenceScope`, `department`
         - array of uids, or a single `{"uid":"<uid>"}`: `grant`, `eliResearchers`
 
         `totalCount` describes the filtered set, and `/v1/publications/export` applies the same filters.

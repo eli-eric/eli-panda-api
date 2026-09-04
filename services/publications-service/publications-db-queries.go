@@ -134,6 +134,17 @@ func ApplyPublicationFilters(query *helpers.DatabaseQuery, filtering *[]helpers.
 	}
 
 	for _, id := range sortedKeys(publicationCodebookFilters) {
+		// A checkbox group sends a list of uids, a combobox sends one codebook
+		// object. Both mean "the publication points at one of these".
+		if uids := filterStringList(filtering, id); len(uids) > 0 {
+			parameter := filterParameterName(id)
+			query.Query += fmt.Sprintf(
+				" AND EXISTS { MATCH (n)-[:%s]->(c) WHERE c.uid IN $%s } ",
+				publicationCodebookFilters[id], parameter)
+			query.Parameters[parameter] = uids
+			continue
+		}
+
 		if uid := filterCodebookUID(filtering, id); uid != "" {
 			parameter := filterParameterName(id)
 			query.Query += fmt.Sprintf(
@@ -173,6 +184,12 @@ func ApplyPublicationFilters(query *helpers.DatabaseQuery, filtering *[]helpers.
 // relationship today; introducing one would let this become an EXISTS match
 // like the others.
 func applyDepartmentFilter(query *helpers.DatabaseQuery, filtering *[]helpers.ColumnFilter) {
+	if uids := filterStringList(filtering, "department"); len(uids) > 0 {
+		query.Query += ` AND ANY(entry IN coalesce(n.authorsDepartmentsArray, []) WHERE ANY(uid IN $filterDepartment WHERE entry STARTS WITH uid)) `
+		query.Parameters["filterDepartment"] = uids
+		return
+	}
+
 	uid := filterCodebookUID(filtering, "department")
 	if uid == "" {
 		uid = filterString(filtering, "department")
