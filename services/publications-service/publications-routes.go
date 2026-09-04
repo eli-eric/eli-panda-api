@@ -24,6 +24,7 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 	e.DELETE("/v1/publication/:uid", m.Authorization(h.DeletePublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/publication/wos/:doi", m.Authorization(h.GetWosDataByDoi(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
+	e.GET("/v1/publications/wos-preview", m.Authorization(h.PreviewWosPublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	// Researchers CRUD
 	e.GET("/v1/researchers", m.Authorization(h.GetResearchers(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
@@ -35,6 +36,7 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 	e.POST("/v1/researchers", m.Authorization(h.CreateResearchers(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.PUT("/v1/researcher/:uid", m.Authorization(h.UpdateResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+	e.PUT("/v1/researcher/:uid/researcher-ids", m.Authorization(h.RememberResearcherID(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.DELETE("/v1/researcher/:uid", m.Authorization(h.DeleteResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 

@@ -697,6 +697,7 @@
         { "name": "identificationNumber", "type": "String" },
         { "name": "orcid", "type": "String" },
         { "name": "researcherId", "type": "String" },
+        { "name": "researcherIds", "type": "StringArray" },
         { "name": "scopusId", "type": "String" },
         { "name": "updatedAt", "type": "DateTime" }
       ]

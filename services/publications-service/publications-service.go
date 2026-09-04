@@ -1,7 +1,7 @@
 package publicationsservice
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"net/http"
 	"panda/apigateway/helpers"
@@ -17,6 +17,8 @@ type PublicationsService struct {
 	neo4jDriver      *neo4j.Driver
 	wosStarterApiUrl string
 	wosStarterApiKey string
+	wosHTTPClient    *http.Client
+	wosRepository    wosImportRepository
 }
 
 type IPublicationsService interface {
@@ -26,6 +28,8 @@ type IPublicationsService interface {
 	DeletePublication(uid string, userUID string) (err error)
 	GetPublications(searchText string, page, pageSize int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result []models.Publication, totalCount int64, err error)
 	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
+	PreviewWosPublication(ctx context.Context, doi, currentPublicationUID, facilityCode string) (models.WosPreviewResponse, error)
+	RememberResearcherID(researcherUID, researcherID, userUID string) (models.ResearcherIDsResponse, error)
 	// Researcher methods
 	GetResearchers(searchText string, page, pageSize int, sorting *[]helpers.Sorting) (result []models.Researcher, totalCount int64, err error)
 	GetResearcherByUid(uid string) (models.Researcher, error)
@@ -49,7 +53,16 @@ type IPublicationsService interface {
 }
 
 func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
-	return &PublicationsService{neo4jDriver: driver, wosStarterApiUrl: wosSAPIURL, wosStarterApiKey: wosSAPIKEY}
+	service := &PublicationsService{
+		neo4jDriver:      driver,
+		wosStarterApiUrl: wosSAPIURL,
+		wosStarterApiKey: wosSAPIKEY,
+		wosHTTPClient:    newWosHTTPClient(),
+	}
+	if driver != nil {
+		service.wosRepository = &neo4jWosImportRepository{driver: driver}
+	}
+	return service
 }
 
 func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.Publication, err error) {
@@ -430,40 +443,16 @@ func mapPublicationSortField(fieldID string) string {
 }
 
 func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result models.WosAPIResponse, err error) {
-
-	// exmaple get url /documents?db=WOS&q=DO=10.1103/PhysRevResearch.6.013126
-	// get from wos rest api
-
-	contentType := "application/json"
-	query := "/documents?db=WOS&q=DO=" + doi
-
-	request, err := http.NewRequest("GET", svc.wosStarterApiUrl+query, nil)
-
-	if err != nil {
-		return result, err
+	normalizedDOI, valid := normalizeDOI(doi)
+	if !valid {
+		return result, newPublicationAPIError(
+			http.StatusBadRequest,
+			wosErrorInvalidDOI,
+			"Enter a valid DOI.",
+			false,
+		)
 	}
-
-	// addd header X-ApiKey
-	// wos.starter with institution key
-	request.Header.Add("X-ApiKey", svc.wosStarterApiKey)
-	request.Header.Add("Content-Type", contentType)
-
-	client := &http.Client{}
-	response, err := client.Do(request)
-
-	if err != nil {
-		return result, err
-	} else {
-		err := json.NewDecoder(response.Body).Decode(&result)
-
-		if err != nil {
-			return result, err
-		}
-
-		defer response.Body.Close()
-
-		return result, nil
-	}
+	return svc.fetchWosResponse(context.Background(), normalizedDOI)
 }
 
 // Researcher methods

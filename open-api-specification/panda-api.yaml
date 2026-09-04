@@ -1011,6 +1011,20 @@ definitions:
         description: yearOfPublication is the year of publication of the publication
         type: string
     type: object
+  models.PublicationAPIError:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      retryable:
+        type: boolean
+    type: object
+  models.RememberResearcherIDRequest:
+    properties:
+      researcherId:
+        type: string
+    type: object
   models.Researcher:
     properties:
       citizenship:
@@ -1041,6 +1055,13 @@ definitions:
       updatedAt:
         description: updatedAt is the time when the researcher was last updated
         type: string
+    type: object
+  models.ResearcherIDsResponse:
+    properties:
+      researcherIds:
+        items:
+          type: string
+        type: array
     type: object
   models.ResearcherRef:
     properties:
@@ -1727,6 +1748,15 @@ definitions:
       wosStandard:
         type: string
     type: object
+  models.WosAuthorMatch:
+    properties:
+      candidates:
+        items:
+          $ref: '#/definitions/models.ResearcherRef'
+        type: array
+      kind:
+        type: string
+    type: object
   models.WosCitation:
     properties:
       count:
@@ -1739,6 +1769,17 @@ definitions:
       displayName:
         type: string
     type: object
+  models.WosExistingPublication:
+    properties:
+      code:
+        type: string
+      doi:
+        type: string
+      title:
+        type: string
+      uid:
+        type: string
+    type: object
   models.WosHit:
     properties:
       citations:
@@ -1749,6 +1790,8 @@ definitions:
         $ref: '#/definitions/models.WosIdentifiers'
       keywords:
         $ref: '#/definitions/models.WosKeywords'
+      links:
+        $ref: '#/definitions/models.WosLinks'
       names:
         $ref: '#/definitions/models.WosNames'
       source:
@@ -1770,7 +1813,65 @@ definitions:
     properties:
       doi:
         type: string
+      eisbn:
+        type: string
+      eissn:
+        type: string
+      isbn:
+        type: string
       issn:
+        type: string
+    type: object
+  models.WosImportAuthor:
+    properties:
+      displayName:
+        type: string
+      match:
+        $ref: '#/definitions/models.WosAuthorMatch'
+      researcherId:
+        type: string
+      sourceIndex:
+        type: integer
+      wosStandard:
+        type: string
+    type: object
+  models.WosImportValues:
+    properties:
+      allAuthors:
+        type: string
+      allAuthorsCount:
+        type: integer
+      dateOfPublication:
+        type: string
+      doi:
+        type: string
+      eissn:
+        type: string
+      isbn:
+        type: string
+      issn:
+        type: string
+      issue:
+        type: integer
+      keywords:
+        type: string
+      longJournalTitle:
+        type: string
+      mediaTypeCb:
+        $ref: '#/definitions/models.Codebook'
+      pages:
+        type: string
+      pagesCount:
+        type: integer
+      title:
+        type: string
+      volume:
+        type: integer
+      webLink:
+        type: string
+      wosNumber:
+        type: string
+      yearOfPublication:
         type: string
     type: object
   models.WosKeywords:
@@ -1779,6 +1880,11 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  models.WosLinks:
+    properties:
+      record:
+        type: string
     type: object
   models.WosMetadata:
     properties:
@@ -1811,8 +1917,33 @@ definitions:
       range:
         type: string
     type: object
+  models.WosPreviewResponse:
+    properties:
+      authors:
+        items:
+          $ref: '#/definitions/models.WosImportAuthor'
+        type: array
+      doi:
+        type: string
+      existingPublication:
+        $ref: '#/definitions/models.WosExistingPublication'
+      missingImportableFields:
+        items:
+          type: string
+        type: array
+      status:
+        type: string
+      unavailableFields:
+        items:
+          type: string
+        type: array
+      values:
+        $ref: '#/definitions/models.WosImportValues'
+    type: object
   models.WosSource:
     properties:
+      articleNumber:
+        type: string
       issue:
         type: string
       pages:
@@ -4272,6 +4403,7 @@ paths:
       - Publications
   /v1/publication/wos/{doi}:
     get:
+      deprecated: true
       description: Get WOS data by DOI
       parameters:
       - description: doi
@@ -4286,8 +4418,22 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.WosAPIResponse'
-        "500":
-          description: Internal Server Error
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "504":
+          description: Gateway Timeout
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
       security:
       - BearerAuth: []
       summary: Get WOS data by DOI
@@ -4411,6 +4557,60 @@ paths:
       summary: Validate publications for RIV export
       tags:
       - Publications
+  /v1/publications/wos-preview:
+    get:
+      description: Returns PANDA publication field candidates and researcher matches
+        without saving a publication
+      parameters:
+      - description: DOI
+        in: query
+        name: doi
+        required: true
+        type: string
+      - description: UID of the publication being refreshed
+        in: query
+        name: currentPublicationUid
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WosPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "502":
+          description: Bad Gateway
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "504":
+          description: Gateway Timeout
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+      security:
+      - BearerAuth: []
+      summary: Preview Web of Science publication metadata
+      tags:
+      - Publications
   /v1/researcher:
     post:
       consumes:
@@ -4516,6 +4716,52 @@ paths:
       summary: Update researcher
       tags:
       - Researchers
+  /v1/researcher/{uid}/researcher-ids:
+    put:
+      consumes:
+      - application/json
+      description: Adds a confirmed ResearcherID to an existing PANDA researcher without
+        replacing previously stored IDs
+      parameters:
+      - description: Researcher UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: ResearcherID to remember
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.RememberResearcherIDRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ResearcherIDsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+      security:
+      - BearerAuth: []
+      summary: Remember a Web of Science ResearcherID
+      tags:
+      - Publications
   /v1/researchers:
     get:
       description: Get researchers
