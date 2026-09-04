@@ -831,7 +831,7 @@ func writeWosResponse(t *testing.T, response http.ResponseWriter, body string) {
 	assert.NoError(t, err)
 }
 
-func researcherUIDs(researchers []models.ResearcherRef) []string {
+func researcherUIDs(researchers []models.WosResearcherCandidate) []string {
 	result := make([]string, 0, len(researchers))
 	for _, researcher := range researchers {
 		result = append(result, researcher.Uid)

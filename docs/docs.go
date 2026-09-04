@@ -9957,7 +9957,7 @@ const docTemplate = `{
                 "candidates": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.ResearcherRef"
+                        "$ref": "#/definitions/models.WosResearcherCandidate"
                     }
                 },
                 "kind": {
@@ -10243,6 +10243,23 @@ const docTemplate = `{
                 },
                 "values": {
                     "$ref": "#/definitions/models.WosImportValues"
+                }
+            }
+        },
+        "models.WosResearcherCandidate": {
+            "type": "object",
+            "properties": {
+                "currentResearcherId": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
                 }
             }
         },

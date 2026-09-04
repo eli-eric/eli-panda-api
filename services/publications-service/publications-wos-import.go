@@ -83,10 +83,11 @@ var wosUnavailableFields = []string{
 }
 
 type wosResearcherRecord struct {
-	UID           string   `json:"uid"`
-	FirstName     string   `json:"firstName"`
-	LastName      string   `json:"lastName"`
-	ResearcherIDs []string `json:"researcherIds"`
+	UID                 string   `json:"uid"`
+	FirstName           string   `json:"firstName"`
+	LastName            string   `json:"lastName"`
+	CurrentResearcherID string   `json:"currentResearcherId"`
+	ResearcherIDs       []string `json:"researcherIds"`
 }
 
 type wosImportRepository interface {
@@ -645,7 +646,7 @@ func matchWosAuthors(
 ) []models.WosImportAuthor {
 	result := make([]models.WosImportAuthor, 0, len(authors))
 	for index, author := range authors {
-		match := models.WosAuthorMatch{Kind: "none", Candidates: make([]models.ResearcherRef, 0)}
+		match := models.WosAuthorMatch{Kind: "none", Candidates: make([]models.WosResearcherCandidate, 0)}
 		if researcherID, valid := normalizeResearcherID(author.WosResearcherID); valid {
 			match.Candidates = matchingResearchersByID(researchers, researcherID)
 			switch len(match.Candidates) {
@@ -684,8 +685,8 @@ func matchWosAuthors(
 	return result
 }
 
-func matchingResearchersByID(researchers []wosResearcherRecord, researcherID string) []models.ResearcherRef {
-	result := make([]models.ResearcherRef, 0)
+func matchingResearchersByID(researchers []wosResearcherRecord, researcherID string) []models.WosResearcherCandidate {
+	result := make([]models.WosResearcherCandidate, 0)
 	for _, researcher := range researchers {
 		for _, candidateID := range researcher.ResearcherIDs {
 			normalized, valid := normalizeResearcherID(candidateID)
@@ -701,13 +702,13 @@ func matchingResearchersByID(researchers []wosResearcherRecord, researcherID str
 func matchingResearchersByName(
 	researchers []wosResearcherRecord,
 	author models.WosAuthor,
-) []models.ResearcherRef {
+) []models.WosResearcherCandidate {
 	authorNames := nameVariants(author.WosDisplayName, author.WosStandard)
 	if len(authorNames) == 0 {
-		return []models.ResearcherRef{}
+		return []models.WosResearcherCandidate{}
 	}
 
-	result := make([]models.ResearcherRef, 0)
+	result := make([]models.WosResearcherCandidate, 0)
 	for _, researcher := range researchers {
 		firstLast := normalizePersonName(researcher.FirstName + " " + researcher.LastName)
 		lastFirst := normalizePersonName(researcher.LastName + " " + researcher.FirstName)
@@ -760,18 +761,19 @@ func normalizePersonName(value string) string {
 }
 
 func appendUniqueResearcher(
-	result []models.ResearcherRef,
+	result []models.WosResearcherCandidate,
 	researcher wosResearcherRecord,
-) []models.ResearcherRef {
+) []models.WosResearcherCandidate {
 	for _, existing := range result {
 		if existing.Uid == researcher.UID {
 			return result
 		}
 	}
-	return append(result, models.ResearcherRef{
-		Uid:       researcher.UID,
-		FirstName: researcher.FirstName,
-		LastName:  researcher.LastName,
+	return append(result, models.WosResearcherCandidate{
+		Uid:                 researcher.UID,
+		FirstName:           researcher.FirstName,
+		LastName:            researcher.LastName,
+		CurrentResearcherID: researcher.CurrentResearcherID,
 	})
 }
 

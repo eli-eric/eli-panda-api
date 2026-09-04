@@ -54,8 +54,19 @@ type WosImportAuthor struct {
 }
 
 type WosAuthorMatch struct {
-	Kind       string          `json:"kind"`
-	Candidates []ResearcherRef `json:"candidates"`
+	Kind       string                   `json:"kind"`
+	Candidates []WosResearcherCandidate `json:"candidates"`
+}
+
+// WosResearcherCandidate is a PANDA researcher a Web of Science author might
+// be. It carries the researcher's current ResearcherID so the review dialog can
+// say what promoting the incoming one would replace, rather than asking the
+// user to toggle a value they cannot see.
+type WosResearcherCandidate struct {
+	Uid                 string `json:"uid"`
+	FirstName           string `json:"firstName"`
+	LastName            string `json:"lastName"`
+	CurrentResearcherID string `json:"currentResearcherId,omitempty"`
 }
 
 // RememberResearcherIDRequest explicitly links one Web of Science ResearcherID

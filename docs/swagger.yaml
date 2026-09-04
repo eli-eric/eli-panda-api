@@ -1765,7 +1765,7 @@ definitions:
     properties:
       candidates:
         items:
-          $ref: '#/definitions/models.ResearcherRef'
+          $ref: '#/definitions/models.WosResearcherCandidate'
         type: array
       kind:
         type: string
@@ -1952,6 +1952,17 @@ definitions:
         type: array
       values:
         $ref: '#/definitions/models.WosImportValues'
+    type: object
+  models.WosResearcherCandidate:
+    properties:
+      currentResearcherId:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      uid:
+        type: string
     type: object
   models.WosSource:
     properties:
