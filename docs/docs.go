@@ -3642,6 +3642,7 @@ const docTemplate = `{
                     "Publications"
                 ],
                 "summary": "Get WOS data by DOI",
+                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
@@ -3658,8 +3659,29 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.WosAPIResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error"
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
                     }
                 }
             }
@@ -3952,6 +3974,88 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications/wos-preview": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns PANDA publication field candidates and researcher matches without saving a publication",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Preview Web of Science publication metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "DOI",
+                        "name": "doi",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "UID of the publication being refreshed",
+                        "name": "currentPublicationUid",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WosPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
                     }
                 }
             }
@@ -8630,6 +8734,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.PublicationAPIError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "retryable": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.Researcher": {
             "type": "object",
             "properties": {
@@ -9728,6 +9846,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.WosAuthorMatch": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ResearcherRef"
+                    }
+                },
+                "kind": {
+                    "type": "string"
+                }
+            }
+        },
         "models.WosCitation": {
             "type": "object",
             "properties": {
@@ -9747,6 +9879,23 @@ const docTemplate = `{
                 }
             }
         },
+        "models.WosExistingPublication": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "doi": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.WosHit": {
             "type": "object",
             "properties": {
@@ -9761,6 +9910,9 @@ const docTemplate = `{
                 },
                 "keywords": {
                     "$ref": "#/definitions/models.WosKeywords"
+                },
+                "links": {
+                    "$ref": "#/definitions/models.WosLinks"
                 },
                 "names": {
                     "$ref": "#/definitions/models.WosNames"
@@ -9794,7 +9946,95 @@ const docTemplate = `{
                 "doi": {
                     "type": "string"
                 },
+                "eisbn": {
+                    "type": "string"
+                },
+                "eissn": {
+                    "type": "string"
+                },
+                "isbn": {
+                    "type": "string"
+                },
                 "issn": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosImportAuthor": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "match": {
+                    "$ref": "#/definitions/models.WosAuthorMatch"
+                },
+                "researcherId": {
+                    "type": "string"
+                },
+                "sourceIndex": {
+                    "type": "integer"
+                },
+                "wosStandard": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WosImportValues": {
+            "type": "object",
+            "properties": {
+                "allAuthors": {
+                    "type": "string"
+                },
+                "allAuthorsCount": {
+                    "type": "integer"
+                },
+                "dateOfPublication": {
+                    "type": "string"
+                },
+                "doi": {
+                    "type": "string"
+                },
+                "eissn": {
+                    "type": "string"
+                },
+                "isbn": {
+                    "type": "string"
+                },
+                "issn": {
+                    "type": "string"
+                },
+                "issue": {
+                    "type": "integer"
+                },
+                "keywords": {
+                    "type": "string"
+                },
+                "longJournalTitle": {
+                    "type": "string"
+                },
+                "mediaTypeCb": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
+                "pages": {
+                    "type": "string"
+                },
+                "pagesCount": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "volume": {
+                    "type": "integer"
+                },
+                "webLink": {
+                    "type": "string"
+                },
+                "wosNumber": {
+                    "type": "string"
+                },
+                "yearOfPublication": {
                     "type": "string"
                 }
             }
@@ -9807,6 +10047,14 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "models.WosLinks": {
+            "type": "object",
+            "properties": {
+                "record": {
+                    "type": "string"
                 }
             }
         },
@@ -9858,9 +10106,47 @@ const docTemplate = `{
                 }
             }
         },
+        "models.WosPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosImportAuthor"
+                    }
+                },
+                "doi": {
+                    "type": "string"
+                },
+                "existingPublication": {
+                    "$ref": "#/definitions/models.WosExistingPublication"
+                },
+                "missingImportableFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "unavailableFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "values": {
+                    "$ref": "#/definitions/models.WosImportValues"
+                }
+            }
+        },
         "models.WosSource": {
             "type": "object",
             "properties": {
+                "articleNumber": {
+                    "type": "string"
+                },
                 "issue": {
                     "type": "string"
                 },
