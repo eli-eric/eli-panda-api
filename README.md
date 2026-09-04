@@ -86,6 +86,33 @@ docker exec panda-dev-neo4j cypher-shell -u neo4j -p 'elipanda2022' \
 
 Authenticate again after changing roles so the new JWT contains them. Do not apply local role grants to shared development or production databases.
 
+### Researcher identity and RIV
+
+RIV delivers exactly one `<researcherid>` per author, so a researcher carries two
+related properties:
+
+- `researcherId` — the **current** ID, and the only one RIV exports.
+- `researcherIds` — every ID the researcher has held, used to match Web of Science
+  authors on historical papers. The current ID is always a member of it.
+
+Clarivate mints IDs as `LETTERS-NNNN-YYYY`, so the issue year travels with the
+value and no separate bookkeeping is needed to know which is newest.
+
+Promotion is deliberate. An empty current ID is filled automatically. Otherwise it
+only changes when a caller passes `makePrimary` on
+`PUT /v1/researcher/{uid}/researcher-ids`, or when someone picks another ID on the
+Researchers page — so importing an old paper cannot demote a current ID. RIV
+validation warns when an author has IDs on file but no current one, or when the
+exported ID is not the newest known; both are warnings, like every other RIV check.
+
+To see whether a database has duplicate researcher records or stale current IDs:
+
+```bash
+make researcher-audit
+```
+
+It is read only. Run it before considering any merge tooling, and report the counts.
+
 ### Running tests
 
 The repository requires Go 1.22. Some service tests use the Neo4j connection from `.env`, so start the local database first and ensure `NEO4J_PORT=7680`. WoS tests use a local HTTP test server; no Clarivate key is required.
