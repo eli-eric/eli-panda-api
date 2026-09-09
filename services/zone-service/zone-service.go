@@ -23,6 +23,8 @@ var (
 	ErrConflictSys    = errors.New("zone is referenced by systems")
 	ErrCSVHeader      = errors.New("failed to read CSV header")
 	ErrCSVColumns     = errors.New("CSV must have 'name' and 'code' columns")
+
+	ErrDefaultParentSystemNotFound = errors.New("default parent system not found in this facility")
 )
 
 type ZoneService struct {
@@ -95,6 +97,13 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 		return result, ErrDuplicateCode
 	}
 
+	// validate default parent system before any writes
+	if req.DefaultParentSystemUID != nil && *req.DefaultParentSystemUID != "" {
+		if err := validateDefaultParentSystem(session, *req.DefaultParentSystemUID, facilityCode); err != nil {
+			return result, err
+		}
+	}
+
 	uid := uuid.New().String()
 
 	if req.ParentUID != nil && *req.ParentUID != "" {
@@ -109,7 +118,27 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 		result, err = helpers.WriteNeo4jReturnSingleRecordAndMapToStruct[models.Zone](session, query)
 	}
 
-	return result, err
+	if err != nil {
+		return result, err
+	}
+
+	if req.DefaultParentSystemUID == nil || *req.DefaultParentSystemUID == "" {
+		// the create query already projected everything (the import path never sets one)
+		return result, nil
+	}
+
+	setQuery := SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode)
+	if err = helpers.WriteNeo4jAndReturnNothing(session, setQuery); err != nil {
+		return result, err
+	}
+
+	// re-read so the response carries the default parent system (the create queries build their
+	// return value inline and do not know about it). The zone is already committed, so a failed
+	// re-read must not turn a successful create into an error - keep the create's own result.
+	if reread, rereadErr := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode)); rereadErr == nil {
+		result = reread
+	}
+	return result, nil
 }
 
 func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *models.ZoneUpdateRequest) (result models.Zone, err error) {
@@ -144,6 +173,13 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 		}
 	}
 
+	// validate default parent system before any writes (only when explicitly provided)
+	if req.DefaultParentSystemUID != nil && *req.DefaultParentSystemUID != "" {
+		if err := validateDefaultParentSystem(session, *req.DefaultParentSystemUID, facilityCode); err != nil {
+			return result, err
+		}
+	}
+
 	// update properties
 	updateQuery := UpdateZoneQuery(uid, req.Name, req.Code, req.Notes, facilityCode, userUID)
 	err = helpers.WriteNeo4jAndReturnNothing(session, updateQuery)
@@ -167,6 +203,20 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 			if err != nil {
 				return result, err
 			}
+		}
+	}
+
+	// mutate default parent system only when explicitly provided (nil = preserve current value)
+	if req.DefaultParentSystemUID != nil {
+		if *req.DefaultParentSystemUID == "" {
+			// empty string = explicit detach
+			err = helpers.WriteNeo4jAndReturnNothing(session, RemoveDefaultParentSystemRelQuery(uid, facilityCode))
+		} else {
+			// one query, so the old relationship survives if the new system no longer matches
+			err = helpers.WriteNeo4jAndReturnNothing(session, SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode))
+		}
+		if err != nil {
+			return result, err
 		}
 	}
 
@@ -329,6 +379,21 @@ func validateParentIsRoot(session neo4j.Session, parentUID, facilityCode string)
 	}
 	if check.HasParent {
 		return ErrMaxDepth
+	}
+
+	return nil
+}
+
+func validateDefaultParentSystem(session neo4j.Session, systemUID, facilityCode string) error {
+	count, err := helpers.GetNeo4jSingleRecordSingleValue[int64](session, CheckSystemExistsInFacilityQuery(systemUID, facilityCode))
+	if err != nil {
+		if isNoRecords(err) {
+			return ErrDefaultParentSystemNotFound
+		}
+		return fmt.Errorf("error validating default parent system: %w", err)
+	}
+	if count == 0 {
+		return ErrDefaultParentSystemNotFound
 	}
 
 	return nil

@@ -630,9 +630,24 @@ func (h *SystemsHandlers) GetSystemsForControlsSystems() echo.HandlerFunc {
 	}
 }
 
+// systemCodesClientError maps the user-input errors of the system code endpoints to a 400 with a
+// readable message. It returns nil when the error is not caused by the request.
+func systemCodesClientError(err error) error {
+	if errors.Is(err, ErrMissingDefaultParentSystem) {
+		// the sentinel message, not err.Error(), so wrapping cannot leak internals to the client
+		return helpers.BadRequest(ErrMissingDefaultParentSystem.Error() + " (set it on the zone via PUT /v1/zones/{uid})")
+	}
+	if errors.Is(err, helpers.ERR_INVALID_INPUT) {
+		return helpers.BadRequest(strings.TrimSuffix(err.Error(), ": "+helpers.ERR_INVALID_INPUT.Error()))
+	}
+
+	return nil
+}
+
 // Swagger documentation for GetNewSystemCodesPreview
 // @Summary Preview new system codes
 // @Description Generates a preview of the next N system codes for a given system type and zone without creating any systems.
+// @Description Returns 400 when the zone has no default parent system, so the client can block the create up front.
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth
@@ -675,13 +690,11 @@ func (h *SystemsHandlers) GetNewSystemCodesPreview() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, result)
 		}
 
+		if clientErr := systemCodesClientError(err); clientErr != nil {
+			return clientErr
+		}
+
 		log.Error().Msg(err.Error())
-		if err == helpers.ERR_INVALID_INPUT {
-			return helpers.BadRequest(err.Error())
-		}
-		if strings.Contains(err.Error(), "missing default parent system") {
-			return helpers.BadRequest(err.Error())
-		}
 		return echo.ErrInternalServerError
 	}
 }
@@ -689,6 +702,7 @@ func (h *SystemsHandlers) GetNewSystemCodesPreview() echo.HandlerFunc {
 // Swagger documentation for SaveNewSystemCodes
 // @Summary Create new systems with generated system codes
 // @Description Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.
+// @Description The new systems are created under the zone's default parent system; when the zone has none, 400 is returned (set it via PUT /v1/zones/{uid}).
 // @Tags Systems
 // @Accept json
 // @Produce json
@@ -717,10 +731,11 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 			return c.JSON(http.StatusCreated, result)
 		}
 
-		log.Error().Msg(err.Error())
-		if err == helpers.ERR_INVALID_INPUT {
-			return helpers.BadRequest(err.Error())
+		if clientErr := systemCodesClientError(err); clientErr != nil {
+			return clientErr
 		}
+
+		log.Error().Msg(err.Error())
 		return echo.ErrInternalServerError
 	}
 }

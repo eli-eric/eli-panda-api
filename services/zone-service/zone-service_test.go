@@ -529,3 +529,342 @@ func TestGetAllZones_DefaultSort_RootZonesFirst(t *testing.T) {
 	cleanupZone(rootB.UID)
 	cleanupUser(userUID)
 }
+
+const testOtherFacilityCode = "TEST_FACILITY_OTHER"
+
+// createTestSystem creates a System node belonging to the given facility, the way the default
+// parent system of a zone looks in the real data. An empty systemCode leaves the property
+// unset, which is how the CS zone migration creates them.
+func createTestSystem(t *testing.T, uid, name, systemCode, facilityCode string) {
+	var systemCodeParam interface{}
+	if systemCode != "" {
+		systemCodeParam = systemCode
+	}
+
+	_, err := testsetup.TestSession.Run(
+		`MERGE (f:Facility {code: $facilityCode})
+		 MERGE (s:System {uid: $uid})
+		 SET s.name = $name, s.systemCode = $systemCode, s.deleted = false
+		 MERGE (s)-[:BELONGS_TO_FACILITY]->(f)`,
+		map[string]interface{}{
+			"uid":          uid,
+			"name":         name,
+			"systemCode":   systemCodeParam,
+			"facilityCode": facilityCode,
+		},
+	)
+	assert.NoError(t, err)
+}
+
+func cleanupSystem(uid string) {
+	testsetup.TestSession.Run(`MATCH (s:System {uid: $uid}) DETACH DELETE s`, map[string]interface{}{"uid": uid})
+}
+
+// cleanupFacility removes a Facility node created by createTestSystem so it does not linger in
+// the shared test database.
+func cleanupFacility(code string) {
+	testsetup.TestSession.Run(`MATCH (f:Facility {code: $code}) DETACH DELETE f`, map[string]interface{}{"code": code})
+}
+
+func TestCreateZone_WithDefaultParentSystem(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysUID, "Default Parent", "DPS-001", testFacilityCode)
+
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone With DPS", Code: "ZD-" + uuid.New().String()[:8], DefaultParentSystemUID: &sysUID,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, zone.DefaultParentSystem)
+	assert.Equal(t, sysUID, zone.DefaultParentSystem.UID)
+	assert.Equal(t, "Default Parent", zone.DefaultParentSystem.Name)
+	assert.Equal(t, "DPS-001", zone.DefaultParentSystem.Code)
+
+	// verify in DB
+	dbZone, err := service.GetZoneByUID(zone.UID, testFacilityCode)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbZone.DefaultParentSystem)
+	assert.Equal(t, sysUID, dbZone.DefaultParentSystem.UID)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(sysUID)
+	cleanupUser(userUID)
+}
+
+func TestCreateZone_WithoutDefaultParentSystem(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Without DPS", Code: "ZW-" + uuid.New().String()[:8],
+	})
+	assert.NoError(t, err)
+	assert.Nil(t, zone.DefaultParentSystem)
+
+	cleanupZone(zone.UID)
+	cleanupUser(userUID)
+}
+
+func TestCreateZone_UnknownDefaultParentSystem_Rejected(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	unknownUID := "does-not-exist-" + uuid.New().String()
+	code := "ZU-" + uuid.New().String()[:8]
+
+	_, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Bad DPS", Code: code, DefaultParentSystemUID: &unknownUID,
+	})
+	assert.ErrorIs(t, err, ErrDefaultParentSystemNotFound)
+
+	// nothing must have been created
+	zones, _, err := service.GetAllZones(testFacilityCode, code, 1, 10, nil)
+	assert.NoError(t, err)
+	assert.Empty(t, zones)
+
+	cleanupUser(userUID)
+}
+
+func TestCreateZone_DefaultParentSystemFromOtherFacility_Rejected(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysUID, "Foreign System", "FS-001", testOtherFacilityCode)
+
+	_, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Foreign DPS", Code: "ZF-" + uuid.New().String()[:8], DefaultParentSystemUID: &sysUID,
+	})
+	assert.ErrorIs(t, err, ErrDefaultParentSystemNotFound)
+
+	cleanupSystem(sysUID)
+	cleanupFacility(testOtherFacilityCode)
+	cleanupUser(userUID)
+}
+
+// TestZone_DefaultParentSystemWithoutSystemCode pins the shape the API really returns for the
+// systems the CS zone migration creates: those have no systemCode, so `code` stays empty and is
+// omitted from the JSON response.
+func TestZone_DefaultParentSystemWithoutSystemCode(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysUID, "CS Zone Default System", "", testFacilityCode)
+
+	code := "ZN-" + uuid.New().String()[:8]
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone No SystemCode", Code: code, DefaultParentSystemUID: &sysUID,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, zone.DefaultParentSystem)
+	assert.Equal(t, sysUID, zone.DefaultParentSystem.UID)
+	assert.Equal(t, "CS Zone Default System", zone.DefaultParentSystem.Name)
+	assert.Equal(t, "", zone.DefaultParentSystem.Code)
+
+	dbZone, err := service.GetZoneByUID(zone.UID, testFacilityCode)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbZone.DefaultParentSystem)
+	assert.Equal(t, sysUID, dbZone.DefaultParentSystem.UID)
+	assert.Equal(t, "", dbZone.DefaultParentSystem.Code)
+
+	zones, _, err := service.GetAllZones(testFacilityCode, code, 1, 10, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(zones))
+	assert.NotNil(t, zones[0].DefaultParentSystem)
+	assert.Equal(t, sysUID, zones[0].DefaultParentSystem.UID)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(sysUID)
+	cleanupUser(userUID)
+}
+
+// TestZone_DefaultParentSystemFromOtherFacilityNotReturned covers the read path: a relationship
+// pointing at a system of another facility must not leak into the response.
+func TestZone_DefaultParentSystemFromOtherFacilityNotReturned(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	code := "ZX-" + uuid.New().String()[:8]
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Foreign Read", Code: code,
+	})
+	assert.NoError(t, err)
+
+	// wire the relationship straight in the database, bypassing the validated write path
+	foreignSysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, foreignSysUID, "Foreign System", "FS-002", testOtherFacilityCode)
+	_, err = testsetup.TestSession.Run(
+		`MATCH (z:Zone {uid: $zoneUID}) MATCH (s:System {uid: $sysUID})
+		 MERGE (z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(s)`,
+		map[string]interface{}{"zoneUID": zone.UID, "sysUID": foreignSysUID},
+	)
+	assert.NoError(t, err)
+
+	dbZone, err := service.GetZoneByUID(zone.UID, testFacilityCode)
+	assert.NoError(t, err)
+	assert.Nil(t, dbZone.DefaultParentSystem)
+
+	zones, _, err := service.GetAllZones(testFacilityCode, code, 1, 10, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(zones))
+	assert.Nil(t, zones[0].DefaultParentSystem)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(foreignSysUID)
+	cleanupFacility(testOtherFacilityCode)
+	cleanupUser(userUID)
+}
+
+func TestUpdateZone_DefaultParentSystem_SetPreserveReplaceDetach(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysAUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysAUID, "System A", "SA-001", testFacilityCode)
+	sysBUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysBUID, "System B", "SB-001", testFacilityCode)
+
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone DPS Update", Code: "ZP-" + uuid.New().String()[:8],
+	})
+	assert.NoError(t, err)
+	assert.Nil(t, zone.DefaultParentSystem)
+
+	// set
+	updated, err := service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: zone.Name, Code: zone.Code, DefaultParentSystemUID: &sysAUID,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, updated.DefaultParentSystem)
+	assert.Equal(t, sysAUID, updated.DefaultParentSystem.UID)
+
+	// omitted (nil) preserves the current value
+	updated, err = service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: zone.Name, Code: zone.Code,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, updated.DefaultParentSystem)
+	assert.Equal(t, sysAUID, updated.DefaultParentSystem.UID)
+
+	// replace
+	updated, err = service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: zone.Name, Code: zone.Code, DefaultParentSystemUID: &sysBUID,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, updated.DefaultParentSystem)
+	assert.Equal(t, sysBUID, updated.DefaultParentSystem.UID)
+
+	// only one relationship must remain
+	relResult, err := testsetup.TestSession.Run(
+		`MATCH (z:Zone {uid: $uid})-[r:HAS_DEFAULT_PARENT_SYSTEM]->(:System) RETURN count(r) as cnt`,
+		map[string]interface{}{"uid": zone.UID},
+	)
+	assert.NoError(t, err)
+	if relResult.Next() {
+		cnt, _ := relResult.Record().Get("cnt")
+		assert.Equal(t, int64(1), cnt)
+	}
+
+	// detach with empty string
+	empty := ""
+	updated, err = service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: zone.Name, Code: zone.Code, DefaultParentSystemUID: &empty,
+	})
+	assert.NoError(t, err)
+	assert.Nil(t, updated.DefaultParentSystem)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(sysAUID)
+	cleanupSystem(sysBUID)
+	cleanupUser(userUID)
+}
+
+func TestUpdateZone_UnknownDefaultParentSystem_Rejected(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysUID, "System Keep", "SK-001", testFacilityCode)
+
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Keep DPS", Code: "ZK-" + uuid.New().String()[:8], DefaultParentSystemUID: &sysUID,
+	})
+	assert.NoError(t, err)
+
+	unknownUID := "does-not-exist-" + uuid.New().String()
+	_, err = service.UpdateZone(zone.UID, testFacilityCode, userUID, &models.ZoneUpdateRequest{
+		Name: "Renamed", Code: zone.Code, DefaultParentSystemUID: &unknownUID,
+	})
+	assert.ErrorIs(t, err, ErrDefaultParentSystemNotFound)
+
+	// validation happens before any write: name and relationship are untouched
+	dbZone, err := service.GetZoneByUID(zone.UID, testFacilityCode)
+	assert.NoError(t, err)
+	assert.Equal(t, "Zone Keep DPS", dbZone.Name)
+	assert.NotNil(t, dbZone.DefaultParentSystem)
+	assert.Equal(t, sysUID, dbZone.DefaultParentSystem.UID)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(sysUID)
+	cleanupUser(userUID)
+}
+
+func TestGetAllZones_IncludesDefaultParentSystem(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysUID, "List System", "LS-001", testFacilityCode)
+
+	searchPrefix := "ZL" + uuid.New().String()[:6]
+	withDPS, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone With", Code: searchPrefix + "A", DefaultParentSystemUID: &sysUID,
+	})
+	assert.NoError(t, err)
+	withoutDPS, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Without", Code: searchPrefix + "B",
+	})
+	assert.NoError(t, err)
+
+	zones, totalCount, err := service.GetAllZones(testFacilityCode, searchPrefix, 1, 100, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2), totalCount)
+	assert.Equal(t, 2, len(zones))
+
+	for _, z := range zones {
+		switch z.UID {
+		case withDPS.UID:
+			assert.NotNil(t, z.DefaultParentSystem)
+			assert.Equal(t, sysUID, z.DefaultParentSystem.UID)
+			assert.Equal(t, "LS-001", z.DefaultParentSystem.Code)
+		case withoutDPS.UID:
+			assert.Nil(t, z.DefaultParentSystem)
+		}
+	}
+
+	cleanupZone(withDPS.UID)
+	cleanupZone(withoutDPS.UID)
+	cleanupSystem(sysUID)
+	cleanupUser(userUID)
+}

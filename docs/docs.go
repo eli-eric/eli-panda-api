@@ -6163,7 +6163,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.",
+                "description": "Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.\nThe new systems are created under the zone's default parent system; when the zone has none, 400 is returned (set it via PUT /v1/zones/{uid}).",
                 "consumes": [
                     "application/json"
                 ],
@@ -6211,7 +6211,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Generates a preview of the next N system codes for a given system type and zone without creating any systems.",
+                "description": "Generates a preview of the next N system codes for a given system type and zone without creating any systems.\nReturns 400 when the zone has no default parent system, so the client can block the create up front.",
                 "produces": [
                     "application/json"
                 ],
@@ -6874,7 +6874,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all zones for the current facility",
+                "description": "Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.",
                 "produces": [
                     "application/json"
                 ],
@@ -6900,7 +6900,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new zone",
+                "description": "Create a new zone. defaultParentSystemUid optionally links the zone to the system that new system codes are created under; it must be a non-deleted system of the same facility.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6988,7 +6988,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get zone by uid",
+                "description": "Get zone by uid, including its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.",
                 "produces": [
                     "application/json"
                 ],
@@ -7026,7 +7026,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update zone name, code and optionally reassign parent",
+                "description": "Update zone name, code and optionally reassign parent or default parent system.\nparentUid and defaultParentSystemUid are tri-state: omitted/null keeps the current value, \"\" detaches, a uid sets it.",
                 "consumes": [
                     "application/json"
                 ],
@@ -9887,6 +9887,9 @@ const docTemplate = `{
                 "code": {
                     "type": "string"
                 },
+                "defaultParentSystem": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -9905,6 +9908,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "type": "string"
+                },
+                "defaultParentSystemUid": {
+                    "description": "DefaultParentSystemUID is the uid of the System new system codes are created under.\nnil = not set, non-empty = set.",
                     "type": "string"
                 },
                 "name": {
@@ -9939,6 +9946,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "type": "string"
+                },
+                "defaultParentSystemUid": {
+                    "description": "DefaultParentSystemUID is tri-state like ParentUID:\nnil = preserve current value, \"\" = detach, non-empty = set.",
                     "type": "string"
                 },
                 "name": {
