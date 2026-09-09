@@ -533,8 +533,14 @@ func TestGetAllZones_DefaultSort_RootZonesFirst(t *testing.T) {
 const testOtherFacilityCode = "TEST_FACILITY_OTHER"
 
 // createTestSystem creates a System node belonging to the given facility, the way the default
-// parent system of a zone looks in the real data.
+// parent system of a zone looks in the real data. An empty systemCode leaves the property
+// unset, which is how the CS zone migration creates them.
 func createTestSystem(t *testing.T, uid, name, systemCode, facilityCode string) {
+	var systemCodeParam interface{}
+	if systemCode != "" {
+		systemCodeParam = systemCode
+	}
+
 	_, err := testsetup.TestSession.Run(
 		`MERGE (f:Facility {code: $facilityCode})
 		 MERGE (s:System {uid: $uid})
@@ -543,7 +549,7 @@ func createTestSystem(t *testing.T, uid, name, systemCode, facilityCode string) 
 		map[string]interface{}{
 			"uid":          uid,
 			"name":         name,
-			"systemCode":   systemCode,
+			"systemCode":   systemCodeParam,
 			"facilityCode": facilityCode,
 		},
 	)
@@ -552,6 +558,12 @@ func createTestSystem(t *testing.T, uid, name, systemCode, facilityCode string) 
 
 func cleanupSystem(uid string) {
 	testsetup.TestSession.Run(`MATCH (s:System {uid: $uid}) DETACH DELETE s`, map[string]interface{}{"uid": uid})
+}
+
+// cleanupFacility removes a Facility node created by createTestSystem so it does not linger in
+// the shared test database.
+func cleanupFacility(code string) {
+	testsetup.TestSession.Run(`MATCH (f:Facility {code: $code}) DETACH DELETE f`, map[string]interface{}{"code": code})
 }
 
 func TestCreateZone_WithDefaultParentSystem(t *testing.T) {
@@ -636,6 +648,85 @@ func TestCreateZone_DefaultParentSystemFromOtherFacility_Rejected(t *testing.T) 
 	assert.ErrorIs(t, err, ErrDefaultParentSystemNotFound)
 
 	cleanupSystem(sysUID)
+	cleanupFacility(testOtherFacilityCode)
+	cleanupUser(userUID)
+}
+
+// TestZone_DefaultParentSystemWithoutSystemCode pins the shape the API really returns for the
+// systems the CS zone migration creates: those have no systemCode, so `code` stays empty and is
+// omitted from the JSON response.
+func TestZone_DefaultParentSystemWithoutSystemCode(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	sysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, sysUID, "CS Zone Default System", "", testFacilityCode)
+
+	code := "ZN-" + uuid.New().String()[:8]
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone No SystemCode", Code: code, DefaultParentSystemUID: &sysUID,
+	})
+	assert.NoError(t, err)
+	assert.NotNil(t, zone.DefaultParentSystem)
+	assert.Equal(t, sysUID, zone.DefaultParentSystem.UID)
+	assert.Equal(t, "CS Zone Default System", zone.DefaultParentSystem.Name)
+	assert.Equal(t, "", zone.DefaultParentSystem.Code)
+
+	dbZone, err := service.GetZoneByUID(zone.UID, testFacilityCode)
+	assert.NoError(t, err)
+	assert.NotNil(t, dbZone.DefaultParentSystem)
+	assert.Equal(t, sysUID, dbZone.DefaultParentSystem.UID)
+	assert.Equal(t, "", dbZone.DefaultParentSystem.Code)
+
+	zones, _, err := service.GetAllZones(testFacilityCode, code, 1, 10, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(zones))
+	assert.NotNil(t, zones[0].DefaultParentSystem)
+	assert.Equal(t, sysUID, zones[0].DefaultParentSystem.UID)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(sysUID)
+	cleanupUser(userUID)
+}
+
+// TestZone_DefaultParentSystemFromOtherFacilityNotReturned covers the read path: a relationship
+// pointing at a system of another facility must not leak into the response.
+func TestZone_DefaultParentSystemFromOtherFacilityNotReturned(t *testing.T) {
+	setupTestFacility(t)
+	service := NewZoneService(&testsetup.TestDriver)
+	userUID := "test-user-" + uuid.New().String()
+	createTestUser(t, userUID)
+
+	code := "ZX-" + uuid.New().String()[:8]
+	zone, err := service.CreateZone(testFacilityCode, userUID, &models.ZoneCreateRequest{
+		Name: "Zone Foreign Read", Code: code,
+	})
+	assert.NoError(t, err)
+
+	// wire the relationship straight in the database, bypassing the validated write path
+	foreignSysUID := "test-sys-" + uuid.New().String()
+	createTestSystem(t, foreignSysUID, "Foreign System", "FS-002", testOtherFacilityCode)
+	_, err = testsetup.TestSession.Run(
+		`MATCH (z:Zone {uid: $zoneUID}) MATCH (s:System {uid: $sysUID})
+		 MERGE (z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(s)`,
+		map[string]interface{}{"zoneUID": zone.UID, "sysUID": foreignSysUID},
+	)
+	assert.NoError(t, err)
+
+	dbZone, err := service.GetZoneByUID(zone.UID, testFacilityCode)
+	assert.NoError(t, err)
+	assert.Nil(t, dbZone.DefaultParentSystem)
+
+	zones, _, err := service.GetAllZones(testFacilityCode, code, 1, 10, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(zones))
+	assert.Nil(t, zones[0].DefaultParentSystem)
+
+	cleanupZone(zone.UID)
+	cleanupSystem(foreignSysUID)
+	cleanupFacility(testOtherFacilityCode)
 	cleanupUser(userUID)
 }
 

@@ -122,17 +122,23 @@ func (svc *ZoneService) createZoneWithSession(session neo4j.Session, facilityCod
 		return result, err
 	}
 
-	if req.DefaultParentSystemUID != nil && *req.DefaultParentSystemUID != "" {
-		setQuery := SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode)
-		if err = helpers.WriteNeo4jAndReturnNothing(session, setQuery); err != nil {
-			return result, err
-		}
+	if req.DefaultParentSystemUID == nil || *req.DefaultParentSystemUID == "" {
+		// the create query already projected everything (the import path never sets one)
+		return result, nil
 	}
 
-	// re-read so the response carries the resolved relationships (the create queries build
-	// their return value inline and do not know about the default parent system)
-	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode))
-	return result, err
+	setQuery := SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode)
+	if err = helpers.WriteNeo4jAndReturnNothing(session, setQuery); err != nil {
+		return result, err
+	}
+
+	// re-read so the response carries the default parent system (the create queries build their
+	// return value inline and do not know about it). The zone is already committed, so a failed
+	// re-read must not turn a successful create into an error - keep the create's own result.
+	if reread, rereadErr := helpers.GetNeo4jSingleRecordAndMapToStruct[models.Zone](session, GetZoneByUIDQuery(uid, facilityCode)); rereadErr == nil {
+		result = reread
+	}
+	return result, nil
 }
 
 func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *models.ZoneUpdateRequest) (result models.Zone, err error) {
@@ -202,19 +208,15 @@ func (svc *ZoneService) UpdateZone(uid, facilityCode, userUID string, req *model
 
 	// mutate default parent system only when explicitly provided (nil = preserve current value)
 	if req.DefaultParentSystemUID != nil {
-		removeQuery := RemoveDefaultParentSystemRelQuery(uid, facilityCode)
-		err = helpers.WriteNeo4jAndReturnNothing(session, removeQuery)
+		if *req.DefaultParentSystemUID == "" {
+			// empty string = explicit detach
+			err = helpers.WriteNeo4jAndReturnNothing(session, RemoveDefaultParentSystemRelQuery(uid, facilityCode))
+		} else {
+			// one query, so the old relationship survives if the new system no longer matches
+			err = helpers.WriteNeo4jAndReturnNothing(session, SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode))
+		}
 		if err != nil {
 			return result, err
-		}
-
-		// set new default parent system if non-empty (empty string = explicit detach)
-		if *req.DefaultParentSystemUID != "" {
-			setQuery := SetDefaultParentSystemRelQuery(uid, *req.DefaultParentSystemUID, facilityCode)
-			err = helpers.WriteNeo4jAndReturnNothing(session, setQuery)
-			if err != nil {
-				return result, err
-			}
 		}
 	}
 
