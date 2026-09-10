@@ -1,0 +1,2 @@
+DROP INDEX Team_name_index IF EXISTS;
+DROP CONSTRAINT Team_uid_unique IF EXISTS;

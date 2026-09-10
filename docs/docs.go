@@ -355,6 +355,59 @@ const docTemplate = `{
                         "description": "Internal server error"
                     }
                 }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "JSON Merge Patch on category scalar fields (name, code, systemType).\nImage is out of scope — handled via Minio separately.\nOnly keys present in the body are modified. systemType null clears the relationship.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Partially update catalogue category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial category payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategory"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body or unknown systemType UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category does not exist"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
             }
         },
         "/v1/catalogue/category/{uid}/copy": {
@@ -387,6 +440,272 @@ const docTemplate = `{
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/group": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new property group under a category. Order is optional — server auto-assigns max(siblings)+10 if omitted.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Group payload (name required)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body or missing name"
+                    },
+                    "404": {
+                        "description": "Not Found — category does not exist"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/group/{gid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single group scoped to a category. 404 if the group doesn't belong to the given category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get a single catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a group and its properties. Blocked with 409 if any property under this group is referenced by a catalogue item.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict — at least one property in this group has item values"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partially update a group's name and/or order. Flat URL — the server validates group belongs to the given category.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue category group",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch group payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryPropertyGroup"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body"
+                    },
+                    "404": {
+                        "description": "Not Found — category or group does not exist, or group does not belong to this category"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/group/{gid}/property": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new property in a group under a category. type.uid required; unit, listOfValues, defaultValue, order are optional.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Group UID",
+                        "name": "gid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Property payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — missing/invalid fields or unknown type/unit UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category or group does not exist"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -471,6 +790,207 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/catalogue/category/{uid}/physical-property": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Physical properties are default-value templates attached directly to the category (no group). type.uid required.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Create physical item property on a category",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Physical property payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — missing/invalid fields or unknown type/unit UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category does not exist"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/physical-property/{pid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single physical property attached to a category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get a single physical item property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Physical property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Physicals aren't referenced by items, so delete never returns 409 — always 204 on success.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete physical item property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Physical property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update — same fields as regular property minus groupUid (physicals don't belong to groups).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update physical item property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Physical property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/catalogue/category/{uid}/properties": {
             "get": {
                 "security": [
@@ -510,6 +1030,155 @@ const docTemplate = `{
                                 "$ref": "#/definitions/panda_apigateway_services_catalogue-service_models.CatalogueItemDetail"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/catalogue/category/{uid}/property/{pid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a single property scoped to a category. 404 if the property doesn't belong to this category.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Get a single catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a property. Blocked with 409 if any catalogue item references the property.",
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Delete catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict — property has item values; clear them first via item PATCH"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update. Optional fields: name, defaultValue, listOfValues, order, type, unit, groupUid (move).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Update catalogue category property",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Category UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Property UID",
+                        "name": "pid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch property payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueCategoryProperty"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body or unknown ref UID"
+                    },
+                    "404": {
+                        "description": "Not Found — category or property does not exist, or property does not belong to this category"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -727,6 +1396,62 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Conflict"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Applies a partial update to a catalogue item. Only fields present in the JSON body are modified.\nRequired: lastUpdateTime (for conflict detection). Supported keys: name, catalogueNumber, description, manufacturerUrl, manufacturerNumber, supplier, category, details.\nScalar fields set to JSON null are cleared. Missing keys are left untouched. Details are merged (no deletion); send value:null to clear a single detail's value.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Catalogue"
+                ],
+                "summary": "Partially update catalogue item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Catalogue item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial catalogue item payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CatalogueItem"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request — malformed body, missing lastUpdateTime, or unknown supplier/category/property UID"
+                    },
+                    "404": {
+                        "description": "Not Found — catalogue item does not exist"
+                    },
+                    "409": {
+                        "description": "Conflict — lastUpdateTime mismatch or concurrent update detected"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -4507,6 +5232,46 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/can-edit": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns whether the caller may edit the system (responsibility bubbles up HAS_SUBSYSTEM) and the responsible users to contact.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Can the current user edit this system",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.CanEditSystemResult"
+                        }
+                    },
+                    "404": {
+                        "description": "System not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/{uid}/graph": {
             "get": {
                 "security": [
@@ -4728,6 +5493,12 @@ const docTemplate = `{
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4736,6 +5507,9 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -4777,6 +5551,12 @@ const docTemplate = `{
                         "description": "Column filter JSON",
                         "name": "columnFilter",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)",
+                        "name": "directOnly",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4788,6 +5568,9 @@ const docTemplate = `{
                                 "type": "integer"
                             }
                         }
+                    },
+                    "400": {
+                        "description": "Bad request"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5380,7 +6163,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.",
+                "description": "Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.\nThe new systems are created under the zone's default parent system; when the zone has none, 400 is returned (set it via PUT /v1/zones/{uid}).",
                 "consumes": [
                     "application/json"
                 ],
@@ -5428,7 +6211,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Generates a preview of the next N system codes for a given system type and zone without creating any systems.",
+                "description": "Generates a preview of the next N system codes for a given system type and zone without creating any systems.\nReturns 400 when the zone has no default parent system, so the client can block the create up front.",
                 "produces": [
                     "application/json"
                 ],
@@ -5529,6 +6312,455 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/teams": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get all teams for the current facility (flat list with member counts)",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Get all teams",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TeamListItem"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Create a new team (name required; code optional but unique per facility)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Create team",
+                "parameters": [
+                    {
+                        "description": "Team",
+                        "name": "team",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.Team"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/teams/assignable-users": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get enabled users of the current facility for the team member picker. Optional case-insensitive search across name/username/email.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Get assignable facility users",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Case-insensitive substring filter across firstName/lastName/username/email",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.TeamMember"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/teams/{uid}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get a team with its full member list",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Get team by uid",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Full replace of team name/code/description",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Update team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Team",
+                        "name": "team",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Team"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Hard delete a team. Rejected with 409 if Systems or Room Cards still reference it.",
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Delete team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update of team params (absent key = unchanged; explicit null = clear)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Patch team",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial team fields",
+                        "name": "team",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Team"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/teams/{uid}/members": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Replace the entire member set of a team with the supplied user uids (add + remove diff).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Replace team members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "team uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User uids",
+                        "name": "members",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamMembersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Add one or more users to a team (idempotent). All uids must be users in the facility.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Add team members",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "team uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "User uids",
+                        "name": "members",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamMembersRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/teams/{uid}/members/{userUid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Remove a single user from a team. Idempotent (200 even if the user was not a member).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Teams"
+                ],
+                "summary": "Remove a team member",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "team uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "user uid",
+                        "name": "userUid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TeamDetail"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
                     }
                 }
             }
@@ -5642,7 +6874,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all zones for the current facility",
+                "description": "Get all zones for the current facility. Each zone includes its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.",
                 "produces": [
                     "application/json"
                 ],
@@ -5668,7 +6900,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create a new zone",
+                "description": "Create a new zone. defaultParentSystemUid optionally links the zone to the system that new system codes are created under; it must be a non-deleted system of the same facility.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5756,7 +6988,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get zone by uid",
+                "description": "Get zone by uid, including its defaultParentSystem (the system new system codes are created under); the field is omitted when the zone has none, like parentZone.",
                 "produces": [
                     "application/json"
                 ],
@@ -5794,7 +7026,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update zone name, code and optionally reassign parent",
+                "description": "Update zone name, code and optionally reassign parent or default parent system.\nparentUid and defaultParentSystemUid are tri-state: omitted/null keeps the current value, \"\" detaches, a uid sets it.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6130,6 +7362,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CanEditSystemResult": {
+            "type": "object",
+            "properties": {
+                "responsibles": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemResponsible"
+                    }
+                },
+                "result": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.CatalogueCategory": {
             "type": "object",
             "properties": {
@@ -6180,6 +7426,10 @@ const docTemplate = `{
                 "defaultValue": {
                     "type": "string"
                 },
+                "groupUid": {
+                    "description": "GroupUID is the parent group a property belongs to. Populated on grouped-property\nreads (so edit flows can discover the current group without the full category-detail\npayload); nil for physical properties, which are attached directly to the category.",
+                    "type": "string"
+                },
                 "listOfValues": {
                     "type": "array",
                     "items": {
@@ -6188,6 +7438,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "order": {
+                    "type": "integer"
                 },
                 "type": {
                     "$ref": "#/definitions/models.CatalogueCategoryPropertyType"
@@ -6205,6 +7458,9 @@ const docTemplate = `{
             "properties": {
                 "name": {
                     "type": "string"
+                },
+                "order": {
+                    "type": "integer"
                 },
                 "properties": {
                     "type": "array",
@@ -8054,6 +9310,26 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemResponsible": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemSimpleInfo": {
             "type": "object",
             "properties": {
@@ -8221,6 +9497,128 @@ const docTemplate = `{
                     }
                 },
                 "targetParentSystemUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.Team": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TeamCreateRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TeamDetail": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.TeamMember"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TeamListItem": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "memberCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TeamMember": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "firstName": {
+                    "type": "string"
+                },
+                "isEnabled": {
+                    "type": "boolean"
+                },
+                "lastName": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TeamMembersRequest": {
+            "type": "object",
+            "properties": {
+                "userUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.TeamUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "name": {
                     "type": "string"
                 }
             }
@@ -8489,6 +9887,9 @@ const docTemplate = `{
                 "code": {
                     "type": "string"
                 },
+                "defaultParentSystem": {
+                    "$ref": "#/definitions/models.Codebook"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -8507,6 +9908,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "type": "string"
+                },
+                "defaultParentSystemUid": {
+                    "description": "DefaultParentSystemUID is the uid of the System new system codes are created under.\nnil = not set, non-empty = set.",
                     "type": "string"
                 },
                 "name": {
@@ -8541,6 +9946,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "code": {
+                    "type": "string"
+                },
+                "defaultParentSystemUid": {
+                    "description": "DefaultParentSystemUID is tri-state like ParentUID:\nnil = preserve current value, \"\" = detach, non-empty = set.",
                     "type": "string"
                 },
                 "name": {

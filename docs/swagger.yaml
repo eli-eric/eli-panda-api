@@ -162,6 +162,15 @@ definitions:
       targetUid:
         type: string
     type: object
+  models.CanEditSystemResult:
+    properties:
+      responsibles:
+        items:
+          $ref: '#/definitions/models.SystemResponsible'
+        type: array
+      result:
+        type: boolean
+    type: object
   models.CatalogueCategory:
     properties:
       code:
@@ -195,12 +204,20 @@ definitions:
     properties:
       defaultValue:
         type: string
+      groupUid:
+        description: |-
+          GroupUID is the parent group a property belongs to. Populated on grouped-property
+          reads (so edit flows can discover the current group without the full category-detail
+          payload); nil for physical properties, which are attached directly to the category.
+        type: string
       listOfValues:
         items:
           type: string
         type: array
       name:
         type: string
+      order:
+        type: integer
       type:
         $ref: '#/definitions/models.CatalogueCategoryPropertyType'
       uid:
@@ -212,6 +229,8 @@ definitions:
     properties:
       name:
         type: string
+      order:
+        type: integer
       properties:
         items:
           $ref: '#/definitions/models.CatalogueCategoryProperty'
@@ -1437,6 +1456,19 @@ definitions:
       systemToUid:
         type: string
     type: object
+  models.SystemResponsible:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      uid:
+        type: string
+      username:
+        type: string
+    type: object
   models.SystemSimpleInfo:
     properties:
       description:
@@ -1546,6 +1578,85 @@ definitions:
           type: string
         type: array
       targetParentSystemUid:
+        type: string
+    type: object
+  models.Team:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.TeamCreateRequest:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  models.TeamDetail:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      members:
+        items:
+          $ref: '#/definitions/models.TeamMember'
+        type: array
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.TeamListItem:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      memberCount:
+        type: integer
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.TeamMember:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      isEnabled:
+        type: boolean
+      lastName:
+        type: string
+      uid:
+        type: string
+      username:
+        type: string
+    type: object
+  models.TeamMembersRequest:
+    properties:
+      userUids:
+        items:
+          type: string
+        type: array
+    type: object
+  models.TeamUpdateRequest:
+    properties:
+      code:
+        type: string
+      description:
+        type: string
+      name:
         type: string
     type: object
   models.UserAuthInfo:
@@ -1719,6 +1830,8 @@ definitions:
     properties:
       code:
         type: string
+      defaultParentSystem:
+        $ref: '#/definitions/models.Codebook'
       name:
         type: string
       notes:
@@ -1731,6 +1844,11 @@ definitions:
   models.ZoneCreateRequest:
     properties:
       code:
+        type: string
+      defaultParentSystemUid:
+        description: |-
+          DefaultParentSystemUID is the uid of the System new system codes are created under.
+          nil = not set, non-empty = set.
         type: string
       name:
         type: string
@@ -1753,6 +1871,11 @@ definitions:
   models.ZoneUpdateRequest:
     properties:
       code:
+        type: string
+      defaultParentSystemUid:
+        description: |-
+          DefaultParentSystemUID is tri-state like ParentUID:
+          nil = preserve current value, "" = detach, non-empty = set.
         type: string
       name:
         type: string
@@ -1987,6 +2110,43 @@ paths:
       summary: Get catalogue category detail
       tags:
       - Catalogue
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        JSON Merge Patch on category scalar fields (name, code, systemType).
+        Image is out of scope — handled via Minio separately.
+        Only keys present in the body are modified. systemType null clears the relationship.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Partial category payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategory'
+        "400":
+          description: Bad Request — malformed body or unknown systemType UID
+        "404":
+          description: Not Found — category does not exist
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Partially update catalogue category
+      tags:
+      - Catalogue
     put:
       consumes:
       - application/json
@@ -2041,6 +2201,183 @@ paths:
       summary: Copy catalogue category recursively
       tags:
       - Catalogue
+  /v1/catalogue/category/{uid}/group:
+    post:
+      consumes:
+      - application/json
+      description: Create a new property group under a category. Order is optional
+        — server auto-assigns max(siblings)+10 if omitted.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Group payload (name required)
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryPropertyGroup'
+        "400":
+          description: Bad Request — malformed body or missing name
+        "404":
+          description: Not Found — category does not exist
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create catalogue category group
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/group/{gid}:
+    delete:
+      description: Delete a group and its properties. Blocked with 409 if any property
+        under this group is referenced by a catalogue item.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Group UID
+        in: path
+        name: gid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+        "409":
+          description: Conflict — at least one property in this group has item values
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete catalogue category group
+      tags:
+      - Catalogue
+    get:
+      description: Returns a single group scoped to a category. 404 if the group doesn't
+        belong to the given category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Group UID
+        in: path
+        name: gid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryPropertyGroup'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get a single catalogue category group
+      tags:
+      - Catalogue
+    patch:
+      consumes:
+      - application/json
+      description: Partially update a group's name and/or order. Flat URL — the server
+        validates group belongs to the given category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Group UID
+        in: path
+        name: gid
+        required: true
+        type: string
+      - description: Patch group payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryPropertyGroup'
+        "400":
+          description: Bad Request — malformed body
+        "404":
+          description: Not Found — category or group does not exist, or group does
+            not belong to this category
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update catalogue category group
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/group/{gid}/property:
+    post:
+      consumes:
+      - application/json
+      description: Create a new property in a group under a category. type.uid required;
+        unit, listOfValues, defaultValue, order are optional.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Group UID
+        in: path
+        name: gid
+        required: true
+        type: string
+      - description: Property payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "400":
+          description: Bad Request — missing/invalid fields or unknown type/unit UID
+        "404":
+          description: Not Found — category or group does not exist
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create catalogue category property
+      tags:
+      - Catalogue
   /v1/catalogue/category/{uid}/image:
     get:
       description: Returns base64-encoded image string for the catalogue category.
@@ -2089,6 +2426,138 @@ paths:
       summary: Get catalogue category physical item properties
       tags:
       - Catalogue
+  /v1/catalogue/category/{uid}/physical-property:
+    post:
+      consumes:
+      - application/json
+      description: Physical properties are default-value templates attached directly
+        to the category (no group). type.uid required.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Physical property payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "400":
+          description: Bad Request — missing/invalid fields or unknown type/unit UID
+        "404":
+          description: Not Found — category does not exist
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create physical item property on a category
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/physical-property/{pid}:
+    delete:
+      description: Physicals aren't referenced by items, so delete never returns 409
+        — always 204 on success.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Physical property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete physical item property
+      tags:
+      - Catalogue
+    get:
+      description: Returns a single physical property attached to a category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Physical property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get a single physical item property
+      tags:
+      - Catalogue
+    patch:
+      consumes:
+      - application/json
+      description: Partial update — same fields as regular property minus groupUid
+        (physicals don't belong to groups).
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Physical property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      - description: Patch payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update physical item property
+      tags:
+      - Catalogue
   /v1/catalogue/category/{uid}/properties:
     get:
       description: Returns category properties; optionally enriched for a given item
@@ -2117,6 +2586,107 @@ paths:
       security:
       - BearerAuth: []
       summary: Get catalogue category properties
+      tags:
+      - Catalogue
+  /v1/catalogue/category/{uid}/property/{pid}:
+    delete:
+      description: Delete a property. Blocked with 409 if any catalogue item references
+        the property.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+        "409":
+          description: Conflict — property has item values; clear them first via item
+            PATCH
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete catalogue category property
+      tags:
+      - Catalogue
+    get:
+      description: Returns a single property scoped to a category. 404 if the property
+        doesn't belong to this category.
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get a single catalogue category property
+      tags:
+      - Catalogue
+    patch:
+      consumes:
+      - application/json
+      description: 'Partial update. Optional fields: name, defaultValue, listOfValues,
+        order, type, unit, groupUid (move).'
+      parameters:
+      - description: Category UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Property UID
+        in: path
+        name: pid
+        required: true
+        type: string
+      - description: Patch property payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueCategoryProperty'
+        "400":
+          description: Bad Request — malformed body or unknown ref UID
+        "404":
+          description: Not Found — category or property does not exist, or property
+            does not belong to this category
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Update catalogue category property
       tags:
       - Catalogue
   /v1/catalogue/item:
@@ -2186,6 +2756,46 @@ paths:
       security:
       - BearerAuth: []
       summary: Get catalogue item detail
+      tags:
+      - Catalogue
+    patch:
+      consumes:
+      - application/json
+      description: |-
+        Applies a partial update to a catalogue item. Only fields present in the JSON body are modified.
+        Required: lastUpdateTime (for conflict detection). Supported keys: name, catalogueNumber, description, manufacturerUrl, manufacturerNumber, supplier, category, details.
+        Scalar fields set to JSON null are cleared. Missing keys are left untouched. Details are merged (no deletion); send value:null to clear a single detail's value.
+      parameters:
+      - description: Catalogue item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Partial catalogue item payload
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CatalogueItem'
+        "400":
+          description: Bad Request — malformed body, missing lastUpdateTime, or unknown
+            supplier/category/property UID
+        "404":
+          description: Not Found — catalogue item does not exist
+        "409":
+          description: Conflict — lastUpdateTime mismatch or concurrent update detected
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Partially update catalogue item
       tags:
       - Catalogue
     put:
@@ -4202,6 +4812,32 @@ paths:
       summary: Update system
       tags:
       - Systems
+  /v1/system/{uid}/can-edit:
+    get:
+      description: Returns whether the caller may edit the system (responsibility
+        bubbles up HAS_SUBSYSTEM) and the responsible users to contact.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.CanEditSystemResult'
+        "404":
+          description: System not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Can the current user edit this system
+      tags:
+      - Systems
   /v1/system/{uid}/graph:
     get:
       description: |-
@@ -4345,6 +4981,11 @@ paths:
         in: query
         name: columnFilter
         type: string
+      - description: Only leaf systems directly under the parent (excludes descendants
+          deeper than 1 level)
+        in: query
+        name: directOnly
+        type: boolean
       produces:
       - application/json
       responses:
@@ -4352,6 +4993,8 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/helpers.PaginationResult-models_System'
+        "400":
+          description: Bad request
         "500":
           description: Internal server error
       security:
@@ -4377,6 +5020,11 @@ paths:
         in: query
         name: columnFilter
         type: string
+      - description: Only leaf systems directly under the parent (excludes descendants
+          deeper than 1 level)
+        in: query
+        name: directOnly
+        type: boolean
       produces:
       - application/json
       responses:
@@ -4386,6 +5034,8 @@ paths:
             additionalProperties:
               type: integer
             type: object
+        "400":
+          description: Bad request
         "500":
           description: Internal server error
       security:
@@ -5212,9 +5862,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a batch of new systems with generated system codes for
-        the given system type and zone. System name is set to the generated system
-        code.
+      description: |-
+        Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.
+        The new systems are created under the zone's default parent system; when the zone has none, 400 is returned (set it via PUT /v1/zones/{uid}).
       parameters:
       - description: System codes request
         in: body
@@ -5242,8 +5892,9 @@ paths:
       - Systems
   /v1/systems/system-codes/preview:
     get:
-      description: Generates a preview of the next N system codes for a given system
-        type and zone without creating any systems.
+      description: |-
+        Generates a preview of the next N system codes for a given system type and zone without creating any systems.
+        Returns 400 when the zone has no default parent system, so the client can block the create up front.
       parameters:
       - description: System type UID
         in: query
@@ -5311,6 +5962,297 @@ paths:
       summary: Get all zones
       tags:
       - Systems
+  /v1/teams:
+    get:
+      description: Get all teams for the current facility (flat list with member counts)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TeamListItem'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get all teams
+      tags:
+      - Teams
+    post:
+      consumes:
+      - application/json
+      description: Create a new team (name required; code optional but unique per
+        facility)
+      parameters:
+      - description: Team
+        in: body
+        name: team
+        required: true
+        schema:
+          $ref: '#/definitions/models.TeamCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Team'
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Create team
+      tags:
+      - Teams
+  /v1/teams/{uid}:
+    delete:
+      description: Hard delete a team. Rejected with 409 if Systems or Room Cards
+        still reference it.
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+        "404":
+          description: Not Found
+        "409":
+          description: Conflict
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Delete team
+      tags:
+      - Teams
+    get:
+      description: Get a team with its full member list
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TeamDetail'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get team by uid
+      tags:
+      - Teams
+    patch:
+      consumes:
+      - application/json
+      description: Partial update of team params (absent key = unchanged; explicit
+        null = clear)
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Partial team fields
+        in: body
+        name: team
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Team'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Patch team
+      tags:
+      - Teams
+    put:
+      consumes:
+      - application/json
+      description: Full replace of team name/code/description
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Team
+        in: body
+        name: team
+        required: true
+        schema:
+          $ref: '#/definitions/models.TeamUpdateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Team'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Update team
+      tags:
+      - Teams
+  /v1/teams/{uid}/members:
+    post:
+      consumes:
+      - application/json
+      description: Add one or more users to a team (idempotent). All uids must be
+        users in the facility.
+      parameters:
+      - description: team uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: User uids
+        in: body
+        name: members
+        required: true
+        schema:
+          $ref: '#/definitions/models.TeamMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TeamDetail'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Add team members
+      tags:
+      - Teams
+    put:
+      consumes:
+      - application/json
+      description: Replace the entire member set of a team with the supplied user
+        uids (add + remove diff).
+      parameters:
+      - description: team uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: User uids
+        in: body
+        name: members
+        required: true
+        schema:
+          $ref: '#/definitions/models.TeamMembersRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TeamDetail'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Replace team members
+      tags:
+      - Teams
+  /v1/teams/{uid}/members/{userUid}:
+    delete:
+      description: Remove a single user from a team. Idempotent (200 even if the user
+        was not a member).
+      parameters:
+      - description: team uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: user uid
+        in: path
+        name: userUid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TeamDetail'
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Remove a team member
+      tags:
+      - Teams
+  /v1/teams/assignable-users:
+    get:
+      description: Get enabled users of the current facility for the team member picker.
+        Optional case-insensitive search across name/username/email.
+      parameters:
+      - description: Case-insensitive substring filter across firstName/lastName/username/email
+        in: query
+        name: search
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.TeamMember'
+            type: array
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get assignable facility users
+      tags:
+      - Teams
   /v1/users/{userUID}/disable:
     post:
       description: Disables user account and invalidates auth status cache.
@@ -5376,7 +6318,9 @@ paths:
       - General
   /v1/zones:
     get:
-      description: Get all zones for the current facility
+      description: Get all zones for the current facility. Each zone includes its
+        defaultParentSystem (the system new system codes are created under); the field
+        is omitted when the zone has none, like parentZone.
       produces:
       - application/json
       responses:
@@ -5394,7 +6338,9 @@ paths:
     post:
       consumes:
       - application/json
-      description: Create a new zone
+      description: Create a new zone. defaultParentSystemUid optionally links the
+        zone to the system that new system codes are created under; it must be a non-deleted
+        system of the same facility.
       parameters:
       - description: Zone
         in: body
@@ -5442,7 +6388,9 @@ paths:
       tags:
       - Zones
     get:
-      description: Get zone by uid
+      description: Get zone by uid, including its defaultParentSystem (the system
+        new system codes are created under); the field is omitted when the zone has
+        none, like parentZone.
       parameters:
       - description: uid
         in: path
@@ -5468,7 +6416,9 @@ paths:
     put:
       consumes:
       - application/json
-      description: Update zone name, code and optionally reassign parent
+      description: |-
+        Update zone name, code and optionally reassign parent or default parent system.
+        parentUid and defaultParentSystemUid are tri-state: omitted/null keeps the current value, "" detaches, a uid sets it.
       parameters:
       - description: uid
         in: path

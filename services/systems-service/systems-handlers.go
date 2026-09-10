@@ -70,6 +70,7 @@ type ISystemsHandlers interface {
 	AssignSpareItem() echo.HandlerFunc
 	GetSystemSparePartsDetail() echo.HandlerFunc
 	CreateBatchRelationships() echo.HandlerFunc
+	CanEditSystem() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -99,6 +100,10 @@ func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
 		if err == nil {
 
 			userUID := c.Get("userUID").(string)
+
+			if guardErr := h.guardSystemEdit(c, assignSpareRequest.SystemUid, assignSpareRequest.NewParentSystemUid); guardErr != nil {
+				return guardErr
+			}
 
 			response, err := h.systemsService.AssignSpareItem(*assignSpareRequest, userUID)
 
@@ -226,6 +231,13 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
 
+			// creating a subsystem requires edit rights on the parent (can't add under a locked system)
+			if system.ParentUID != nil {
+				if guardErr := h.guardSystemEdit(c, *system.ParentUID); guardErr != nil {
+					return guardErr
+				}
+			}
+
 			uid, err := h.systemsService.CreateNewSystem(system, facilityCode, userUID)
 
 			if err == nil {
@@ -271,6 +283,11 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
+		// importing under a parent requires edit rights on that parent
+		if guardErr := h.guardSystemEdit(c, request.ParentSystemUID); guardErr != nil {
+			return guardErr
+		}
+
 		result, err := h.systemsService.CreateNewSystemFromJira(facilityCode, userUID, userRoles, request)
 
 		if err == nil {
@@ -311,6 +328,10 @@ func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			system.UID = c.Param("uid")
 
+			if guardErr := h.guardSystemEdit(c, system.UID); guardErr != nil {
+				return guardErr
+			}
+
 			err := h.systemsService.UpdateSystem(system, facilityCode, userUID)
 
 			if err == nil {
@@ -341,6 +362,10 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 		//get uid path param
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
+
+		if guardErr := h.guardSystemEdit(c, uid); guardErr != nil {
+			return guardErr
+		}
 
 		// first check if there are systems with physical items
 		itemsInfo, err := h.systemsService.GetPhysicalItemsBySystemUidRecursive(uid)
@@ -433,6 +458,18 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 	}
 }
 
+// parseDirectOnlyParam reads the optional directOnly flag shared by both leaves
+// endpoints. Absent means false; anything ParseBool rejects is an error rather than a
+// silent false, so a client sending `directOnly=1` finds out instead of quietly getting
+// the whole subtree back. Mirrors the includeRelationshipStats handling below.
+func parseDirectOnlyParam(c echo.Context) (bool, error) {
+	raw := strings.TrimSpace(c.QueryParam("directOnly"))
+	if raw == "" {
+		return false, nil
+	}
+	return strconv.ParseBool(raw)
+}
+
 // GetSystemLeavesByParentUID godoc
 // @Summary Get leaf systems for a parent
 // @Description Returns a paginated list of leaf systems (systems without subsystems) recursively under the given parent system.
@@ -444,7 +481,9 @@ func (h *SystemsHandlers) GetSystemsHierarchy() echo.HandlerFunc {
 // @Param sorting query string false "Sorting JSON (array of {id, desc})"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
+// @Param directOnly query bool false "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)"
 // @Success 200 {object} helpers.PaginationResult[models.System]
+// @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves [get]
 func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
@@ -479,7 +518,12 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject)
+		directOnly, err := parseDirectOnlyParam(c)
+		if err != nil {
+			return helpers.BadRequest("invalid directOnly")
+		}
+
+		items, err := h.systemsService.GetSystemLeavesByParentUID(parentUID, facilityCode, search, pagingObject, sortingObject, filterObject, directOnly)
 		if err == nil {
 			return c.JSON(http.StatusOK, items)
 		}
@@ -498,7 +542,9 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUID() echo.HandlerFunc {
 // @Param uid path string true "Parent system UID"
 // @Param search query string false "Search text"
 // @Param columnFilter query string false "Column filter JSON"
+// @Param directOnly query bool false "Only leaf systems directly under the parent (excludes descendants deeper than 1 level)"
 // @Success 200 {object} map[string]int64
+// @Failure 400 "Bad request"
 // @Failure 500 "Internal server error"
 // @Router /v1/system/{uid}/leaves/count [get]
 func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
@@ -511,7 +557,12 @@ func (h *SystemsHandlers) GetSystemLeavesByParentUIDCount() echo.HandlerFunc {
 		filter := c.QueryParam("columnFilter")
 		json.Unmarshal([]byte(filter), &filterObject)
 
-		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject)
+		directOnly, err := parseDirectOnlyParam(c)
+		if err != nil {
+			return helpers.BadRequest("invalid directOnly")
+		}
+
+		count, err := h.systemsService.GetSystemLeavesByParentUIDCount(parentUID, facilityCode, search, filterObject, directOnly)
 		if err == nil {
 			return c.JSON(http.StatusOK, map[string]int64{"count": count})
 		}
@@ -579,9 +630,24 @@ func (h *SystemsHandlers) GetSystemsForControlsSystems() echo.HandlerFunc {
 	}
 }
 
+// systemCodesClientError maps the user-input errors of the system code endpoints to a 400 with a
+// readable message. It returns nil when the error is not caused by the request.
+func systemCodesClientError(err error) error {
+	if errors.Is(err, ErrMissingDefaultParentSystem) {
+		// the sentinel message, not err.Error(), so wrapping cannot leak internals to the client
+		return helpers.BadRequest(ErrMissingDefaultParentSystem.Error() + " (set it on the zone via PUT /v1/zones/{uid})")
+	}
+	if errors.Is(err, helpers.ERR_INVALID_INPUT) {
+		return helpers.BadRequest(strings.TrimSuffix(err.Error(), ": "+helpers.ERR_INVALID_INPUT.Error()))
+	}
+
+	return nil
+}
+
 // Swagger documentation for GetNewSystemCodesPreview
 // @Summary Preview new system codes
 // @Description Generates a preview of the next N system codes for a given system type and zone without creating any systems.
+// @Description Returns 400 when the zone has no default parent system, so the client can block the create up front.
 // @Tags Systems
 // @Produce json
 // @Security BearerAuth
@@ -624,13 +690,11 @@ func (h *SystemsHandlers) GetNewSystemCodesPreview() echo.HandlerFunc {
 			return c.JSON(http.StatusOK, result)
 		}
 
+		if clientErr := systemCodesClientError(err); clientErr != nil {
+			return clientErr
+		}
+
 		log.Error().Msg(err.Error())
-		if err == helpers.ERR_INVALID_INPUT {
-			return helpers.BadRequest(err.Error())
-		}
-		if strings.Contains(err.Error(), "missing default parent system") {
-			return helpers.BadRequest(err.Error())
-		}
 		return echo.ErrInternalServerError
 	}
 }
@@ -638,6 +702,7 @@ func (h *SystemsHandlers) GetNewSystemCodesPreview() echo.HandlerFunc {
 // Swagger documentation for SaveNewSystemCodes
 // @Summary Create new systems with generated system codes
 // @Description Creates a batch of new systems with generated system codes for the given system type and zone. System name is set to the generated system code.
+// @Description The new systems are created under the zone's default parent system; when the zone has none, 400 is returned (set it via PUT /v1/zones/{uid}).
 // @Tags Systems
 // @Accept json
 // @Produce json
@@ -666,10 +731,11 @@ func (h *SystemsHandlers) SaveNewSystemCodes() echo.HandlerFunc {
 			return c.JSON(http.StatusCreated, result)
 		}
 
-		log.Error().Msg(err.Error())
-		if err == helpers.ERR_INVALID_INPUT {
-			return helpers.BadRequest(err.Error())
+		if clientErr := systemCodesClientError(err); clientErr != nil {
+			return clientErr
 		}
+
+		log.Error().Msg(err.Error())
 		return echo.ErrInternalServerError
 	}
 }
@@ -1002,6 +1068,14 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 		userUID := c.Get("userUID").(string)
 		facilityCode := c.Get("facilityCode").(string)
 
+		// only structural HAS_SUBSYSTEM edges are guarded (functional relationships are exempt);
+		// guard the parent (SystemFromUID) - can't attach a subsystem under a locked system
+		if systemRelationshipRequest.RelationTypeCode == "HAS_SUBSYSTEM" {
+			if guardErr := h.guardSystemEdit(c, systemRelationshipRequest.SystemFromUID); guardErr != nil {
+				return guardErr
+			}
+		}
+
 		newId, err := h.systemsService.CreateNewSystemRelationship(systemRelationshipRequest, facilityCode, userUID)
 		if err == nil {
 			return c.String(http.StatusCreated, strconv.FormatInt(newId, 10))
@@ -1140,6 +1214,10 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
+
+		if guardErr := h.guardSystemEditByItem(c, uid); guardErr != nil {
+			return guardErr
+		}
 
 		properties := new([]models.PhysicalItemDetail)
 		err := c.Bind(properties)
@@ -1980,6 +2058,10 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
 
+			if guardErr := h.guardSystemEdit(c, movePhysicalItemRequest.SourceSystemUID, movePhysicalItemRequest.DestinationSystemUID, movePhysicalItemRequest.ParentSystemUID); guardErr != nil {
+				return guardErr
+			}
+
 			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
@@ -2025,6 +2107,10 @@ func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
 
+			if guardErr := h.guardSystemEdit(c, movePhysicalItemRequest.SourceSystemUID, movePhysicalItemRequest.DestinationSystemUID, movePhysicalItemRequest.ParentSystemUID); guardErr != nil {
+				return guardErr
+			}
+
 			destinationSystemUID, err := h.systemsService.ReplacePhysicalItems(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
@@ -2068,6 +2154,13 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 			log.Info().Msgf("Move systems request: %+v", moveSystemsRequest)
 
 			userUID := c.Get("userUID").(string)
+
+			// require edit rights on every moved system AND the destination parent (can't move under a locked system)
+			guardTargets := append([]string{}, moveSystemsRequest.SystemsToMoveUids...)
+			guardTargets = append(guardTargets, moveSystemsRequest.TargetParentSystemUid)
+			if guardErr := h.guardSystemEdit(c, guardTargets...); guardErr != nil {
+				return guardErr
+			}
 
 			destinationSystemUID, err := h.systemsService.MoveSystems(moveSystemsRequest, userUID)
 

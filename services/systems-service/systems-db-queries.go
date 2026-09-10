@@ -857,6 +857,30 @@ func GetSystemsForControlsSystemsCountQuery(facilityCode string, filering *[]hel
 	return result
 }
 
+// CheckZoneHasDefaultParentSystemQuery counts the non-deleted systems the zone is linked to via
+// HAS_DEFAULT_PARENT_SYSTEM. Generated system codes are created as subsystems of that system, so
+// zero means the system code generation cannot proceed.
+// The zone match is mandatory and the parent match optional, so an unknown zone stays
+// distinguishable from a known zone without a default parent system. Counting with z as the
+// grouping key is what makes that work: a bare count() would still return a single 0 row when the
+// zone does not match at all.
+func CheckZoneHasDefaultParentSystemQuery(zoneUID string, facilityCode string) (result helpers.DatabaseQuery) {
+
+	result.Query = `
+	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)-[:BELONGS_TO_FACILITY]->(f)
+	WHERE coalesce(parent.deleted, false) = false
+	WITH z, count(parent) as cnt
+	RETURN cnt as cnt `
+
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["zoneUID"] = zoneUID
+	result.Parameters["facilityCode"] = facilityCode
+	result.ReturnAlias = "cnt"
+
+	return result
+}
+
 func GetNewSystemCodesPreviewQuery(systemTypeUID string, zoneUID string, systemCodePrefix string, serialNumberLength int, batch int, facilityCode string) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
@@ -915,7 +939,8 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 	MATCH(u:User{uid: $userUID})
 	MATCH(z:Zone{uid: $zoneUID})-[:BELONGS_TO_FACILITY]->(f)
 	MATCH(st:SystemType{uid: $systemTypeUID})
-	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System{deleted:false})
+	OPTIONAL MATCH(z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(parent:System)
+	WHERE coalesce(parent.deleted, false) = false
 	WITH f, u, z, st, parent
 	CALL apoc.util.validate(parent IS NULL, 'missing default parent system for selected zone', [])
 	MATCH(parent)-[:BELONGS_TO_FACILITY]->(f)
@@ -1243,7 +1268,21 @@ func GetSystemLeavesOrderByClauses(sorting *[]helpers.Sorting) string {
 	return " ORDER BY " + strings.Join(clauses, ", ") + " "
 }
 
-func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+// leavesTraversalDepth picks how far below the parent a leaf may sit.
+//
+// The caller-facing contract is a boolean ("direct children only") rather than a depth,
+// because the enclosing queries keep their `WHERE NOT (sys)-[:HAS_SUBSYSTEM]->()` clause
+// either way — depth 1 therefore yields exactly the end systems hanging directly off the
+// parent, which is a meaningful set. An arbitrary depth N would not be: it would blend
+// leaves from levels 1..N together.
+func leavesTraversalDepth(directOnly bool) string {
+	if directOnly {
+		return "*1..1"
+	}
+	return "*1..50"
+}
+
+func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, searchString string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter, directOnly bool) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["parentUID"] = parentUID
@@ -1261,16 +1300,17 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	result.Parameters["limit"] = pagination.PageSize
 	result.Parameters["skip"] = (pagination.Page - 1) * pagination.PageSize
 
-	result.Query = `
+	result.Query = fmt.Sprintf(`
 	MATCH(f:Facility{code:$facilityCode})
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM%s]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
 	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
 	WITH DISTINCT sys
-	`
+	`, leavesTraversalDepth(directOnly))
 
-	// catalogue category filter changes base query
+	// catalogue category filter appends its own MATCH to the base query (it does not
+	// replace it — the parent traversal and the leaf predicate above always apply)
 	catalogueCategoryFilter := helpers.GetFilterValueCodebook(filtering, "category")
 	if catalogueCategoryFilter != nil {
 		result.Query += `
@@ -1600,20 +1640,20 @@ func GetSystemLeavesByParentUIDQuery(parentUID string, facilityCode string, sear
 	return result
 }
 
-func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string, searchString string, filtering *[]helpers.ColumnFilter) (result helpers.DatabaseQuery) {
+func GetSystemLeavesByParentUIDCountQuery(parentUID string, facilityCode string, searchString string, filtering *[]helpers.ColumnFilter, directOnly bool) (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["parentUID"] = parentUID
 	result.Parameters["search"] = strings.ToLower(strings.TrimSpace(searchString))
 
-	result.Query = `
+	result.Query = fmt.Sprintf(`
 	MATCH(f:Facility{code:$facilityCode})
 	MATCH(parent:System{uid:$parentUID, deleted:false})-[:BELONGS_TO_FACILITY]->(f)
-	MATCH(parent)-[:HAS_SUBSYSTEM*1..50]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
+	MATCH(parent)-[:HAS_SUBSYSTEM%s]->(sys:System{deleted:false})-[:BELONGS_TO_FACILITY]->(f)
 	WHERE NOT (sys)-[:HAS_SUBSYSTEM]->(:System{deleted:false})
 	AND ($search = '' OR toLower(sys.name) CONTAINS $search OR toLower(sys.systemCode) CONTAINS $search OR toLower(coalesce(sys.systemCodeOld, '')) CONTAINS $search)
 	WITH DISTINCT sys
-	`
+	`, leavesTraversalDepth(directOnly))
 
 	// system-level filters (only need sys, run before physical item matches)
 	// system name

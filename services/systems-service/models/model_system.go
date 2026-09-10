@@ -362,6 +362,23 @@ type EmployeeInfo struct {
 	Phone     *string `json:"phone,omitempty"`
 }
 
+// CanEditSystemResult is the response of the system edit-guard check: whether the caller may
+// edit the system, plus the responsible users (contacts) resolved by bubbling up HAS_SUBSYSTEM.
+type CanEditSystemResult struct {
+	Result       bool                `json:"result"`
+	Responsibles []SystemResponsible `json:"responsibles"`
+}
+
+// SystemResponsible is a login-capable user responsible for a system (directly via
+// HAS_RESPONSIBLE->Employee->HAS_USER, or via a HAS_RESPONSIBLE_TEAM team membership).
+type SystemResponsible struct {
+	UID       string `json:"uid"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Username  string `json:"username"`
+	Email     string `json:"email"`
+}
+
 // PhysicalItemDetailExtended contains extended physical item information
 type PhysicalItemDetailExtended struct {
 	UID            string             `json:"uid"`
