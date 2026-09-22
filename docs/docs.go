@@ -10176,6 +10176,10 @@ const docTemplate = `{
                 "displayName": {
                     "type": "string"
                 },
+                "orcid": {
+                    "description": "Orcid is not part of the WoS Starter payload. Providers that do supply a\npersistent author identifier (Crossref) populate it so matching can key on\nan identifier instead of falling back to a name.",
+                    "type": "string"
+                },
                 "researcherId": {
                     "type": "string"
                 },
@@ -10306,6 +10310,9 @@ const docTemplate = `{
                 },
                 "match": {
                     "$ref": "#/definitions/models.WosAuthorMatch"
+                },
+                "orcid": {
+                    "type": "string"
                 },
                 "researcherId": {
                     "type": "string"

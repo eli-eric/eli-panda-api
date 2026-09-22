@@ -34,8 +34,9 @@ const (
 )
 
 var (
-	doiPattern           = regexp.MustCompile(`(?i)^10\.\d{4,9}/\S+$`)
-	researcherIDPattern  = regexp.MustCompile(`^[A-Z]{1,3}-\d{4}-\d{4}$`)
+	doiPattern          = regexp.MustCompile(`(?i)^10\.\d{4,9}/\S+$`)
+	researcherIDPattern = regexp.MustCompile(`^[A-Z]{1,3}-\d{4}-\d{4}$`)
+	orcidPattern        = regexp.MustCompile(`^\d{15}[\dX]$`)
 )
 
 var wosImportableFields = []string{
@@ -82,6 +83,7 @@ type wosResearcherRecord struct {
 	FirstName     string   `json:"firstName"`
 	LastName      string   `json:"lastName"`
 	ResearcherIDs []string `json:"researcherIds"`
+	Orcids        []string `json:"orcids"`
 }
 
 type wosImportRepository interface {
@@ -148,6 +150,22 @@ func normalizeDOI(raw string) (string, bool) {
 func normalizeResearcherID(raw string) (string, bool) {
 	value := strings.ToUpper(strings.TrimSpace(raw))
 	return value, researcherIDPattern.MatchString(value)
+}
+
+// normalizeORCID reduces the several forms an ORCID arrives in — bare, with or
+// without dashes, or as an http/https orcid.org URI — to the canonical dashed
+// digits. The final character may be the checksum letter X.
+func normalizeORCID(raw string) (string, bool) {
+	value := strings.ToUpper(strings.TrimSpace(raw))
+	if index := strings.LastIndex(value, "ORCID.ORG/"); index >= 0 {
+		value = value[index+len("ORCID.ORG/"):]
+	}
+	value = strings.TrimSuffix(value, "/")
+	value = strings.ReplaceAll(value, "-", "")
+	if !orcidPattern.MatchString(value) {
+		return "", false
+	}
+	return value[0:4] + "-" + value[4:8] + "-" + value[8:12] + "-" + value[12:16], true
 }
 
 func (svc *PublicationsService) PreviewWosPublication(
@@ -533,6 +551,8 @@ func matchWosAuthors(
 	result := make([]models.WosImportAuthor, 0, len(authors))
 	for index, author := range authors {
 		match := models.WosAuthorMatch{Kind: "none", Candidates: make([]models.ResearcherRef, 0)}
+		// Persistent identifiers are tried before names, because a name match is
+		// only ever a suggestion the editor has to confirm.
 		if researcherID, valid := normalizeResearcherID(author.WosResearcherID); valid {
 			match.Candidates = matchingResearchersByID(researchers, researcherID)
 			switch len(match.Candidates) {
@@ -541,6 +561,19 @@ func matchWosAuthors(
 			case 0:
 			default:
 				match.Kind = "ambiguous"
+			}
+		}
+
+		if len(match.Candidates) == 0 {
+			if orcid, valid := normalizeORCID(author.Orcid); valid {
+				match.Candidates = matchingResearchersByORCID(researchers, orcid)
+				switch len(match.Candidates) {
+				case 1:
+					match.Kind = "orcid"
+				case 0:
+				default:
+					match.Kind = "ambiguous"
+				}
 			}
 		}
 
@@ -565,6 +598,7 @@ func matchWosAuthors(
 			DisplayName:  displayName,
 			WosStandard:  strings.TrimSpace(author.WosStandard),
 			ResearcherID: strings.TrimSpace(author.WosResearcherID),
+			Orcid:        strings.TrimSpace(author.Orcid),
 			Match:        match,
 		})
 	}
@@ -577,6 +611,20 @@ func matchingResearchersByID(researchers []wosResearcherRecord, researcherID str
 		for _, candidateID := range researcher.ResearcherIDs {
 			normalized, valid := normalizeResearcherID(candidateID)
 			if valid && normalized == researcherID {
+				result = appendUniqueResearcher(result, researcher)
+				break
+			}
+		}
+	}
+	return result
+}
+
+func matchingResearchersByORCID(researchers []wosResearcherRecord, orcid string) []models.ResearcherRef {
+	result := make([]models.ResearcherRef, 0)
+	for _, researcher := range researchers {
+		for _, candidate := range researcher.Orcids {
+			normalized, valid := normalizeORCID(candidate)
+			if valid && normalized == orcid {
 				result = appendUniqueResearcher(result, researcher)
 				break
 			}

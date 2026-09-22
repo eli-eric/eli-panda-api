@@ -351,7 +351,7 @@ func mapCrossrefAuthors(authors []crossrefAuthor) []models.WosAuthor {
 		if name == "" {
 			continue
 		}
-		result = append(result, models.WosAuthor{WosDisplayName: name})
+		result = append(result, models.WosAuthor{WosDisplayName: name, Orcid: strings.TrimSpace(author.ORCID)})
 	}
 	return result
 }

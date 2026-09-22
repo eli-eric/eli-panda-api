@@ -139,6 +139,10 @@ type WosAuthor struct {
 	WosDisplayName  string `json:"displayName"`
 	WosStandard     string `json:"wosStandard"`
 	WosResearcherID string `json:"researcherId"`
+	// Orcid is not part of the WoS Starter payload. Providers that do supply a
+	// persistent author identifier (Crossref) populate it so matching can key on
+	// an identifier instead of falling back to a name.
+	Orcid string `json:"orcid,omitempty"`
 }
 
 type WosEditor struct {

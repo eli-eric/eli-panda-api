@@ -50,6 +50,7 @@ type WosImportAuthor struct {
 	DisplayName  string         `json:"displayName"`
 	WosStandard  string         `json:"wosStandard,omitempty"`
 	ResearcherID string         `json:"researcherId,omitempty"`
+	Orcid        string         `json:"orcid,omitempty"`
 	Match        WosAuthorMatch `json:"match"`
 }
 
