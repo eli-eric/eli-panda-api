@@ -3844,6 +3844,63 @@
                 }
             }
         },
+        "/v1/publications/enrichment-preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Queries Crossref, Web of Science and Unpaywall for a DOI and returns merged field candidates, researcher matches, per-provider status, provenance and conflicts. Read-only: nothing is saved.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Preview publication metadata enrichment for a DOI",
+                "parameters": [
+                    {
+                        "description": "DOI to enrich",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrichmentPreviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.EnrichmentPreviewResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/publications/export": {
             "get": {
                 "security": [
@@ -7905,6 +7962,149 @@
                 }
             }
         },
+        "models.EnrichmentConflict": {
+            "type": "object",
+            "properties": {
+                "alternativeProvider": {
+                    "type": "string"
+                },
+                "alternativeValue": {},
+                "field": {
+                    "type": "string"
+                },
+                "selectedProvider": {
+                    "type": "string"
+                },
+                "selectedValue": {}
+            }
+        },
+        "models.EnrichmentOpenAccess": {
+            "type": "object",
+            "properties": {
+                "pdfUrl": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnrichmentOrigin": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "type": "string"
+                },
+                "retrievedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnrichmentPreviewRequest": {
+            "type": "object",
+            "properties": {
+                "currentPublicationUid": {
+                    "type": "string"
+                },
+                "doi": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EnrichmentPreviewResponse": {
+            "type": "object",
+            "properties": {
+                "affiliationStatus": {
+                    "type": "string"
+                },
+                "authorRolesStatus": {
+                    "type": "string"
+                },
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosImportAuthor"
+                    }
+                },
+                "conflicts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnrichmentConflict"
+                    }
+                },
+                "doi": {
+                    "type": "string"
+                },
+                "existingPublication": {
+                    "$ref": "#/definitions/models.WosExistingPublication"
+                },
+                "missingImportableFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "openAccess": {
+                    "$ref": "#/definitions/models.EnrichmentOpenAccess"
+                },
+                "provenance": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.EnrichmentOrigin"
+                    }
+                },
+                "publicationDatePrecision": {
+                    "type": "string"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EnrichmentSourceStatus"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "unavailableFields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "values": {
+                    "$ref": "#/definitions/models.WosImportValues"
+                }
+            }
+        },
+        "models.EnrichmentSourceStatus": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "retrievedAt": {
+                    "type": "string"
+                },
+                "retryAfter": {
+                    "type": "string"
+                },
+                "retryable": {
+                    "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "models.EunLocation": {
             "type": "object",
             "properties": {
@@ -8090,6 +8290,32 @@
                 },
                 "zoneUid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.JournalMetricSnapshot": {
+            "type": "object",
+            "properties": {
+                "category": {
+                    "type": "string"
+                },
+                "impactFactor": {
+                    "type": "number"
+                },
+                "journalId": {
+                    "type": "string"
+                },
+                "percentile": {
+                    "type": "number"
+                },
+                "quartile": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         },
@@ -8677,6 +8903,14 @@
                     "description": "quartilBasis is the quartil basis of the publication",
                     "type": "string"
                 },
+                "reporting": {
+                    "description": "reporting is the editor-reviewed management-reporting snapshot; omitted on save preserves the stored one",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/models.PublicationReporting"
+                        }
+                    ]
+                },
                 "shortJournalTitle": {
                     "description": "shortJournalTitle is the short journal title of the publication",
                     "type": "string"
@@ -8742,6 +8976,110 @@
                 },
                 "retryable": {
                     "type": "boolean"
+                }
+            }
+        },
+        "models.PublicationReporting": {
+            "type": "object",
+            "properties": {
+                "authors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingAuthor"
+                    }
+                },
+                "classification": {
+                    "type": "string",
+                    "enum": [
+                        "own-user",
+                        "own-other",
+                        "coauthorship",
+                        "unclassified"
+                    ]
+                },
+                "departments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingDepartment"
+                    }
+                },
+                "documentType": {
+                    "type": "string",
+                    "enum": [
+                        "article",
+                        "proceedings",
+                        "book-chapter",
+                        "other",
+                        "unknown"
+                    ]
+                },
+                "experimentalSystemUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "journalMetrics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.JournalMetricSnapshot"
+                    }
+                },
+                "journalRankingStatus": {
+                    "type": "string",
+                    "enum": [
+                        "unknown",
+                        "unranked"
+                    ]
+                },
+                "reviewed": {
+                    "type": "boolean"
+                },
+                "reviewedAt": {
+                    "type": "string"
+                },
+                "reviewedBy": {
+                    "type": "string"
+                },
+                "userCallUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "userExperimentUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "models.ReportingAuthor": {
+            "type": "object",
+            "properties": {
+                "departmentUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "isCorresponding": {
+                    "type": "boolean"
+                },
+                "isFirstAuthor": {
+                    "type": "boolean"
+                },
+                "researcherUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ReportingDepartment": {
+            "type": "object",
+            "properties": {
+                "departmentUid": {
+                    "type": "string"
                 }
             }
         },

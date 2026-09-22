@@ -20,6 +20,9 @@ import (
 
 type PublicationsHandlers struct {
 	PublicationsService IPublicationsService
+	// EnrichmentService is optional: when it is absent the enrichment preview
+	// route reports itself unconfigured rather than panicking.
+	EnrichmentService *PublicationEnrichmentService
 }
 
 const (
@@ -40,6 +43,7 @@ type IPublicationsHandlers interface {
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
 	PreviewWosPublication() echo.HandlerFunc
+	PreviewPublicationEnrichment() echo.HandlerFunc
 	GetPublicationsAsCsv() echo.HandlerFunc
 	ExportRiv() echo.HandlerFunc
 	ValidateRiv() echo.HandlerFunc
@@ -59,8 +63,8 @@ type IPublicationsHandlers interface {
 }
 
 // NewPublicationsHandlers General handlers constructor
-func NewPublicationsHandlers(svc IPublicationsService) IPublicationsHandlers {
-	return &PublicationsHandlers{PublicationsService: svc}
+func NewPublicationsHandlers(svc IPublicationsService, enrichment *PublicationEnrichmentService) IPublicationsHandlers {
+	return &PublicationsHandlers{PublicationsService: svc, EnrichmentService: enrichment}
 }
 
 func normalizeEliPublication(value string) (string, error) {
@@ -322,6 +326,48 @@ func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
 		)
 		if err != nil {
 			return writePublicationAPIError(c, err, "Error previewing WOS publication")
+		}
+
+		return c.JSON(http.StatusOK, result)
+	}
+}
+
+// PreviewPublicationEnrichment previews multi-provider metadata for a DOI godoc
+// @Summary Preview publication metadata enrichment for a DOI
+// @Description Queries Crossref, Web of Science and Unpaywall for a DOI and returns merged field candidates, researcher matches, per-provider status, provenance and conflicts. Read-only: nothing is saved.
+// @Tags Publications
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body models.EnrichmentPreviewRequest true "DOI to enrich"
+// @Success 200 {object} models.EnrichmentPreviewResponse
+// @Failure 400 {object} models.PublicationAPIError
+// @Failure 500 {object} models.PublicationAPIError
+// @Failure 503 {object} models.PublicationAPIError
+// @Router /v1/publications/enrichment-preview [post]
+func (h *PublicationsHandlers) PreviewPublicationEnrichment() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if h.EnrichmentService == nil {
+			return c.JSON(http.StatusServiceUnavailable, models.PublicationAPIError{
+				Code:    wosErrorNotConfigured,
+				Message: "Publication metadata enrichment is not configured.",
+			})
+		}
+
+		var request models.EnrichmentPreviewRequest
+		if err := c.Bind(&request); err != nil {
+			return helpers.BadRequest("Invalid enrichment preview request.")
+		}
+
+		facilityCode, _ := c.Get("facilityCode").(string)
+		result, err := h.EnrichmentService.Preview(
+			c.Request().Context(),
+			request.Doi,
+			request.CurrentPublicationUID,
+			facilityCode,
+		)
+		if err != nil {
+			return writePublicationAPIError(c, err, "Error previewing publication enrichment")
 		}
 
 		return c.JSON(http.StatusOK, result)

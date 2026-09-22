@@ -454,6 +454,100 @@ definitions:
       uid:
         type: string
     type: object
+  models.EnrichmentConflict:
+    properties:
+      alternativeProvider:
+        type: string
+      alternativeValue: {}
+      field:
+        type: string
+      selectedProvider:
+        type: string
+      selectedValue: {}
+    type: object
+  models.EnrichmentOpenAccess:
+    properties:
+      pdfUrl:
+        type: string
+      status:
+        type: string
+      url:
+        type: string
+    type: object
+  models.EnrichmentOrigin:
+    properties:
+      provider:
+        type: string
+      retrievedAt:
+        type: string
+    type: object
+  models.EnrichmentPreviewRequest:
+    properties:
+      currentPublicationUid:
+        type: string
+      doi:
+        type: string
+    type: object
+  models.EnrichmentPreviewResponse:
+    properties:
+      affiliationStatus:
+        type: string
+      authorRolesStatus:
+        type: string
+      authors:
+        items:
+          $ref: '#/definitions/models.WosImportAuthor'
+        type: array
+      conflicts:
+        items:
+          $ref: '#/definitions/models.EnrichmentConflict'
+        type: array
+      doi:
+        type: string
+      existingPublication:
+        $ref: '#/definitions/models.WosExistingPublication'
+      missingImportableFields:
+        items:
+          type: string
+        type: array
+      openAccess:
+        $ref: '#/definitions/models.EnrichmentOpenAccess'
+      provenance:
+        additionalProperties:
+          $ref: '#/definitions/models.EnrichmentOrigin'
+        type: object
+      publicationDatePrecision:
+        type: string
+      sources:
+        items:
+          $ref: '#/definitions/models.EnrichmentSourceStatus'
+        type: array
+      status:
+        type: string
+      unavailableFields:
+        items:
+          type: string
+        type: array
+      values:
+        $ref: '#/definitions/models.WosImportValues'
+    type: object
+  models.EnrichmentSourceStatus:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+      provider:
+        type: string
+      retrievedAt:
+        type: string
+      retryAfter:
+        type: string
+      retryable:
+        type: boolean
+      status:
+        type: string
+    type: object
   models.EunLocation:
     properties:
       eun:
@@ -575,6 +669,23 @@ definitions:
         type: string
       zoneUid:
         type: string
+    type: object
+  models.JournalMetricSnapshot:
+    properties:
+      category:
+        type: string
+      impactFactor:
+        type: number
+      journalId:
+        type: string
+      percentile:
+        type: number
+      quartile:
+        type: string
+      source:
+        type: string
+      year:
+        type: integer
     type: object
   models.LayoutRoomCard:
     properties:
@@ -974,6 +1085,11 @@ definitions:
       quartilBasis:
         description: quartilBasis is the quartil basis of the publication
         type: string
+      reporting:
+        allOf:
+        - $ref: '#/definitions/models.PublicationReporting'
+        description: reporting is the editor-reviewed management-reporting snapshot;
+          omitted on save preserves the stored one
       shortJournalTitle:
         description: shortJournalTitle is the short journal title of the publication
         type: string
@@ -1019,6 +1135,77 @@ definitions:
         type: string
       retryable:
         type: boolean
+    type: object
+  models.PublicationReporting:
+    properties:
+      authors:
+        items:
+          $ref: '#/definitions/models.ReportingAuthor'
+        type: array
+      classification:
+        enum:
+        - own-user
+        - own-other
+        - coauthorship
+        - unclassified
+        type: string
+      departments:
+        items:
+          $ref: '#/definitions/models.ReportingDepartment'
+        type: array
+      documentType:
+        enum:
+        - article
+        - proceedings
+        - book-chapter
+        - other
+        - unknown
+        type: string
+      experimentalSystemUids:
+        items:
+          type: string
+        type: array
+      journalMetrics:
+        items:
+          $ref: '#/definitions/models.JournalMetricSnapshot'
+        type: array
+      journalRankingStatus:
+        enum:
+        - unknown
+        - unranked
+        type: string
+      reviewed:
+        type: boolean
+      reviewedAt:
+        type: string
+      reviewedBy:
+        type: string
+      userCallUids:
+        items:
+          type: string
+        type: array
+      userExperimentUids:
+        items:
+          type: string
+        type: array
+    type: object
+  models.ReportingAuthor:
+    properties:
+      departmentUids:
+        items:
+          type: string
+        type: array
+      isCorresponding:
+        type: boolean
+      isFirstAuthor:
+        type: boolean
+      researcherUid:
+        type: string
+    type: object
+  models.ReportingDepartment:
+    properties:
+      departmentUid:
+        type: string
     type: object
   models.Researcher:
     properties:
@@ -4453,6 +4640,44 @@ paths:
       security:
       - BearerAuth: []
       summary: Get publications
+      tags:
+      - Publications
+  /v1/publications/enrichment-preview:
+    post:
+      consumes:
+      - application/json
+      description: 'Queries Crossref, Web of Science and Unpaywall for a DOI and returns
+        merged field candidates, researcher matches, per-provider status, provenance
+        and conflicts. Read-only: nothing is saved.'
+      parameters:
+      - description: DOI to enrich
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.EnrichmentPreviewRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.EnrichmentPreviewResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+      security:
+      - BearerAuth: []
+      summary: Preview publication metadata enrichment for a DOI
       tags:
       - Publications
   /v1/publications/export:

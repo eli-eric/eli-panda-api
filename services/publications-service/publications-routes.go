@@ -25,6 +25,7 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 
 	e.GET("/v1/publication/wos/:doi", m.Authorization(h.GetWosDataByDoi(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
 	e.GET("/v1/publications/wos-preview", m.Authorization(h.PreviewWosPublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+	e.POST("/v1/publications/enrichment-preview", m.Authorization(h.PreviewPublicationEnrichment(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	// Researchers CRUD
 	e.GET("/v1/researchers", m.Authorization(h.GetResearchers(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
