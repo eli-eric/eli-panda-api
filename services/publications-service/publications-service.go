@@ -50,6 +50,7 @@ type IPublicationsService interface {
 	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
+	GetExecutiveSummary(year, startYear, endYear int) (models.ExecutiveSummary, error)
 }
 
 // NewPublicationsService returns the concrete service so callers that need to

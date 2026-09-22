@@ -3847,6 +3847,60 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/publications/analytics/executive-summary": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Calculates institutional, department, user, journal, author and Q3+Q4 trend reporting from saved publication records. Department, call and system totals are overlapping credits and may sum above the distinct institutional total.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Publication executive summary",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Reporting year (defaults to the latest completed calendar year)",
+                        "name": "year",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "First trend year (defaults to six years before endYear)",
+                        "name": "startYear",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Last trend year (defaults to year)",
+                        "name": "endYear",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.ExecutiveSummary"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationAPIError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
         "/v1/publications/enrichment-preview": {
             "post": {
                 "security": [
@@ -7937,6 +7991,62 @@ const docTemplate = `{
                 }
             }
         },
+        "models.DepartmentReportingRow": {
+            "type": "object",
+            "properties": {
+                "bookChapters": {
+                    "type": "integer"
+                },
+                "coAuthorship": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "other": {
+                    "type": "integer"
+                },
+                "proceedings": {
+                    "type": "integer"
+                },
+                "q10Percent": {
+                    "type": "integer"
+                },
+                "q10To25": {
+                    "type": "integer"
+                },
+                "q1Unsplit": {
+                    "type": "integer"
+                },
+                "q2": {
+                    "type": "integer"
+                },
+                "q3": {
+                    "type": "integer"
+                },
+                "q4": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "totalOwn": {
+                    "type": "integer"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "unknown": {
+                    "type": "integer"
+                },
+                "unranked": {
+                    "type": "integer"
+                },
+                "userPublications": {
+                    "type": "integer"
+                }
+            }
+        },
         "models.EUN": {
             "type": "object",
             "properties": {
@@ -8116,6 +8226,101 @@ const docTemplate = `{
                 },
                 "location_uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.ExecutiveSummary": {
+            "type": "object",
+            "properties": {
+                "coauthorshipPublications": {
+                    "type": "integer"
+                },
+                "departmentMatrix": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.DepartmentReportingRow"
+                    }
+                },
+                "endYear": {
+                    "type": "integer"
+                },
+                "generatedAt": {
+                    "type": "string"
+                },
+                "journalFrequencies": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingCount"
+                    }
+                },
+                "otherPublications": {
+                    "type": "integer"
+                },
+                "ownQuality": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingQualityCount"
+                    }
+                },
+                "pendingReviewPublications": {
+                    "type": "integer"
+                },
+                "policyVersion": {
+                    "type": "string"
+                },
+                "q3q4HistoricalTrend": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingTrend"
+                    }
+                },
+                "startYear": {
+                    "type": "integer"
+                },
+                "systemBreakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingCount"
+                    }
+                },
+                "topPublishingAuthors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingAuthorStats"
+                    }
+                },
+                "totalOwnPublications": {
+                    "type": "integer"
+                },
+                "totalPublications": {
+                    "type": "integer"
+                },
+                "totalUserPublications": {
+                    "type": "integer"
+                },
+                "unclassifiedPublications": {
+                    "type": "integer"
+                },
+                "userPublicationsByCall": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingCount"
+                    }
+                },
+                "userPublicationsByDepartment": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingCount"
+                    }
+                },
+                "userQuality": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ReportingQualityCount"
+                    }
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         },
@@ -9078,11 +9283,96 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ReportingAuthorStats": {
+            "type": "object",
+            "properties": {
+                "correspondingCount": {
+                    "type": "integer"
+                },
+                "departmentUids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "firstAuthorCount": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "researcherUid": {
+                    "type": "string"
+                },
+                "totalAuthorships": {
+                    "type": "integer"
+                },
+                "unknownCorrespondingCount": {
+                    "type": "integer"
+                },
+                "unknownFirstAuthorCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.ReportingCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.ReportingDepartment": {
             "type": "object",
             "properties": {
                 "departmentUid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.ReportingFraction": {
+            "type": "object",
+            "properties": {
+                "percent": {
+                    "type": "number"
+                },
+                "q3q4Count": {
+                    "type": "integer"
+                },
+                "rankedCount": {
+                    "type": "integer"
+                }
+            }
+        },
+        "models.ReportingQualityCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "quality": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ReportingTrend": {
+            "type": "object",
+            "properties": {
+                "own": {
+                    "$ref": "#/definitions/models.ReportingFraction"
+                },
+                "user": {
+                    "$ref": "#/definitions/models.ReportingFraction"
+                },
+                "year": {
+                    "type": "integer"
                 }
             }
         },

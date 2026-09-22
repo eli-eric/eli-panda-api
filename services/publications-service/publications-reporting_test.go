@@ -2,6 +2,7 @@ package publicationsservice
 
 import (
 	"testing"
+	"time"
 
 	"panda/apigateway/services/publications-service/models"
 	"panda/apigateway/services/testsetup"
@@ -281,4 +282,86 @@ func TestReportingRejectsValuesAnalyticsCannotInterpret(t *testing.T) {
 	require.NoError(t, validatePublicationReporting(blank))
 	assert.Equal(t, reportingClassificationUnclassified, blank.Classification)
 	assert.Equal(t, "unknown", blank.DocumentType)
+}
+
+func TestExecutiveSummaryReadsSavedRecords(t *testing.T) {
+	setupReportingFixtures(t)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// A reviewed user paper credited to two departments, in a top-10% journal.
+	reviewed := newReportingPublication(reportingTestPrefix + "pub-summary-user")
+	reviewed.Reporting = sampleReporting()
+	_, err := service.CreatePublication(reviewed, "test-user")
+	require.NoError(t, err)
+
+	// A co-authored Q3 paper in the same year.
+	coauthored := newReportingPublication(reportingTestPrefix + "pub-summary-coauthor")
+	coauthored.LongJournalTitle = "Optics Express"
+	coauthored.Reporting = &models.PublicationReporting{
+		Classification: reportingClassificationCoauthorship,
+		Reviewed:       true,
+		DocumentType:   "article",
+		Departments:    []models.ReportingDepartment{{DepartmentUID: reportingTestPrefix + "dept-88"}},
+		JournalMetrics: []models.JournalMetricSnapshot{
+			{Source: "JCR", Year: 2025, Category: "Optics", Quartile: "Q3"},
+		},
+	}
+	_, err = service.CreatePublication(coauthored, "test-user")
+	require.NoError(t, err)
+
+	// A publication nobody has reviewed yet: part of the total and the backlog.
+	unreviewed := newReportingPublication(reportingTestPrefix + "pub-summary-unreviewed")
+	_, err = service.CreatePublication(unreviewed, "test-user")
+	require.NoError(t, err)
+
+	rows, err := service.listReportingRows(2025, 2025)
+	require.NoError(t, err)
+
+	// Other tests and seed data may share the database, so assert on our rows.
+	ours := make([]reportingRow, 0, 3)
+	for _, row := range rows {
+		if len(row.UID) >= len(reportingTestPrefix) && row.UID[:len(reportingTestPrefix)] == reportingTestPrefix {
+			ours = append(ours, row)
+		}
+	}
+	require.Len(t, ours, 3)
+
+	summary := buildExecutiveSummary(ours, 2025, 2025, 2025, time.Now())
+
+	assert.Equal(t, 3, summary.TotalPublications)
+	assert.Equal(t, 1, summary.TotalOwnPublications)
+	assert.Equal(t, 1, summary.TotalUserPublications)
+	assert.Equal(t, 1, summary.CoauthorshipPublications)
+	assert.Equal(t, 1, summary.UnclassifiedPublications)
+	assert.Equal(t, 1, summary.PendingReviewPublications)
+
+	// D88 is credited by both reviewed papers, D86 only by the user paper, so
+	// department credits (3) exceed the distinct total that carries them (2).
+	byName := map[string]int{}
+	for _, department := range summary.DepartmentMatrix {
+		byName[department.Name] = department.Total
+	}
+	assert.Equal(t, 1, byName["Test Department 86"])
+	assert.Equal(t, 2, byName["Test Department 88"])
+
+	require.Len(t, summary.Q3Q4HistoricalTrend, 1)
+	// The user cohort is the single top-10% paper: ranked, but not Q3/Q4.
+	user := summary.Q3Q4HistoricalTrend[0].User
+	assert.Equal(t, 1, user.RankedCount)
+	assert.Equal(t, 0, user.Q3Q4Count)
+	require.NotNil(t, user.Percent)
+	assert.InDelta(t, 0, *user.Percent, 0.001)
+
+	// The reviewed author round-trips with their confirmed roles intact.
+	require.Len(t, summary.TopPublishingAuthors, 1)
+	assert.Equal(t, reportingTestPrefix+"researcher-1", summary.TopPublishingAuthors[0].ResearcherUID)
+	assert.Equal(t, "Nováková Jana", summary.TopPublishingAuthors[0].Name)
+	assert.Equal(t, 1, summary.TopPublishingAuthors[0].FirstAuthorCount)
+
+	journals := map[string]int{}
+	for _, journal := range summary.JournalFrequencies {
+		journals[journal.Name] = journal.Count
+	}
+	assert.Equal(t, 2, journals["Physical Review Letters"])
+	assert.Equal(t, 1, journals["Optics Express"])
 }

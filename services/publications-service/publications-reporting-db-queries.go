@@ -440,3 +440,68 @@ func equalStringSets(left, right []string) bool {
 	}
 	return true
 }
+
+// listReportingRows returns one flat row per publication in the window,
+// including publications that have never been reviewed: they are part of the
+// institutional total and of the unclassified backlog, and dropping them would
+// quietly shrink every headline number.
+func (svc *PublicationsService) listReportingRows(startYear, endYear int) ([]reportingRow, error) {
+	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	if err != nil {
+		return nil, err
+	}
+	defer session.Close()
+
+	query := helpers.DatabaseQuery{
+		Query: `
+			MATCH (p:Publication)
+			WHERE (p.deleted IS NULL OR p.deleted = false)
+			  AND p.yearOfPublication IS NOT NULL
+			  AND toInteger(p.yearOfPublication) >= $startYear
+			  AND toInteger(p.yearOfPublication) <= $endYear
+			OPTIONAL MATCH (p)-[:HAS_REPORTING]->(reporting:PublicationReporting)
+			RETURN {
+				uid: p.uid,
+				year: toInteger(p.yearOfPublication),
+				journalTitle: coalesce(p.longJournalTitle, ""),
+				classification: coalesce(reporting.classification, "unclassified"),
+				reviewed: coalesce(reporting.reviewed, false),
+				documentType: coalesce(reporting.documentType, "unknown"),
+				journalRankingStatus: coalesce(reporting.journalRankingStatus, ""),
+				departments: [(reporting)-[:REPORTED_DEPARTMENT]->(department:Department) |
+					{uid: department.uid, name: coalesce(department.name, department.uid)}],
+				userCalls: [(reporting)-[:REPORTED_USER_CALL]->(call:UserCall) |
+					{uid: call.uid, name: coalesce(call.name, call.uid)}],
+				experimentalSystems: [(reporting)-[:REPORTED_EXPERIMENTAL_SYSTEM]->(system:ExperimentalSystem) |
+					{uid: system.uid, name: coalesce(system.name, system.uid)}],
+				authors: [(reporting)-[:HAS_REPORTING_AUTHOR]->(author:PublicationReportingAuthor) | {
+					researcherUid: head([(author)-[:IS_RESEARCHER]->(researcher:Researcher) | researcher.uid]),
+					name: head([(author)-[:IS_RESEARCHER]->(researcher:Researcher) |
+						trim(coalesce(researcher.lastName, "") + " " + coalesce(researcher.firstName, ""))]),
+					departmentUids: [(author)-[:REPORTED_DEPARTMENT]->(department:Department) | department.uid],
+					isFirstAuthor: author.isFirstAuthor,
+					isCorresponding: author.isCorresponding
+				}],
+				journalMetrics: [(reporting)-[:HAS_JOURNAL_METRIC]->(metric:JournalMetric) | {
+					source: coalesce(metric.source, "JCR"),
+					journalId: metric.journalId,
+					year: metric.year,
+					category: metric.category,
+					quartile: metric.quartile,
+					percentile: metric.percentile,
+					impactFactor: metric.impactFactor
+				}]
+			} AS row`,
+		ReturnAlias: "row",
+		Parameters:  map[string]interface{}{"startYear": startYear, "endYear": endYear},
+	}
+
+	rows, err := helpers.GetNeo4jArrayOfNodes[reportingRow](session, query)
+	if err != nil {
+		return nil, err
+	}
+	if rows == nil {
+		rows = []reportingRow{}
+	}
+	return rows, nil
+}

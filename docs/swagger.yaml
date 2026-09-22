@@ -436,6 +436,43 @@ definitions:
       uid:
         type: string
     type: object
+  models.DepartmentReportingRow:
+    properties:
+      bookChapters:
+        type: integer
+      coAuthorship:
+        type: integer
+      name:
+        type: string
+      other:
+        type: integer
+      proceedings:
+        type: integer
+      q2:
+        type: integer
+      q3:
+        type: integer
+      q4:
+        type: integer
+      q10Percent:
+        type: integer
+      q10To25:
+        type: integer
+      q1Unsplit:
+        type: integer
+      total:
+        type: integer
+      totalOwn:
+        type: integer
+      uid:
+        type: string
+      unknown:
+        type: integer
+      unranked:
+        type: integer
+      userPublications:
+        type: integer
+    type: object
   models.EUN:
     properties:
       eun:
@@ -554,6 +591,69 @@ definitions:
         type: string
       location_uid:
         type: string
+    type: object
+  models.ExecutiveSummary:
+    properties:
+      coauthorshipPublications:
+        type: integer
+      departmentMatrix:
+        items:
+          $ref: '#/definitions/models.DepartmentReportingRow'
+        type: array
+      endYear:
+        type: integer
+      generatedAt:
+        type: string
+      journalFrequencies:
+        items:
+          $ref: '#/definitions/models.ReportingCount'
+        type: array
+      otherPublications:
+        type: integer
+      ownQuality:
+        items:
+          $ref: '#/definitions/models.ReportingQualityCount'
+        type: array
+      pendingReviewPublications:
+        type: integer
+      policyVersion:
+        type: string
+      q3q4HistoricalTrend:
+        items:
+          $ref: '#/definitions/models.ReportingTrend'
+        type: array
+      startYear:
+        type: integer
+      systemBreakdown:
+        items:
+          $ref: '#/definitions/models.ReportingCount'
+        type: array
+      topPublishingAuthors:
+        items:
+          $ref: '#/definitions/models.ReportingAuthorStats'
+        type: array
+      totalOwnPublications:
+        type: integer
+      totalPublications:
+        type: integer
+      totalUserPublications:
+        type: integer
+      unclassifiedPublications:
+        type: integer
+      userPublicationsByCall:
+        items:
+          $ref: '#/definitions/models.ReportingCount'
+        type: array
+      userPublicationsByDepartment:
+        items:
+          $ref: '#/definitions/models.ReportingCount'
+        type: array
+      userQuality:
+        items:
+          $ref: '#/definitions/models.ReportingQualityCount'
+        type: array
+      year:
+        type: integer
     type: object
   models.FileLink:
     properties:
@@ -1202,10 +1302,65 @@ definitions:
       researcherUid:
         type: string
     type: object
+  models.ReportingAuthorStats:
+    properties:
+      correspondingCount:
+        type: integer
+      departmentUids:
+        items:
+          type: string
+        type: array
+      firstAuthorCount:
+        type: integer
+      name:
+        type: string
+      researcherUid:
+        type: string
+      totalAuthorships:
+        type: integer
+      unknownCorrespondingCount:
+        type: integer
+      unknownFirstAuthorCount:
+        type: integer
+    type: object
+  models.ReportingCount:
+    properties:
+      count:
+        type: integer
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
   models.ReportingDepartment:
     properties:
       departmentUid:
         type: string
+    type: object
+  models.ReportingFraction:
+    properties:
+      percent:
+        type: number
+      q3q4Count:
+        type: integer
+      rankedCount:
+        type: integer
+    type: object
+  models.ReportingQualityCount:
+    properties:
+      count:
+        type: integer
+      quality:
+        type: string
+    type: object
+  models.ReportingTrend:
+    properties:
+      own:
+        $ref: '#/definitions/models.ReportingFraction'
+      user:
+        $ref: '#/definitions/models.ReportingFraction'
+      year:
+        type: integer
     type: object
   models.Researcher:
     properties:
@@ -4648,6 +4803,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Get publications
+      tags:
+      - Publications
+  /v1/publications/analytics/executive-summary:
+    get:
+      description: Calculates institutional, department, user, journal, author and
+        Q3+Q4 trend reporting from saved publication records. Department, call and
+        system totals are overlapping credits and may sum above the distinct institutional
+        total.
+      parameters:
+      - description: Reporting year (defaults to the latest completed calendar year)
+        in: query
+        name: year
+        type: integer
+      - description: First trend year (defaults to six years before endYear)
+        in: query
+        name: startYear
+        type: integer
+      - description: Last trend year (defaults to year)
+        in: query
+        name: endYear
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ExecutiveSummary'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/models.PublicationAPIError'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Publication executive summary
       tags:
       - Publications
   /v1/publications/enrichment-preview:
