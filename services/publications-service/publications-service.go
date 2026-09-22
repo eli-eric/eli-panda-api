@@ -51,7 +51,11 @@ type IPublicationsService interface {
 	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
 }
 
-func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
+// NewPublicationsService returns the concrete service so callers that need to
+// compose on top of it — such as the enrichment preview — can reuse this one
+// instance instead of rebuilding its WoS wiring. It still satisfies
+// IPublicationsService for every existing caller.
+func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) *PublicationsService {
 	service := &PublicationsService{
 		neo4jDriver:      driver,
 		wosStarterApiUrl: wosSAPIURL,

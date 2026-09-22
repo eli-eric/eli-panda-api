@@ -7,6 +7,7 @@ import (
 
 type Publication struct {
 	Uid                     string                   `json:"uid" neo4j:"key,uid"`                                                                                  // uid is the unique identifier of the publication
+	Reporting               *PublicationReporting    `json:"reporting,omitempty"`                                                                                  // reporting is the editor-reviewed management-reporting snapshot; omitted on save preserves the stored one
 	Doi                     string                   `json:"doi" neo4j:"prop,doi"`                                                                                 // doi is the unique identifier of the publication
 	Code                    string                   `json:"code" neo4j:"prop,code"`                                                                               // code is the internal code of the publication
 	Title                   string                   `json:"title" neo4j:"prop,title"`                                                                             // title is the title of the publication
