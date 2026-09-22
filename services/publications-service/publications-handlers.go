@@ -109,6 +109,10 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 		}
 		publication.EliPublication = normalized
 
+		if err := validatePublicationReporting(publication.Reporting); err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
 		userUID := c.Get("userUID").(string)
 
 		if publication.Uid == "" {
@@ -227,6 +231,10 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 		publication.EliPublication = normalized
+
+		if err := validatePublicationReporting(publication.Reporting); err != nil {
+			return helpers.BadRequest(err.Error())
+		}
 
 		publication.Uid = uid
 

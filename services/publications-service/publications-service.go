@@ -9,6 +9,7 @@ import (
 	"panda/apigateway/services/publications-service/models"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -82,6 +83,8 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 		result.EliResearchers, _ = svc.getPublicationResearchers(uid)
 		// Fetch connected grants
 		result.Grants, _ = svc.getPublicationGrants(uid)
+		// Fetch the editor-reviewed reporting snapshot; nil means never reviewed
+		result.Reporting, _ = svc.getPublicationReporting(uid)
 	}
 
 	return result, err
@@ -135,9 +138,15 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 
 	historyLog := helpers.HistoryLogQuery(publication.Uid, "CREATE", userUID)
 
-	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		updateQuery,
-		historyLog)
+	// The publication row, its audit entry and any reporting snapshot go in one
+	// transaction, so a record can never be saved without the review submitted
+	// alongside it.
+	queries := []helpers.DatabaseQuery{updateQuery, historyLog}
+	if publication.Reporting != nil {
+		queries = append(queries, publicationReportingQueries(publication.Uid, publication.Reporting, userUID, time.Now())...)
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 
 	if err != nil {
 		return result, err
@@ -186,9 +195,25 @@ func (svc *PublicationsService) UpdatePublication(publication *models.Publicatio
 
 	historyLog := helpers.HistoryLogQuery(publication.Uid, "UPDATE", userUID)
 
-	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		updateQuery,
-		historyLog)
+	queries := []helpers.DatabaseQuery{updateQuery, historyLog}
+	switch {
+	case publication.Reporting != nil:
+		// An explicit reporting object replaces the stored snapshot outright.
+		queries = append(queries, publicationReportingQueries(publication.Uid, publication.Reporting, userUID, time.Now())...)
+	case oldPublication.Reporting != nil:
+		// Omitting reporting preserves it, so an older client that knows nothing
+		// about reporting cannot erase a review by saving a publication. The
+		// confirmation is dropped when the edit changes what was reviewed.
+		publication.Reporting = oldPublication.Reporting
+		if reportRelevantChange(oldPublication, *publication) {
+			queries = append(queries, invalidatePublicationReviewQuery(publication.Uid))
+			publication.Reporting.Reviewed = false
+			publication.Reporting.ReviewedAt = ""
+			publication.Reporting.ReviewedBy = ""
+		}
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 
 	if err != nil {
 		return result, err
