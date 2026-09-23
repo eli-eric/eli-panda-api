@@ -352,3 +352,48 @@ func TestPreviewRejectsAnInvalidDOI(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), wosErrorInvalidDOI)
 }
+
+func TestEnrichmentEndpointRejectsTraversalDOIs(t *testing.T) {
+	// A DOI suffix is `\S+`, so dot segments pass DOI validation. Go emits them
+	// verbatim and the provider resolves them, which would walk out of the
+	// provider's base path carrying the institution's contact details.
+	for _, doi := range []string{
+		"10.1234/../../admin",
+		"10.1234/a/../../../etc/passwd",
+		"10.1234/..",
+		"10.1234/./x",
+	} {
+		_, err := enrichmentEndpoint("https://api.crossref.org/works", doi)
+		assert.Errorf(t, err, "expected %q to be rejected", doi)
+	}
+
+	// Dots inside a segment are ordinary DOI characters and must still work.
+	endpoint, err := enrichmentEndpoint("https://api.crossref.org/works", "10.1103/physrevlett.126.123601")
+	require.NoError(t, err)
+	assert.Equal(t, "https://api.crossref.org/works/10.1103/physrevlett.126.123601", endpoint.String())
+
+	// Query and fragment characters stay escaped into the path rather than
+	// becoming real parameters.
+	endpoint, err = enrichmentEndpoint("https://api.crossref.org/works", "10.1234/a?x=1#f")
+	require.NoError(t, err)
+	assert.NotContains(t, endpoint.String(), "?x=1")
+	assert.NotContains(t, endpoint.String(), "#f")
+}
+
+func TestPreviewRejectsTraversalDOIWithoutCallingProviders(t *testing.T) {
+	calls := 0
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	service := newEnrichmentTestService(upstream.URL, "", upstream.URL, "library@example.org", &stubWosImportRepository{})
+	result, err := service.Preview(context.Background(), "10.1234/../../admin", "", "B")
+
+	require.NoError(t, err)
+	// The lookup reports the providers as unavailable rather than walking out of
+	// their base path, and spends no quota doing it.
+	assert.Equal(t, 0, calls)
+	assert.Equal(t, "unavailable", result.Status)
+}

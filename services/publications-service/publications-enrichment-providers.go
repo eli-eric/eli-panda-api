@@ -148,7 +148,7 @@ func (svc *PublicationEnrichmentService) fetchUnpaywall(ctx context.Context, doi
 	return source
 }
 
-// enrichmentEndpoint appends the DOI as a single path element. Assigning the
+// enrichmentEndpoint appends the DOI to the provider's base path. Assigning the
 // decoded Path lets net/url escape it on String(), so a DOI's slashes and any
 // reserved characters survive without being double-encoded.
 func enrichmentEndpoint(base, doi string) (*url.URL, error) {
@@ -159,8 +159,25 @@ func enrichmentEndpoint(base, doi string) (*url.URL, error) {
 	if endpoint.Scheme == "" || endpoint.Host == "" {
 		return nil, errors.New("enrichment endpoint is not absolute")
 	}
+	// A DOI's suffix is `\S+`, which permits dot segments. Go emits them
+	// verbatim, and the provider (or a proxy in front of it) resolves them — so
+	// `10.1234/../../x` would leave the intended base path and hit an unrelated
+	// endpoint under the institution's own polite-pool identity. Reject rather
+	// than rewrite: a DOI containing a dot segment is not a real DOI.
+	if hasDotSegment(doi) {
+		return nil, errors.New("doi contains a path traversal segment")
+	}
 	endpoint.Path = strings.TrimRight(endpoint.Path, "/") + "/" + doi
 	return endpoint, nil
+}
+
+func hasDotSegment(value string) bool {
+	for _, segment := range strings.Split(value, "/") {
+		if segment == "." || segment == ".." {
+			return true
+		}
+	}
+	return false
 }
 
 // decodeEnrichmentJSON performs the GET and decodes the body. The bool reports
