@@ -246,3 +246,19 @@ func TestResolveReportWindowDefaultsToTheLatestCompletedYear(t *testing.T) {
 	_, startYear, endYear = resolveReportWindow(2025, 2030, 2025, now)
 	assert.Equal(t, endYear, startYear)
 }
+
+func TestResolveReportWindowCapsAClientSuppliedSpan(t *testing.T) {
+	now := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+
+	// Every year in the window becomes an entry in the response, so an
+	// unbounded span is a payload-inflation lever rather than a useful request.
+	_, startYear, endYear := resolveReportWindow(2025, 1000, 9999, now)
+	assert.Equal(t, 9999, endYear)
+	assert.Equal(t, 9999-maxReportWindowYears+1, startYear)
+	assert.LessOrEqual(t, endYear-startYear+1, maxReportWindowYears)
+
+	// A normal request is untouched.
+	_, startYear, endYear = resolveReportWindow(2025, 2019, 2025, now)
+	assert.Equal(t, 2019, startYear)
+	assert.Equal(t, 2025, endYear)
+}

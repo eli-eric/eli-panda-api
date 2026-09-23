@@ -501,6 +501,11 @@ func appendDistinct(target []string, values []string) []string {
 	return target
 }
 
+// maxReportWindowYears caps the trend span. The dashboard asks for seven; this
+// leaves ample room for a longer manual range without letting the response grow
+// without limit.
+const maxReportWindowYears = 50
+
 // defaultReportYear is the most recent completed calendar year. The dashboard
 // opens on it and advances on its own each January.
 func defaultReportYear(now time.Time) int { return now.Year() - 1 }
@@ -530,6 +535,12 @@ func resolveReportWindow(year, startYear, endYear int, now time.Time) (int, int,
 	}
 	if startYear > endYear {
 		startYear = endYear
+	}
+	// The trend window is client-supplied and every year in it becomes an entry
+	// in the response, so an unbounded span would let a caller inflate the
+	// payload at will. Keep the most recent years of the requested range.
+	if endYear-startYear+1 > maxReportWindowYears {
+		startYear = endYear - maxReportWindowYears + 1
 	}
 	return year, startYear, endYear
 }
