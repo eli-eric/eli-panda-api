@@ -108,8 +108,8 @@ func validatePublicationReporting(reporting *models.PublicationReporting) error 
 			return errors.New("reporting author requires a researcher")
 		}
 	}
-	for _, department := range reporting.Departments {
-		if strings.TrimSpace(department.DepartmentUID) == "" {
+	for _, departmentUID := range reporting.DepartmentUIDs {
+		if strings.TrimSpace(departmentUID) == "" {
 			return errors.New("reporting department requires a department")
 		}
 	}
@@ -135,8 +135,7 @@ func (svc *PublicationsService) getPublicationReporting(uid string) (*models.Pub
 				journalRankingStatus: reporting.journalRankingStatus,
 				reviewedAt: reporting.reviewedAt,
 				reviewedBy: reporting.reviewedBy,
-				departments: [(reporting)-[:REPORTED_DEPARTMENT]->(department:Department) |
-					{departmentUid: department.uid}],
+				departmentUids: [(reporting)-[:REPORTED_DEPARTMENT]->(department:Department) | department.uid],
 				userCallUids: [(reporting)-[:REPORTED_USER_CALL]->(call:UserCall) | call.uid],
 				userExperimentUids: [(reporting)-[:REPORTED_USER_EXPERIMENT]->(experiment:UserExperiment) | experiment.uid],
 				experimentalSystemUids: [(reporting)-[:REPORTED_EXPERIMENTAL_SYSTEM]->(system:ExperimentalSystem) | system.uid],
@@ -215,8 +214,8 @@ func publicationReportingQueries(
 		},
 	})
 
-	for _, department := range reporting.Departments {
-		queries = append(queries, linkReportingQuery(reportingUID, "Department", "REPORTED_DEPARTMENT", department.DepartmentUID))
+	for _, departmentUID := range reporting.DepartmentUIDs {
+		queries = append(queries, linkReportingQuery(reportingUID, "Department", "REPORTED_DEPARTMENT", departmentUID))
 	}
 	for _, callUID := range reporting.UserCallUIDs {
 		queries = append(queries, linkReportingQuery(reportingUID, "UserCall", "REPORTED_USER_CALL", callUID))
@@ -332,8 +331,8 @@ func linkReportingQuery(reportingUID, label, relationship, targetUID string) hel
 // response always carries arrays, and drops author rows whose researcher has
 // since been deleted rather than emitting an author with no identity.
 func normalizeReportingCollections(reporting *models.PublicationReporting) {
-	if reporting.Departments == nil {
-		reporting.Departments = []models.ReportingDepartment{}
+	if reporting.DepartmentUIDs == nil {
+		reporting.DepartmentUIDs = []string{}
 	}
 	if reporting.UserCallUIDs == nil {
 		reporting.UserCallUIDs = []string{}

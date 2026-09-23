@@ -7,7 +7,7 @@ type PublicationReporting struct {
 	Reviewed               bool                    `json:"reviewed"`
 	DocumentType           string                  `json:"documentType" enums:"article,proceedings,book-chapter,other,unknown"`
 	JournalRankingStatus   string                  `json:"journalRankingStatus,omitempty" enums:"unknown,unranked"`
-	Departments            []ReportingDepartment   `json:"departments"`
+	DepartmentUIDs         []string                `json:"departmentUids"`
 	Authors                []ReportingAuthor       `json:"authors"`
 	UserCallUIDs           []string                `json:"userCallUids"`
 	UserExperimentUIDs     []string                `json:"userExperimentUids"`

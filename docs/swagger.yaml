@@ -448,6 +448,8 @@ definitions:
         type: integer
       proceedings:
         type: integer
+      q1Unsplit:
+        type: integer
       q2:
         type: integer
       q3:
@@ -457,8 +459,6 @@ definitions:
       q10Percent:
         type: integer
       q10To25:
-        type: integer
-      q1Unsplit:
         type: integer
       total:
         type: integer
@@ -1249,9 +1249,9 @@ definitions:
         - coauthorship
         - unclassified
         type: string
-      departments:
+      departmentUids:
         items:
-          $ref: '#/definitions/models.ReportingDepartment'
+          type: string
         type: array
       documentType:
         enum:
@@ -1330,11 +1330,6 @@ definitions:
       name:
         type: string
       uid:
-        type: string
-    type: object
-  models.ReportingDepartment:
-    properties:
-      departmentUid:
         type: string
     type: object
   models.ReportingFraction:

@@ -53,9 +53,9 @@ func sampleReporting() *models.PublicationReporting {
 		Classification: reportingClassificationOwnUser,
 		Reviewed:       true,
 		DocumentType:   "article",
-		Departments: []models.ReportingDepartment{
-			{DepartmentUID: reportingTestPrefix + "dept-86"},
-			{DepartmentUID: reportingTestPrefix + "dept-88"},
+		DepartmentUIDs: []string{
+			reportingTestPrefix + "dept-86",
+			reportingTestPrefix + "dept-88",
 		},
 		Authors: []models.ReportingAuthor{{
 			ResearcherUID:   reportingTestPrefix + "researcher-1",
@@ -105,7 +105,7 @@ func TestPublicationReportingRoundTrip(t *testing.T) {
 	// Both credited departments survive: the paper counts once in each.
 	assert.ElementsMatch(t,
 		[]string{reportingTestPrefix + "dept-86", reportingTestPrefix + "dept-88"},
-		[]string{stored.Reporting.Departments[0].DepartmentUID, stored.Reporting.Departments[1].DepartmentUID})
+		stored.Reporting.DepartmentUIDs)
 
 	assert.Equal(t, []string{reportingTestPrefix + "call-1"}, stored.Reporting.UserCallUIDs)
 	assert.Equal(t, []string{reportingTestPrefix + "system-1"}, stored.Reporting.ExperimentalSystemUIDs)
@@ -181,7 +181,7 @@ func TestUpdateWithoutReportingPreservesTheSnapshot(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, stored.Reporting, "omitting reporting must not erase it")
 	assert.Equal(t, reportingClassificationOwnUser, stored.Reporting.Classification)
-	assert.Len(t, stored.Reporting.Departments, 2)
+	assert.Len(t, stored.Reporting.DepartmentUIDs, 2)
 	assert.Len(t, stored.Reporting.JournalMetrics, 1)
 	assert.True(t, stored.Reporting.Reviewed, "an unrelated edit keeps the review")
 }
@@ -208,7 +208,7 @@ func TestUpdateChangingReportedDataInvalidatesTheReview(t *testing.T) {
 	assert.False(t, stored.Reporting.Reviewed, "a changed publication year retracts the review")
 	assert.Empty(t, stored.Reporting.ReviewedBy)
 	// The editor's selections survive; only the confirmation is withdrawn.
-	assert.Len(t, stored.Reporting.Departments, 2)
+	assert.Len(t, stored.Reporting.DepartmentUIDs, 2)
 	assert.Equal(t, reportingClassificationOwnUser, stored.Reporting.Classification)
 }
 
@@ -226,7 +226,7 @@ func TestUpdateWithExplicitReportingReplacesTheSnapshot(t *testing.T) {
 		Classification:       reportingClassificationCoauthorship,
 		DocumentType:         "proceedings",
 		JournalRankingStatus: reportingRankingStatusUnranked,
-		Departments:          []models.ReportingDepartment{{DepartmentUID: reportingTestPrefix + "dept-88"}},
+		DepartmentUIDs:       []string{reportingTestPrefix + "dept-88"},
 	}
 	_, err = service.UpdatePublication(replacement, "test-user")
 	require.NoError(t, err)
@@ -240,8 +240,8 @@ func TestUpdateWithExplicitReportingReplacesTheSnapshot(t *testing.T) {
 
 	// Submitting reporting replaces the whole snapshot: the dropped department,
 	// author, call, system and metric are gone rather than merged.
-	require.Len(t, stored.Reporting.Departments, 1)
-	assert.Equal(t, reportingTestPrefix+"dept-88", stored.Reporting.Departments[0].DepartmentUID)
+	require.Len(t, stored.Reporting.DepartmentUIDs, 1)
+	assert.Equal(t, reportingTestPrefix+"dept-88", stored.Reporting.DepartmentUIDs[0])
 	assert.Empty(t, stored.Reporting.Authors)
 	assert.Empty(t, stored.Reporting.UserCallUIDs)
 	assert.Empty(t, stored.Reporting.ExperimentalSystemUIDs)
@@ -301,7 +301,7 @@ func TestExecutiveSummaryReadsSavedRecords(t *testing.T) {
 		Classification: reportingClassificationCoauthorship,
 		Reviewed:       true,
 		DocumentType:   "article",
-		Departments:    []models.ReportingDepartment{{DepartmentUID: reportingTestPrefix + "dept-88"}},
+		DepartmentUIDs: []string{reportingTestPrefix + "dept-88"},
 		JournalMetrics: []models.JournalMetricSnapshot{
 			{Source: "JCR", Year: 2025, Category: "Optics", Quartile: "Q3"},
 		},

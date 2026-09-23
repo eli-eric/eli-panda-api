@@ -9205,10 +9205,10 @@ const docTemplate = `{
                         "unclassified"
                     ]
                 },
-                "departments": {
+                "departmentUids": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/models.ReportingDepartment"
+                        "type": "string"
                     }
                 },
                 "documentType": {
@@ -9325,14 +9325,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "uid": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.ReportingDepartment": {
-            "type": "object",
-            "properties": {
-                "departmentUid": {
                     "type": "string"
                 }
             }
