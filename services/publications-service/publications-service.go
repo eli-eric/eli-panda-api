@@ -2,11 +2,13 @@ package publicationsservice
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"panda/apigateway/helpers"
 	codebookModels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/publications-service/models"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -28,6 +30,7 @@ type IPublicationsService interface {
 	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)
 	DeletePublication(uid string, userUID string) (err error)
 	GetPublications(searchText string, page, pageSize int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result []models.Publication, totalCount int64, err error)
+	GetPublicationFilterOptions() (result models.PublicationFilterOptions, err error)
 	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
 	PreviewWosPublication(ctx context.Context, doi, currentPublicationUID, facilityCode string) (models.WosPreviewResponse, error)
 	// Researcher methods
@@ -266,13 +269,13 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 	}
 
 	// Build query with sorting
-	query := buildPublicationsQuery(searchText, skip, limit, sorting)
+	query := buildPublicationsQuery(searchText, skip, limit, sorting, filtering)
 	result, err = helpers.GetNeo4jArrayOfNodes[models.Publication](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
 
 	// Get total count
-	countQuery := buildPublicationsCountQuery(searchText)
+	countQuery := buildPublicationsCountQuery(searchText, filtering)
 	totalCount, _ = helpers.GetNeo4jSingleRecordSingleValue[int64](session, countQuery)
 
 	for i := 0; i < len(result); i++ {
@@ -282,7 +285,29 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 	return result, totalCount, err
 }
 
-func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpers.Sorting) helpers.DatabaseQuery {
+// GetPublicationFilterOptions returns distinct values and bounds for the
+// publications filter sheet (ELIPANDA-503). Years are ordered newest first so
+// the listbox leads with the recent past.
+func (svc *PublicationsService) GetPublicationFilterOptions() (result models.PublicationFilterOptions, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	query := GetPublicationFilterOptionsQuery()
+	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.PublicationFilterOptions](session, query)
+	if errors.Is(err, helpers.ERR_NO_ROWS) {
+		return models.PublicationFilterOptions{}, nil
+	}
+	if err != nil {
+		return result, err
+	}
+
+	sort.Slice(result.Years, func(i, j int) bool { return result.Years[i] > result.Years[j] })
+	for _, values := range [][]string{result.Quartils, result.QuartilBases, result.Languages, result.EliPublications} {
+		sort.Strings(values)
+	}
+	return result, nil
+}
+
+func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) helpers.DatabaseQuery {
 	query := helpers.DatabaseQuery{}
 	query.Parameters = make(map[string]interface{})
 
@@ -304,6 +329,10 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 		`
 		query.Parameters["search"] = searchText
 	}
+
+	// Server-side column filters (ELIPANDA-503) — pure AND predicates on n,
+	// cardinality-neutral so count and list queries stay consistent.
+	ApplyPublicationFilters(&query, filtering)
 
 	// Optional matches for relationships
 	query.Query += `
@@ -406,7 +435,7 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 	return query
 }
 
-func buildPublicationsCountQuery(searchText string) helpers.DatabaseQuery {
+func buildPublicationsCountQuery(searchText string, filtering *[]helpers.ColumnFilter) helpers.DatabaseQuery {
 	query := helpers.DatabaseQuery{}
 	query.Parameters = make(map[string]interface{})
 
@@ -427,31 +456,49 @@ func buildPublicationsCountQuery(searchText string) helpers.DatabaseQuery {
 		query.Parameters["search"] = searchText
 	}
 
+	ApplyPublicationFilters(&query, filtering)
+
 	query.Query += " RETURN count(n) as totalCount"
 	query.ReturnAlias = "totalCount"
 	return query
 }
 
 func getPublicationsSortingClause(sorting *[]helpers.Sorting) string {
-	if sorting == nil || len(*sorting) == 0 {
+	clauses := buildPublicationsOrderBy(sorting)
+	if len(clauses) == 0 {
 		return " ORDER BY n.updatedAt DESC "
 	}
-
-	orderBy := " ORDER BY "
-	for i, sort := range *sorting {
-		sortField := mapPublicationSortField(sort.ID)
-		direction := helpers.GetSortingDirectionString(sort.DESC)
-
-		if i > 0 {
-			orderBy += ", "
-		}
-		orderBy += fmt.Sprintf("%s %s", sortField, direction)
-	}
-	return orderBy
+	return " ORDER BY " + strings.Join(clauses, ", ") + " "
 }
 
-func mapPublicationSortField(fieldID string) string {
-	// Map frontend field IDs to Neo4j property paths
+// buildPublicationsOrderBy maps the requested sorts to Cypher ORDER BY terms.
+// Unknown ids (or relationship collections like eliResearchers/grants that
+// carry no scalar order) are ignored — never concatenated into a property
+// path — so an invalid sort can never produce a malformed query (ELIPANDA-503).
+func buildPublicationsOrderBy(sorting *[]helpers.Sorting) []string {
+	if sorting == nil {
+		return nil
+	}
+	var clauses []string
+	for _, sort := range *sorting {
+		sortField, ok := mapPublicationSortField(sort.ID)
+		if !ok {
+			continue
+		}
+		// Null-last in both directions: Neo4j sorts nulls first by default, and
+		// in DESC that pushes records without a value to the top of the grid,
+		// which reads as broken sorting. The IS NULL key pins empties to the
+		// end regardless of direction.
+		clauses = append(clauses, fmt.Sprintf("(%s IS NULL), %s %s", sortField, sortField, helpers.GetSortingDirectionString(sort.DESC)))
+	}
+	return clauses
+}
+
+// mapPublicationSortField resolves a frontend column id to a Cypher ordering
+// expression. Codebook columns sort on the related node's name, accepting both
+// the table column id (e.g. "mediaType") and the canonical codebook id
+// ("mediaTypeCb"). The second return value is false for non-sortable ids.
+func mapPublicationSortField(fieldID string) (string, bool) {
 	fieldMap := map[string]string{
 		"title":             "n.title",
 		"doi":               "n.doi",
@@ -459,20 +506,57 @@ func mapPublicationSortField(fieldID string) string {
 		"yearOfPublication": "n.yearOfPublication",
 		"allAuthors":        "n.allAuthors",
 		"eliAuthors":        "n.eliAuthors",
+		"eliPublication":    "n.eliPublication",
 		"longJournalTitle":  "n.longJournalTitle",
+		"shortJournalTitle": "n.shortJournalTitle",
 		"impactFactor":      "n.impactFactor",
 		"quartil":           "n.quartil",
+		"quartilBasis":      "n.quartilBasis",
 		"updatedAt":         "n.updatedAt",
 		"language":          "n.language",
 		"volume":            "n.volume",
+		"issue":             "n.issue",
+		"pages":             "n.pages",
 		"pagesCount":        "n.pagesCount",
+		"bookPagesCount":    "n.bookPagesCount",
+		"allAuthorsCount":   "n.allAuthorsCount",
+		"eliAuthorsCount":   "n.eliAuthorsCount",
+		"publisher":         "n.publisher",
+		"publishPlace":      "n.publishPlace",
+		"isbn":              "n.isbn",
+		"bookTitle":         "n.bookTitle",
+		"editionVolume":     "n.editionVolume",
+		"proceedingsIsbn":   "n.proceedingsIsbn",
+		"conferencePlace":   "n.conferencePlace",
+		"conferenceDate":    "n.conferenceDate",
+		"dateOfPublication": "n.dateOfPublication",
+		"citeAs":            "n.citeAs",
+		"keywords":          "n.keywords",
+		"wosNumber":         "n.wosNumber",
+		"issn":              "n.issn",
+		"eissn":             "n.eissn",
+		"eidScopus":         "n.eidScopus",
+		"oecdFord":          "n.oecdFord",
+		"note":              "n.note",
+		"otherGrants":       "n.otherGrants",
+		"webLink":           "n.webLink",
+		"grant":             "n.grant",
+		// Codebook relationship columns — ordered by the related name.
+		"mediaType":            "mediaTypeCb.name",
+		"mediaTypeCb":          "mediaTypeCb.name",
+		"openAccessType":       "openAccessType.name",
+		"publishingCountry":    "publishingCountry.name",
+		"userCall":             "userCall.name",
+		"userExperiment":       "userExperimentCb.name",
+		"userExperimentCb":     "userExperimentCb.name",
+		"experimentalSystem":   "experimentalSystemCb.name",
+		"experimentalSystemCb": "experimentalSystemCb.name",
+		"publishFormatCb":      "publishFormatCb.name",
+		"conferenceScopeCb":    "conferenceScopeCb.name",
 	}
 
-	if mapped, ok := fieldMap[fieldID]; ok {
-		return mapped
-	}
-	// Default to the field as-is with n. prefix
-	return "n." + fieldID
+	mapped, ok := fieldMap[fieldID]
+	return mapped, ok
 }
 
 func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result models.WosAPIResponse, err error) {
