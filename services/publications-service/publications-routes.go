@@ -12,6 +12,8 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 
 	e.GET("/v1/publications", m.Authorization(h.GetPublications(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
 
+	e.GET("/v1/publications/filter-options", m.Authorization(h.GetPublicationFilterOptions(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
+
 	e.GET("/v1/publications/export", m.Authorization(h.GetPublicationsAsCsv(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
 
 	e.GET("/v1/publications/export/riv", m.Authorization(h.ExportRiv(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
