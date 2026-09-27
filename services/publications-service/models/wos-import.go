@@ -12,6 +12,19 @@ type WosPreviewResponse struct {
 	Authors                 []WosImportAuthor       `json:"authors"`
 	MissingImportableFields []string                `json:"missingImportableFields"`
 	UnavailableFields       []string                `json:"unavailableFields"`
+	// Warnings describe degraded source values (non-numeric volume, missing
+	// day, ...) so the dialog can explain an omitted field instead of
+	// silently dropping it (ELIPANDA-501).
+	Warnings []WosImportWarning `json:"warnings"`
+}
+
+// WosImportWarning points at one form field whose raw upstream value could
+// not be mapped losslessly.
+type WosImportWarning struct {
+	Code    string `json:"code"`
+	Field   string `json:"field"`
+	Raw     string `json:"raw,omitempty"`
+	Message string `json:"message"`
 }
 
 // WosExistingPublication identifies the active PANDA record that already owns a DOI.
@@ -55,8 +68,15 @@ type WosImportAuthor struct {
 }
 
 type WosAuthorMatch struct {
-	Kind       string          `json:"kind"`
-	Candidates []ResearcherRef `json:"candidates"`
+	Kind string `json:"kind"`
+	// Confidence is the stable dialog contract: EXACT_ID | NAME | AMBIGUOUS |
+	// NONE. Kind stays the internal provenance (researcher-id, orcid, name...).
+	Confidence string `json:"confidence"`
+	// KnownResearcherId is true when the author's WoS ResearcherID is already
+	// registered on the matched researcher; false invites the dialog to offer
+	// remembering it (ELIPANDA-501).
+	KnownResearcherId bool            `json:"knownResearcherId"`
+	Candidates        []ResearcherRef `json:"candidates"`
 }
 
 // PublicationAPIError is the stable error envelope returned by publication
@@ -65,4 +85,9 @@ type PublicationAPIError struct {
 	Code      string `json:"code"`
 	Message   string `json:"message"`
 	Retryable bool   `json:"retryable"`
+}
+
+// ResearcherIdsRequest is the body of PATCH /v1/researcher/{uid}/researcher-ids.
+type ResearcherIdsRequest struct {
+	ResearcherIDs []string `json:"researcherIds"`
 }
