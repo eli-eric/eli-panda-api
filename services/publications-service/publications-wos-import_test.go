@@ -39,7 +39,6 @@ type stubWosImportRepository struct {
 	mediaType          *codebookmodels.Codebook
 	findMediaTypeErr   error
 	findMediaTypeCalls []findMediaTypeCall
-
 }
 
 func (repo *stubWosImportRepository) findExistingPublication(
@@ -131,17 +130,25 @@ func TestPreviewWosPublicationNormalizesCommonDOIForms(t *testing.T) {
 	}
 }
 
-func TestPreviewWosPublicationReturnsExistingPublicationBeforeCallingWos(t *testing.T) {
+func TestPreviewWosPublicationIncludesExistingPublicationWithPreview(t *testing.T) {
+	// ELIPANDA-501/412: a DOI already in PANDA is a banner, not a refusal —
+	// the lookup still returns the full preview so the editor can refresh
+	// individual fields, and the WoS call legitimately happens.
 	repo := &stubWosImportRepository{existingPublication: &models.WosExistingPublication{
 		Uid:   "publication-1",
 		Code:  "ELI-2026-1",
 		Title: "Existing laser paper",
 		Doi:   "10.17077/etd.g638o927",
 	}}
-	upstreamCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		upstreamCalls++
-		response.WriteHeader(http.StatusInternalServerError)
+		writeWosResponse(t, response, `{
+			"metadata":{"total":1,"page":1,"limit":50},
+			"hits":[{
+				"uid":"WOS:EXISTING",
+				"title":"Existing laser paper",
+				"identifiers":{"doi":"10.17077/etd.g638o927"}
+			}]
+		}`)
 	}))
 	defer upstream.Close()
 
@@ -149,11 +156,10 @@ func TestPreviewWosPublicationReturnsExistingPublicationBeforeCallingWos(t *test
 	response := performPreviewRequest(
 		t,
 		service,
-		"/v1/publications/wos-preview?doi=10.17077%2FETD.G638O927&currentPublicationUid=current-publication",
+		"/v1/publications/wos/lookup?doi=10.17077%2FETD.G638O927&currentPublicationUid=current-publication",
 	)
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	assert.Equal(t, 0, upstreamCalls, "a duplicate check must not consume WoS quota")
 	require.Len(t, repo.findExistingCalls, 1)
 	assert.Equal(t, findExistingCall{
 		doi:                   "10.17077/etd.g638o927",
@@ -165,6 +171,8 @@ func TestPreviewWosPublicationReturnsExistingPublicationBeforeCallingWos(t *test
 	assert.Equal(t, "already-exists", preview.Status)
 	assert.Equal(t, "10.17077/etd.g638o927", preview.Doi)
 	assert.Equal(t, repo.existingPublication, preview.ExistingPublication)
+	require.NotNil(t, preview.Values, "the preview must be offered even for an existing DOI")
+	assert.Equal(t, "Existing laser paper", valueOrEmpty(preview.Values.Title))
 }
 
 func TestPreviewWosPublicationReportsMissingWosConfiguration(t *testing.T) {
@@ -371,7 +379,9 @@ func TestPreviewWosPublicationMapsStarterFieldsAndAuthorMatches(t *testing.T) {
 	assert.Equal(t, "2025-09", valueOrEmpty(preview.Values.DateOfPublication))
 	assert.Equal(t, "1234-5678", valueOrEmpty(preview.Values.Issn))
 	assert.Equal(t, "8765-4321", valueOrEmpty(preview.Values.EIssn))
-	assert.Equal(t, "978-1-23456-789-0", valueOrEmpty(preview.Values.Isbn))
+	// Article → media type J has no ISBN slot: the WoS ISBN is dropped and
+	// disclosed in unavailableFields instead of filling the wrong field.
+	assert.Empty(t, valueOrEmpty(preview.Values.Isbn))
 	assert.Equal(
 		t,
 		"https://www.webofscience.com/wos/woscc/full-record/WOS:000987654321",
@@ -385,17 +395,24 @@ func TestPreviewWosPublicationMapsStarterFieldsAndAuthorMatches(t *testing.T) {
 
 	require.Len(t, preview.Authors, 4)
 	assert.Equal(t, "researcher-id", preview.Authors[0].Match.Kind)
+	assert.Equal(t, "EXACT_ID", preview.Authors[0].Match.Confidence)
+	assert.True(t, preview.Authors[0].Match.KnownResearcherId)
 	require.Len(t, preview.Authors[0].Match.Candidates, 1)
 	assert.Equal(t, "researcher-by-id", preview.Authors[0].Match.Candidates[0].Uid)
 	assert.Equal(t, "name", preview.Authors[1].Match.Kind)
+	assert.Equal(t, "NAME", preview.Authors[1].Match.Confidence)
+	assert.False(t, preview.Authors[1].Match.KnownResearcherId)
 	require.Len(t, preview.Authors[1].Match.Candidates, 1)
 	assert.Equal(t, "researcher-by-name", preview.Authors[1].Match.Candidates[0].Uid)
 	assert.Equal(t, "ambiguous", preview.Authors[2].Match.Kind)
+	assert.Equal(t, "AMBIGUOUS", preview.Authors[2].Match.Confidence)
 	assert.ElementsMatch(t, []string{"alex-one", "alex-two"}, researcherUIDs(preview.Authors[2].Match.Candidates))
 	assert.Equal(t, "none", preview.Authors[3].Match.Kind)
-	assert.Empty(t, preview.Authors[3].Match.Candidates)
+	assert.Equal(t, "NONE", preview.Authors[3].Match.Confidence)
+	assert.False(t, preview.Authors[3].Match.KnownResearcherId)
 	assert.NotContains(t, preview.MissingImportableFields, "doi")
 	assert.NotContains(t, preview.MissingImportableFields, "mediaTypeCb")
+	assert.Contains(t, preview.UnavailableFields, "isbn")
 	assert.Contains(t, preview.UnavailableFields, "abstract")
 	assert.Contains(t, preview.UnavailableFields, "openAccessType")
 	assert.Contains(t, preview.UnavailableFields, "publishingCountry")
@@ -608,6 +625,7 @@ func newWosTestService(
 		wosStarterApiKey: "test-key",
 		wosHTTPClient:    &http.Client{Timeout: time.Second},
 		wosRepository:    repository,
+		wosCache:         newWosLookupCache(wosCacheTTL, wosCacheMaxEntries),
 	}
 }
 
