@@ -212,6 +212,40 @@ func TestUpdateChangingReportedDataInvalidatesTheReview(t *testing.T) {
 	assert.Equal(t, reportingClassificationOwnUser, stored.Reporting.Classification)
 }
 
+func TestUnreadableReportingFailsInsteadOfLookingUnreviewed(t *testing.T) {
+	setupReportingFixtures(t)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	publication := newReportingPublication(reportingTestPrefix + "pub-unreadable")
+	publication.Reporting = sampleReporting()
+	_, err := service.CreatePublication(publication, "test-user")
+	require.NoError(t, err)
+	_, err = testsetup.TestSession.Run(`
+		MATCH (:Publication {uid: $uid})-[:HAS_REPORTING]->(reporting:PublicationReporting)
+		SET reporting.reviewed = 'yes'`,
+		map[string]interface{}{"uid": publication.Uid})
+	require.NoError(t, err)
+
+	// A snapshot that cannot be read must not be presented as "never reviewed".
+	_, err = service.GetPublicationByUid(publication.Uid)
+	require.Error(t, err)
+
+	// The update loads the old record the same way, so it has to refuse rather
+	// than save a reported change without withdrawing the review.
+	changed := newReportingPublication(publication.Uid)
+	changed.YearOfPublication = "2024"
+	_, err = service.UpdatePublication(changed, "test-user")
+	require.Error(t, err)
+
+	record, err := testsetup.TestSession.Run(
+		"MATCH (p:Publication {uid: $uid}) RETURN p.yearOfPublication AS year",
+		map[string]interface{}{"uid": publication.Uid})
+	require.NoError(t, err)
+	row, err := record.Single()
+	require.NoError(t, err)
+	assert.Equal(t, "2025", row.Values[0], "a refused update must not write")
+}
+
 func TestUpdateWithExplicitReportingReplacesTheSnapshot(t *testing.T) {
 	setupReportingFixtures(t)
 	service := NewPublicationsService(&testsetup.TestDriver, "", "")

@@ -77,18 +77,22 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 	result.Uid = uid
 
 	err = helpers.GetSingleNode(session, &result)
-
-	if err == nil {
-		decodeAuthorsDepartments(&result)
-		// Fetch connected researchers
-		result.EliResearchers, _ = svc.getPublicationResearchers(uid)
-		// Fetch connected grants
-		result.Grants, _ = svc.getPublicationGrants(uid)
-		// Fetch the editor-reviewed reporting snapshot; nil means never reviewed
-		result.Reporting, _ = svc.getPublicationReporting(uid)
+	if err != nil {
+		return result, err
 	}
 
-	return result, err
+	decodeAuthorsDepartments(&result)
+	if result.EliResearchers, err = svc.getPublicationResearchers(uid); err != nil {
+		return result, fmt.Errorf("load publication researchers: %w", err)
+	}
+	if result.Grants, err = svc.getPublicationGrants(uid); err != nil {
+		return result, fmt.Errorf("load publication grants: %w", err)
+	}
+	if result.Reporting, err = svc.getPublicationReporting(uid); err != nil {
+		return result, fmt.Errorf("load publication reporting: %w", err)
+	}
+
+	return result, nil
 }
 
 func decodeAuthorsDepartments(publication *models.Publication) {
