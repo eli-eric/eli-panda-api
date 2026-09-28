@@ -5,8 +5,12 @@ import codebookModels "panda/apigateway/services/codebook-service/models"
 // WosPreviewResponse is the PANDA-owned response returned by the Web of Science
 // preview endpoint. It never persists a publication.
 type WosPreviewResponse struct {
-	Status                  string                  `json:"status"`
-	Doi                     string                  `json:"doi"`
+	Status string `json:"status"`
+	Doi    string `json:"doi"`
+	// WosUid and RecordUrl identify the upstream record for the dialog header
+	// (ELIPANDA-501/502 contract).
+	WosUid                  string                  `json:"wosUid,omitempty"`
+	RecordUrl               string                  `json:"recordUrl,omitempty"`
 	ExistingPublication     *WosExistingPublication `json:"existingPublication,omitempty"`
 	Values                  *WosImportValues        `json:"values,omitempty"`
 	Authors                 []WosImportAuthor       `json:"authors"`

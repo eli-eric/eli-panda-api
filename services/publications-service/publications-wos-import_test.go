@@ -230,7 +230,8 @@ func TestPreviewWosPublicationUsesOfficialStarterRequestParameters(t *testing.T)
 	assert.Equal(t, "found", preview.Status)
 	assert.Equal(t, requestedDOI, preview.Doi)
 	require.NotNil(t, preview.Values)
-	assert.Equal(t, requestedDOI, valueOrEmpty(preview.Values.Doi))
+	// Lookup key stays normalized; the form value keeps WoS's canonical casing.
+	assert.Equal(t, "10.17077/ETD.G638O927", valueOrEmpty(preview.Values.Doi))
 	assert.Equal(t, "Laser metadata", valueOrEmpty(preview.Values.Title))
 }
 
@@ -367,7 +368,7 @@ func TestPreviewWosPublicationMapsStarterFieldsAndAuthorMatches(t *testing.T) {
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &preview))
 	assert.Equal(t, "found", preview.Status)
 	require.NotNil(t, preview.Values)
-	assert.Equal(t, "10.1000/laser.1", valueOrEmpty(preview.Values.Doi))
+	assert.Equal(t, "10.1000/LASER.1", valueOrEmpty(preview.Values.Doi))
 	assert.Equal(t, "Laser-driven metadata", valueOrEmpty(preview.Values.Title))
 	assert.Equal(t, "WOS:000987654321", valueOrEmpty(preview.Values.WosNumber))
 	assert.Equal(t, "Journal of Laser Tests", valueOrEmpty(preview.Values.LongJournalTitle))

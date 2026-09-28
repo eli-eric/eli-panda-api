@@ -17,12 +17,16 @@ import (
 
 	codebookmodels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/publications-service/models"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
-	wosErrorInvalidDOI                 = "INVALID_DOI"
+	// Codes follow the ELIPANDA-501 contract; AMBIGUOUS/AUTHENTICATION/TIMEOUT
+	// are finer-grained refinements the dialog treats as upstream errors.
+	wosErrorInvalidDOI                 = "DOI_INVALID"
 	wosErrorNotConfigured              = "WOS_NOT_CONFIGURED"
-	wosErrorRecordNotFound             = "WOS_RECORD_NOT_FOUND"
+	wosErrorRecordNotFound             = "WOS_NOT_FOUND"
 	wosErrorRecordAmbiguous            = "WOS_RECORD_AMBIGUOUS"
 	wosErrorAuthenticationFailed       = "WOS_AUTHENTICATION_FAILED"
 	wosErrorRateLimited                = "WOS_RATE_LIMITED"
@@ -238,6 +242,8 @@ func (svc *PublicationsService) PreviewWosPublication(
 	return models.WosPreviewResponse{
 		Status:                  status,
 		Doi:                     doi,
+		WosUid:                  strings.TrimSpace(hit.WosUID),
+		RecordUrl:               strings.TrimSpace(hit.WosLinks.WosRecord),
 		ExistingPublication:     existingPublication,
 		Values:                  &values,
 		Authors:                 matchWosAuthors(hit.WosNames.WosAuthors, researchers),
@@ -445,8 +451,16 @@ func newPublicationAPIError(status int, code, message string, retryable bool) *p
 
 func mapWosImportValues(hit models.WosHit, doi string) (models.WosImportValues, []models.WosImportWarning) {
 	warnings := make([]models.WosImportWarning, 0)
+	// The lookup key is the normalized (lowercase) DOI; the form gets WoS's
+	// canonical casing when WoS supplies one (ELIPANDA-501 mapping table).
+	formDOI := doi
+	if canonical := strings.TrimSpace(hit.WosIdentifiers.WosDOI); canonical != "" {
+		if normalized, valid := normalizeDOI(canonical); valid && normalized == doi {
+			formDOI = canonical
+		}
+	}
 	values := models.WosImportValues{
-		Doi:              stringValue(doi),
+		Doi:              stringValue(formDOI),
 		Title:            stringValue(hit.WosTitle),
 		WosNumber:        stringValue(hit.WosUID),
 		LongJournalTitle: stringValue(hit.WosSource.WosSourceTitle),
@@ -756,10 +770,16 @@ func nameVariants(values ...string) map[string]struct{} {
 	return result
 }
 
+// normalizePersonName lowercases, strips punctuation and folds diacritics:
+// WoS publishes ASCII transliterations ("Dvorak, P") of names the register
+// stores natively ("Petr Dvořák").
 func normalizePersonName(value string) string {
 	var builder strings.Builder
 	lastWasSpace := true
-	for _, character := range strings.ToLower(strings.TrimSpace(value)) {
+	for _, character := range norm.NFD.String(strings.ToLower(strings.TrimSpace(value))) {
+		if unicode.Is(unicode.Mn, character) {
+			continue
+		}
 		if unicode.IsLetter(character) || unicode.IsDigit(character) {
 			builder.WriteRune(character)
 			lastWasSpace = false
