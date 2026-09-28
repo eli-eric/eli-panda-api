@@ -1,6 +1,8 @@
 package publicationsservice
 
 import (
+	"fmt"
+	"sync"
 	"testing"
 
 	"panda/apigateway/services/testsetup"
@@ -66,6 +68,89 @@ func TestAppendResearcherIDsMergesDeduplicatesAndPersists(t *testing.T) {
 	row, err = audited.Single()
 	require.NoError(t, err)
 	assert.Greater(t, row.Values[0].(int64), int64(0))
+}
+
+func storedResearcherIDs(t *testing.T, uid string) []string {
+	t.Helper()
+	record, err := testsetup.TestSession.Run(
+		"MATCH (r:Researcher {uid: $uid}) RETURN r.researcherIds AS ids",
+		map[string]interface{}{"uid": uid})
+	require.NoError(t, err)
+	row, err := record.Single()
+	require.NoError(t, err)
+	ids := []string{}
+	for _, id := range row.Values[0].([]interface{}) {
+		ids = append(ids, id.(string))
+	}
+	return ids
+}
+
+func TestAppendResearcherIDsKeepsConcurrentAppends(t *testing.T) {
+	uid := "eli501-concurrent-" + t.Name()
+	createResearcherIDsFixture(t, uid)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// Editors confirming different WoS authors of the same person at the same
+	// time must all be remembered; a read-merge-write keeps only the last one.
+	ids := make([]string, 20)
+	for index := range ids {
+		ids[index] = fmt.Sprintf("B%c-%04d-2020", 'A'+index, index)
+	}
+	var group sync.WaitGroup
+	errs := make(chan error, len(ids))
+	for _, id := range ids {
+		group.Add(1)
+		go func(id string) {
+			defer group.Done()
+			_, err := service.AppendResearcherIDs(uid, []string{id}, researcherIDsUserUID)
+			errs <- err
+		}(id)
+	}
+	group.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
+
+	assert.ElementsMatch(t, append([]string{"AAA-1111-2022"}, ids...), storedResearcherIDs(t, uid))
+}
+
+func TestAppendResearcherIDsKeepsExistingEntriesVerbatim(t *testing.T) {
+	uid := "eli501-legacy-" + t.Name()
+	createResearcherIDsFixture(t, uid)
+	// Values that predate the ResearcherID format (or its casing) are the
+	// editors' data; an unrelated append must neither drop nor rewrite them.
+	_, err := testsetup.TestSession.Run(
+		"MATCH (r:Researcher {uid: $uid}) SET r.researcherIds = ['aaa-1111-2022', 'legacy 42']",
+		map[string]interface{}{"uid": uid})
+	require.NoError(t, err)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// AAA-1111-2022 is already known under another casing, so only BBB is new.
+	result, err := service.AppendResearcherIDs(uid, []string{"AAA-1111-2022", "bbb-2222-2023"}, researcherIDsUserUID)
+	require.NoError(t, err)
+	expected := []string{"aaa-1111-2022", "legacy 42", "BBB-2222-2023"}
+	assert.Equal(t, expected, result.ResearcherIDs)
+	assert.Equal(t, expected, storedResearcherIDs(t, uid))
+}
+
+func TestUpdateResearcherPreservesIDsLearnedAfterFormLoad(t *testing.T) {
+	uid := "eli501-stale-put-" + t.Name()
+	createResearcherIDsFixture(t, uid)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	staleForm, err := service.GetResearcherByUid(uid)
+	require.NoError(t, err)
+	_, err = service.AppendResearcherIDs(uid, []string{"BBB-2222-2023"}, researcherIDsUserUID)
+	require.NoError(t, err)
+
+	staleForm.FirstName = "Janet"
+	staleForm.ResearcherIDs = nil
+	updated, err := service.UpdateResearcher(&staleForm, researcherIDsUserUID)
+	require.NoError(t, err)
+	assert.Equal(t, "Janet", updated.FirstName)
+	assert.Equal(t, []string{"AAA-1111-2022", "BBB-2222-2023"}, updated.ResearcherIDs)
+	assert.Equal(t, updated.ResearcherIDs, storedResearcherIDs(t, uid))
 }
 
 func TestAppendResearcherIDsUnknownResearcherFails(t *testing.T) {

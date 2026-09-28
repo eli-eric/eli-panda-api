@@ -1001,13 +1001,13 @@ func (h *PublicationsHandlers) UpdateResearcher() echo.HandlerFunc {
 
 		userUID := c.Get("userUID").(string)
 
-		_, err := h.PublicationsService.UpdateResearcher(researcher, userUID)
+		updated, err := h.PublicationsService.UpdateResearcher(researcher, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error updating researcher")
 			return echo.ErrInternalServerError
 		}
 
-		return c.JSON(200, researcher)
+		return c.JSON(200, updated)
 	}
 }
 

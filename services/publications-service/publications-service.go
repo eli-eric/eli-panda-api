@@ -760,6 +760,9 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 	if err != nil {
 		return result, err
 	}
+	// Learned WoS IDs are append-only through PATCH. A stale researcher form
+	// must not erase IDs confirmed by another editor after the form was loaded.
+	researcher.ResearcherIDs = oldResearcher.ResearcherIDs
 
 	updateQuery := helpers.DatabaseQuery{}
 	updateQuery.Parameters = make(map[string]interface{})
@@ -777,14 +780,17 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 		updateQuery,
 		historyLog)
 
-	return *researcher, err
+	if err != nil {
+		return result, err
+	}
+	return svc.GetResearcherByUid(researcher.Uid)
 }
 
 // AppendResearcherIDs remembers additional WoS ResearcherIDs for a researcher
 // (ELIPANDA-501). The import dialog offers this when an author was confirmed
 // by name, so the same author matches automatically by identifier next time.
-// Existing IDs are never duplicated, and the primary researcherId property is
-// left untouched.
+// Existing IDs are never duplicated or rewritten, and the primary researcherId
+// property is left untouched.
 func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []string, userUID string) (result models.Researcher, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
@@ -793,9 +799,9 @@ func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []
 		return result, err
 	}
 
-	merged := make([]string, 0, len(result.ResearcherIDs)+len(researcherIDs))
-	seen := make(map[string]struct{}, len(result.ResearcherIDs)+len(researcherIDs))
-	for _, id := range append(append([]string(nil), result.ResearcherIDs...), researcherIDs...) {
+	incoming := make([]string, 0, len(researcherIDs))
+	seen := make(map[string]struct{}, len(researcherIDs))
+	for _, id := range researcherIDs {
 		normalized, valid := normalizeResearcherID(id)
 		if !valid {
 			continue
@@ -804,19 +810,27 @@ func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []
 			continue
 		}
 		seen[normalized] = struct{}{}
-		merged = append(merged, normalized)
+		incoming = append(incoming, normalized)
 	}
 
+	// The merge happens in Cypher, after a first write has taken the node's
+	// write lock: under read-committed isolation, concurrent appends would
+	// otherwise read the same list and overwrite each other's additions.
+	// Stored entries are kept exactly as entered; an id is new only if no
+	// casing of it is stored yet.
 	query := helpers.DatabaseQuery{
 		Query: `
 			MATCH (n:Researcher {uid: $uid})
 			WHERE n.deleted IS NULL OR n.deleted = false
-			SET n.researcherIds = $researcherIds, n.updatedAt = datetime()
+			SET n.updatedAt = datetime()
+			WITH n
+			SET n.researcherIds = coalesce(n.researcherIds, []) +
+				[id IN $researcherIds WHERE NOT id IN [known IN coalesce(n.researcherIds, []) | toUpper(trim(known))]]
 			RETURN n.uid as uid`,
 		ReturnAlias: "uid",
 		Parameters: map[string]interface{}{
 			"uid":           uid,
-			"researcherIds": merged,
+			"researcherIds": incoming,
 		},
 	}
 	historyLog := helpers.HistoryLogQuery(uid, "UPDATE", userUID)
@@ -826,8 +840,7 @@ func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []
 		return result, err
 	}
 
-	result.ResearcherIDs = merged
-	return result, nil
+	return svc.GetResearcherByUid(uid)
 }
 
 func (svc *PublicationsService) DeleteResearcher(uid string, userUID string) (err error) {
