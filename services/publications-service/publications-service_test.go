@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"panda/apigateway/services/testsetup"
 )
@@ -607,11 +608,15 @@ func TestDeleteGrant(t *testing.T) {
 	userUid := "test-user-" + uuid.New().String()
 
 	// Insert test data
-	_, err := testsetup.TestSession.Run(
+	fixture, err := testsetup.TestSession.Run(
 		`CREATE (g:Grant {uid: $uid, code: "DELETE-001", name: "To Delete Grant"}) RETURN g`,
 		map[string]interface{}{"uid": testUid},
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	// An auto-commit CREATE is not visible to the service's separate session
+	// until its result is consumed.
+	_, err = fixture.Consume()
+	require.NoError(t, err)
 
 	// Run the actual test (soft delete)
 	err = service.DeleteGrant(testUid, userUid)
@@ -620,14 +625,14 @@ func TestDeleteGrant(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify soft delete (deleted flag should be true)
-	verifyResult, _ := testsetup.TestSession.Run(
+	verifyResult, err := testsetup.TestSession.Run(
 		`MATCH (g:Grant {uid: $uid}) RETURN g.deleted as deleted`,
 		map[string]interface{}{"uid": testUid},
 	)
-	if verifyResult.Next() {
-		deleted, _ := verifyResult.Record().Get("deleted")
-		assert.Equal(t, true, deleted)
-	}
+	require.NoError(t, err)
+	require.True(t, verifyResult.Next(), "fixture must still exist after soft delete")
+	deleted, _ := verifyResult.Record().Get("deleted")
+	assert.Equal(t, true, deleted)
 
 	// Clean up
 	_, err = testsetup.TestSession.Run(`MATCH (g:Grant {uid: $uid}) DETACH DELETE g`, map[string]interface{}{"uid": testUid})
