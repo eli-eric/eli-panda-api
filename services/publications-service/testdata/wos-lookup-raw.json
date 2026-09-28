@@ -1,0 +1,37 @@
+{
+  "metadata": { "total": 1, "page": 1, "limit": 50 },
+  "hits": [
+    {
+      "uid": "WOS:001164928200001",
+      "title": "Anomalous absorption of relativistic laser pulses in near-critical plasmas",
+      "types": ["Article"],
+      "sourceTypes": ["Article"],
+      "source": {
+        "sourceTitle": "PHYSICAL REVIEW RESEARCH",
+        "publishYear": 2024,
+        "publishMonth": "FEB",
+        "volume": "6",
+        "issue": "1-2",
+        "articleNumber": "013126",
+        "pages": { "range": "", "begin": "", "end": "", "count": 12 }
+      },
+      "names": {
+        "authors": [
+          { "displayName": "Novak, Jan", "wosStandard": "Novak, J", "researcherId": "AAB-1234-2020" },
+          { "displayName": "Dvorak, Petr", "wosStandard": "Dvorak, P", "researcherId": "AAC-5678-2021" },
+          { "displayName": "Svoboda, Martin", "wosStandard": "Svoboda, M" },
+          { "displayName": "Wang, Li", "wosStandard": "Wang, L" }
+        ]
+      },
+      "citations": [{ "db": "WOS", "count": 3 }],
+      "identifiers": {
+        "doi": "10.1103/PhysRevResearch.6.013126",
+        "issn": "2643-1564",
+        "eissn": "2643-1564",
+        "isbn": "978-0-00-000000-2"
+      },
+      "keywords": { "authorKeywords": ["laser-plasma interaction", "relativistic optics"] },
+      "links": { "record": "https://www.webofscience.com/wos/woscc/full-record/WOS:001164928200001" }
+    }
+  ]
+}
