@@ -179,7 +179,9 @@ func (svc *PublicationsService) PreviewWosPublication(
 	facilityCode string,
 ) (models.WosPreviewResponse, error) {
 	doi, valid := normalizeDOI(rawDOI)
-	if !valid {
+	// The Starter query wraps the DOI in quotes. Reject input that could end
+	// that quoted value, and bound the upstream query before any DB or HTTP work.
+	if !valid || len(doi) > 2048 || strings.ContainsAny(doi, "\"\\") {
 		return models.WosPreviewResponse{}, newPublicationAPIError(
 			http.StatusBadRequest,
 			wosErrorInvalidDOI,
@@ -243,7 +245,7 @@ func (svc *PublicationsService) PreviewWosPublication(
 		Status:                  status,
 		Doi:                     doi,
 		WosUid:                  strings.TrimSpace(hit.WosUID),
-		RecordUrl:               strings.TrimSpace(hit.WosLinks.WosRecord),
+		RecordUrl:               httpURLOrEmpty(hit.WosLinks.WosRecord),
 		ExistingPublication:     existingPublication,
 		Values:                  &values,
 		Authors:                 matchWosAuthors(hit.WosNames.WosAuthors, researchers),
@@ -331,7 +333,9 @@ func (svc *PublicationsService) fetchWosResponse(
 	}
 	query := endpoint.Query()
 	query.Set("db", "WOS")
-	query.Set("q", "DO="+doi)
+	// Quoted as ELIPANDA-501 specifies: SICI-style DOIs contain parentheses,
+	// which the Starter query language otherwise reads as grouping.
+	query.Set("q", `DO=("`+doi+`")`)
 	query.Set("limit", "50")
 	query.Set("page", "1")
 	endpoint.RawQuery = query.Encode()
@@ -387,6 +391,18 @@ func (svc *PublicationsService) fetchWosResponse(
 	}
 
 	return result, nil
+}
+
+// httpURLOrEmpty keeps an upstream link only when it is an absolute http(s)
+// URL. The lookup dialog renders it as a clickable href, where a javascript:
+// or data: URL would run on click.
+func httpURLOrEmpty(raw string) string {
+	value := strings.TrimSpace(raw)
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Hostname() == "" || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return ""
+	}
+	return value
 }
 
 func newWosHTTPClient() *http.Client {

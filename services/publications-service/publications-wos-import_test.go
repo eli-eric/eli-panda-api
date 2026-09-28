@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -106,7 +107,7 @@ func TestPreviewWosPublicationNormalizesCommonDOIForms(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var requestedDOI string
 			upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-				requestedDOI = strings.TrimPrefix(request.URL.Query().Get("q"), "DO=")
+				requestedDOI = requestedWosDOI(request)
 				writeWosResponse(t, response, `{
 					"metadata":{"total":1,"page":1,"limit":50},
 					"hits":[{
@@ -199,7 +200,7 @@ func TestPreviewWosPublicationUsesOfficialStarterRequestParameters(t *testing.T)
 		assert.Equal(t, http.MethodGet, request.Method)
 		assert.Equal(t, "/documents", request.URL.Path)
 		assert.Equal(t, "WOS", request.URL.Query().Get("db"))
-		assert.Equal(t, "DO="+requestedDOI, request.URL.Query().Get("q"))
+		assert.Equal(t, `DO=("`+requestedDOI+`")`, request.URL.Query().Get("q"))
 		assert.Empty(t, request.URL.Query().Get("detail"), "full detail is the default and should be omitted")
 		assert.Equal(t, "1", request.URL.Query().Get("page"))
 		assert.Equal(t, "50", request.URL.Query().Get("limit"))
@@ -665,6 +666,13 @@ func assertPublicationAPIError(
 	assert.Equal(t, expectedRetryable, apiError.Retryable)
 }
 
+// requestedWosDOI reads the DOI back out of the Starter query, which
+// ELIPANDA-501 pins as DO=("<doi>").
+func requestedWosDOI(request *http.Request) string {
+	query := request.URL.Query().Get("q")
+	return strings.TrimSuffix(strings.TrimPrefix(query, `DO=("`), `")`)
+}
+
 func writeWosResponse(t *testing.T, response http.ResponseWriter, body string) {
 	t.Helper()
 	response.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -692,4 +700,65 @@ func intValueOrZero(value *int) int {
 		return 0
 	}
 	return *value
+}
+
+func TestPreviewWosPublicationQuotesDOIsWithParentheses(t *testing.T) {
+	// SICI-style DOIs carry parentheses, which the Starter query language
+	// reads as grouping unless the value is quoted.
+	const doi = "10.1016/s0014-5793(01)03313-0"
+	var query string
+	upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		query = request.URL.Query().Get("q")
+		writeWosResponse(t, response, wosSingleHitBody("WOS:SICI", doi, "Parenthesised DOI"))
+	}))
+	defer upstream.Close()
+
+	preview, err := newWosTestService(upstream.URL, &stubWosImportRepository{}).
+		PreviewWosPublication(context.Background(), doi, "", "B")
+	require.NoError(t, err)
+	assert.Equal(t, `DO=("10.1016/s0014-5793(01)03313-0")`, query)
+	assert.Equal(t, "found", preview.Status)
+}
+
+func TestPreviewWosPublicationRejectsQueryBreakingDOIs(t *testing.T) {
+	service := NewPublicationsService(nil, "", "")
+	for _, doi := range []string{
+		"10.1000/quoted\"doi",
+		"10.1000/slashed\\doi",
+		"10.1000/" + strings.Repeat("a", 2041),
+	} {
+		t.Run(doi[:min(len(doi), 40)], func(t *testing.T) {
+			_, err := service.PreviewWosPublication(context.Background(), doi, "", "B")
+			apiErr, ok := err.(*publicationAPIError)
+			require.True(t, ok, "expected a DOI validation error, got %v", err)
+			assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+			assert.Equal(t, wosErrorInvalidDOI, apiErr.Code)
+		})
+	}
+}
+
+func TestPreviewWosPublicationDropsNonHTTPRecordLinks(t *testing.T) {
+	// The record link is rendered as a clickable href; only http(s) may pass.
+	for _, link := range []string{"javascript:alert(document.domain)", "data:text/html,<b>x</b>", "//evil.example/x", "not a url", "https://user:pass@www.webofscience.com/record"} {
+		t.Run(link, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				writeWosResponse(t, response, `{
+					"metadata":{"total":1,"page":1,"limit":50},
+					"hits":[{
+						"uid":"WOS:LINK",
+						"title":"Record link",
+						"identifiers":{"doi":"10.1000/link.1"},
+						"links":{"record":`+strconv.Quote(link)+`}
+					}]
+				}`)
+			}))
+			defer upstream.Close()
+
+			preview, err := newWosTestService(upstream.URL, &stubWosImportRepository{}).
+				PreviewWosPublication(context.Background(), "10.1000/link.1", "", "B")
+			require.NoError(t, err)
+			assert.Empty(t, preview.RecordUrl)
+			assert.Equal(t, "WOS:LINK", preview.WosUid)
+		})
+	}
 }
