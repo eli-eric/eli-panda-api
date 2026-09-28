@@ -448,17 +448,17 @@ definitions:
         type: integer
       proceedings:
         type: integer
-      q10Percent:
-        type: integer
-      q10To25:
-        type: integer
-      q1Unsplit:
-        type: integer
       q2:
         type: integer
       q3:
         type: integer
       q4:
+        type: integer
+      q10Percent:
+        type: integer
+      q10To25:
+        type: integer
+      q1Unsplit:
         type: integer
       total:
         type: integer
@@ -2225,6 +2225,8 @@ definitions:
         items:
           type: string
         type: array
+      recordUrl:
+        type: string
       status:
         type: string
       unavailableFields:
@@ -2241,6 +2243,11 @@ definitions:
         items:
           $ref: '#/definitions/models.WosImportWarning'
         type: array
+      wosUid:
+        description: |-
+          WosUid and RecordUrl identify the upstream record for the dialog header
+          (ELIPANDA-501/502 contract).
+        type: string
     type: object
   models.Zone:
     properties:

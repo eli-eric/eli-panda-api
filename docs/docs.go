@@ -10714,6 +10714,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "recordUrl": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -10732,6 +10735,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/models.WosImportWarning"
                     }
+                },
+                "wosUid": {
+                    "description": "WosUid and RecordUrl identify the upstream record for the dialog header\n(ELIPANDA-501/502 contract).",
+                    "type": "string"
                 }
             }
         },
