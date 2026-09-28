@@ -136,9 +136,10 @@ func ApplyPublicationFilters(query *helpers.DatabaseQuery, filtering *[]helpers.
 
 	// Departments are denormalized into n.authorsDepartmentsArray as
 	// "uid||name||count" entries (no HAS_DEPARTMENT relationship exists yet),
-	// so a department filter is a prefix match over the array.
+	// so a department filter matches the entry's uid up to its "||" separator
+	// (a bare prefix would also match every uid that merely starts with it).
 	if deptUids := filterUidList(filtering, "department"); len(deptUids) > 0 {
-		query.Query += " AND ANY(x IN coalesce(n.authorsDepartmentsArray, []) WHERE ANY(d IN $filterDepartment WHERE x STARTS WITH d))"
+		query.Query += " AND ANY(x IN coalesce(n.authorsDepartmentsArray, []) WHERE ANY(d IN $filterDepartment WHERE x STARTS WITH d + '||'))"
 		query.Parameters["filterDepartment"] = deptUids
 	}
 }
