@@ -97,7 +97,9 @@ func TestEnableUser_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"userUID":"test-user-uid","isEnabled":true}`, rec.Body.String())
-	assert.Equal(t, []string{"test-user-uid"}, validator.invalidated)
+	// The handler invalidates before and after the write (70989df) so no
+	// stale enabled-state can survive the update.
+	assert.Equal(t, []string{"test-user-uid", "test-user-uid"}, validator.invalidated)
 }
 
 func TestDisableUser_Success(t *testing.T) {
@@ -117,7 +119,7 @@ func TestDisableUser_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.JSONEq(t, `{"userUID":"test-user-uid","isEnabled":false}`, rec.Body.String())
-	assert.Equal(t, []string{"test-user-uid"}, validator.invalidated)
+	assert.Equal(t, []string{"test-user-uid", "test-user-uid"}, validator.invalidated)
 }
 
 func TestEnableUser_ServiceError(t *testing.T) {
