@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 
@@ -34,7 +33,7 @@ func TestWosLookupServesRepeatDOIFromCache(t *testing.T) {
 	upstreamCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 		upstreamCalls++
-		doi := strings.TrimPrefix(request.URL.Query().Get("q"), "DO=")
+		doi := requestedWosDOI(request)
 		writeWosResponse(t, response, wosSingleHitBody("WOS:CACHED:"+doi, doi, "Cached record"))
 	}))
 	defer upstream.Close()
@@ -98,6 +97,9 @@ func TestWosLookupCacheExpiresAndStaysBounded(t *testing.T) {
 	cache.now = func() time.Time { return now }
 
 	cache.store("a", models.WosHit{WosUID: "WOS:A"})
+	// Distinct instants: entries expiring together would tie, and map
+	// iteration order would then pick the evicted one at random.
+	now = now.Add(time.Second)
 	cache.store("b", models.WosHit{WosUID: "WOS:B"})
 
 	now = now.Add(time.Minute)
