@@ -236,6 +236,13 @@ func TestDepartmentFilterMatchesDenormalizedArrayPrefix(t *testing.T) {
 		withIsolation(helpers.ColumnFilter{Id: "department", Value: "ptics"}))
 	require.NoError(t, err)
 	assert.Empty(t, result)
+
+	// Nor does a uid that is a strict prefix of another department's uid: the
+	// match ends at the "||" separator, so "…-dept-" is not "…-dept-<name>".
+	result, _, err = service.GetPublications("", 1, 100, nil,
+		withIsolation(helpers.ColumnFilter{Id: "department", Value: "eli503-dept-"}))
+	require.NoError(t, err)
+	assert.Empty(t, result)
 }
 
 func TestFiltersCombineWithAndAndCountMatchesData(t *testing.T) {
