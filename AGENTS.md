@@ -140,9 +140,9 @@ Swagger UI (local): `http://localhost:50000/swagger/index.html`
 - New migration: `db/neo4j/create-new-migration.sh <name>` (creates the up/down pair).
 - Manual up/down: `db/neo4j/migrate-up.sh` / `migrate-down.sh`.
 - Multi-statement Cypher is supported.
-- **Do not** put leading `//` comments at the very top of migration files — the
-  `golang-migrate` Neo4j driver mis-parses them. Inline `//` comments inside a statement
-  are fine.
+- The Neo4j migration driver splits files at every `;`, even inside comments
+  and quoted strings. Keep semicolons only as statement separators; leading
+  `//` comments are fine when the resulting chunk contains a Cypher statement.
 - Rename refactors that need APOC: use `apoc.refactor.rename.*` procedures.
 - Dirty migration recovery: connect to Neo4j and manually `MATCH (n:SchemaMigration)
   SET n.dirty = false, n.version = <last-good-version>` after fixing the offending
