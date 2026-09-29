@@ -39,6 +39,7 @@ type IPublicationsHandlers interface {
 	CreatePublication() echo.HandlerFunc
 	GetPublication() echo.HandlerFunc
 	GetPublications() echo.HandlerFunc
+	GetPublicationFilterOptions() echo.HandlerFunc
 	UpdatePublication() echo.HandlerFunc
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
@@ -170,6 +171,7 @@ func (h *PublicationsHandlers) GetPublication() echo.HandlerFunc {
 // @Router /v1/publications [get]
 // @Param search query string false "search"
 // @Param pagination query string false "pagination"
+// @Param columnFilter query string false "JSON array of {id,value} column filters. Text ids (title, code, doi, allAuthors, eliAuthors, keywords, longJournalTitle, shortJournalTitle, abstract, citeAs, wosNumber, issn, eissn, eidScopus, oecdFord, note, otherGrants, webLink, publisher, publishPlace, isbn, bookTitle, editionVolume, proceedingsIsbn, conferencePlace, pages) match case-insensitive substring; list ids (yearOfPublication, eliPublication, quartil, quartilBasis, language) take string arrays; range ids (impactFactor, allAuthorsCount, eliAuthorsCount, pagesCount, bookPagesCount, volume, issue) take {min,max}; date range ids (dateOfPublication, conferenceDate) take {min,max} ISO strings; codebook ids (mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb, grants, eliResearchers, department) take a codebook object or array of uids"
 func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 
 	return func(c echo.Context) error {
@@ -200,6 +202,29 @@ func (h *PublicationsHandlers) GetPublications() echo.HandlerFunc {
 		}
 
 		return c.JSON(200, paginationResult)
+	}
+}
+
+// GetPublicationFilterOptions Get publication filter options godoc
+// @Summary Get publications filter options
+// @Description Distinct values (years, quartils, quartil bases, languages, ELI flags) and numeric/date bounds for the publications filter sheet.
+// @Tags Publications
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} models.PublicationFilterOptions
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publications/filter-options [get]
+func (h *PublicationsHandlers) GetPublicationFilterOptions() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		options, err := h.PublicationsService.GetPublicationFilterOptions()
+		if err != nil {
+			log.Error().Err(err).Msg("Error getting publication filter options")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, options)
 	}
 }
 

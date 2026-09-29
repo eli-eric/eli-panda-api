@@ -448,6 +448,10 @@ definitions:
         type: integer
       proceedings:
         type: integer
+      q10Percent:
+        type: integer
+      q10To25:
+        type: integer
       q1Unsplit:
         type: integer
       q2:
@@ -455,10 +459,6 @@ definitions:
       q3:
         type: integer
       q4:
-        type: integer
-      q10Percent:
-        type: integer
-      q10To25:
         type: integer
       total:
         type: integer
@@ -667,6 +667,20 @@ definitions:
         type: string
       url:
         type: string
+    type: object
+  models.FilterStringRange:
+    properties:
+      max:
+        type: string
+      min:
+        type: string
+    type: object
+  models.FilterValueRange:
+    properties:
+      max:
+        type: number
+      min:
+        type: number
     type: object
   models.GlobalSearchResult:
     properties:
@@ -1235,6 +1249,37 @@ definitions:
         type: string
       retryable:
         type: boolean
+    type: object
+  models.PublicationFilterOptions:
+    properties:
+      dateBounds:
+        additionalProperties:
+          $ref: '#/definitions/models.FilterStringRange'
+        type: object
+      eliPublications:
+        items:
+          type: string
+        type: array
+      languages:
+        items:
+          type: string
+        type: array
+      quartilBases:
+        items:
+          type: string
+        type: array
+      quartils:
+        items:
+          type: string
+        type: array
+      ranges:
+        additionalProperties:
+          $ref: '#/definitions/models.FilterValueRange'
+        type: object
+      years:
+        items:
+          type: string
+        type: array
     type: object
   models.PublicationReporting:
     properties:
@@ -4784,6 +4829,20 @@ paths:
         in: query
         name: pagination
         type: string
+      - description: JSON array of {id,value} column filters. Text ids (title, code,
+          doi, allAuthors, eliAuthors, keywords, longJournalTitle, shortJournalTitle,
+          abstract, citeAs, wosNumber, issn, eissn, eidScopus, oecdFord, note, otherGrants,
+          webLink, publisher, publishPlace, isbn, bookTitle, editionVolume, proceedingsIsbn,
+          conferencePlace, pages) match case-insensitive substring; list ids (yearOfPublication,
+          eliPublication, quartil, quartilBasis, language) take string arrays; range
+          ids (impactFactor, allAuthorsCount, eliAuthorsCount, pagesCount, bookPagesCount,
+          volume, issue) take {min,max}; date range ids (dateOfPublication, conferenceDate)
+          take {min,max} ISO strings; codebook ids (mediaTypeCb, openAccessType, publishingCountry,
+          userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb,
+          grants, eliResearchers, department) take a codebook object or array of uids
+        in: query
+        name: columnFilter
+        type: string
       produces:
       - application/json
       responses:
@@ -4963,6 +5022,24 @@ paths:
       security:
       - BearerAuth: []
       summary: Validate publications for RIV export
+      tags:
+      - Publications
+  /v1/publications/filter-options:
+    get:
+      description: Distinct values (years, quartils, quartil bases, languages, ELI
+        flags) and numeric/date bounds for the publications filter sheet.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PublicationFilterOptions'
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Get publications filter options
       tags:
       - Publications
   /v1/publications/wos-preview:

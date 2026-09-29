@@ -3829,6 +3829,12 @@ const docTemplate = `{
                         "description": "pagination",
                         "name": "pagination",
                         "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "JSON array of {id,value} column filters. Text ids (title, code, doi, allAuthors, eliAuthors, keywords, longJournalTitle, shortJournalTitle, abstract, citeAs, wosNumber, issn, eissn, eidScopus, oecdFord, note, otherGrants, webLink, publisher, publishPlace, isbn, bookTitle, editionVolume, proceedingsIsbn, conferencePlace, pages) match case-insensitive substring; list ids (yearOfPublication, eliPublication, quartil, quartilBasis, language) take string arrays; range ids (impactFactor, allAuthorsCount, eliAuthorsCount, pagesCount, bookPagesCount, volume, issue) take {min,max}; date range ids (dateOfPublication, conferenceDate) take {min,max} ISO strings; codebook ids (mediaTypeCb, openAccessType, publishingCountry, userCall, userExperimentCb, experimentalSystemCb, publishFormatCb, conferenceScopeCb, grants, eliResearchers, department) take a codebook object or array of uids",
+                        "name": "columnFilter",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -4082,6 +4088,34 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/publications/filter-options": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Distinct values (years, quartils, quartil bases, languages, ELI flags) and numeric/date bounds for the publications filter sheet.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Publications"
+                ],
+                "summary": "Get publications filter options",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.PublicationFilterOptions"
+                        }
                     },
                     "500": {
                         "description": "Internal Server Error"
@@ -8344,6 +8378,28 @@ const docTemplate = `{
                 }
             }
         },
+        "models.FilterStringRange": {
+            "type": "object",
+            "properties": {
+                "max": {
+                    "type": "string"
+                },
+                "min": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.FilterValueRange": {
+            "type": "object",
+            "properties": {
+                "max": {
+                    "type": "number"
+                },
+                "min": {
+                    "type": "number"
+                }
+            }
+        },
         "models.GlobalSearchResult": {
             "type": "object",
             "properties": {
@@ -9184,6 +9240,53 @@ const docTemplate = `{
                 },
                 "retryable": {
                     "type": "boolean"
+                }
+            }
+        },
+        "models.PublicationFilterOptions": {
+            "type": "object",
+            "properties": {
+                "dateBounds": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.FilterStringRange"
+                    }
+                },
+                "eliPublications": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "languages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "quartilBases": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "quartils": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "ranges": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/models.FilterValueRange"
+                    }
+                },
+                "years": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
