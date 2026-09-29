@@ -448,17 +448,17 @@ definitions:
         type: integer
       proceedings:
         type: integer
-      q10Percent:
-        type: integer
-      q10To25:
-        type: integer
-      q1Unsplit:
-        type: integer
       q2:
         type: integer
       q3:
         type: integer
       q4:
+        type: integer
+      q10Percent:
+        type: integer
+      q10To25:
+        type: integer
+      q1Unsplit:
         type: integer
       total:
         type: integer
@@ -1423,6 +1423,14 @@ definitions:
       researcherId:
         description: researcherId is the ResearcherID of the researcher
         type: string
+      researcherIds:
+        description: |-
+          ResearcherIDs holds every WoS ResearcherID known for this person — most
+          scientists own several (ELIPANDA-501). researcherId above stays the
+          primary for backwards compatibility; matching consults both.
+        items:
+          type: string
+        type: array
       scopusId:
         description: scopusId is the Scopus identifier of the researcher
         type: string
@@ -1432,6 +1440,13 @@ definitions:
       updatedAt:
         description: updatedAt is the time when the researcher was last updated
         type: string
+    type: object
+  models.ResearcherIdsRequest:
+    properties:
+      researcherIds:
+        items:
+          type: string
+        type: array
     type: object
   models.ResearcherRef:
     properties:
@@ -2100,50 +2115,25 @@ definitions:
       userUID:
         type: string
     type: object
-  models.WosAPIResponse:
-    properties:
-      hits:
-        items:
-          $ref: '#/definitions/models.WosHit'
-        type: array
-      metadata:
-        $ref: '#/definitions/models.WosMetadata'
-    type: object
-  models.WosAuthor:
-    properties:
-      displayName:
-        type: string
-      orcid:
-        description: |-
-          Orcid is not part of the WoS Starter payload. Providers that do supply a
-          persistent author identifier (Crossref) populate it so matching can key on
-          an identifier instead of falling back to a name.
-        type: string
-      researcherId:
-        type: string
-      wosStandard:
-        type: string
-    type: object
   models.WosAuthorMatch:
     properties:
       candidates:
         items:
           $ref: '#/definitions/models.ResearcherRef'
         type: array
+      confidence:
+        description: |-
+          Confidence is the stable dialog contract: EXACT_ID | NAME | AMBIGUOUS |
+          NONE. Kind stays the internal provenance (researcher-id, orcid, name...).
+        type: string
       kind:
         type: string
-    type: object
-  models.WosCitation:
-    properties:
-      count:
-        type: integer
-      db:
-        type: string
-    type: object
-  models.WosEditor:
-    properties:
-      displayName:
-        type: string
+      knownResearcherId:
+        description: |-
+          KnownResearcherId is true when the author's WoS ResearcherID is already
+          registered on the matched researcher; false invites the dialog to offer
+          remembering it (ELIPANDA-501).
+        type: boolean
     type: object
   models.WosExistingPublication:
     properties:
@@ -2154,48 +2144,6 @@ definitions:
       title:
         type: string
       uid:
-        type: string
-    type: object
-  models.WosHit:
-    properties:
-      citations:
-        items:
-          $ref: '#/definitions/models.WosCitation'
-        type: array
-      identifiers:
-        $ref: '#/definitions/models.WosIdentifiers'
-      keywords:
-        $ref: '#/definitions/models.WosKeywords'
-      links:
-        $ref: '#/definitions/models.WosLinks'
-      names:
-        $ref: '#/definitions/models.WosNames'
-      source:
-        $ref: '#/definitions/models.WosSource'
-      sourceTypes:
-        items:
-          type: string
-        type: array
-      title:
-        type: string
-      types:
-        items:
-          type: string
-        type: array
-      uid:
-        type: string
-    type: object
-  models.WosIdentifiers:
-    properties:
-      doi:
-        type: string
-      eisbn:
-        type: string
-      eissn:
-        type: string
-      isbn:
-        type: string
-      issn:
         type: string
     type: object
   models.WosImportAuthor:
@@ -2252,47 +2200,15 @@ definitions:
       yearOfPublication:
         type: string
     type: object
-  models.WosKeywords:
+  models.WosImportWarning:
     properties:
-      authorKeywords:
-        items:
-          type: string
-        type: array
-    type: object
-  models.WosLinks:
-    properties:
-      record:
+      code:
         type: string
-    type: object
-  models.WosMetadata:
-    properties:
-      limit:
-        type: integer
-      page:
-        type: integer
-      total:
-        type: integer
-    type: object
-  models.WosNames:
-    properties:
-      authors:
-        items:
-          $ref: '#/definitions/models.WosAuthor'
-        type: array
-      bookEditors:
-        items:
-          $ref: '#/definitions/models.WosEditor'
-        type: array
-    type: object
-  models.WosPages:
-    properties:
-      begin:
+      field:
         type: string
-      count:
-        type: integer
-      end:
+      message:
         type: string
-      range:
+      raw:
         type: string
     type: object
   models.WosPreviewResponse:
@@ -2309,6 +2225,8 @@ definitions:
         items:
           type: string
         type: array
+      recordUrl:
+        type: string
       status:
         type: string
       unavailableFields:
@@ -2317,22 +2235,18 @@ definitions:
         type: array
       values:
         $ref: '#/definitions/models.WosImportValues'
-    type: object
-  models.WosSource:
-    properties:
-      articleNumber:
-        type: string
-      issue:
-        type: string
-      pages:
-        $ref: '#/definitions/models.WosPages'
-      publishMonth:
-        type: string
-      publishYear:
-        type: integer
-      sourceTitle:
-        type: string
-      volume:
+      warnings:
+        description: |-
+          Warnings describe degraded source values (non-numeric volume, missing
+          day, ...) so the dialog can explain an omitted field instead of
+          silently dropping it (ELIPANDA-501).
+        items:
+          $ref: '#/definitions/models.WosImportWarning'
+        type: array
+      wosUid:
+        description: |-
+          WosUid and RecordUrl identify the upstream record for the dialog header
+          (ELIPANDA-501/502 contract).
         type: string
     type: object
   models.Zone:
@@ -4779,44 +4693,6 @@ paths:
       summary: Update publication
       tags:
       - Publications
-  /v1/publication/wos/{doi}:
-    get:
-      deprecated: true
-      description: Get WOS data by DOI
-      parameters:
-      - description: doi
-        in: path
-        name: doi
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/models.WosAPIResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/models.PublicationAPIError'
-        "502":
-          description: Bad Gateway
-          schema:
-            $ref: '#/definitions/models.PublicationAPIError'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/models.PublicationAPIError'
-        "504":
-          description: Gateway Timeout
-          schema:
-            $ref: '#/definitions/models.PublicationAPIError'
-      security:
-      - BearerAuth: []
-      summary: Get WOS data by DOI
-      tags:
-      - Publications
   /v1/publications:
     get:
       description: Get publications
@@ -5042,10 +4918,11 @@ paths:
       summary: Get publications filter options
       tags:
       - Publications
-  /v1/publications/wos-preview:
+  /v1/publications/wos/lookup:
     get:
-      description: Returns PANDA publication field candidates and researcher matches
-        without saving a publication
+      description: |-
+        Returns PANDA publication field candidates and researcher matches without saving a publication
+        A DOI already present in PANDA still returns its full preview plus an existingPublication banner payload.
       parameters:
       - description: DOI
         in: query
@@ -5093,7 +4970,7 @@ paths:
             $ref: '#/definitions/models.PublicationAPIError'
       security:
       - BearerAuth: []
-      summary: Preview Web of Science publication metadata
+      summary: Look up Web of Science publication metadata for a DOI
       tags:
       - Publications
   /v1/researcher:
@@ -5199,6 +5076,43 @@ paths:
       security:
       - BearerAuth: []
       summary: Update researcher
+      tags:
+      - Researchers
+  /v1/researcher/{uid}/researcher-ids:
+    patch:
+      consumes:
+      - application/json
+      description: Appends WoS ResearcherIDs to a researcher's identifier list so
+        future Web of Science imports match automatically (ELIPANDA-501). Duplicates
+        are ignored.
+      parameters:
+      - description: uid
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: ResearcherIDs to remember
+        in: body
+        name: researcherIds
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResearcherIdsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Researcher'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+        "500":
+          description: Internal Server Error
+      security:
+      - BearerAuth: []
+      summary: Remember ResearcherIDs for a researcher
       tags:
       - Researchers
   /v1/researchers:

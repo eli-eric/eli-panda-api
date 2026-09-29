@@ -22,6 +22,9 @@ type PublicationsService struct {
 	wosStarterApiKey string
 	wosHTTPClient    *http.Client
 	wosRepository    wosImportRepository
+	// wosCache deduplicates upstream Clarivate calls per DOI (quota guard,
+	// ELIPANDA-501).
+	wosCache *wosLookupCache
 }
 
 type IPublicationsService interface {
@@ -31,7 +34,7 @@ type IPublicationsService interface {
 	DeletePublication(uid string, userUID string) (err error)
 	GetPublications(searchText string, page, pageSize int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) (result []models.Publication, totalCount int64, err error)
 	GetPublicationFilterOptions() (result models.PublicationFilterOptions, err error)
-	GetPublicationByDoiFromWOS(doi string) (models.WosAPIResponse, error)
+	AppendResearcherIDs(uid string, researcherIDs []string, userUID string) (models.Researcher, error)
 	PreviewWosPublication(ctx context.Context, doi, currentPublicationUID, facilityCode string) (models.WosPreviewResponse, error)
 	// Researcher methods
 	GetResearchers(searchText string, page, pageSize int, sorting *[]helpers.Sorting) (result []models.Researcher, totalCount int64, err error)
@@ -66,6 +69,7 @@ func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string)
 		wosStarterApiUrl: wosSAPIURL,
 		wosStarterApiKey: wosSAPIKEY,
 		wosHTTPClient:    newWosHTTPClient(),
+		wosCache:         newWosLookupCache(wosCacheTTL, wosCacheMaxEntries),
 	}
 	if driver != nil {
 		service.wosRepository = &neo4jWosImportRepository{driver: driver}
@@ -559,19 +563,6 @@ func mapPublicationSortField(fieldID string) (string, bool) {
 	return mapped, ok
 }
 
-func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result models.WosAPIResponse, err error) {
-	normalizedDOI, valid := normalizeDOI(doi)
-	if !valid {
-		return result, newPublicationAPIError(
-			http.StatusBadRequest,
-			wosErrorInvalidDOI,
-			"Enter a valid DOI.",
-			false,
-		)
-	}
-	return svc.fetchWosResponse(context.Background(), normalizedDOI)
-}
-
 // Researcher methods
 
 func (svc *PublicationsService) GetResearcherByUid(uid string) (result models.Researcher, err error) {
@@ -769,6 +760,9 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 	if err != nil {
 		return result, err
 	}
+	// Learned WoS IDs are append-only through PATCH. A stale researcher form
+	// must not erase IDs confirmed by another editor after the form was loaded.
+	researcher.ResearcherIDs = oldResearcher.ResearcherIDs
 
 	updateQuery := helpers.DatabaseQuery{}
 	updateQuery.Parameters = make(map[string]interface{})
@@ -786,7 +780,67 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 		updateQuery,
 		historyLog)
 
-	return *researcher, err
+	if err != nil {
+		return result, err
+	}
+	return svc.GetResearcherByUid(researcher.Uid)
+}
+
+// AppendResearcherIDs remembers additional WoS ResearcherIDs for a researcher
+// (ELIPANDA-501). The import dialog offers this when an author was confirmed
+// by name, so the same author matches automatically by identifier next time.
+// Existing IDs are never duplicated or rewritten, and the primary researcherId
+// property is left untouched.
+func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []string, userUID string) (result models.Researcher, err error) {
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+
+	result, err = svc.GetResearcherByUid(uid)
+	if err != nil {
+		return result, err
+	}
+
+	incoming := make([]string, 0, len(researcherIDs))
+	seen := make(map[string]struct{}, len(researcherIDs))
+	for _, id := range researcherIDs {
+		normalized, valid := normalizeResearcherID(id)
+		if !valid {
+			continue
+		}
+		if _, duplicate := seen[normalized]; duplicate {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		incoming = append(incoming, normalized)
+	}
+
+	// The merge happens in Cypher, after a first write has taken the node's
+	// write lock: under read-committed isolation, concurrent appends would
+	// otherwise read the same list and overwrite each other's additions.
+	// Stored entries are kept exactly as entered; an id is new only if no
+	// casing of it is stored yet.
+	query := helpers.DatabaseQuery{
+		Query: `
+			MATCH (n:Researcher {uid: $uid})
+			WHERE n.deleted IS NULL OR n.deleted = false
+			SET n.updatedAt = datetime()
+			WITH n
+			SET n.researcherIds = coalesce(n.researcherIds, []) +
+				[id IN $researcherIds WHERE NOT id IN [known IN coalesce(n.researcherIds, []) | toUpper(trim(known))]]
+			RETURN n.uid as uid`,
+		ReturnAlias: "uid",
+		Parameters: map[string]interface{}{
+			"uid":           uid,
+			"researcherIds": incoming,
+		},
+	}
+	historyLog := helpers.HistoryLogQuery(uid, "UPDATE", userUID)
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, query, historyLog)
+	if err != nil {
+		return result, err
+	}
+
+	return svc.GetResearcherByUid(uid)
 }
 
 func (svc *PublicationsService) DeleteResearcher(uid string, userUID string) (err error) {

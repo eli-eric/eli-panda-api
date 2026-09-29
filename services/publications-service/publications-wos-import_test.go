@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -39,7 +40,6 @@ type stubWosImportRepository struct {
 	mediaType          *codebookmodels.Codebook
 	findMediaTypeErr   error
 	findMediaTypeCalls []findMediaTypeCall
-
 }
 
 func (repo *stubWosImportRepository) findExistingPublication(
@@ -107,7 +107,7 @@ func TestPreviewWosPublicationNormalizesCommonDOIForms(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			var requestedDOI string
 			upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-				requestedDOI = strings.TrimPrefix(request.URL.Query().Get("q"), "DO=")
+				requestedDOI = requestedWosDOI(request)
 				writeWosResponse(t, response, `{
 					"metadata":{"total":1,"page":1,"limit":50},
 					"hits":[{
@@ -131,17 +131,25 @@ func TestPreviewWosPublicationNormalizesCommonDOIForms(t *testing.T) {
 	}
 }
 
-func TestPreviewWosPublicationReturnsExistingPublicationBeforeCallingWos(t *testing.T) {
+func TestPreviewWosPublicationIncludesExistingPublicationWithPreview(t *testing.T) {
+	// ELIPANDA-501/412: a DOI already in PANDA is a banner, not a refusal —
+	// the lookup still returns the full preview so the editor can refresh
+	// individual fields, and the WoS call legitimately happens.
 	repo := &stubWosImportRepository{existingPublication: &models.WosExistingPublication{
 		Uid:   "publication-1",
 		Code:  "ELI-2026-1",
 		Title: "Existing laser paper",
 		Doi:   "10.17077/etd.g638o927",
 	}}
-	upstreamCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		upstreamCalls++
-		response.WriteHeader(http.StatusInternalServerError)
+		writeWosResponse(t, response, `{
+			"metadata":{"total":1,"page":1,"limit":50},
+			"hits":[{
+				"uid":"WOS:EXISTING",
+				"title":"Existing laser paper",
+				"identifiers":{"doi":"10.17077/etd.g638o927"}
+			}]
+		}`)
 	}))
 	defer upstream.Close()
 
@@ -149,11 +157,10 @@ func TestPreviewWosPublicationReturnsExistingPublicationBeforeCallingWos(t *test
 	response := performPreviewRequest(
 		t,
 		service,
-		"/v1/publications/wos-preview?doi=10.17077%2FETD.G638O927&currentPublicationUid=current-publication",
+		"/v1/publications/wos/lookup?doi=10.17077%2FETD.G638O927&currentPublicationUid=current-publication",
 	)
 
 	assert.Equal(t, http.StatusOK, response.Code)
-	assert.Equal(t, 0, upstreamCalls, "a duplicate check must not consume WoS quota")
 	require.Len(t, repo.findExistingCalls, 1)
 	assert.Equal(t, findExistingCall{
 		doi:                   "10.17077/etd.g638o927",
@@ -165,6 +172,8 @@ func TestPreviewWosPublicationReturnsExistingPublicationBeforeCallingWos(t *test
 	assert.Equal(t, "already-exists", preview.Status)
 	assert.Equal(t, "10.17077/etd.g638o927", preview.Doi)
 	assert.Equal(t, repo.existingPublication, preview.ExistingPublication)
+	require.NotNil(t, preview.Values, "the preview must be offered even for an existing DOI")
+	assert.Equal(t, "Existing laser paper", valueOrEmpty(preview.Values.Title))
 }
 
 func TestPreviewWosPublicationReportsMissingWosConfiguration(t *testing.T) {
@@ -191,7 +200,7 @@ func TestPreviewWosPublicationUsesOfficialStarterRequestParameters(t *testing.T)
 		assert.Equal(t, http.MethodGet, request.Method)
 		assert.Equal(t, "/documents", request.URL.Path)
 		assert.Equal(t, "WOS", request.URL.Query().Get("db"))
-		assert.Equal(t, "DO="+requestedDOI, request.URL.Query().Get("q"))
+		assert.Equal(t, `DO=("`+requestedDOI+`")`, request.URL.Query().Get("q"))
 		assert.Empty(t, request.URL.Query().Get("detail"), "full detail is the default and should be omitted")
 		assert.Equal(t, "1", request.URL.Query().Get("page"))
 		assert.Equal(t, "50", request.URL.Query().Get("limit"))
@@ -222,7 +231,8 @@ func TestPreviewWosPublicationUsesOfficialStarterRequestParameters(t *testing.T)
 	assert.Equal(t, "found", preview.Status)
 	assert.Equal(t, requestedDOI, preview.Doi)
 	require.NotNil(t, preview.Values)
-	assert.Equal(t, requestedDOI, valueOrEmpty(preview.Values.Doi))
+	// Lookup key stays normalized; the form value keeps WoS's canonical casing.
+	assert.Equal(t, "10.17077/ETD.G638O927", valueOrEmpty(preview.Values.Doi))
 	assert.Equal(t, "Laser metadata", valueOrEmpty(preview.Values.Title))
 }
 
@@ -359,7 +369,7 @@ func TestPreviewWosPublicationMapsStarterFieldsAndAuthorMatches(t *testing.T) {
 	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &preview))
 	assert.Equal(t, "found", preview.Status)
 	require.NotNil(t, preview.Values)
-	assert.Equal(t, "10.1000/laser.1", valueOrEmpty(preview.Values.Doi))
+	assert.Equal(t, "10.1000/LASER.1", valueOrEmpty(preview.Values.Doi))
 	assert.Equal(t, "Laser-driven metadata", valueOrEmpty(preview.Values.Title))
 	assert.Equal(t, "WOS:000987654321", valueOrEmpty(preview.Values.WosNumber))
 	assert.Equal(t, "Journal of Laser Tests", valueOrEmpty(preview.Values.LongJournalTitle))
@@ -371,7 +381,9 @@ func TestPreviewWosPublicationMapsStarterFieldsAndAuthorMatches(t *testing.T) {
 	assert.Equal(t, "2025-09", valueOrEmpty(preview.Values.DateOfPublication))
 	assert.Equal(t, "1234-5678", valueOrEmpty(preview.Values.Issn))
 	assert.Equal(t, "8765-4321", valueOrEmpty(preview.Values.EIssn))
-	assert.Equal(t, "978-1-23456-789-0", valueOrEmpty(preview.Values.Isbn))
+	// Article → media type J has no ISBN slot: the WoS ISBN is dropped and
+	// disclosed in unavailableFields instead of filling the wrong field.
+	assert.Empty(t, valueOrEmpty(preview.Values.Isbn))
 	assert.Equal(
 		t,
 		"https://www.webofscience.com/wos/woscc/full-record/WOS:000987654321",
@@ -385,17 +397,24 @@ func TestPreviewWosPublicationMapsStarterFieldsAndAuthorMatches(t *testing.T) {
 
 	require.Len(t, preview.Authors, 4)
 	assert.Equal(t, "researcher-id", preview.Authors[0].Match.Kind)
+	assert.Equal(t, "EXACT_ID", preview.Authors[0].Match.Confidence)
+	assert.True(t, preview.Authors[0].Match.KnownResearcherId)
 	require.Len(t, preview.Authors[0].Match.Candidates, 1)
 	assert.Equal(t, "researcher-by-id", preview.Authors[0].Match.Candidates[0].Uid)
 	assert.Equal(t, "name", preview.Authors[1].Match.Kind)
+	assert.Equal(t, "NAME", preview.Authors[1].Match.Confidence)
+	assert.False(t, preview.Authors[1].Match.KnownResearcherId)
 	require.Len(t, preview.Authors[1].Match.Candidates, 1)
 	assert.Equal(t, "researcher-by-name", preview.Authors[1].Match.Candidates[0].Uid)
 	assert.Equal(t, "ambiguous", preview.Authors[2].Match.Kind)
+	assert.Equal(t, "AMBIGUOUS", preview.Authors[2].Match.Confidence)
 	assert.ElementsMatch(t, []string{"alex-one", "alex-two"}, researcherUIDs(preview.Authors[2].Match.Candidates))
 	assert.Equal(t, "none", preview.Authors[3].Match.Kind)
-	assert.Empty(t, preview.Authors[3].Match.Candidates)
+	assert.Equal(t, "NONE", preview.Authors[3].Match.Confidence)
+	assert.False(t, preview.Authors[3].Match.KnownResearcherId)
 	assert.NotContains(t, preview.MissingImportableFields, "doi")
 	assert.NotContains(t, preview.MissingImportableFields, "mediaTypeCb")
+	assert.Contains(t, preview.UnavailableFields, "isbn")
 	assert.Contains(t, preview.UnavailableFields, "abstract")
 	assert.Contains(t, preview.UnavailableFields, "openAccessType")
 	assert.Contains(t, preview.UnavailableFields, "publishingCountry")
@@ -608,6 +627,7 @@ func newWosTestService(
 		wosStarterApiKey: "test-key",
 		wosHTTPClient:    &http.Client{Timeout: time.Second},
 		wosRepository:    repository,
+		wosCache:         newWosLookupCache(wosCacheTTL, wosCacheMaxEntries),
 	}
 }
 
@@ -646,6 +666,13 @@ func assertPublicationAPIError(
 	assert.Equal(t, expectedRetryable, apiError.Retryable)
 }
 
+// requestedWosDOI reads the DOI back out of the Starter query, which
+// ELIPANDA-501 pins as DO=("<doi>").
+func requestedWosDOI(request *http.Request) string {
+	query := request.URL.Query().Get("q")
+	return strings.TrimSuffix(strings.TrimPrefix(query, `DO=("`), `")`)
+}
+
 func writeWosResponse(t *testing.T, response http.ResponseWriter, body string) {
 	t.Helper()
 	response.Header().Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -673,4 +700,65 @@ func intValueOrZero(value *int) int {
 		return 0
 	}
 	return *value
+}
+
+func TestPreviewWosPublicationQuotesDOIsWithParentheses(t *testing.T) {
+	// SICI-style DOIs carry parentheses, which the Starter query language
+	// reads as grouping unless the value is quoted.
+	const doi = "10.1016/s0014-5793(01)03313-0"
+	var query string
+	upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		query = request.URL.Query().Get("q")
+		writeWosResponse(t, response, wosSingleHitBody("WOS:SICI", doi, "Parenthesised DOI"))
+	}))
+	defer upstream.Close()
+
+	preview, err := newWosTestService(upstream.URL, &stubWosImportRepository{}).
+		PreviewWosPublication(context.Background(), doi, "", "B")
+	require.NoError(t, err)
+	assert.Equal(t, `DO=("10.1016/s0014-5793(01)03313-0")`, query)
+	assert.Equal(t, "found", preview.Status)
+}
+
+func TestPreviewWosPublicationRejectsQueryBreakingDOIs(t *testing.T) {
+	service := NewPublicationsService(nil, "", "")
+	for _, doi := range []string{
+		"10.1000/quoted\"doi",
+		"10.1000/slashed\\doi",
+		"10.1000/" + strings.Repeat("a", 2041),
+	} {
+		t.Run(doi[:min(len(doi), 40)], func(t *testing.T) {
+			_, err := service.PreviewWosPublication(context.Background(), doi, "", "B")
+			apiErr, ok := err.(*publicationAPIError)
+			require.True(t, ok, "expected a DOI validation error, got %v", err)
+			assert.Equal(t, http.StatusBadRequest, apiErr.StatusCode)
+			assert.Equal(t, wosErrorInvalidDOI, apiErr.Code)
+		})
+	}
+}
+
+func TestPreviewWosPublicationDropsNonHTTPRecordLinks(t *testing.T) {
+	// The record link is rendered as a clickable href; only http(s) may pass.
+	for _, link := range []string{"javascript:alert(document.domain)", "data:text/html,<b>x</b>", "//evil.example/x", "not a url", "https://user:pass@www.webofscience.com/record"} {
+		t.Run(link, func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+				writeWosResponse(t, response, `{
+					"metadata":{"total":1,"page":1,"limit":50},
+					"hits":[{
+						"uid":"WOS:LINK",
+						"title":"Record link",
+						"identifiers":{"doi":"10.1000/link.1"},
+						"links":{"record":`+strconv.Quote(link)+`}
+					}]
+				}`)
+			}))
+			defer upstream.Close()
+
+			preview, err := newWosTestService(upstream.URL, &stubWosImportRepository{}).
+				PreviewWosPublication(context.Background(), "10.1000/link.1", "", "B")
+			require.NoError(t, err)
+			assert.Empty(t, preview.RecordUrl)
+			assert.Equal(t, "WOS:LINK", preview.WosUid)
+		})
+	}
 }

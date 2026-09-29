@@ -42,7 +42,6 @@ type IPublicationsHandlers interface {
 	GetPublicationFilterOptions() echo.HandlerFunc
 	UpdatePublication() echo.HandlerFunc
 	DeletePublication() echo.HandlerFunc
-	GetWosDataByDoi() echo.HandlerFunc
 	PreviewWosPublication() echo.HandlerFunc
 	PreviewPublicationEnrichment() echo.HandlerFunc
 	GetPublicationExecutiveSummary() echo.HandlerFunc
@@ -55,6 +54,7 @@ type IPublicationsHandlers interface {
 	CreateResearcher() echo.HandlerFunc
 	CreateResearchers() echo.HandlerFunc
 	UpdateResearcher() echo.HandlerFunc
+	AppendResearcherIDs() echo.HandlerFunc
 	DeleteResearcher() echo.HandlerFunc
 	// Grant handlers
 	GetGrants() echo.HandlerFunc
@@ -303,37 +303,8 @@ func (h *PublicationsHandlers) DeletePublication() echo.HandlerFunc {
 	}
 }
 
-// GetWosDataByDoi Get WOS data by DOI godoc
-// @Summary Get WOS data by DOI
-// @Description Get WOS data by DOI
-// @Tags Publications
-// @Security BearerAuth
-// @Produce json
-// @Param doi path string true "doi"
-// @Success 200  {object} models.WosAPIResponse
-// @Failure 400 {object} models.PublicationAPIError
-// @Failure 502 {object} models.PublicationAPIError
-// @Failure 503 {object} models.PublicationAPIError
-// @Failure 504 {object} models.PublicationAPIError
-// @Deprecated
-// @Router /v1/publication/wos/{doi} [get]
-func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		doi := c.Param("doi")
-
-		result, err := h.PublicationsService.GetPublicationByDoiFromWOS(doi)
-		if err != nil {
-			return writePublicationAPIError(c, err, "Error getting WOS data by DOI")
-		}
-
-		return c.JSON(200, result)
-	}
-}
-
 // PreviewWosPublication previews Web of Science metadata for a DOI godoc
-// @Summary Preview Web of Science publication metadata
+// @Summary Look up Web of Science publication metadata for a DOI
 // @Description Returns PANDA publication field candidates and researcher matches without saving a publication
 // @Tags Publications
 // @Security BearerAuth
@@ -348,7 +319,8 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 // @Failure 503 {object} models.PublicationAPIError
 // @Failure 504 {object} models.PublicationAPIError
 // @Failure 500 {object} models.PublicationAPIError
-// @Router /v1/publications/wos-preview [get]
+// @Description A DOI already present in PANDA still returns its full preview plus an existingPublication banner payload.
+// @Router /v1/publications/wos/lookup [get]
 func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		facilityCode, _ := c.Get("facilityCode").(string)
@@ -1029,9 +1001,63 @@ func (h *PublicationsHandlers) UpdateResearcher() echo.HandlerFunc {
 
 		userUID := c.Get("userUID").(string)
 
-		_, err := h.PublicationsService.UpdateResearcher(researcher, userUID)
+		updated, err := h.PublicationsService.UpdateResearcher(researcher, userUID)
 		if err != nil {
 			log.Error().Err(err).Msg("Error updating researcher")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(200, updated)
+	}
+}
+
+// AppendResearcherIDs remembers WoS ResearcherIDs learned from an import
+// godoc
+// @Summary Remember ResearcherIDs for a researcher
+// @Description Appends WoS ResearcherIDs to a researcher's identifier list so future Web of Science imports match automatically (ELIPANDA-501). Duplicates are ignored.
+// @Tags Researchers
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param uid path string true "uid"
+// @Param researcherIds body models.ResearcherIdsRequest true "ResearcherIDs to remember"
+// @Success 200 {object} models.Researcher
+// @Failure 400 "Bad Request"
+// @Failure 404 "Not Found"
+// @Failure 500 "Internal Server Error"
+// @Router /v1/researcher/{uid}/researcher-ids [patch]
+func (h *PublicationsHandlers) AppendResearcherIDs() echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+
+		uid := c.Param("uid")
+
+		request := new(models.ResearcherIdsRequest)
+		if err := c.Bind(request); err != nil {
+			log.Error().Err(err).Msg("Error binding researcher ids request")
+			return helpers.BadRequest("Invalid researcher ids request.")
+		}
+
+		normalized := make([]string, 0, len(request.ResearcherIDs))
+		for _, raw := range request.ResearcherIDs {
+			id, valid := normalizeResearcherID(raw)
+			if !valid {
+				return helpers.BadRequest("'" + strings.TrimSpace(raw) + "' is not a valid ResearcherID.")
+			}
+			normalized = append(normalized, id)
+		}
+		if len(normalized) == 0 {
+			return helpers.BadRequest("Provide at least one ResearcherID.")
+		}
+
+		userUID := c.Get("userUID").(string)
+
+		researcher, err := h.PublicationsService.AppendResearcherIDs(uid, normalized, userUID)
+		if err != nil {
+			if errors.Is(err, helpers.ERR_NO_ROWS) {
+				return echo.ErrNotFound
+			}
+			log.Error().Err(err).Msg("Error appending researcher ids")
 			return echo.ErrInternalServerError
 		}
 

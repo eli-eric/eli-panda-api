@@ -17,12 +17,16 @@ import (
 
 	codebookmodels "panda/apigateway/services/codebook-service/models"
 	"panda/apigateway/services/publications-service/models"
+
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
-	wosErrorInvalidDOI                 = "INVALID_DOI"
+	// Codes follow the ELIPANDA-501 contract; AMBIGUOUS/AUTHENTICATION/TIMEOUT
+	// are finer-grained refinements the dialog treats as upstream errors.
+	wosErrorInvalidDOI                 = "DOI_INVALID"
 	wosErrorNotConfigured              = "WOS_NOT_CONFIGURED"
-	wosErrorRecordNotFound             = "WOS_RECORD_NOT_FOUND"
+	wosErrorRecordNotFound             = "WOS_NOT_FOUND"
 	wosErrorRecordAmbiguous            = "WOS_RECORD_AMBIGUOUS"
 	wosErrorAuthenticationFailed       = "WOS_AUTHENTICATION_FAILED"
 	wosErrorRateLimited                = "WOS_RATE_LIMITED"
@@ -175,7 +179,9 @@ func (svc *PublicationsService) PreviewWosPublication(
 	facilityCode string,
 ) (models.WosPreviewResponse, error) {
 	doi, valid := normalizeDOI(rawDOI)
-	if !valid {
+	// The Starter query wraps the DOI in quotes. Reject input that could end
+	// that quoted value, and bound the upstream query before any DB or HTTP work.
+	if !valid || len(doi) > 2048 || strings.ContainsAny(doi, "\"\\") {
 		return models.WosPreviewResponse{}, newPublicationAPIError(
 			http.StatusBadRequest,
 			wosErrorInvalidDOI,
@@ -183,19 +189,16 @@ func (svc *PublicationsService) PreviewWosPublication(
 			false,
 		)
 	}
-
 	repository := svc.importRepository()
+	// A DOI already in PANDA is not a refusal: the dialog shows the existing
+	// record as a banner, and the preview still offers its fields
+	// (ELIPANDA-412/501). Lookups stay read-only either way.
+	var existingPublication *models.WosExistingPublication
+	var err error
 	if repository != nil {
-		existingPublication, err := repository.findExistingPublication(doi, currentPublicationUID)
+		existingPublication, err = repository.findExistingPublication(doi, currentPublicationUID)
 		if err != nil {
 			return models.WosPreviewResponse{}, fmt.Errorf("find publication by DOI: %w", err)
-		}
-		if existingPublication != nil {
-			return models.WosPreviewResponse{
-				Status:              "already-exists",
-				Doi:                 doi,
-				ExistingPublication: existingPublication,
-			}, nil
 		}
 	}
 
@@ -212,24 +215,43 @@ func (svc *PublicationsService) PreviewWosPublication(
 		}
 	}
 
-	values := mapWosImportValues(hit, doi)
-	if repository != nil {
-		mediaTypeCode := suggestMediaTypeCode(hit.WosTypes, hit.WosSourceTypes)
-		if mediaTypeCode != "" {
+	values, warnings := mapWosImportValues(hit, doi)
+	mediaTypeCode := suggestMediaTypeCode(hit.WosTypes, hit.WosSourceTypes)
+	if mediaTypeCode != "" {
+		if repository != nil {
 			values.MediaTypeCb, err = repository.findMediaType(mediaTypeCode, facilityCode)
 			if err != nil {
 				return models.WosPreviewResponse{}, fmt.Errorf("find media type suggestion: %w", err)
 			}
 		}
 	}
+	// ISBN belongs to book-ish records only; carrying it over to an article
+	// would put an ISBN into the wrong field (mapping table, ELIPANDA-501).
+	// The gate holds even without a media-type lookup: Article is always J.
+	unavailable := append([]string(nil), wosUnavailableFields...)
+	if mediaTypeCode != "C" && mediaTypeCode != "D" {
+		if values.Isbn != nil {
+			unavailable = append(unavailable, "isbn")
+		}
+		values.Isbn = nil
+	}
+
+	status := "found"
+	if existingPublication != nil {
+		status = "already-exists"
+	}
 
 	return models.WosPreviewResponse{
-		Status:                  "found",
+		Status:                  status,
 		Doi:                     doi,
+		WosUid:                  strings.TrimSpace(hit.WosUID),
+		RecordUrl:               httpURLOrEmpty(hit.WosLinks.WosRecord),
+		ExistingPublication:     existingPublication,
 		Values:                  &values,
 		Authors:                 matchWosAuthors(hit.WosNames.WosAuthors, researchers),
 		MissingImportableFields: missingWosImportableFields(values),
-		UnavailableFields:       append([]string(nil), wosUnavailableFields...),
+		UnavailableFields:       unavailable,
+		Warnings:                warnings,
 	}, nil
 }
 
@@ -247,6 +269,12 @@ func (svc *PublicationsService) fetchExactWosRecord(
 	ctx context.Context,
 	doi string,
 ) (models.WosAPIResponse, models.WosHit, error) {
+	// The Clarivate Starter quota is per key per day; a repeated preview of
+	// the same DOI must not walk upstream twice inside the cache window
+	// (ELIPANDA-501).
+	if cached, found := svc.wosCache.get(doi); found {
+		return models.WosAPIResponse{}, cached, nil
+	}
 	response, err := svc.fetchWosResponse(ctx, doi)
 	if err != nil {
 		return models.WosAPIResponse{}, models.WosHit{}, err
@@ -277,6 +305,7 @@ func (svc *PublicationsService) fetchExactWosRecord(
 		)
 	}
 
+	svc.wosCache.store(doi, exactMatches[0])
 	return response, exactMatches[0], nil
 }
 
@@ -304,7 +333,9 @@ func (svc *PublicationsService) fetchWosResponse(
 	}
 	query := endpoint.Query()
 	query.Set("db", "WOS")
-	query.Set("q", "DO="+doi)
+	// Quoted as ELIPANDA-501 specifies: SICI-style DOIs contain parentheses,
+	// which the Starter query language otherwise reads as grouping.
+	query.Set("q", `DO=("`+doi+`")`)
 	query.Set("limit", "50")
 	query.Set("page", "1")
 	endpoint.RawQuery = query.Encode()
@@ -360,6 +391,18 @@ func (svc *PublicationsService) fetchWosResponse(
 	}
 
 	return result, nil
+}
+
+// httpURLOrEmpty keeps an upstream link only when it is an absolute http(s)
+// URL. The lookup dialog renders it as a clickable href, where a javascript:
+// or data: URL would run on click.
+func httpURLOrEmpty(raw string) string {
+	value := strings.TrimSpace(raw)
+	parsed, err := url.Parse(value)
+	if err != nil || parsed.Hostname() == "" || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return ""
+	}
+	return value
 }
 
 func newWosHTTPClient() *http.Client {
@@ -422,18 +465,45 @@ func newPublicationAPIError(status int, code, message string, retryable bool) *p
 	}
 }
 
-func mapWosImportValues(hit models.WosHit, doi string) models.WosImportValues {
+func mapWosImportValues(hit models.WosHit, doi string) (models.WosImportValues, []models.WosImportWarning) {
+	warnings := make([]models.WosImportWarning, 0)
+	// The lookup key is the normalized (lowercase) DOI; the form gets WoS's
+	// canonical casing when WoS supplies one (ELIPANDA-501 mapping table).
+	formDOI := doi
+	if canonical := strings.TrimSpace(hit.WosIdentifiers.WosDOI); canonical != "" {
+		if normalized, valid := normalizeDOI(canonical); valid && normalized == doi {
+			formDOI = canonical
+		}
+	}
 	values := models.WosImportValues{
-		Doi:              stringValue(doi),
+		Doi:              stringValue(formDOI),
 		Title:            stringValue(hit.WosTitle),
 		WosNumber:        stringValue(hit.WosUID),
 		LongJournalTitle: stringValue(hit.WosSource.WosSourceTitle),
-		Volume:           positiveIntValue(hit.WosSource.WosVolume),
-		Issue:            positiveIntValue(hit.WosSource.WosIssue),
 		PagesCount:       positiveIntPointer(hit.WosSource.WosPages.WosCount),
 		Issn:             stringValue(hit.WosIdentifiers.WosISSN),
 		EIssn:            stringValue(hit.WosIdentifiers.WosEISSN),
 		WebLink:          stringValue(hit.WosLinks.WosRecord),
+	}
+
+	// PANDA stores volume/issue as numbers, WoS sends free strings ("6", but
+	// also "1-2", "Suppl 3"). A value that cannot degrade cleanly is omitted
+	// with a warning naming the raw content — never silently coerced to 0.
+	if raw := strings.TrimSpace(hit.WosSource.WosVolume); raw != "" {
+		if parsed := positiveIntValue(raw); parsed != nil {
+			values.Volume = parsed
+		} else {
+			warnings = append(warnings, wosFieldWarning("VOLUME_NOT_NUMERIC", "volume", raw,
+				fmt.Sprintf("Web of Science reports volume %q; enter it manually.", raw)))
+		}
+	}
+	if raw := strings.TrimSpace(hit.WosSource.WosIssue); raw != "" {
+		if parsed := positiveIntValue(raw); parsed != nil {
+			values.Issue = parsed
+		} else {
+			warnings = append(warnings, wosFieldWarning("ISSUE_NOT_NUMERIC", "issue", raw,
+				fmt.Sprintf("Web of Science reports issue %q; enter it manually.", raw)))
+		}
 	}
 
 	pages := strings.TrimSpace(hit.WosSource.WosPages.WosRange)
@@ -460,6 +530,15 @@ func mapWosImportValues(hit models.WosHit, doi string) models.WosImportValues {
 		if month := wosMonthNumber(hit.WosSource.WosPublishMonth); month != "" {
 			date := year + "-" + month
 			values.DateOfPublication = &date
+			// WoS exposes month granularity at best; the form wants a full
+			// date, so say why the day is absent.
+			warnings = append(warnings, wosFieldWarning(
+				"DATE_DAY_MISSING", "dateOfPublication", date,
+				"Web of Science reports a month at best; complete the day manually."))
+		} else {
+			warnings = append(warnings, wosFieldWarning(
+				"DATE_DAY_MISSING", "dateOfPublication", year,
+				"Web of Science reports only the year; complete the date manually."))
 		}
 	}
 
@@ -492,7 +571,7 @@ func mapWosImportValues(hit models.WosHit, doi string) models.WosImportValues {
 		values.AllAuthorsCount = &count
 	}
 
-	return values
+	return values, warnings
 }
 
 func missingWosImportableFields(values models.WosImportValues) []string {
@@ -544,6 +623,30 @@ func missingWosImportableFields(values models.WosImportValues) []string {
 	return missing
 }
 
+func wosFieldWarning(code, field, raw, message string) models.WosImportWarning {
+	return models.WosImportWarning{
+		Code:    code,
+		Field:   field,
+		Raw:     strings.TrimSpace(raw),
+		Message: message,
+	}
+}
+
+// wosMatchConfidence maps the internal provenance kind onto the stable dialog
+// contract (ELIPANDA-502 reads only confidence to decide pre-checking).
+func wosMatchConfidence(kind string) string {
+	switch kind {
+	case "researcher-id", "orcid":
+		return "EXACT_ID"
+	case "name":
+		return "NAME"
+	case "ambiguous":
+		return "AMBIGUOUS"
+	default:
+		return "NONE"
+	}
+}
+
 func matchWosAuthors(
 	authors []models.WosAuthor,
 	researchers []wosResearcherRecord,
@@ -588,6 +691,12 @@ func matchWosAuthors(
 				match.Kind = "ambiguous"
 			}
 		}
+
+		match.Confidence = wosMatchConfidence(match.Kind)
+		// The author's WoS ResearcherID counts as remembered only when it is
+		// what matched; confirming a name/ORCID match still offers to learn it
+		// (PATCH /v1/researcher/:uid/researcher-ids on apply).
+		match.KnownResearcherId = match.Kind == "researcher-id"
 
 		displayName := strings.TrimSpace(author.WosDisplayName)
 		if displayName == "" {
@@ -677,10 +786,16 @@ func nameVariants(values ...string) map[string]struct{} {
 	return result
 }
 
+// normalizePersonName lowercases, strips punctuation and folds diacritics:
+// WoS publishes ASCII transliterations ("Dvorak, P") of names the register
+// stores natively ("Petr Dvořák").
 func normalizePersonName(value string) string {
 	var builder strings.Builder
 	lastWasSpace := true
-	for _, character := range strings.ToLower(strings.TrimSpace(value)) {
+	for _, character := range norm.NFD.String(strings.ToLower(strings.TrimSpace(value))) {
+		if unicode.Is(unicode.Mn, character) {
+			continue
+		}
 		if unicode.IsLetter(character) || unicode.IsDigit(character) {
 			builder.WriteRune(character)
 			lastWasSpace = false
