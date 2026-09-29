@@ -20,6 +20,9 @@ import (
 
 type PublicationsHandlers struct {
 	PublicationsService IPublicationsService
+	// EnrichmentService is optional: when it is absent the enrichment preview
+	// route reports itself unconfigured rather than panicking.
+	EnrichmentService *PublicationEnrichmentService
 }
 
 const (
@@ -40,6 +43,8 @@ type IPublicationsHandlers interface {
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
 	PreviewWosPublication() echo.HandlerFunc
+	PreviewPublicationEnrichment() echo.HandlerFunc
+	GetPublicationExecutiveSummary() echo.HandlerFunc
 	GetPublicationsAsCsv() echo.HandlerFunc
 	ExportRiv() echo.HandlerFunc
 	ValidateRiv() echo.HandlerFunc
@@ -59,8 +64,8 @@ type IPublicationsHandlers interface {
 }
 
 // NewPublicationsHandlers General handlers constructor
-func NewPublicationsHandlers(svc IPublicationsService) IPublicationsHandlers {
-	return &PublicationsHandlers{PublicationsService: svc}
+func NewPublicationsHandlers(svc IPublicationsService, enrichment *PublicationEnrichmentService) IPublicationsHandlers {
+	return &PublicationsHandlers{PublicationsService: svc, EnrichmentService: enrichment}
 }
 
 func normalizeEliPublication(value string) (string, error) {
@@ -104,6 +109,10 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 		publication.EliPublication = normalized
+
+		if err := validatePublicationReporting(publication.Reporting); err != nil {
+			return helpers.BadRequest(err.Error())
+		}
 
 		userUID := c.Get("userUID").(string)
 
@@ -224,6 +233,10 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 		}
 		publication.EliPublication = normalized
 
+		if err := validatePublicationReporting(publication.Reporting); err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
 		publication.Uid = uid
 
 		userUID := c.Get("userUID").(string)
@@ -326,6 +339,105 @@ func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
 
 		return c.JSON(http.StatusOK, result)
 	}
+}
+
+// PreviewPublicationEnrichment previews multi-provider metadata for a DOI godoc
+// @Summary Preview publication metadata enrichment for a DOI
+// @Description Queries Crossref, Web of Science and Unpaywall for a DOI and returns merged field candidates, researcher matches, per-provider status, provenance and conflicts. Read-only: nothing is saved.
+// @Tags Publications
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param request body models.EnrichmentPreviewRequest true "DOI to enrich"
+// @Success 200 {object} models.EnrichmentPreviewResponse
+// @Failure 400 {object} models.PublicationAPIError
+// @Failure 500 {object} models.PublicationAPIError
+// @Failure 503 {object} models.PublicationAPIError
+// @Router /v1/publications/enrichment-preview [post]
+func (h *PublicationsHandlers) PreviewPublicationEnrichment() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		if h.EnrichmentService == nil {
+			return c.JSON(http.StatusServiceUnavailable, models.PublicationAPIError{
+				Code:    wosErrorNotConfigured,
+				Message: "Publication metadata enrichment is not configured.",
+			})
+		}
+
+		var request models.EnrichmentPreviewRequest
+		if err := c.Bind(&request); err != nil {
+			return helpers.BadRequest("Invalid enrichment preview request.")
+		}
+
+		facilityCode, _ := c.Get("facilityCode").(string)
+		result, err := h.EnrichmentService.Preview(
+			c.Request().Context(),
+			request.Doi,
+			request.CurrentPublicationUID,
+			facilityCode,
+		)
+		if err != nil {
+			return writePublicationAPIError(c, err, "Error previewing publication enrichment")
+		}
+
+		return c.JSON(http.StatusOK, result)
+	}
+}
+
+// GetPublicationExecutiveSummary returns the management reporting dataset godoc
+// @Summary Publication executive summary
+// @Description Calculates institutional, department, user, journal, author and Q3+Q4 trend reporting from saved publication records. Department, call and system totals are overlapping credits and may sum above the distinct institutional total.
+// @Tags Publications
+// @Security BearerAuth
+// @Produce json
+// @Param year query int false "Reporting year (defaults to the latest completed calendar year)"
+// @Param startYear query int false "First trend year (defaults to six years before endYear)"
+// @Param endYear query int false "Last trend year (defaults to year)"
+// @Success 200 {object} models.ExecutiveSummary
+// @Failure 400 {object} models.PublicationAPIError
+// @Failure 500 "Internal Server Error"
+// @Router /v1/publications/analytics/executive-summary [get]
+func (h *PublicationsHandlers) GetPublicationExecutiveSummary() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		year, err := optionalYearParam(c.QueryParam("year"))
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		startYear, err := optionalYearParam(c.QueryParam("startYear"))
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		endYear, err := optionalYearParam(c.QueryParam("endYear"))
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
+		year, startYear, endYear = resolveReportWindow(year, startYear, endYear, time.Now())
+
+		summary, err := h.PublicationsService.GetExecutiveSummary(year, startYear, endYear)
+		if err != nil {
+			// A partial or empty report would be indistinguishable from a real
+			// one, so a query failure surfaces as a failure.
+			log.Error().Err(err).Msg("Error building publication executive summary")
+			return echo.ErrInternalServerError
+		}
+
+		return c.JSON(http.StatusOK, summary)
+	}
+}
+
+func optionalYearParam(raw string) (int, error) {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return 0, nil
+	}
+	if !yearRegex.MatchString(trimmed) {
+		return 0, errors.New("year parameters must be four digits")
+	}
+	value, err := strconv.Atoi(trimmed)
+	if err != nil {
+		return 0, errors.New("year parameters must be four digits")
+	}
+	return value, nil
 }
 
 func writePublicationAPIError(c echo.Context, err error, logMessage string) error {

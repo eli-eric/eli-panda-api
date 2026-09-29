@@ -29,6 +29,8 @@ func LoadConfiguraion() (*Config, error) {
 
 	config.ApiIntegrationBeamlinesWOSBaseUrl = os.Getenv("API_INTEGRATION_B_WOS_STARTER_API_URL")
 	config.ApiIntegrationBeamlinesWOSBaseApiKey = os.Getenv("API_INTEGRATION_B_WOS_STARTER_API_KEY")
+	config.CrossrefEmail = os.Getenv("CROSSREF_EMAIL")
+	config.UnpaywallEmail = os.Getenv("UNPAYWALL_EMAIL")
 
 	config.AuthUserStatusCacheTTLSeconds = parseIntWithDefaultValue(os.Getenv("AUTH_USER_STATUS_CACHE_TTL_SECONDS"), 60)
 
@@ -65,4 +67,6 @@ type Config struct {
 	// Beamlines WOS
 	ApiIntegrationBeamlinesWOSBaseUrl    string
 	ApiIntegrationBeamlinesWOSBaseApiKey string
+	CrossrefEmail                        string
+	UnpaywallEmail                       string
 }

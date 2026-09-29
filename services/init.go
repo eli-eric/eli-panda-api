@@ -48,7 +48,11 @@ func InitializeServicesAndMapRoutes(e *echo.Echo, settings *config.Config, neo4j
 
 	// publications service - initialized before codebook service as codebook depends on it
 	publicationsSvc := publicationsservice.NewPublicationsService(neo4jDriver, settings.ApiIntegrationBeamlinesWOSBaseUrl, settings.ApiIntegrationBeamlinesWOSBaseApiKey)
-	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc)
+	publicationsEnrichmentSvc := publicationsservice.NewPublicationEnrichmentService(publicationsSvc, publicationsservice.PublicationEnrichmentConfig{
+		CrossrefEmail:  settings.CrossrefEmail,
+		UnpaywallEmail: settings.UnpaywallEmail,
+	})
+	publicationsHandlers := publicationsservice.NewPublicationsHandlers(publicationsSvc, publicationsEnrichmentSvc)
 	publicationsservice.MapPublicationsRoutes(e, publicationsHandlers, jwtMiddleware)
 	log.Info().Msg("Publications service initialized successfully.")
 

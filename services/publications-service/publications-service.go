@@ -9,6 +9,7 @@ import (
 	"panda/apigateway/services/publications-service/models"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
@@ -49,9 +50,14 @@ type IPublicationsService interface {
 	GetExperimentalSystemsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetUserExperimentsAutocomplete(searchText string, limit int, facilityCode string) ([]codebookModels.Codebook, error)
 	GetCountriesAutocomplete(searchText string, limit int) ([]codebookModels.Codebook, error)
+	GetExecutiveSummary(year, startYear, endYear int) (models.ExecutiveSummary, error)
 }
 
-func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) IPublicationsService {
+// NewPublicationsService returns the concrete service so callers that need to
+// compose on top of it — such as the enrichment preview — can reuse this one
+// instance instead of rebuilding its WoS wiring. It still satisfies
+// IPublicationsService for every existing caller.
+func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string) *PublicationsService {
 	service := &PublicationsService{
 		neo4jDriver:      driver,
 		wosStarterApiUrl: wosSAPIURL,
@@ -71,16 +77,22 @@ func (svc *PublicationsService) GetPublicationByUid(uid string) (result models.P
 	result.Uid = uid
 
 	err = helpers.GetSingleNode(session, &result)
-
-	if err == nil {
-		decodeAuthorsDepartments(&result)
-		// Fetch connected researchers
-		result.EliResearchers, _ = svc.getPublicationResearchers(uid)
-		// Fetch connected grants
-		result.Grants, _ = svc.getPublicationGrants(uid)
+	if err != nil {
+		return result, err
 	}
 
-	return result, err
+	decodeAuthorsDepartments(&result)
+	if result.EliResearchers, err = svc.getPublicationResearchers(uid); err != nil {
+		return result, fmt.Errorf("load publication researchers: %w", err)
+	}
+	if result.Grants, err = svc.getPublicationGrants(uid); err != nil {
+		return result, fmt.Errorf("load publication grants: %w", err)
+	}
+	if result.Reporting, err = svc.getPublicationReporting(uid); err != nil {
+		return result, fmt.Errorf("load publication reporting: %w", err)
+	}
+
+	return result, nil
 }
 
 func decodeAuthorsDepartments(publication *models.Publication) {
@@ -131,9 +143,15 @@ func (svc *PublicationsService) CreatePublication(publication *models.Publicatio
 
 	historyLog := helpers.HistoryLogQuery(publication.Uid, "CREATE", userUID)
 
-	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		updateQuery,
-		historyLog)
+	// The publication row, its audit entry and any reporting snapshot go in one
+	// transaction, so a record can never be saved without the review submitted
+	// alongside it.
+	queries := []helpers.DatabaseQuery{updateQuery, historyLog}
+	if publication.Reporting != nil {
+		queries = append(queries, publicationReportingQueries(publication.Uid, publication.Reporting, userUID, time.Now())...)
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 
 	if err != nil {
 		return result, err
@@ -182,9 +200,25 @@ func (svc *PublicationsService) UpdatePublication(publication *models.Publicatio
 
 	historyLog := helpers.HistoryLogQuery(publication.Uid, "UPDATE", userUID)
 
-	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session,
-		updateQuery,
-		historyLog)
+	queries := []helpers.DatabaseQuery{updateQuery, historyLog}
+	switch {
+	case publication.Reporting != nil:
+		// An explicit reporting object replaces the stored snapshot outright.
+		queries = append(queries, publicationReportingQueries(publication.Uid, publication.Reporting, userUID, time.Now())...)
+	case oldPublication.Reporting != nil:
+		// Omitting reporting preserves it, so an older client that knows nothing
+		// about reporting cannot erase a review by saving a publication. The
+		// confirmation is dropped when the edit changes what was reviewed.
+		publication.Reporting = oldPublication.Reporting
+		if reportRelevantChange(oldPublication, *publication) {
+			queries = append(queries, invalidatePublicationReviewQuery(publication.Uid))
+			publication.Reporting.Reviewed = false
+			publication.Reporting.ReviewedAt = ""
+			publication.Reporting.ReviewedBy = ""
+		}
+	}
+
+	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, queries...)
 
 	if err != nil {
 		return result, err

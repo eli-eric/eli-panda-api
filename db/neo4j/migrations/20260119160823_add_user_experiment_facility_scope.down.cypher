@@ -6,7 +6,6 @@ DELETE r;
 // UPM-* codes
 MATCH (ue:UserExperiment) WHERE ue.code STARTS WITH "UPM-" DETACH DELETE ue;
 // ELIUPM-* codes
-MATCH (ue:UserExperiment) WHERE ue.code STARTS WITH "ELIUPM" DETACH DELETE ue;
-
+MATCH (ue:UserExperiment) WHERE ue.code STARTS WITH "ELIUPM" DETACH DELETE ue
 // Note: Not removing constraints/indexes as UserExperiment may have existed before
 // Only removing the seed data added by this migration

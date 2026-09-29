@@ -14,19 +14,25 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Login to Azure using managed identity
+              env:
+                  AZURE_CLIENT_ID: ${{ secrets.AZURE_DEV_CLIENT_ID }}
               run: |
-                  az login --identity --client-id ${{ secrets.AZURE_DEV_CLIENT_ID }}
+                  az login --identity --client-id "$AZURE_CLIENT_ID"
 
             - name: Login to Azure Container Registry
+              env:
+                  ACR_NAME: ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}
               run: |
-                  az acr login --name ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}
+                  az acr login --name "$ACR_NAME"
 
             - name: Build and push Docker image
+              env:
+                  ACR_NAME: ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}
               run: |
-                  docker build . -f ./Dockerfile.devenv -t ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
-                  docker tag ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }} ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
-                  docker push ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:${{ github.sha }}
-                  docker push ${{ secrets.AZURE_DEV_CONTAINER_REGISTRY_NAME }}.azurecr.io/panda-api:latest
+                  docker build . -f ./Dockerfile.devenv -t "${ACR_NAME}.azurecr.io/panda-api:${{ github.sha }}"
+                  docker tag "${ACR_NAME}.azurecr.io/panda-api:${{ github.sha }}" "${ACR_NAME}.azurecr.io/panda-api:latest"
+                  docker push "${ACR_NAME}.azurecr.io/panda-api:${{ github.sha }}"
+                  docker push "${ACR_NAME}.azurecr.io/panda-api:latest"
 
             # TODO: Add Azure Container Apps deployment
 
