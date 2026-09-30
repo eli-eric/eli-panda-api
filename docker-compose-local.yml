@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   panda-dev-net:
     name: panda-dev-net
@@ -10,7 +8,7 @@ services:
     container_name: panda-dev-api
     restart: unless-stopped
     healthcheck:
-      test: wget http://localhost:50000/ || exit 1
+      test: wget -q -O /dev/null http://localhost:50000/ || exit 1
       interval: 1s
       timeout: 10s
       retries: 20
@@ -22,13 +20,16 @@ services:
       - API_JWT_SECRET=createstrongsecretplease
       - API_PORT=50000
       - BCRYPT_SALT_ROUNDS=12
+      - AUTH_USER_STATUS_CACHE_TTL_SECONDS=60
       - NEO4J_HOST=panda-dev-neo4j
       - NEO4J_PORT=7687
       - NEO4J_USER=neo4j
       - NEO4J_PASSWORD=elipanda2022
       - NEO4J_SCHEMA=bolt://
       - API_INTEGRATION_B_OKBASE_GET_EMPLOYEES_URL=https://elieric.okbase.cz/okbase/service/rest/sestava/run
-      - API_INTEGRATION_B_OKBASE_API_KEY=${API_INTEGRATION_B_OKBASE_API_KEY}
+      - API_INTEGRATION_B_OKBASE_API_KEY=${API_INTEGRATION_B_OKBASE_API_KEY:-}
+      - API_INTEGRATION_B_WOS_STARTER_API_URL=${API_INTEGRATION_B_WOS_STARTER_API_URL:-}
+      - API_INTEGRATION_B_WOS_STARTER_API_KEY=${API_INTEGRATION_B_WOS_STARTER_API_KEY:-}
     build:
       context: ./
       dockerfile: Dockerfile
@@ -45,7 +46,7 @@ services:
     # user: "1020:1020"
     restart: unless-stopped
     healthcheck:
-      test: wget http://localhost:7474 || exit 1
+      test: wget -q -O /dev/null http://localhost:7474 || exit 1
       interval: 1s
       timeout: 10s
       retries: 20

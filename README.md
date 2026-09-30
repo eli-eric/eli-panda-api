@@ -24,20 +24,36 @@ The service is built with [Echo](https://echo.labstack.com/) and follows a verti
 
 ## Quick Start (Docker)
 
-1. Prepare import folder and test data:
+1. Create an ignored local environment file:
+
+   ```bash
+   cp example.env .env
+   ```
+
+   The defaults connect host-run tools to the Neo4j Bolt port published at `localhost:7680`. Leave the WoS key empty when running mocked tests. If you need a live lookup, obtain the key through ELI's secret-management process and put it only in `.env`; never commit it.
+
+2. (Optional) Prepare the broader test-data fixture before starting Neo4j for the first time:
 
    ```bash
    mkdir -p db/neo4j/dev-instance/import
    cp db/neo4j/data-for-import/test-data.cypher db/neo4j/dev-instance/import
    ```
 
-2. Start API + Neo4j:
+   The broader fixture is optional. The container owns the bind-mounted import directory after its first start.
+
+3. Start the API and Neo4j 4.4:
 
    ```bash
-   docker-compose -f docker-compose-local.yml up -d --build
+   docker compose -f docker-compose-local.yml up -d --build
    ```
 
-3. (Optional) Load test data:
+   To start only Neo4j, for example before running Go tests on the host:
+
+   ```bash
+   make db-local-up
+   ```
+
+   Normal schema and reference-data migrations run automatically when the API starts. If you prepared the optional broader fixture, load it after Neo4j is healthy:
 
    ```bash
    docker exec -it panda-dev-neo4j cypher-shell -u neo4j -p 'elipanda2022' -f import/test-data.cypher
@@ -51,8 +67,35 @@ The service is built with [Echo](https://echo.labstack.com/) and follows a verti
 Stop local stack:
 
 ```bash
-docker-compose -f docker-compose-local.yml down
+docker compose -f docker-compose-local.yml down
 ```
+
+### Web of Science locally
+
+`docker-compose-local.yml` forwards `API_INTEGRATION_B_WOS_STARTER_API_URL` and `API_INTEGRATION_B_WOS_STARTER_API_KEY` from the ignored `.env` file into the API container. The URL may point to Clarivate only when a valid key is available, or to an explicitly configured mock server. Automated tests must mock the WoS HTTP server and must not require or call with a live key.
+
+The WoS import endpoints require the `publications-edit` role. Local migrations create publication roles but do not grant them to a user. Grant the local-only test account the publication roles, replacing `test` with your local username if needed:
+
+```bash
+docker exec panda-dev-neo4j cypher-shell -u neo4j -p 'elipanda2022' \
+  'MATCH (u:User {username: "test"}), (r:Role)
+   WHERE r.code IN ["publications-view", "publications-edit"]
+   MERGE (u)-[:HAS_ROLE]->(r)
+   RETURN u.username, collect(r.code)'
+```
+
+Authenticate again after changing roles so the new JWT contains them. Do not apply local role grants to shared development or production databases.
+
+### Running tests
+
+The repository requires Go 1.22. Some service tests use the Neo4j connection from `.env`, so start the local database first and ensure `NEO4J_PORT=7680`. WoS tests use a local HTTP test server; no Clarivate key is required.
+
+```bash
+make db-local-up
+make test
+```
+
+Use only a disposable local database for tests. The shared test setup does not perform automatic database-wide cleanup.
 
 ## Local Development (without Docker)
 
@@ -84,6 +127,9 @@ docker-compose -f docker-compose-local.yml down
 
 ## Useful Commands
 
+- `make db-local-up` – start the local Neo4j 4.4 service
+- `make db-local-down` – stop the local Neo4j service without deleting its data
+- `make db-local-status` – show the local Neo4j container status
 - `make swagger` – regenerate Swagger and OpenAPI files
 - `make build` – build the API binary
 - `make test` – run all tests (`go test ./...`)
@@ -103,13 +149,13 @@ Use `/v1/authenticate` to obtain a token, then send it in the `Authorization` he
 
 ## Contributing
 
-1. **Fork and clone** the repository.
-2. **Sync with `dev` branch** and create a feature branch from it:
+1. Clone the `eli-eric/eli-panda-api` repository directly. Do not create a fork for ELI work.
+2. Sync the default `dev` branch and create a Jira-prefixed branch from it:
 
    ```bash
-   git checkout dev
-   git pull origin dev
-   git checkout -b feat/short-description
+   git switch dev
+   git pull --ff-only origin dev
+   git switch -c ELIPANDA-123-short-description
    ```
 
 3. Make your changes and run checks locally:
@@ -120,7 +166,7 @@ Use `/v1/authenticate` to obtain a token, then send it in the `Authorization` he
    ```
 
 4. Ensure touched Go files are formatted (`gofmt`) and commit with a clear message.
-5. Push your branch and open a Pull Request **to `dev`**.
+5. Push the Jira branch to the ELI repository and open a Pull Request **to `dev`**. Never push directly to `dev`, `main`, or `production`, and do not merge without review.
 6. In the PR description, include:
    - what changed and why,
    - how you tested it,

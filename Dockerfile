@@ -11,7 +11,7 @@ RUN go mod download && go mod verify
 
 COPY . .
 
-RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN go install github.com/swaggo/swag/cmd/swag@v1.16.3
 
 RUN swag init -g swagger_prod.go 
 RUN cp -r ./docs/swagger.yaml ./open-api-specification/panda-api.yaml

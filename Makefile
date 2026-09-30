@@ -15,10 +15,13 @@ install:
 	go mod download && go mod verify
 
 db-local-up:
-	docker-compose -f docker/docker-compose-databases-local.yml up -d
+	docker compose -f docker-compose-local.yml up -d panda-dev-neo4j
 
 db-local-down:
-	docker-compose -f docker/docker-compose-databases-local.yml down
+	docker compose -f docker-compose-local.yml stop panda-dev-neo4j
+
+db-local-status:
+	docker compose -f docker-compose-local.yml ps panda-dev-neo4j
 
 tunel:
 	ssh -L 7472:127.0.0.1:7472 -L 7682:127.0.0.1:7682 -L 7471:127.0.0.1:7471 -L 7681:127.0.0.1:7681 -L 7470:127.0.0.1:7470 -L 7680:127.0.0.1:7680 -L 9000:127.0.0.1:9000 -L 9090:127.0.0.1:9090 panda@panda.eli-laser.eu

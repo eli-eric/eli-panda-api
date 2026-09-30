@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/publications-service/models"
 	"regexp"
@@ -38,6 +39,7 @@ type IPublicationsHandlers interface {
 	UpdatePublication() echo.HandlerFunc
 	DeletePublication() echo.HandlerFunc
 	GetWosDataByDoi() echo.HandlerFunc
+	PreviewWosPublication() echo.HandlerFunc
 	GetPublicationsAsCsv() echo.HandlerFunc
 	ExportRiv() echo.HandlerFunc
 	ValidateRiv() echo.HandlerFunc
@@ -271,7 +273,11 @@ func (h *PublicationsHandlers) DeletePublication() echo.HandlerFunc {
 // @Produce json
 // @Param doi path string true "doi"
 // @Success 200  {object} models.WosAPIResponse
-// @Failure 500 "Internal Server Error"
+// @Failure 400 {object} models.PublicationAPIError
+// @Failure 502 {object} models.PublicationAPIError
+// @Failure 503 {object} models.PublicationAPIError
+// @Failure 504 {object} models.PublicationAPIError
+// @Deprecated
 // @Router /v1/publication/wos/{doi} [get]
 func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 
@@ -281,12 +287,62 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 
 		result, err := h.PublicationsService.GetPublicationByDoiFromWOS(doi)
 		if err != nil {
-			log.Error().Err(err).Msg("Error getting WOS data by DOI")
-			return echo.ErrInternalServerError
+			return writePublicationAPIError(c, err, "Error getting WOS data by DOI")
 		}
 
 		return c.JSON(200, result)
 	}
+}
+
+// PreviewWosPublication previews Web of Science metadata for a DOI godoc
+// @Summary Preview Web of Science publication metadata
+// @Description Returns PANDA publication field candidates and researcher matches without saving a publication
+// @Tags Publications
+// @Security BearerAuth
+// @Produce json
+// @Param doi query string true "DOI"
+// @Param currentPublicationUid query string false "UID of the publication being refreshed"
+// @Success 200 {object} models.WosPreviewResponse
+// @Failure 400 {object} models.PublicationAPIError
+// @Failure 404 {object} models.PublicationAPIError
+// @Failure 409 {object} models.PublicationAPIError
+// @Failure 502 {object} models.PublicationAPIError
+// @Failure 503 {object} models.PublicationAPIError
+// @Failure 504 {object} models.PublicationAPIError
+// @Failure 500 {object} models.PublicationAPIError
+// @Router /v1/publications/wos-preview [get]
+func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		facilityCode, _ := c.Get("facilityCode").(string)
+		result, err := h.PublicationsService.PreviewWosPublication(
+			c.Request().Context(),
+			c.QueryParam("doi"),
+			c.QueryParam("currentPublicationUid"),
+			facilityCode,
+		)
+		if err != nil {
+			return writePublicationAPIError(c, err, "Error previewing WOS publication")
+		}
+
+		return c.JSON(http.StatusOK, result)
+	}
+}
+
+func writePublicationAPIError(c echo.Context, err error, logMessage string) error {
+	var apiErr *publicationAPIError
+	if errors.As(err, &apiErr) {
+		if apiErr.RetryAfter != "" {
+			c.Response().Header().Set("Retry-After", apiErr.RetryAfter)
+		}
+		return c.JSON(apiErr.StatusCode, apiErr.response())
+	}
+
+	log.Error().Err(err).Msg(logMessage)
+	return c.JSON(http.StatusInternalServerError, models.PublicationAPIError{
+		Code:      wosErrorInternal,
+		Message:   "Unable to complete the publication metadata request.",
+		Retryable: true,
+	})
 }
 
 // GetPublicationsAsCsv Get publications as CSV godoc

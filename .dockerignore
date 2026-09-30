@@ -1,0 +1,4 @@
+.git
+.env
+panda-api
+db/neo4j/dev-instance/

@@ -56,19 +56,19 @@ type Publication struct {
 	Grants                  []GrantRef               `json:"grants"`                                                                                               // grants are the connected grants via HAS_GRANT relationship
 	OtherGrants             *string                  `json:"otherGrants" neo4j:"prop,otherGrants"`                                                                 // otherGrants are the other grants of the publication
 	// Type C & D shared fields
-	Publisher               *string                  `json:"publisher" neo4j:"prop,publisher"`                                                                      // publisher name
-	PublishPlace            *string                  `json:"publishPlace" neo4j:"prop,publishPlace"`                                                                // place of publication
-	PublishFormatCb         *codebookModels.Codebook `json:"publishFormatCb" neo4j:"rel,PublishFormat,HAS_PUBLISH_FORMAT,uid,publishFormatCb"`                       // publish format (Print/Online/CD)
+	Publisher       *string                  `json:"publisher" neo4j:"prop,publisher"`                                                 // publisher name
+	PublishPlace    *string                  `json:"publishPlace" neo4j:"prop,publishPlace"`                                           // place of publication
+	PublishFormatCb *codebookModels.Codebook `json:"publishFormatCb" neo4j:"rel,PublishFormat,HAS_PUBLISH_FORMAT,uid,publishFormatCb"` // publish format (Print/Online/CD)
 	// Type C only
-	Isbn                    *string                  `json:"isbn" neo4j:"prop,isbn"`                                                                                // ISBN of the book
-	BookTitle               *string                  `json:"bookTitle" neo4j:"prop,bookTitle"`                                                                      // title of the book (for book chapters)
-	BookPagesCount          *int                     `json:"bookPagesCount" neo4j:"prop,bookPagesCount"`                                                            // total pages of the book
-	EditionVolume           *string                  `json:"editionVolume" neo4j:"prop,editionVolume"`                                                              // edition or volume number
+	Isbn           *string `json:"isbn" neo4j:"prop,isbn"`                     // ISBN of the book
+	BookTitle      *string `json:"bookTitle" neo4j:"prop,bookTitle"`           // title of the book (for book chapters)
+	BookPagesCount *int    `json:"bookPagesCount" neo4j:"prop,bookPagesCount"` // total pages of the book
+	EditionVolume  *string `json:"editionVolume" neo4j:"prop,editionVolume"`   // edition or volume number
 	// Type D only
-	ProceedingsIsbn         *string                  `json:"proceedingsIsbn" neo4j:"prop,proceedingsIsbn"`                                                          // ISBN of the proceedings
-	ConferenceDate          *string                  `json:"conferenceDate" neo4j:"prop,conferenceDate"`                                                            // conference date (YYYY or YYYY-MM-DD)
-	ConferencePlace         *string                  `json:"conferencePlace" neo4j:"prop,conferencePlace"`                                                          // conference place
-	ConferenceScopeCb       *codebookModels.Codebook `json:"conferenceScopeCb" neo4j:"rel,ConferenceScope,HAS_CONFERENCE_SCOPE,uid,conferenceScopeCb"`               // conference scope (national/european/worldwide)
+	ProceedingsIsbn   *string                  `json:"proceedingsIsbn" neo4j:"prop,proceedingsIsbn"`                                             // ISBN of the proceedings
+	ConferenceDate    *string                  `json:"conferenceDate" neo4j:"prop,conferenceDate"`                                               // conference date (YYYY or YYYY-MM-DD)
+	ConferencePlace   *string                  `json:"conferencePlace" neo4j:"prop,conferencePlace"`                                             // conference place
+	ConferenceScopeCb *codebookModels.Codebook `json:"conferenceScopeCb" neo4j:"rel,ConferenceScope,HAS_CONFERENCE_SCOPE,uid,conferenceScopeCb"` // conference scope (national/european/worldwide)
 }
 
 type AuthorsDepartment struct {
@@ -109,15 +109,17 @@ type WosHit struct {
 	WosCitations   []WosCitation  `json:"citations"`
 	WosIdentifiers WosIdentifiers `json:"identifiers"`
 	WosKeywords    WosKeywords    `json:"keywords"`
+	WosLinks       WosLinks       `json:"links"`
 }
 
 type WosSource struct {
-	WosSourceTitle  string   `json:"sourceTitle"`
-	WosPublishYear  int      `json:"publishYear"`
-	WosPublishMonth string   `json:"publishMonth"`
-	WosVolume       string   `json:"volume,omitempty"`
-	WosIssue        string   `json:"issue,omitempty"`
-	WosPages        WosPages `json:"pages"`
+	WosSourceTitle   string   `json:"sourceTitle"`
+	WosPublishYear   int      `json:"publishYear"`
+	WosPublishMonth  string   `json:"publishMonth"`
+	WosVolume        string   `json:"volume,omitempty"`
+	WosIssue         string   `json:"issue,omitempty"`
+	WosArticleNumber string   `json:"articleNumber,omitempty"`
+	WosPages         WosPages `json:"pages"`
 }
 
 type WosPages struct {
@@ -148,8 +150,15 @@ type WosCitation struct {
 }
 
 type WosIdentifiers struct {
-	WosDOI  string `json:"doi,omitempty"`
-	WosISSN string `json:"issn"`
+	WosDOI   string `json:"doi,omitempty"`
+	WosISSN  string `json:"issn,omitempty"`
+	WosEISSN string `json:"eissn,omitempty"`
+	WosISBN  string `json:"isbn,omitempty"`
+	WosEISBN string `json:"eisbn,omitempty"`
+}
+
+type WosLinks struct {
+	WosRecord string `json:"record,omitempty"`
 }
 
 type WosKeywords struct {
