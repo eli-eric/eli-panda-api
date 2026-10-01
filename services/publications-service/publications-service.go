@@ -220,13 +220,13 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 	}
 
 	// Build query with sorting
-	query := buildPublicationsQuery(searchText, skip, limit, sorting)
+	query := buildPublicationsQuery(searchText, skip, limit, sorting, filtering)
 	result, err = helpers.GetNeo4jArrayOfNodes[models.Publication](session, query)
 
 	helpers.ProcessArrayResult(&result, err)
 
 	// Get total count
-	countQuery := buildPublicationsCountQuery(searchText)
+	countQuery := buildPublicationsCountQuery(searchText, filtering)
 	totalCount, _ = helpers.GetNeo4jSingleRecordSingleValue[int64](session, countQuery)
 
 	for i := 0; i < len(result); i++ {
@@ -236,7 +236,7 @@ func (svc *PublicationsService) GetPublications(searchText string, page, pageSiz
 	return result, totalCount, err
 }
 
-func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpers.Sorting) helpers.DatabaseQuery {
+func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) helpers.DatabaseQuery {
 	query := helpers.DatabaseQuery{}
 	query.Parameters = make(map[string]interface{})
 
@@ -258,6 +258,8 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 		`
 		query.Parameters["search"] = searchText
 	}
+
+	ApplyPublicationFilters(&query, filtering)
 
 	// Optional matches for relationships
 	query.Query += `
@@ -360,7 +362,7 @@ func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpe
 	return query
 }
 
-func buildPublicationsCountQuery(searchText string) helpers.DatabaseQuery {
+func buildPublicationsCountQuery(searchText string, filtering *[]helpers.ColumnFilter) helpers.DatabaseQuery {
 	query := helpers.DatabaseQuery{}
 	query.Parameters = make(map[string]interface{})
 
@@ -381,6 +383,8 @@ func buildPublicationsCountQuery(searchText string) helpers.DatabaseQuery {
 		query.Parameters["search"] = searchText
 	}
 
+	ApplyPublicationFilters(&query, filtering)
+
 	query.Query += " RETURN count(n) as totalCount"
 	query.ReturnAlias = "totalCount"
 	return query
@@ -388,45 +392,93 @@ func buildPublicationsCountQuery(searchText string) helpers.DatabaseQuery {
 
 func getPublicationsSortingClause(sorting *[]helpers.Sorting) string {
 	if sorting == nil || len(*sorting) == 0 {
-		return " ORDER BY n.updatedAt DESC "
+		return defaultPublicationsSortingClause
 	}
 
-	orderBy := " ORDER BY "
-	for i, sort := range *sorting {
+	clauses := make([]string, 0, len(*sorting))
+	for _, sort := range *sorting {
 		sortField := mapPublicationSortField(sort.ID)
-		direction := helpers.GetSortingDirectionString(sort.DESC)
-
-		if i > 0 {
-			orderBy += ", "
+		// An id we do not recognise is dropped rather than turned into a
+		// property path, which would either sort by nothing or fail the query.
+		if sortField == "" {
+			continue
 		}
-		orderBy += fmt.Sprintf("%s %s", sortField, direction)
+		clauses = append(clauses, fmt.Sprintf("%s %s", sortField, helpers.GetSortingDirectionString(sort.DESC)))
 	}
-	return orderBy
+
+	if len(clauses) == 0 {
+		return defaultPublicationsSortingClause
+	}
+
+	return " ORDER BY " + strings.Join(clauses, ", ") + " "
 }
 
-func mapPublicationSortField(fieldID string) string {
-	// Map frontend field IDs to Neo4j property paths
-	fieldMap := map[string]string{
-		"title":             "n.title",
-		"doi":               "n.doi",
-		"code":              "n.code",
-		"yearOfPublication": "n.yearOfPublication",
-		"allAuthors":        "n.allAuthors",
-		"eliAuthors":        "n.eliAuthors",
-		"longJournalTitle":  "n.longJournalTitle",
-		"impactFactor":      "n.impactFactor",
-		"quartil":           "n.quartil",
-		"updatedAt":         "n.updatedAt",
-		"language":          "n.language",
-		"volume":            "n.volume",
-		"pagesCount":        "n.pagesCount",
-	}
+const defaultPublicationsSortingClause = " ORDER BY n.updatedAt DESC "
 
-	if mapped, ok := fieldMap[fieldID]; ok {
-		return mapped
-	}
-	// Default to the field as-is with n. prefix
-	return "n." + fieldID
+// publicationSortFields maps every column the frontend can sort by onto a
+// property path valid at the point the ORDER BY runs. Codebook columns sort by
+// the related node's name, which is what the table displays. Collected columns
+// (eliResearchers, grant) are absent on purpose: they are built in CALL
+// subqueries after the sort, so there is nothing to order by.
+var publicationSortFields = map[string]string{
+	// Publication properties
+	"title":             "n.title",
+	"code":              "n.code",
+	"eliPublication":    "n.eliPublication",
+	"doi":               "n.doi",
+	"webLink":           "n.webLink",
+	"allAuthors":        "n.allAuthors",
+	"allAuthorsCount":   "n.allAuthorsCount",
+	"eliAuthors":        "n.eliAuthors",
+	"eliAuthorsCount":   "n.eliAuthorsCount",
+	"longJournalTitle":  "n.longJournalTitle",
+	"shortJournalTitle": "n.shortJournalTitle",
+	"volume":            "n.volume",
+	"issue":             "n.issue",
+	"pages":             "n.pages",
+	"pagesCount":        "n.pagesCount",
+	"citeAs":            "n.citeAs",
+	"impactFactor":      "n.impactFactor",
+	"quartilBasis":      "n.quartilBasis",
+	"quartil":           "n.quartil",
+	"yearOfPublication": "n.yearOfPublication",
+	"dateOfPublication": "n.dateOfPublication",
+	"abstract":          "n.abstract",
+	"keywords":          "n.keywords",
+	"oecdFord":          "n.oecdFord",
+	"otherGrants":       "n.otherGrants",
+	"wosNumber":         "n.wosNumber",
+	"issn":              "n.issn",
+	"eissn":             "n.eissn",
+	"eidScopus":         "n.eidScopus",
+	"language":          "n.language",
+	"note":              "n.note",
+	"publisher":         "n.publisher",
+	"publishPlace":      "n.publishPlace",
+	"isbn":              "n.isbn",
+	"bookTitle":         "n.bookTitle",
+	"bookPagesCount":    "n.bookPagesCount",
+	"editionVolume":     "n.editionVolume",
+	"proceedingsIsbn":   "n.proceedingsIsbn",
+	"conferenceDate":    "n.conferenceDate",
+	"conferencePlace":   "n.conferencePlace",
+	"updatedAt":         "n.updatedAt",
+
+	// Codebook relationships, aliased by the base query
+	"mediaType":          "mediaTypeCb.name",
+	"openAccessType":     "openAccessType.name",
+	"publishingCountry":  "publishingCountry.name",
+	"userCall":           "userCall.name",
+	"userExperiment":     "userExperimentCb.name",
+	"experimentalSystem": "experimentalSystemCb.name",
+	"publishFormat":      "publishFormatCb.name",
+	"conferenceScope":    "conferenceScopeCb.name",
+}
+
+// mapPublicationSortField returns the property path for a column id, or an
+// empty string when the id is not sortable.
+func mapPublicationSortField(fieldID string) string {
+	return publicationSortFields[fieldID]
 }
 
 func (svc *PublicationsService) GetPublicationByDoiFromWOS(doi string) (result models.WosAPIResponse, err error) {
