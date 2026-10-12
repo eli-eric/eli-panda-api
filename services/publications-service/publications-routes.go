@@ -25,6 +25,10 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 
 	e.DELETE("/v1/publication/:uid", m.Authorization(h.DeletePublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
+	// Lookup is view-only by design: it never writes, saving the result still
+	// needs EDIT, and the 24 h per-DOI cache bounds the Clarivate quota a
+	// viewer can spend. enrichment-preview stays EDIT — it fans out to three
+	// providers per call.
 	e.GET("/v1/publications/wos/lookup", m.Authorization(h.PreviewWosPublication(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
 	e.POST("/v1/publications/enrichment-preview", m.Authorization(h.PreviewPublicationEnrichment(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 

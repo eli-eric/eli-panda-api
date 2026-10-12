@@ -1003,6 +1003,25 @@ func (h *PublicationsHandlers) UpdateResearcher() echo.HandlerFunc {
 
 		researcher.Uid = uid
 
+		// A body-carried researcherIds list replaces the stored one (an omitted
+		// field keeps it); malformed ids are rejected with 400 and the rest are
+		// normalized, so the correction path cannot store junk.
+		if researcher.ResearcherIDs != nil {
+			normalized := make([]string, 0, len(researcher.ResearcherIDs))
+			seen := make(map[string]bool, len(researcher.ResearcherIDs))
+			for _, raw := range researcher.ResearcherIDs {
+				id, valid := normalizeResearcherID(raw)
+				if !valid {
+					return helpers.BadRequest("'" + strings.TrimSpace(raw) + "' is not a valid ResearcherID.")
+				}
+				if !seen[id] {
+					seen[id] = true
+					normalized = append(normalized, id)
+				}
+			}
+			researcher.ResearcherIDs = normalized
+		}
+
 		userUID := c.Get("userUID").(string)
 
 		updated, err := h.PublicationsService.UpdateResearcher(researcher, userUID)

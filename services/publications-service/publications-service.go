@@ -70,7 +70,7 @@ func NewPublicationsService(driver *neo4j.Driver, wosSAPIURL, wosSAPIKEY string)
 		wosStarterApiUrl: wosSAPIURL,
 		wosStarterApiKey: wosSAPIKEY,
 		wosHTTPClient:    newWosHTTPClient(),
-		wosCache:         newWosLookupCache(wosCacheTTL, wosCacheMaxEntries),
+		wosCache:         newWosLookupCache(wosCacheTTLFromEnv(), wosCacheMaxEntries),
 	}
 	if driver != nil {
 		service.wosRepository = &neo4jWosImportRepository{driver: driver}
@@ -648,7 +648,8 @@ func buildResearchersQuery(searchText string, skip, limit int, sorting *[]helper
 				OR apoc.text.clean(n.identificationNumber) CONTAINS apoc.text.clean($search)
 				OR apoc.text.clean(n.orcid) CONTAINS apoc.text.clean($search)
 				OR apoc.text.clean(n.scopusId) CONTAINS apoc.text.clean($search)
-				OR apoc.text.clean(n.researcherId) CONTAINS apoc.text.clean($search))
+				OR apoc.text.clean(n.researcherId) CONTAINS apoc.text.clean($search)
+				OR ANY(id IN coalesce(n.researcherIds, []) WHERE apoc.text.clean(id) CONTAINS apoc.text.clean($search)))
 		`
 		query.Parameters["search"] = searchText
 	}
@@ -664,6 +665,8 @@ func buildResearchersQuery(searchText string, skip, limit int, sorting *[]helper
 
 	query.Query += fmt.Sprintf(" SKIP %d LIMIT %d ", skip, limit)
 
+	// The researcherIds projection must mirror the detail endpoint: a list
+	// built by hand without it reads as null in the table forever.
 	query.Query += `
 		RETURN {
 			uid: n.uid,
@@ -673,6 +676,7 @@ func buildResearchersQuery(searchText string, skip, limit int, sorting *[]helper
 			orcid: n.orcid,
 			scopusId: n.scopusId,
 			researcherId: n.researcherId,
+			researcherIds: coalesce(n.researcherIds, []),
 			citizenship: CASE WHEN citizenship IS NOT NULL THEN {uid: citizenship.uid, name: citizenship.name, code: citizenship.code} ELSE null END,
 			updatedAt: n.updatedAt
 		} as n
@@ -697,7 +701,8 @@ func buildResearchersCountQuery(searchText string) helpers.DatabaseQuery {
 				OR apoc.text.clean(n.identificationNumber) CONTAINS apoc.text.clean($search)
 				OR apoc.text.clean(n.orcid) CONTAINS apoc.text.clean($search)
 				OR apoc.text.clean(n.scopusId) CONTAINS apoc.text.clean($search)
-				OR apoc.text.clean(n.researcherId) CONTAINS apoc.text.clean($search))
+				OR apoc.text.clean(n.researcherId) CONTAINS apoc.text.clean($search)
+				OR ANY(id IN coalesce(n.researcherIds, []) WHERE apoc.text.clean(id) CONTAINS apoc.text.clean($search)))
 		`
 		query.Parameters["search"] = searchText
 	}
@@ -790,19 +795,7 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 	if err != nil {
 		return result, err
 	}
-	// Learned WoS IDs are append-only through PATCH. A stale researcher form
-	// must not erase IDs confirmed by another editor after the form was loaded.
-	researcher.ResearcherIDs = oldResearcher.ResearcherIDs
-
-	updateQuery := helpers.DatabaseQuery{}
-	updateQuery.Parameters = make(map[string]interface{})
-	updateQuery.Query = `MATCH (n:Researcher {uid: $uid}) SET n.updatedAt = datetime() WITH n  `
-	updateQuery.Parameters["uid"] = researcher.Uid
-
-	helpers.AutoResolveObjectToUpdateQuery(&updateQuery, *researcher, oldResearcher, "n")
-
-	updateQuery.Query += ` RETURN n.uid as uid `
-	updateQuery.ReturnAlias = "uid"
+	updateQuery := buildResearcherUpdateQuery(*researcher, oldResearcher)
 
 	historyLog := helpers.HistoryLogQuery(researcher.Uid, "UPDATE", userUID)
 
@@ -816,6 +809,27 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 	return svc.GetResearcherByUid(researcher.Uid)
 }
 
+func buildResearcherUpdateQuery(researcher, oldResearcher models.Researcher) helpers.DatabaseQuery {
+	query := helpers.DatabaseQuery{
+		Query:       `MATCH (n:Researcher {uid: $uid}) SET n.updatedAt = datetime() WITH n `,
+		Parameters:  map[string]interface{}{"uid": researcher.Uid},
+		ReturnAlias: "uid",
+	}
+	// The reflector skips fields equal to the pre-write snapshot. Exclude IDs
+	// from that comparison: an omitted list must never write this property,
+	// while an explicit list must replace it even if PATCH appended an ID
+	// after the snapshot was read. The SET runs under the node's write lock.
+	fields := researcher
+	fields.ResearcherIDs = oldResearcher.ResearcherIDs
+	helpers.AutoResolveObjectToUpdateQuery(&query, fields, oldResearcher, "n")
+	if researcher.ResearcherIDs != nil {
+		query.Query += `WITH n SET n.researcherIds = $researcherIds `
+		query.Parameters["researcherIds"] = researcher.ResearcherIDs
+	}
+	query.Query += `RETURN n.uid as uid `
+	return query
+}
+
 // AppendResearcherIDs remembers additional WoS ResearcherIDs for a researcher
 // (ELIPANDA-501). The import dialog offers this when an author was confirmed
 // by name, so the same author matches automatically by identifier next time.
@@ -824,10 +838,7 @@ func (svc *PublicationsService) UpdateResearcher(researcher *models.Researcher, 
 func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []string, userUID string) (result models.Researcher, err error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 
-	result, err = svc.GetResearcherByUid(uid)
-	if err != nil {
-		return result, err
-	}
+	defer session.Close()
 
 	incoming := make([]string, 0, len(researcherIDs))
 	seen := make(map[string]struct{}, len(researcherIDs))
@@ -847,13 +858,15 @@ func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []
 	// write lock: under read-committed isolation, concurrent appends would
 	// otherwise read the same list and overwrite each other's additions.
 	// Stored entries are kept exactly as entered; an id is new only if no
-	// casing of it is stored yet.
+	// casing of it is stored yet. Values written before this endpoint (the
+	// migration backfill and earlier imports) are carried verbatim and never
+	// re-validated — normalizeResearcherID gates only what arrives here.
 	query := helpers.DatabaseQuery{
 		Query: `
 			MATCH (n:Researcher {uid: $uid})
-			WHERE n.deleted IS NULL OR n.deleted = false
 			SET n.updatedAt = datetime()
 			WITH n
+			WHERE n.deleted IS NULL OR n.deleted = false
 			SET n.researcherIds = coalesce(n.researcherIds, []) +
 				[id IN $researcherIds WHERE NOT id IN [known IN coalesce(n.researcherIds, []) | toUpper(trim(known))]]
 			RETURN n.uid as uid`,
@@ -865,7 +878,27 @@ func (svc *PublicationsService) AppendResearcherIDs(uid string, researcherIDs []
 	}
 	historyLog := helpers.HistoryLogQuery(uid, "UPDATE", userUID)
 
-	err = helpers.WriteNeo4jAndReturnNothingMultipleQueries(session, query, historyLog)
+	_, err = session.WriteTransaction(func(tx neo4j.Transaction) (interface{}, error) {
+		rows, err := tx.Run(query.Query, query.Parameters)
+		if err != nil {
+			return nil, err
+		}
+		if !rows.Next() {
+			if err := rows.Err(); err != nil {
+				return nil, err
+			}
+			return nil, helpers.ERR_NO_ROWS
+		}
+		if _, err := rows.Consume(); err != nil {
+			return nil, err
+		}
+		audit, err := tx.Run(historyLog.Query, historyLog.Parameters)
+		if err != nil {
+			return nil, err
+		}
+		_, err = audit.Consume()
+		return nil, err
+	})
 	if err != nil {
 		return result, err
 	}

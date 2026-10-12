@@ -5,8 +5,12 @@ import (
 	"sync"
 	"testing"
 
+	"panda/apigateway/helpers"
+	"panda/apigateway/services/publications-service/models"
 	"panda/apigateway/services/testsetup"
 
+	"github.com/google/uuid"
+	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,32 +21,39 @@ import (
 
 const researcherIDsTestMarker = "ELI501TEST"
 
-// HistoryLogQuery links the changed node to an existing (:User) via
-// WAS_UPDATED_BY; a fixture user makes the audit observable.
-const researcherIDsUserUID = "eli501-test-user"
-
-func createResearcherIDsFixture(t *testing.T, uid string) {
+func createResearcherIDsFixture(t *testing.T, uid string) string {
 	t.Helper()
 
-	_, err := testsetup.TestSession.Run(`
-		MERGE (u:User {uid: $userUid})
+	userUID := "eli501-test-user-" + uuid.NewString()
+	marker := researcherIDsTestMarker + "-" + t.Name() + "-" + uuid.NewString()
+	t.Cleanup(func() {
+		session := testsetup.TestDriver.NewSession(neo4j.SessionConfig{})
+		defer session.Close()
+		deleted, err := session.Run(
+			"MATCH (n) WHERE n.testMarker = $marker DETACH DELETE n",
+			map[string]interface{}{"marker": marker})
+		require.NoError(t, err)
+		_, err = deleted.Consume()
+		require.NoError(t, err)
+	})
+	session := testsetup.TestDriver.NewSession(neo4j.SessionConfig{})
+	defer session.Close()
+	created, err := session.Run(`
+		CREATE (u:User {uid: $userUid, testMarker: $marker})
 		CREATE (r:Researcher {
 			uid: $uid, firstName: 'Jane', lastName: 'Doe',
 			researcherId: 'AAA-1111-2022', researcherIds: ['AAA-1111-2022'],
 			deleted: false, testMarker: $marker })`,
-		map[string]interface{}{"uid": uid, "marker": researcherIDsTestMarker, "userUid": researcherIDsUserUID})
+		map[string]interface{}{"uid": uid, "marker": marker, "userUid": userUID})
 	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		_, _ = testsetup.TestSession.Run(
-			"MATCH (r:Researcher {uid: $uid}) DETACH DELETE r",
-			map[string]interface{}{"uid": uid})
-	})
+	_, err = created.Consume()
+	require.NoError(t, err)
+	return userUID
 }
 
 func TestAppendResearcherIDsMergesDeduplicatesAndPersists(t *testing.T) {
-	uid := "eli501-append-" + t.Name()
-	createResearcherIDsFixture(t, uid)
+	uid := "eli501-append-" + t.Name() + "-" + uuid.NewString()
+	researcherIDsUserUID := createResearcherIDsFixture(t, uid)
 	service := NewPublicationsService(&testsetup.TestDriver, "", "")
 
 	// Lowercase and padded ids normalize; the already-known id deduplicates;
@@ -86,8 +97,8 @@ func storedResearcherIDs(t *testing.T, uid string) []string {
 }
 
 func TestAppendResearcherIDsKeepsConcurrentAppends(t *testing.T) {
-	uid := "eli501-concurrent-" + t.Name()
-	createResearcherIDsFixture(t, uid)
+	uid := "eli501-concurrent-" + t.Name() + "-" + uuid.NewString()
+	researcherIDsUserUID := createResearcherIDsFixture(t, uid)
 	service := NewPublicationsService(&testsetup.TestDriver, "", "")
 
 	// Editors confirming different WoS authors of the same person at the same
@@ -116,8 +127,8 @@ func TestAppendResearcherIDsKeepsConcurrentAppends(t *testing.T) {
 }
 
 func TestAppendResearcherIDsKeepsExistingEntriesVerbatim(t *testing.T) {
-	uid := "eli501-legacy-" + t.Name()
-	createResearcherIDsFixture(t, uid)
+	uid := "eli501-legacy-" + t.Name() + "-" + uuid.NewString()
+	researcherIDsUserUID := createResearcherIDsFixture(t, uid)
 	// Values that predate the ResearcherID format (or its casing) are the
 	// editors' data; an unrelated append must neither drop nor rewrite them.
 	_, err := testsetup.TestSession.Run(
@@ -135,8 +146,8 @@ func TestAppendResearcherIDsKeepsExistingEntriesVerbatim(t *testing.T) {
 }
 
 func TestUpdateResearcherPreservesIDsLearnedAfterFormLoad(t *testing.T) {
-	uid := "eli501-stale-put-" + t.Name()
-	createResearcherIDsFixture(t, uid)
+	uid := "eli501-stale-put-" + t.Name() + "-" + uuid.NewString()
+	researcherIDsUserUID := createResearcherIDsFixture(t, uid)
 	service := NewPublicationsService(&testsetup.TestDriver, "", "")
 
 	staleForm, err := service.GetResearcherByUid(uid)
@@ -153,6 +164,75 @@ func TestUpdateResearcherPreservesIDsLearnedAfterFormLoad(t *testing.T) {
 	assert.Equal(t, updated.ResearcherIDs, storedResearcherIDs(t, uid))
 }
 
+func TestUpdateResearcherBodyCarriedIDsReplaceTheList(t *testing.T) {
+	uid := "eli501-replace-put-" + t.Name() + "-" + uuid.NewString()
+	researcherIDsUserUID := createResearcherIDsFixture(t, uid)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// The correction path: a body that carries researcherIds is authoritative,
+	// so a wrong id learned via "remember this match" can be fixed from the UI.
+	form, err := service.GetResearcherByUid(uid)
+	require.NoError(t, err)
+	form.ResearcherIDs = []string{"AAA-1111-2022", "EEE-5555-2021"}
+	updated, err := service.UpdateResearcher(&form, researcherIDsUserUID)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"AAA-1111-2022", "EEE-5555-2021"}, updated.ResearcherIDs)
+	assert.Equal(t, updated.ResearcherIDs, storedResearcherIDs(t, uid))
+
+	// An explicit empty list clears; a body that omits the field keeps it.
+	form.ResearcherIDs = []string{}
+	updated, err = service.UpdateResearcher(&form, researcherIDsUserUID)
+	require.NoError(t, err)
+	assert.Empty(t, storedResearcherIDs(t, uid))
+
+	form.ResearcherIDs = nil
+	_, err = service.UpdateResearcher(&form, researcherIDsUserUID)
+	require.NoError(t, err)
+	assert.Empty(t, storedResearcherIDs(t, uid))
+}
+
+func TestBuildResearcherUpdateQueryIDReplacement(t *testing.T) {
+	stored := models.Researcher{Uid: "query-only", ResearcherIDs: []string{"AAA-1111-2022"}}
+	for _, test := range []struct {
+		name string
+		ids  []string
+	}{
+		{"omitted", nil},
+		{"unchanged-but-authoritative", []string{"AAA-1111-2022"}},
+		{"clear", []string{}},
+		{"replace", []string{"BBB-2222-2023"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			form := stored
+			form.ResearcherIDs = test.ids
+			query := buildResearcherUpdateQuery(form, stored)
+			if test.ids == nil {
+				assert.NotContains(t, query.Query, "SET n.researcherIds")
+				assert.NotContains(t, query.Parameters, "researcherIds")
+			} else {
+				assert.Contains(t, query.Query, "SET n.researcherIds = $researcherIds")
+				assert.Equal(t, test.ids, query.Parameters["researcherIds"])
+			}
+			assert.Equal(t, test.ids, form.ResearcherIDs)
+		})
+	}
+}
+
+func TestAppendResearcherIDsDeletedResearcherFails(t *testing.T) {
+	uid := "eli501-deleted-" + t.Name() + "-" + uuid.NewString()
+	researcherIDsUserUID := createResearcherIDsFixture(t, uid)
+	_, err := testsetup.TestSession.Run(
+		"MATCH (r:Researcher {uid: $uid}) SET r.deleted = true",
+		map[string]interface{}{"uid": uid})
+	require.NoError(t, err)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// The write matches only live nodes; reporting success on a deleted
+	// researcher would hand the caller a 200 with unchanged data.
+	_, err = service.AppendResearcherIDs(uid, []string{"BBB-2222-2023"}, researcherIDsUserUID)
+	assert.ErrorIs(t, err, helpers.ERR_NO_ROWS)
+}
+
 func TestAppendResearcherIDsUnknownResearcherFails(t *testing.T) {
 	service := NewPublicationsService(&testsetup.TestDriver, "", "")
 
@@ -161,7 +241,7 @@ func TestAppendResearcherIDsUnknownResearcherFails(t *testing.T) {
 }
 
 func TestListResearchersForWosMergesPrimaryAndLearnedIDs(t *testing.T) {
-	uid := "eli501-list-" + t.Name()
+	uid := "eli501-list-" + t.Name() + "-" + uuid.NewString()
 	_, err := testsetup.TestSession.Run(`
 		CREATE (r:Researcher {
 			uid: $uid, firstName: 'Ada', lastName: 'Lovelace',

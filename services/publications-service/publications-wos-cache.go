@@ -1,6 +1,8 @@
 package publicationsservice
 
 import (
+	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +22,18 @@ const (
 	wosCacheTTL        = 24 * time.Hour
 	wosCacheMaxEntries = 512
 )
+
+// wosCacheTTLFromEnv lets dev/test shrink the retention window
+// (WOS_CACHE_TTL=5m) so an upstream record correction does not have to wait
+// a day to become visible. Unset or invalid keeps the production default.
+func wosCacheTTLFromEnv() time.Duration {
+	if raw := strings.TrimSpace(os.Getenv("WOS_CACHE_TTL")); raw != "" {
+		if parsed, err := time.ParseDuration(raw); err == nil && parsed > 0 {
+			return parsed
+		}
+	}
+	return wosCacheTTL
+}
 
 type wosCacheEntry struct {
 	hit       models.WosHit
