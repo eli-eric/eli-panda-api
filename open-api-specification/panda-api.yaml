@@ -448,10 +448,6 @@ definitions:
         type: integer
       proceedings:
         type: integer
-      q10Percent:
-        type: integer
-      q10To25:
-        type: integer
       q1Unsplit:
         type: integer
       q2:
@@ -459,6 +455,10 @@ definitions:
       q3:
         type: integer
       q4:
+        type: integer
+      q10Percent:
+        type: integer
+      q10To25:
         type: integer
       total:
         type: integer
@@ -4828,6 +4828,20 @@ paths:
       - description: pagination
         in: query
         name: pagination
+        type: string
+      - description: 'JSON array of {id, desc}. Sortable ids: title, doi, code, yearOfPublication,
+          allAuthors, eliAuthors, eliPublication, longJournalTitle, shortJournalTitle,
+          impactFactor, quartil, quartilBasis, updatedAt, language, volume, issue,
+          pages, pagesCount, bookPagesCount, allAuthorsCount, eliAuthorsCount, publisher,
+          publishPlace, isbn, bookTitle, editionVolume, proceedingsIsbn, conferencePlace,
+          conferenceDate, dateOfPublication, citeAs, keywords, wosNumber, issn, eissn,
+          eidScopus, oecdFord, note, otherGrants, webLink, mediaType, mediaTypeCb,
+          openAccessType, publishingCountry, userCall, userExperiment, userExperimentCb,
+          experimentalSystem, experimentalSystemCb, publishFormatCb, conferenceScopeCb.
+          Collection columns (grant, eliResearchers) have no scalar property and are
+          not sortable; unknown ids are ignored.'
+        in: query
+        name: sorting
         type: string
       - description: JSON array of {id,value} column filters. Text ids (title, code,
           doi, allAuthors, eliAuthors, keywords, longJournalTitle, shortJournalTitle,

@@ -295,17 +295,45 @@ func (svc *PublicationsService) GetPublicationFilterOptions() (result models.Pub
 	query := GetPublicationFilterOptionsQuery()
 	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.PublicationFilterOptions](session, query)
 	if errors.Is(err, helpers.ERR_NO_ROWS) {
-		return models.PublicationFilterOptions{}, nil
+		return normalizeFilterOptions(models.PublicationFilterOptions{}), nil
 	}
 	if err != nil {
 		return result, err
 	}
+	result = normalizeFilterOptions(result)
 
 	sort.Slice(result.Years, func(i, j int) bool { return result.Years[i] > result.Years[j] })
 	for _, values := range [][]string{result.Quartils, result.QuartilBases, result.Languages, result.EliPublications} {
 		sort.Strings(values)
 	}
 	return result, nil
+}
+
+// normalizeFilterOptions keeps the JSON contract honest: the frontend declares
+// string arrays, so an empty register must marshal [] rather than null.
+func normalizeFilterOptions(options models.PublicationFilterOptions) models.PublicationFilterOptions {
+	if options.Years == nil {
+		options.Years = []string{}
+	}
+	if options.Quartils == nil {
+		options.Quartils = []string{}
+	}
+	if options.QuartilBases == nil {
+		options.QuartilBases = []string{}
+	}
+	if options.Languages == nil {
+		options.Languages = []string{}
+	}
+	if options.EliPublications == nil {
+		options.EliPublications = []string{}
+	}
+	if options.Ranges == nil {
+		options.Ranges = map[string]models.FilterValueRange{}
+	}
+	if options.DateBounds == nil {
+		options.DateBounds = map[string]models.FilterStringRange{}
+	}
+	return options
 }
 
 func buildPublicationsQuery(searchText string, skip, limit int, sorting *[]helpers.Sorting, filtering *[]helpers.ColumnFilter) helpers.DatabaseQuery {
@@ -498,7 +526,9 @@ func buildPublicationsOrderBy(sorting *[]helpers.Sorting) []string {
 // mapPublicationSortField resolves a frontend column id to a Cypher ordering
 // expression. Codebook columns sort on the related node's name, accepting both
 // the table column id (e.g. "mediaType") and the canonical codebook id
-// ("mediaTypeCb"). The second return value is false for non-sortable ids.
+// ("mediaTypeCb"). Collection columns (grants, eliResearchers) have no scalar
+// property to sort on and are intentionally absent: an unlisted id is not
+// sortable. The second return value is false for non-sortable ids.
 func mapPublicationSortField(fieldID string) (string, bool) {
 	fieldMap := map[string]string{
 		"title":             "n.title",
@@ -541,7 +571,6 @@ func mapPublicationSortField(fieldID string) (string, bool) {
 		"note":              "n.note",
 		"otherGrants":       "n.otherGrants",
 		"webLink":           "n.webLink",
-		"grant":             "n.grant",
 		// Codebook relationship columns — ordered by the related name.
 		"mediaType":            "mediaTypeCb.name",
 		"mediaTypeCb":          "mediaTypeCb.name",

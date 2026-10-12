@@ -115,6 +115,9 @@ request.
 - **GET**: `200` with results or empty array; `404` only for specific-entity lookups.
 - **Generic**: `401` auth, `403` authorization, `405` method not allowed, `500` internal.
 
+Publication filter options always expose arrays (`[]` for empty selections),
+not null or omitted fields; the service normalizes the decoded aggregation.
+
 ## Configuration
 
 Copy `example.env` → `.env`. Key vars:

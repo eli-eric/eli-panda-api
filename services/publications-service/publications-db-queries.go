@@ -84,7 +84,7 @@ func ApplyPublicationFilters(query *helpers.DatabaseQuery, filtering *[]helpers.
 	}
 
 	for _, field := range publicationTextFilterFields {
-		if value := helpers.GetFilterValueString(filtering, field); value != nil && *value != "" {
+		if value := filterString(filtering, field); value != nil {
 			param := filterParamName(field)
 			query.Query += fmt.Sprintf(" AND toLower(n.%s) CONTAINS $%s", field, param)
 			query.Parameters[param] = strings.ToLower(*value)
@@ -92,21 +92,23 @@ func ApplyPublicationFilters(query *helpers.DatabaseQuery, filtering *[]helpers.
 	}
 
 	for _, field := range publicationListFilterFields {
-		if values := helpers.GetFilterValueListString(filtering, field); values != nil && len(*values) > 0 {
+		if values := filterStringList(filtering, field); len(values) > 0 {
 			param := filterParamName(field)
 			query.Query += fmt.Sprintf(" AND n.%s IN $%s", field, param)
-			query.Parameters[param] = *values
+			query.Parameters[param] = values
 		}
 	}
 
 	for _, field := range publicationNumericRangeFields {
-		if value := helpers.GetFilterValueRangeFloat64(filtering, field); value != nil {
+		// A range with both bounds open is skipped rather than emitted as a
+		// bare IS NOT NULL, which would silently drop every null-valued row.
+		if from, to, ok := filterNumericRange(filtering, field); ok {
 			param := filterParamName(field)
 			query.Query += fmt.Sprintf(
 				" AND n.%s IS NOT NULL AND ($%sFrom IS NULL OR n.%s >= $%sFrom) AND ($%sTo IS NULL OR n.%s <= $%sTo)",
 				field, param, field, param, param, field, param)
-			query.Parameters[param+"From"] = value.Min
-			query.Parameters[param+"To"] = value.Max
+			query.Parameters[param+"From"] = from
+			query.Parameters[param+"To"] = to
 		}
 	}
 
@@ -188,6 +190,91 @@ func uidListFromValue(value any) []string {
 	case string:
 		if typed != "" {
 			return []string{typed}
+		}
+	}
+	return nil
+}
+
+// filterString reads a text filter value with a checked type assertion: a
+// hand-written columnFilter such as {"id":"title","value":5} is ignored, not
+// a panic in the request goroutine (helpers.GetFilterValueString asserts).
+func filterString(filtering *[]helpers.ColumnFilter, filterID string) *string {
+	if filtering == nil {
+		return nil
+	}
+	for _, f := range *filtering {
+		if f.Id != filterID {
+			continue
+		}
+		value, ok := f.Value.(string)
+		if !ok {
+			continue
+		}
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return &trimmed
+		}
+	}
+	return nil
+}
+
+// filterStringList reads a multi-select text filter, keeping only the string
+// items; non-string items are dropped rather than panicking.
+func filterStringList(filtering *[]helpers.ColumnFilter, filterID string) []string {
+	if filtering == nil {
+		return nil
+	}
+	for _, f := range *filtering {
+		if f.Id != filterID {
+			continue
+		}
+		items, ok := f.Value.([]interface{})
+		if !ok {
+			continue
+		}
+		values := make([]string, 0, len(items))
+		for _, item := range items {
+			if value, ok := item.(string); ok && value != "" {
+				values = append(values, value)
+			}
+		}
+		if len(values) > 0 {
+			return values
+		}
+	}
+	return nil
+}
+
+// filterNumericRange reads a {min,max} range of numbers, tolerating numeric
+// strings. ok is false unless at least one bound resolves, so an empty object
+// {} never emits a predicate.
+func filterNumericRange(filtering *[]helpers.ColumnFilter, filterID string) (from *float64, to *float64, ok bool) {
+	if filtering == nil {
+		return nil, nil, false
+	}
+	for _, f := range *filtering {
+		if f.Id != filterID {
+			continue
+		}
+		value, isMap := f.Value.(map[string]interface{})
+		if !isMap {
+			continue
+		}
+		from, to = floatFromJSON(value["min"]), floatFromJSON(value["max"])
+		if from == nil && to == nil {
+			continue
+		}
+		return from, to, true
+	}
+	return nil, nil, false
+}
+
+func floatFromJSON(value any) *float64 {
+	switch typed := value.(type) {
+	case float64:
+		return &typed
+	case string:
+		if parsed, err := strconv.ParseFloat(strings.TrimSpace(typed), 64); err == nil {
+			return &parsed
 		}
 	}
 	return nil
