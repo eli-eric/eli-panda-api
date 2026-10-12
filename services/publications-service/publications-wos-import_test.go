@@ -624,7 +624,7 @@ func performPreviewRequest(
 	ctx := e.NewContext(request, response)
 	ctx.Set("facilityCode", "B")
 
-	err := NewPublicationsHandlers(service).PreviewWosPublication()(ctx)
+	err := NewPublicationsHandlers(service, nil).PreviewWosPublication()(ctx)
 	require.NoError(t, err)
 	return response
 }

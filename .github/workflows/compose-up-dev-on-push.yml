@@ -9,9 +9,17 @@ jobs:
   use-secret:
     runs-on: czechia-server
     steps:
-      - name: Show secret stats
+      - name: Validate required secrets are set
+        env:
+          API_JWT_SECRET: "${{ secrets.API_JWT_SECRET }}"
+          NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"
+          API_INTEGRATION_B_OKBASE_API_KEY: "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}"
+          API_INTEGRATION_B_WOS_STARTER_API_KEY: "${{ secrets.API_INTEGRATION_B_WOS_STARTER_API_KEY }}"
         run: |
-          echo "${{ secrets.API_JWT_SECRET }}" | echo "${{ secrets.NEO4J_PASSWORD }}" | echo "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}" | echo "${{ secrets.API_INTEGRATION_B_WOS_STARTER_API_KEY }}" || wc
+          test -n "$API_JWT_SECRET" || { echo "Error: API_JWT_SECRET is not set."; exit 1; }
+          test -n "$NEO4J_PASSWORD" || { echo "Error: NEO4J_PASSWORD is not set."; exit 1; }
+          test -n "$API_INTEGRATION_B_OKBASE_API_KEY" || { echo "Error: API_INTEGRATION_B_OKBASE_API_KEY is not set."; exit 1; }
+          test -n "$API_INTEGRATION_B_WOS_STARTER_API_KEY" || { echo "Error: API_INTEGRATION_B_WOS_STARTER_API_KEY is not set."; exit 1; }
   compose-up:
     runs-on: czechia-server
     needs: use-secret
@@ -24,3 +32,6 @@ jobs:
           NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"
           API_INTEGRATION_B_OKBASE_API_KEY: "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}"
           API_INTEGRATION_B_WOS_STARTER_API_KEY: "${{ secrets.API_INTEGRATION_B_WOS_STARTER_API_KEY }}"
+          # Contact addresses, not secrets: repository variables (Settings → Variables).
+          CROSSREF_EMAIL: "${{ vars.CROSSREF_EMAIL }}"
+          UNPAYWALL_EMAIL: "${{ vars.UNPAYWALL_EMAIL }}"
