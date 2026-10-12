@@ -23,6 +23,7 @@ type PublicationsService struct {
 }
 
 type IPublicationsService interface {
+	ValidateReportingReferences(reporting *models.PublicationReporting) error
 	GetPublicationByUid(uid string) (models.Publication, error)
 	CreatePublication(publication *models.Publication, userUID string) (result models.Publication, err error)
 	UpdatePublication(newPublication *models.Publication, userUID string) (result models.Publication, err error)

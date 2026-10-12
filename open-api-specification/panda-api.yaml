@@ -4866,10 +4866,6 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/models.PublicationAPIError'
-        "503":
-          description: Service Unavailable
-          schema:
-            $ref: '#/definitions/models.PublicationAPIError'
       security:
       - BearerAuth: []
       summary: Preview publication metadata enrichment for a DOI

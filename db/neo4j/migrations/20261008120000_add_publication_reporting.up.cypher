@@ -16,3 +16,7 @@ ON (r.reviewed);
 CREATE INDEX JournalMetric_year_index IF NOT EXISTS
 FOR (m:JournalMetric)
 ON (m.year);
+
+CREATE INDEX Publication_yearOfPublication_index IF NOT EXISTS
+FOR (p:Publication)
+ON (p.yearOfPublication);

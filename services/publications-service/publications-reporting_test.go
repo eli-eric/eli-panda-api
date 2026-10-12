@@ -33,15 +33,23 @@ func setupReportingFixtures(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Cleanup(func() {
-		_, err := testsetup.TestSession.Run(`
-			MATCH (n)
-			WHERE n.uid STARTS WITH $prefix
-			OPTIONAL MATCH (n)-[:HAS_REPORTING]->(reporting:PublicationReporting)
-			OPTIONAL MATCH (reporting)-[:HAS_REPORTING_AUTHOR]->(author:PublicationReportingAuthor)
-			OPTIONAL MATCH (reporting)-[:HAS_JOURNAL_METRIC]->(metric:JournalMetric)
-			DETACH DELETE n, reporting, author, metric
-		`, map[string]interface{}{"prefix": reportingTestPrefix})
-		require.NoError(t, err)
+		// One labeled statement per fixture kind: a label-less `MATCH (n)`
+		// full-scans the shared test database on every test.
+		statements := []string{
+			`MATCH (p:Publication) WHERE p.uid STARTS WITH $prefix
+			 OPTIONAL MATCH (p)-[:HAS_REPORTING]->(reporting:PublicationReporting)
+			 OPTIONAL MATCH (reporting)-[:HAS_REPORTING_AUTHOR]->(author:PublicationReportingAuthor)
+			 OPTIONAL MATCH (reporting)-[:HAS_JOURNAL_METRIC]->(metric:JournalMetric)
+			 DETACH DELETE p, reporting, author, metric`,
+			`MATCH (d:Department) WHERE d.uid STARTS WITH $prefix DETACH DELETE d`,
+			`MATCH (r:Researcher) WHERE r.uid STARTS WITH $prefix DETACH DELETE r`,
+			`MATCH (c:UserCall) WHERE c.uid STARTS WITH $prefix DETACH DELETE c`,
+			`MATCH (s:ExperimentalSystem) WHERE s.uid STARTS WITH $prefix DETACH DELETE s`,
+		}
+		for _, statement := range statements {
+			_, err := testsetup.TestSession.Run(statement, map[string]interface{}{"prefix": reportingTestPrefix})
+			require.NoError(t, err)
+		}
 	})
 }
 
@@ -316,6 +324,49 @@ func TestReportingRejectsValuesAnalyticsCannotInterpret(t *testing.T) {
 	require.NoError(t, validatePublicationReporting(blank))
 	assert.Equal(t, reportingClassificationUnclassified, blank.Classification)
 	assert.Equal(t, "unknown", blank.DocumentType)
+}
+
+func TestValidateReportingReferencesRejectsUnresolvableUIDs(t *testing.T) {
+	setupReportingFixtures(t)
+	service := NewPublicationsService(&testsetup.TestDriver, "", "")
+
+	// A soft-deleted researcher must be rejected, not silently dropped by the
+	// MATCH ... CREATE write.
+	_, err := testsetup.TestSession.Run(
+		`CREATE (:Researcher {uid: $uid, firstName: "Gone", lastName: "Researcher", deleted: true})`,
+		map[string]interface{}{"uid": reportingTestPrefix + "researcher-deleted"})
+	require.NoError(t, err)
+
+	assert.NoError(t, service.ValidateReportingReferences(nil))
+
+	valid := sampleReporting()
+	assert.NoError(t, service.ValidateReportingReferences(valid))
+
+	unknown := map[string]*models.PublicationReporting{
+		"unknown researcher": {Authors: []models.ReportingAuthor{
+			{ResearcherUID: reportingTestPrefix + "researcher-missing"}}},
+		"deleted researcher": {Authors: []models.ReportingAuthor{
+			{ResearcherUID: reportingTestPrefix + "researcher-deleted"}}},
+		"unknown department": {DepartmentUIDs: []string{reportingTestPrefix + "dept-missing"}},
+		"unknown author department": {Authors: []models.ReportingAuthor{
+			{ResearcherUID: reportingTestPrefix + "researcher-1",
+				DepartmentUIDs: []string{reportingTestPrefix + "dept-missing"}}}},
+		"unknown user call": {UserCallUIDs: []string{reportingTestPrefix + "call-missing"}},
+		"unknown system":    {ExperimentalSystemUIDs: []string{reportingTestPrefix + "system-missing"}},
+	}
+	for name, reporting := range unknown {
+		t.Run(name, func(t *testing.T) {
+			err := service.ValidateReportingReferences(reporting)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), reportingTestPrefix)
+		})
+	}
+
+	// The handler path must not accept a snapshot the writer would drop rows for.
+	publication := newReportingPublication(reportingTestPrefix + "pub-badref")
+	publication.Reporting = unknown["unknown researcher"]
+	require.NoError(t, validatePublicationReporting(publication.Reporting))
+	assert.Error(t, service.ValidateReportingReferences(publication.Reporting))
 }
 
 func TestExecutiveSummaryReadsSavedRecords(t *testing.T) {

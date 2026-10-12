@@ -2,6 +2,8 @@ package publicationsservice
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -114,6 +116,87 @@ func validatePublicationReporting(reporting *models.PublicationReporting) error 
 		}
 	}
 	return nil
+}
+
+type reportingMissingUIDsResult struct {
+	Missing []string `json:"missing"`
+}
+
+// ValidateReportingReferences resolves every UID the snapshot links against
+// the database before the write runs. The writes below are MATCH ... CREATE,
+// so a UID that no longer resolves silently drops the row: a removed
+// Researcher would make the submitted author vanish from the saved snapshot
+// with no error. Rejecting up front turns that silent drop into a 400.
+func (svc *PublicationsService) ValidateReportingReferences(reporting *models.PublicationReporting) error {
+	if reporting == nil {
+		return nil
+	}
+	researcherUIDs := make([]string, 0, len(reporting.Authors))
+	departmentUIDs := append([]string{}, reporting.DepartmentUIDs...)
+	for _, author := range reporting.Authors {
+		researcherUIDs = append(researcherUIDs, author.ResearcherUID)
+		departmentUIDs = append(departmentUIDs, author.DepartmentUIDs...)
+	}
+	checks := []struct {
+		entity   string
+		label    string
+		uids     []string
+		liveOnly bool
+	}{
+		{"researcher", "Researcher", researcherUIDs, true},
+		{"department", "Department", departmentUIDs, false},
+		{"user call", "UserCall", reporting.UserCallUIDs, false},
+		{"user experiment", "UserExperiment", reporting.UserExperimentUIDs, false},
+		{"experimental system", "ExperimentalSystem", reporting.ExperimentalSystemUIDs, false},
+	}
+
+	session, err := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+
+	for _, check := range checks {
+		uids := uniqueStrings(check.uids)
+		if len(uids) == 0 {
+			continue
+		}
+		// liveOnly mirrors the author write's delete filter, so a soft-deleted
+		// researcher is reported as missing rather than silently dropped.
+		predicate := "node IS NULL"
+		if check.liveOnly {
+			predicate = "node IS NULL OR coalesce(node.deleted, false)"
+		}
+		result, err := helpers.GetNeo4jSingleRecordAndMapToStruct[reportingMissingUIDsResult](session, helpers.DatabaseQuery{
+			Query: `
+				UNWIND $uids AS uid
+				OPTIONAL MATCH (node:` + check.label + ` {uid: uid})
+				WITH uid, node WHERE ` + predicate + `
+				RETURN {missing: collect(uid)} AS result`,
+			ReturnAlias: "result",
+			Parameters:  map[string]interface{}{"uids": uids},
+		})
+		if err != nil {
+			return err
+		}
+		if len(result.Missing) > 0 {
+			return fmt.Errorf("reporting references a %s that does not exist: %s",
+				check.entity, strings.Join(result.Missing, ", "))
+		}
+	}
+	return nil
+}
+
+func uniqueStrings(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	unique := make([]string, 0, len(values))
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			unique = append(unique, value)
+		}
+	}
+	return unique
 }
 
 // getPublicationReporting returns nil when the publication has never been
@@ -456,8 +539,8 @@ func (svc *PublicationsService) listReportingRows(startYear, endYear int) ([]rep
 			MATCH (p:Publication)
 			WHERE (p.deleted IS NULL OR p.deleted = false)
 			  AND p.yearOfPublication IS NOT NULL
-			  AND toInteger(p.yearOfPublication) >= $startYear
-			  AND toInteger(p.yearOfPublication) <= $endYear
+			  AND p.yearOfPublication >= $startYear
+			  AND p.yearOfPublication <= $endYear
 			OPTIONAL MATCH (p)-[:HAS_REPORTING]->(reporting:PublicationReporting)
 			RETURN {
 				uid: p.uid,
@@ -492,7 +575,13 @@ func (svc *PublicationsService) listReportingRows(startYear, endYear int) ([]rep
 				}]
 			} AS row`,
 		ReturnAlias: "row",
-		Parameters:  map[string]interface{}{"startYear": startYear, "endYear": endYear},
+		// yearOfPublication is a zero-padded 4-digit string (schema: String;
+		// handlers validate 4-digit input), so a string range uses the index —
+		// toInteger() in the predicate would force a full label scan.
+		Parameters: map[string]interface{}{
+			"startYear": strconv.Itoa(startYear),
+			"endYear":   strconv.Itoa(endYear),
+		},
 	}
 
 	rows, err := helpers.GetNeo4jArrayOfNodes[reportingRow](session, query)

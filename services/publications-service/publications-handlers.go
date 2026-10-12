@@ -114,6 +114,10 @@ func (h *PublicationsHandlers) CreatePublication() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
+		if err := h.PublicationsService.ValidateReportingReferences(publication.Reporting); err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
 		userUID := c.Get("userUID").(string)
 
 		if publication.Uid == "" {
@@ -237,6 +241,10 @@ func (h *PublicationsHandlers) UpdatePublication() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
+		if err := h.PublicationsService.ValidateReportingReferences(publication.Reporting); err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+
 		publication.Uid = uid
 
 		userUID := c.Get("userUID").(string)
@@ -326,7 +334,7 @@ func (h *PublicationsHandlers) GetWosDataByDoi() echo.HandlerFunc {
 // @Router /v1/publications/wos-preview [get]
 func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		facilityCode, _ := c.Get("facilityCode").(string)
+		facilityCode := c.Get("facilityCode").(string)
 		result, err := h.PublicationsService.PreviewWosPublication(
 			c.Request().Context(),
 			c.QueryParam("doi"),
@@ -352,23 +360,18 @@ func (h *PublicationsHandlers) PreviewWosPublication() echo.HandlerFunc {
 // @Success 200 {object} models.EnrichmentPreviewResponse
 // @Failure 400 {object} models.PublicationAPIError
 // @Failure 500 {object} models.PublicationAPIError
-// @Failure 503 {object} models.PublicationAPIError
 // @Router /v1/publications/enrichment-preview [post]
 func (h *PublicationsHandlers) PreviewPublicationEnrichment() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		if h.EnrichmentService == nil {
-			return c.JSON(http.StatusServiceUnavailable, models.PublicationAPIError{
-				Code:    wosErrorNotConfigured,
-				Message: "Publication metadata enrichment is not configured.",
-			})
-		}
+		// EnrichmentService is always constructed in services/init.go; the real
+		// "provider not configured" state is reported per-source inside the 200.
 
 		var request models.EnrichmentPreviewRequest
 		if err := c.Bind(&request); err != nil {
 			return helpers.BadRequest("Invalid enrichment preview request.")
 		}
 
-		facilityCode, _ := c.Get("facilityCode").(string)
+		facilityCode := c.Get("facilityCode").(string)
 		result, err := h.EnrichmentService.Preview(
 			c.Request().Context(),
 			request.Doi,

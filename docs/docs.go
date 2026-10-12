@@ -3948,12 +3948,6 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/models.PublicationAPIError"
                         }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/models.PublicationAPIError"
-                        }
                     }
                 }
             }

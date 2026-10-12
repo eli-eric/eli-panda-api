@@ -514,7 +514,18 @@ func defaultReportYear(now time.Time) int { return now.Year() - 1 }
 // database failure is returned as an error: an empty or partial report would
 // look like a real one.
 func (svc *PublicationsService) GetExecutiveSummary(year, startYear, endYear int) (models.ExecutiveSummary, error) {
-	rows, err := svc.listReportingRows(startYear, endYear)
+	// The headline totals are computed for `year`, so its rows must be fetched
+	// even when the trend window does not cover it; without this, `year` outside
+	// [startYear, endYear] echoes back all-zero totals that read as "no
+	// publications in `year`". The trend builder only walks the requested window.
+	fetchStart, fetchEnd := startYear, endYear
+	if year < fetchStart {
+		fetchStart = year
+	}
+	if year > fetchEnd {
+		fetchEnd = year
+	}
+	rows, err := svc.listReportingRows(fetchStart, fetchEnd)
 	if err != nil {
 		return models.ExecutiveSummary{}, err
 	}
