@@ -738,7 +738,8 @@ func TestPreviewWosPublicationRejectsQueryBreakingDOIs(t *testing.T) {
 }
 
 func TestPreviewWosPublicationDropsNonHTTPRecordLinks(t *testing.T) {
-	// The record link is rendered as a clickable href; only http(s) may pass.
+	// The record link is rendered as a clickable href and saved as webLink;
+	// only http(s) may pass.
 	for _, link := range []string{"javascript:alert(document.domain)", "data:text/html,<b>x</b>", "//evil.example/x", "not a url", "https://user:pass@www.webofscience.com/record"} {
 		t.Run(link, func(t *testing.T) {
 			upstream := httptest.NewServer(http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
@@ -758,6 +759,8 @@ func TestPreviewWosPublicationDropsNonHTTPRecordLinks(t *testing.T) {
 				PreviewWosPublication(context.Background(), "10.1000/link.1", "", "B")
 			require.NoError(t, err)
 			assert.Empty(t, preview.RecordUrl)
+			require.NotNil(t, preview.Values)
+			assert.Nil(t, preview.Values.WebLink)
 			assert.Equal(t, "WOS:LINK", preview.WosUid)
 		})
 	}

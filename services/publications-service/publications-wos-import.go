@@ -483,7 +483,9 @@ func mapWosImportValues(hit models.WosHit, doi string) (models.WosImportValues, 
 		PagesCount:       positiveIntPointer(hit.WosSource.WosPages.WosCount),
 		Issn:             stringValue(hit.WosIdentifiers.WosISSN),
 		EIssn:            stringValue(hit.WosIdentifiers.WosEISSN),
-		WebLink:          stringValue(hit.WosLinks.WosRecord),
+		// Saved as the publication's webLink, so it gets the same http(s) guard
+		// as RecordUrl.
+		WebLink: stringValue(httpURLOrEmpty(hit.WosLinks.WosRecord)),
 	}
 
 	// PANDA stores volume/issue as numbers, WoS sends free strings ("6", but
