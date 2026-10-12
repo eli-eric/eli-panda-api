@@ -243,7 +243,10 @@ func (svc *PublicationEnrichmentService) fetchEnrichmentWos(ctx context.Context,
 		return source
 	}
 	source.status.Status, source.status.RetrievedAt = "ok", time.Now().UTC().Format(time.RFC3339)
-	source.values = mapWosImportValues(hit, doi)
+	// Provider-level mapping warnings are intentionally dropped here: the
+	// enrichment response surfaces its own per-provider status, and a degraded
+	// WoS field still has Crossref/Unpaywall candidates to fall back on.
+	source.values, _ = mapWosImportValues(hit, doi)
 	if hit.WosSource.WosPublishYear < 1 || hit.WosSource.WosPublishYear > 9999 {
 		source.values.YearOfPublication, source.values.DateOfPublication = nil, nil
 	} else {

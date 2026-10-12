@@ -3627,65 +3627,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/publication/wos/{doi}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get WOS data by DOI",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Publications"
-                ],
-                "summary": "Get WOS data by DOI",
-                "deprecated": true,
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "doi",
-                        "name": "doi",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/models.WosAPIResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/models.PublicationAPIError"
-                        }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "$ref": "#/definitions/models.PublicationAPIError"
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "$ref": "#/definitions/models.PublicationAPIError"
-                        }
-                    },
-                    "504": {
-                        "description": "Gateway Timeout",
-                        "schema": {
-                            "$ref": "#/definitions/models.PublicationAPIError"
-                        }
-                    }
-                }
-            }
-        },
         "/v1/publication/{uid}": {
             "get": {
                 "security": [
@@ -4123,21 +4064,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/publications/wos-preview": {
+        "/v1/publications/wos/lookup": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns PANDA publication field candidates and researcher matches without saving a publication",
+                "description": "Returns PANDA publication field candidates and researcher matches without saving a publication\nA DOI already present in PANDA still returns its full preview plus an existingPublication banner payload.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Publications"
                 ],
-                "summary": "Preview Web of Science publication metadata",
+                "summary": "Look up Web of Science publication metadata for a DOI",
                 "parameters": [
                     {
                         "type": "string",
@@ -4365,6 +4306,61 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "500": {
+                        "description": "Internal Server Error"
+                    }
+                }
+            }
+        },
+        "/v1/researcher/{uid}/researcher-ids": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Appends WoS ResearcherIDs to a researcher's identifier list so future Web of Science imports match automatically (ELIPANDA-501). Duplicates are ignored.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Researchers"
+                ],
+                "summary": "Remember ResearcherIDs for a researcher",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "uid",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "ResearcherIDs to remember",
+                        "name": "researcherIds",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.ResearcherIdsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.Researcher"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "description": "Not Found"
                     },
                     "500": {
                         "description": "Internal Server Error"
@@ -9502,6 +9498,13 @@ const docTemplate = `{
                     "description": "researcherId is the ResearcherID of the researcher",
                     "type": "string"
                 },
+                "researcherIds": {
+                    "description": "ResearcherIDs holds every WoS ResearcherID known for this person — most\nscientists own several (ELIPANDA-501). researcherId above stays the\nprimary for backwards compatibility; matching consults both.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "scopusId": {
                     "description": "scopusId is the Scopus identifier of the researcher",
                     "type": "string"
@@ -9513,6 +9516,17 @@ const docTemplate = `{
                 "updatedAt": {
                     "description": "updatedAt is the time when the researcher was last updated",
                     "type": "string"
+                }
+            }
+        },
+        "models.ResearcherIdsRequest": {
+            "type": "object",
+            "properties": {
+                "researcherIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -10541,38 +10555,6 @@ const docTemplate = `{
                 }
             }
         },
-        "models.WosAPIResponse": {
-            "type": "object",
-            "properties": {
-                "hits": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.WosHit"
-                    }
-                },
-                "metadata": {
-                    "$ref": "#/definitions/models.WosMetadata"
-                }
-            }
-        },
-        "models.WosAuthor": {
-            "type": "object",
-            "properties": {
-                "displayName": {
-                    "type": "string"
-                },
-                "orcid": {
-                    "description": "Orcid is not part of the WoS Starter payload. Providers that do supply a\npersistent author identifier (Crossref) populate it so matching can key on\nan identifier instead of falling back to a name.",
-                    "type": "string"
-                },
-                "researcherId": {
-                    "type": "string"
-                },
-                "wosStandard": {
-                    "type": "string"
-                }
-            }
-        },
         "models.WosAuthorMatch": {
             "type": "object",
             "properties": {
@@ -10582,27 +10564,16 @@ const docTemplate = `{
                         "$ref": "#/definitions/models.ResearcherRef"
                     }
                 },
+                "confidence": {
+                    "description": "Confidence is the stable dialog contract: EXACT_ID | NAME | AMBIGUOUS |\nNONE. Kind stays the internal provenance (researcher-id, orcid, name...).",
+                    "type": "string"
+                },
                 "kind": {
                     "type": "string"
-                }
-            }
-        },
-        "models.WosCitation": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer"
                 },
-                "db": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.WosEditor": {
-            "type": "object",
-            "properties": {
-                "displayName": {
-                    "type": "string"
+                "knownResearcherId": {
+                    "description": "KnownResearcherId is true when the author's WoS ResearcherID is already\nregistered on the matched researcher; false invites the dialog to offer\nremembering it (ELIPANDA-501).",
+                    "type": "boolean"
                 }
             }
         },
@@ -10619,70 +10590,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "uid": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.WosHit": {
-            "type": "object",
-            "properties": {
-                "citations": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.WosCitation"
-                    }
-                },
-                "identifiers": {
-                    "$ref": "#/definitions/models.WosIdentifiers"
-                },
-                "keywords": {
-                    "$ref": "#/definitions/models.WosKeywords"
-                },
-                "links": {
-                    "$ref": "#/definitions/models.WosLinks"
-                },
-                "names": {
-                    "$ref": "#/definitions/models.WosNames"
-                },
-                "source": {
-                    "$ref": "#/definitions/models.WosSource"
-                },
-                "sourceTypes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "title": {
-                    "type": "string"
-                },
-                "types": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "uid": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.WosIdentifiers": {
-            "type": "object",
-            "properties": {
-                "doi": {
-                    "type": "string"
-                },
-                "eisbn": {
-                    "type": "string"
-                },
-                "eissn": {
-                    "type": "string"
-                },
-                "isbn": {
-                    "type": "string"
-                },
-                "issn": {
                     "type": "string"
                 }
             }
@@ -10769,69 +10676,19 @@ const docTemplate = `{
                 }
             }
         },
-        "models.WosKeywords": {
+        "models.WosImportWarning": {
             "type": "object",
             "properties": {
-                "authorKeywords": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "models.WosLinks": {
-            "type": "object",
-            "properties": {
-                "record": {
-                    "type": "string"
-                }
-            }
-        },
-        "models.WosMetadata": {
-            "type": "object",
-            "properties": {
-                "limit": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "models.WosNames": {
-            "type": "object",
-            "properties": {
-                "authors": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.WosAuthor"
-                    }
-                },
-                "bookEditors": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/models.WosEditor"
-                    }
-                }
-            }
-        },
-        "models.WosPages": {
-            "type": "object",
-            "properties": {
-                "begin": {
+                "code": {
                     "type": "string"
                 },
-                "count": {
-                    "type": "integer"
-                },
-                "end": {
+                "field": {
                     "type": "string"
                 },
-                "range": {
+                "message": {
+                    "type": "string"
+                },
+                "raw": {
                     "type": "string"
                 }
             }
@@ -10857,6 +10714,9 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "recordUrl": {
+                    "type": "string"
+                },
                 "status": {
                     "type": "string"
                 },
@@ -10868,31 +10728,16 @@ const docTemplate = `{
                 },
                 "values": {
                     "$ref": "#/definitions/models.WosImportValues"
-                }
-            }
-        },
-        "models.WosSource": {
-            "type": "object",
-            "properties": {
-                "articleNumber": {
-                    "type": "string"
                 },
-                "issue": {
-                    "type": "string"
+                "warnings": {
+                    "description": "Warnings describe degraded source values (non-numeric volume, missing\nday, ...) so the dialog can explain an omitted field instead of\nsilently dropping it (ELIPANDA-501).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.WosImportWarning"
+                    }
                 },
-                "pages": {
-                    "$ref": "#/definitions/models.WosPages"
-                },
-                "publishMonth": {
-                    "type": "string"
-                },
-                "publishYear": {
-                    "type": "integer"
-                },
-                "sourceTitle": {
-                    "type": "string"
-                },
-                "volume": {
+                "wosUid": {
+                    "description": "WosUid and RecordUrl identify the upstream record for the dialog header\n(ELIPANDA-501/502 contract).",
                     "type": "string"
                 }
             }

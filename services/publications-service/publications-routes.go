@@ -25,8 +25,11 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 
 	e.DELETE("/v1/publication/:uid", m.Authorization(h.DeletePublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
-	e.GET("/v1/publication/wos/:doi", m.Authorization(h.GetWosDataByDoi(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
-	e.GET("/v1/publications/wos-preview", m.Authorization(h.PreviewWosPublication(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+	// Lookup is view-only by design: it never writes, saving the result still
+	// needs EDIT, and the 24 h per-DOI cache bounds the Clarivate quota a
+	// viewer can spend. enrichment-preview stays EDIT — it fans out to three
+	// providers per call.
+	e.GET("/v1/publications/wos/lookup", m.Authorization(h.PreviewWosPublication(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
 	e.POST("/v1/publications/enrichment-preview", m.Authorization(h.PreviewPublicationEnrichment(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.GET("/v1/publications/analytics/executive-summary", m.Authorization(h.GetPublicationExecutiveSummary(), shared.ROLE_PUBLICATIONS_VIEW), jwtMiddleware)
@@ -41,6 +44,9 @@ func MapPublicationsRoutes(e *echo.Echo, h IPublicationsHandlers, jwtMiddleware 
 	e.POST("/v1/researchers", m.Authorization(h.CreateResearchers(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.PUT("/v1/researcher/:uid", m.Authorization(h.UpdateResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
+
+	// Learned WoS ResearcherIDs (ELIPANDA-501): needs edit rights, lookup alone is view-only.
+	e.PATCH("/v1/researcher/:uid/researcher-ids", m.Authorization(h.AppendResearcherIDs(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 
 	e.DELETE("/v1/researcher/:uid", m.Authorization(h.DeleteResearcher(), shared.ROLE_PUBLICATIONS_EDIT), jwtMiddleware)
 

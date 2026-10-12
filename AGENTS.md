@@ -115,6 +115,14 @@ request.
 - **GET**: `200` with results or empty array; `404` only for specific-entity lookups.
 - **Generic**: `401` auth, `403` authorization, `405` method not allowed, `500` internal.
 
+Researcher PUT preserves `researcherIds` when omitted or null. An explicit
+array is authoritative (including `[]` to clear) and is written under the
+node lock even when it equals the pre-write snapshot. PATCH appends under
+that lock and returns 404 if the researcher is missing or soft-deleted at
+write time. Matching still checks both the primary `researcherId` and the
+array, so correcting an ID also requires correcting it in the primary field
+when present there.
+
 Publication filter options always expose arrays (`[]` for empty selections),
 not null or omitted fields; the service normalizes the decoded aggregation.
 

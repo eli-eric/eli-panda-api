@@ -82,7 +82,8 @@ func (repo *neo4jWosImportRepository) listResearchersForWos() ([]wosResearcherRe
 				firstName: coalesce(researcher.firstName, ""),
 				lastName: coalesce(researcher.lastName, ""),
 				researcherIds: [id IN
-					CASE WHEN researcher.researcherId IS NULL THEN [] ELSE [researcher.researcherId] END
+					CASE WHEN researcher.researcherId IS NULL THEN [] ELSE [researcher.researcherId] END +
+					coalesce(researcher.researcherIds, [])
 					WHERE trim(id) <> "" | toUpper(trim(id))],
 				orcids: [id IN
 					CASE WHEN researcher.orcid IS NULL THEN [] ELSE [researcher.orcid] END
