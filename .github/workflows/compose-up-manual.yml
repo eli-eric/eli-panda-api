@@ -27,3 +27,6 @@ jobs:
           API_JWT_SECRET: "${{ secrets.API_JWT_SECRET }}"
           NEO4J_PASSWORD: "${{ secrets.NEO4J_PASSWORD }}"
           API_INTEGRATION_B_OKBASE_API_KEY: "${{ secrets.API_INTEGRATION_B_OKBASE_API_KEY }}"
+          # Contact addresses, not secrets: repository variables (Settings → Variables).
+          CROSSREF_EMAIL: "${{ vars.CROSSREF_EMAIL }}"
+          UNPAYWALL_EMAIL: "${{ vars.UNPAYWALL_EMAIL }}"
