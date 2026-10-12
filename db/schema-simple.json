@@ -124,7 +124,15 @@
     { "start": ["Publication"], "end": ["UserExperiment"], "type": "HAS_USER_EXPERIMENT", "properties": [] },
     { "start": ["Publication"], "end": ["PublishFormat"], "type": "HAS_PUBLISH_FORMAT", "properties": [] },
     { "start": ["Publication"], "end": ["ConferenceScope"], "type": "HAS_CONFERENCE_SCOPE", "properties": [] },
-    { "start": ["System"], "end": ["System"], "type": "PROVIDES_VACUUM_FOR", "properties": [] }
+    { "start": ["System"], "end": ["System"], "type": "PROVIDES_VACUUM_FOR", "properties": [] },
+    { "start": ["Publication"], "end": ["PublicationReporting"], "type": "HAS_REPORTING", "properties": [] },
+    { "start": ["PublicationReporting"], "end": ["PublicationReportingAuthor"], "type": "HAS_REPORTING_AUTHOR", "properties": [] },
+    { "start": ["PublicationReportingAuthor"], "end": ["Researcher"], "type": "IS_RESEARCHER", "properties": [] },
+    { "start": ["PublicationReporting"], "end": ["JournalMetric"], "type": "HAS_JOURNAL_METRIC", "properties": [] },
+    { "start": ["PublicationReporting", "PublicationReportingAuthor"], "end": ["Department"], "type": "REPORTED_DEPARTMENT", "properties": [] },
+    { "start": ["PublicationReporting"], "end": ["UserCall"], "type": "REPORTED_USER_CALL", "properties": [] },
+    { "start": ["PublicationReporting"], "end": ["UserExperiment"], "type": "REPORTED_USER_EXPERIMENT", "properties": [] },
+    { "start": ["PublicationReporting"], "end": ["ExperimentalSystem"], "type": "REPORTED_EXPERIMENTAL_SYSTEM", "properties": [] }
   ],
   "nodes": [
     {
@@ -757,6 +765,39 @@
         { "name": "uid", "type": "String" },
         { "name": "name", "type": "String" },
         { "name": "code", "type": "String" }
+      ]
+    },
+    {
+      "label": "PublicationReporting",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "classification", "type": "String" },
+        { "name": "reviewed", "type": "Boolean" },
+        { "name": "documentType", "type": "String" },
+        { "name": "journalRankingStatus", "type": "String" },
+        { "name": "reviewedAt", "type": "String" },
+        { "name": "reviewedBy", "type": "String" }
+      ]
+    },
+    {
+      "label": "PublicationReportingAuthor",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "isFirstAuthor", "type": "Boolean" },
+        { "name": "isCorresponding", "type": "Boolean" }
+      ]
+    },
+    {
+      "label": "JournalMetric",
+      "properties": [
+        { "name": "uid", "type": "String" },
+        { "name": "source", "type": "String" },
+        { "name": "journalId", "type": "String" },
+        { "name": "year", "type": "Long" },
+        { "name": "category", "type": "String" },
+        { "name": "quartile", "type": "String" },
+        { "name": "percentile", "type": "Double" },
+        { "name": "impactFactor", "type": "Double" }
       ]
     }
   ]
