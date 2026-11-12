@@ -86,7 +86,8 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 	empl.superiorName = $superiorName,
 	empl.jobPosition = $jobPosition,
 	empl.workplaceName = $workplaceName,
-	empl.jobPositionCode = $jobPositionCode
+	empl.jobPositionCode = $jobPositionCode,
+	empl.orgUnitCode = $orgUnitCode
 	WITH empl 
 	MATCH(f:Facility{code: $facilityCode})
 	MERGE(empl)-[:AFFILIATED_WITH_FACILITY]->(f)
@@ -108,6 +109,7 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 	result.Parameters["jobPosition"] = employee.PRACOVNI_MISTO_NAZEV
 	result.Parameters["workplaceName"] = employee.PRACOVISTE
 	result.Parameters["jobPositionCode"] = employee.PRACOVNI_MISTO_KOD
+	result.Parameters["orgUnitCode"] = employee.OJ_KOD
 	result.Parameters["facilityCode"] = facilityCode
 
 	fullName := employee.PRIJMENI + " " + employee.JMENO
