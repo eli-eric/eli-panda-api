@@ -12,6 +12,11 @@ type CronJobHistory struct {
 	TotalTimeMs int64  `json:"totalTimeMs"`
 }
 
+type SyncEmployeesResult struct {
+	SavedCount int `json:"savedCount"`
+	ErrorCount int `json:"errorCount"`
+}
+
 type CronJob struct {
 	JobUID  string `json:"jobUid"`
 	JobName string `json:"jobName"`

@@ -1584,6 +1584,10 @@
      "type": "String"
     },
     {
+     "name": "orgUnitCode",
+     "type": "String"
+    },
+    {
      "name": "deleted",
      "type": "Boolean"
     },
