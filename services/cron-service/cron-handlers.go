@@ -9,14 +9,13 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-var _ = models.CronJobHistory{}
-
 type CronHandlers struct {
 	cronService ICronService
 }
 
 type ICronHandlers interface {
 	GetCronJobHistory() echo.HandlerFunc
+	SyncEmployees() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -45,5 +44,27 @@ func (h *CronHandlers) GetCronJobHistory() echo.HandlerFunc {
 		}
 
 		return echo.ErrInternalServerError
+	}
+}
+
+// SyncEmployees godoc
+// @Summary Run employees sync from HR (OKBase) manually
+// @Description Runs the ELI Beamlines employees sync immediately (normally scheduled daily at 02:00).
+// @Tags Cron
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} models.SyncEmployeesResult
+// @Failure 500 "Internal server error"
+// @Router /v1/cron/sync-employees [post]
+func (h *CronHandlers) SyncEmployees() echo.HandlerFunc {
+	return func(c echo.Context) error {
+
+		savedCount, errs := h.cronService.SyncEmployees()
+
+		for _, err := range errs {
+			log.Error().Msgf("SyncEmployees error: %v", err.Error())
+		}
+
+		return c.JSON(http.StatusOK, models.SyncEmployeesResult{SavedCount: savedCount, ErrorCount: len(errs)})
 	}
 }

@@ -17,12 +17,14 @@ type CronService struct {
 	neo4jDriver *neo4j.Driver
 	scheduler   *cron.Cron
 	jwtSecret   string
+	settings    *config.Config
 }
 
 type ICronService interface {
 	LogCronJobStart(job *models.CronJob) (uid string, err error)
 	LogCronJobEnd(uid, jobStatus, jobMessage string) (err error)
 	GetCronJobHistory() (cronJobHistory []models.CronJobHistory, err error)
+	SyncEmployees() (savedCount int, errs []error)
 }
 
 func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService {
@@ -33,7 +35,7 @@ func NewCronService(settings *config.Config, driver *neo4j.Driver) ICronService 
 		log.Error().Msgf("Cron service initialization failed: %s", "Cron service is nil")
 	}
 
-	return &CronService{neo4jDriver: driver, jwtSecret: settings.JwtSecret, scheduler: c}
+	return &CronService{neo4jDriver: driver, jwtSecret: settings.JwtSecret, scheduler: c, settings: settings}
 }
 
 func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
@@ -44,7 +46,7 @@ func createScheduler(driver *neo4j.Driver, settings *config.Config) *cron.Cron {
 
 	_, err := c.AddFunc("0 2 * * *", func() {
 		log.Info().Msgf("Cron service started: %v", "SyncEliBeamlinesEmployees")
-		errs := SyncEliBeamlinesEmployees(driver, settings)
+		_, errs := SyncEliBeamlinesEmployees(driver, settings)
 
 		for _, err := range errs {
 			log.Error().Msgf("Cron service SyncEliBeamlinesEmployees error: %v", err.Error())
@@ -105,7 +107,11 @@ func (svc *CronService) GetCronJobHistory() (cronJobHistory []models.CronJobHist
 	return cronJobHistory, err
 }
 
-func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Config) (errs []error) {
+func (svc *CronService) SyncEmployees() (savedCount int, errs []error) {
+	return SyncEliBeamlinesEmployees(svc.neo4jDriver, svc.settings)
+}
+
+func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Config) (succesCount int, errs []error) {
 	session, _ := helpers.NewNeo4jSession(*neo4jDriver)
 
 	// call the API to get the employees - POST method and result is JSON
@@ -115,7 +121,6 @@ func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Confi
 
 	// get the employees
 	employees := GetEmployeesFromApi(url, apiKey)
-	succesCount := 0
 	// save the employees to the database
 	for _, employee := range employees.Rows {
 		// merge the employee to the database
@@ -130,7 +135,7 @@ func SyncEliBeamlinesEmployees(neo4jDriver *neo4j.Driver, settings *config.Confi
 
 	log.Info().Msgf("SyncEliBeamlinesEmployees finished: %v employees saved. Errors: %v", succesCount, len(errs))
 
-	return errs
+	return succesCount, errs
 }
 
 // use http post to get the employees from the API
