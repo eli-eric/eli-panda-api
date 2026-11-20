@@ -1164,6 +1164,13 @@ definitions:
       uid:
         type: string
     type: object
+  models.SyncEmployeesResult:
+    properties:
+      errorCount:
+        type: integer
+      savedCount:
+        type: integer
+    type: object
   models.System:
     properties:
       description:
@@ -3303,6 +3310,26 @@ paths:
       security:
       - BearerAuth: []
       summary: Get cron job history
+      tags:
+      - Cron
+  /v1/cron/sync-employees:
+    post:
+      description: Runs the ELI Beamlines employees sync immediately (normally scheduled
+        daily at 02:00). The run is recorded in the cron job history.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SyncEmployeesResult'
+        "409":
+          description: Sync is already running
+        "502":
+          description: Employees could not be fetched from HR (OKBase)
+      security:
+      - BearerAuth: []
+      summary: Run employees sync from HR (OKBase) manually
       tags:
       - Cron
   /v1/files/link/{parentUid}:

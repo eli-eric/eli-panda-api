@@ -1,6 +1,8 @@
 package cronservice
 
 import (
+	"strings"
+
 	"panda/apigateway/helpers"
 	"panda/apigateway/services/cron-service/models"
 )
@@ -72,6 +74,9 @@ func GetCronJobHistoryQuery() (result helpers.DatabaseQuery) {
 
 func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, facilityCode string) (result helpers.DatabaseQuery) {
 
+	// HAS_USER is created only when neither side is linked yet (one Employee = one User).
+	// The best candidate is picked first (username = login, then username / email = any login)
+	// and linked only when free, so a taken login account never falls back to another account.
 	result.Query = `MERGE(empl:Employee{employeeNumber: $employeeNumber})
 	WITH empl, case when empl.uid IS NULL THEN apoc.create.uuid() ELSE empl.uid END as uid
 	SET 
@@ -86,12 +91,24 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 	empl.superiorName = $superiorName,
 	empl.jobPosition = $jobPosition,
 	empl.workplaceName = $workplaceName,
-	empl.jobPositionCode = $jobPositionCode
+	empl.jobPositionCode = $jobPositionCode,
+	empl.orgUnitCode = $orgUnitCode,
+	empl.ldapUser = $ldapUser
 	WITH empl 
 	MATCH(f:Facility{code: $facilityCode})
 	MERGE(empl)-[:AFFILIATED_WITH_FACILITY]->(f)
 	WITH empl 
-	MATCH(usr:User{username: empl.email})
+	WHERE NOT (empl)-[:HAS_USER]->(:User)
+	MATCH(usr:User)
+	WHERE toLower(usr.username) IN $logins OR toLower(usr.email) IN $logins
+	WITH empl, usr
+	ORDER BY CASE
+		WHEN toLower(usr.username) = $logins[0] THEN 0
+		WHEN toLower(usr.username) IN $logins THEN 1
+		ELSE 2
+	END, usr.uid
+	WITH empl, head(collect(usr)) AS usr
+	WHERE NOT (usr)<-[:HAS_USER]-(:Employee)
 	MERGE(empl)-[:HAS_USER]->(usr) 
 	RETURN true AS result`
 
@@ -108,6 +125,9 @@ func SyncEliBeamlinesEmployeeQuery(employee models.SyncEliBeamlinesEmployee, fac
 	result.Parameters["jobPosition"] = employee.PRACOVNI_MISTO_NAZEV
 	result.Parameters["workplaceName"] = employee.PRACOVISTE
 	result.Parameters["jobPositionCode"] = employee.PRACOVNI_MISTO_KOD
+	result.Parameters["orgUnitCode"] = employee.OJ_KOD
+	result.Parameters["ldapUser"] = strings.TrimSpace(employee.LDAP_USER)
+	result.Parameters["logins"] = EmployeeLogins(employee)
 	result.Parameters["facilityCode"] = facilityCode
 
 	fullName := employee.PRIJMENI + " " + employee.JMENO
@@ -127,4 +147,50 @@ func SetSystemTypesQuery() (result helpers.DatabaseQuery) {
 	result.Parameters = make(map[string]interface{})
 
 	return result
+}
+
+func CountEmployeesByNumberQuery(employeeNumber string) (result helpers.DatabaseQuery) {
+
+	result.Query = `MATCH (empl:Employee{employeeNumber: $employeeNumber}) RETURN count(empl) AS result`
+
+	result.ReturnAlias = "result"
+	result.Parameters = make(map[string]interface{})
+	result.Parameters["employeeNumber"] = employeeNumber
+
+	return result
+}
+
+// old and misspelled domains users still have in HR, Azure AD logins use @eli-laser.eu
+var legacyLoginDomains = map[string]bool{"eli-beams.eu": true, "eli-lasers.eu": true}
+
+const loginDomain = "eli-laser.eu"
+
+// NormalizeLogin lower-cases a login / e-mail and maps legacy domains to the current one
+func NormalizeLogin(value string) string {
+	login := strings.ToLower(strings.TrimSpace(value))
+
+	name, domain, found := strings.Cut(login, "@")
+	if found && legacyLoginDomains[domain] {
+		return name + "@" + loginDomain
+	}
+
+	return login
+}
+
+// EmployeeLogins returns the identifiers to pair an Employee with a User, most preferred first:
+// the Azure AD login (LDAP_USER, fallback EMAIL), then EMAIL. Both normalized, without blanks and duplicates.
+func EmployeeLogins(employee models.SyncEliBeamlinesEmployee) []string {
+	login := employee.LDAP_USER
+	if strings.TrimSpace(login) == "" {
+		login = employee.EMAIL
+	}
+
+	logins := []string{}
+	for _, candidate := range []string{NormalizeLogin(login), NormalizeLogin(employee.EMAIL)} {
+		if candidate != "" && (len(logins) == 0 || logins[0] != candidate) {
+			logins = append(logins, candidate)
+		}
+	}
+
+	return logins
 }

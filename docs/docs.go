@@ -2196,6 +2196,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/cron/sync-employees": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Runs the ELI Beamlines employees sync immediately (normally scheduled daily at 02:00). The run is recorded in the cron job history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Run employees sync from HR (OKBase) manually",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SyncEmployeesResult"
+                        }
+                    },
+                    "409": {
+                        "description": "Sync is already running"
+                    },
+                    "502": {
+                        "description": "Employees could not be fetched from HR (OKBase)"
+                    }
+                }
+            }
+        },
         "/v1/files/link/{parentUid}": {
             "post": {
                 "security": [
@@ -8860,6 +8891,17 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SyncEmployeesResult": {
+            "type": "object",
+            "properties": {
+                "errorCount": {
+                    "type": "integer"
+                },
+                "savedCount": {
+                    "type": "integer"
                 }
             }
         },
