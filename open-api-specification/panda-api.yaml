@@ -3315,7 +3315,7 @@ paths:
   /v1/cron/sync-employees:
     post:
       description: Runs the ELI Beamlines employees sync immediately (normally scheduled
-        daily at 02:00).
+        daily at 02:00). The run is recorded in the cron job history.
       produces:
       - application/json
       responses:
@@ -3323,8 +3323,10 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/models.SyncEmployeesResult'
-        "500":
-          description: Internal server error
+        "409":
+          description: Sync is already running
+        "502":
+          description: Employees could not be fetched from HR (OKBase)
       security:
       - BearerAuth: []
       summary: Run employees sync from HR (OKBase) manually

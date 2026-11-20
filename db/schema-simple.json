@@ -1588,6 +1588,10 @@
      "type": "String"
     },
     {
+     "name": "ldapUser",
+     "type": "String"
+    },
+    {
      "name": "deleted",
      "type": "Boolean"
     },

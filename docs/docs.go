@@ -2203,7 +2203,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Runs the ELI Beamlines employees sync immediately (normally scheduled daily at 02:00).",
+                "description": "Runs the ELI Beamlines employees sync immediately (normally scheduled daily at 02:00). The run is recorded in the cron job history.",
                 "produces": [
                     "application/json"
                 ],
@@ -2218,8 +2218,11 @@ const docTemplate = `{
                             "$ref": "#/definitions/models.SyncEmployeesResult"
                         }
                     },
-                    "500": {
-                        "description": "Internal server error"
+                    "409": {
+                        "description": "Sync is already running"
+                    },
+                    "502": {
+                        "description": "Employees could not be fetched from HR (OKBase)"
                     }
                 }
             }
