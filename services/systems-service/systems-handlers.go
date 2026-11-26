@@ -26,7 +26,6 @@ type ISystemsHandlers interface {
 	GetSystemDetail() echo.HandlerFunc
 	CreateNewSystem() echo.HandlerFunc
 	CreateNewSystemFromJira() echo.HandlerFunc
-	UpdateSystem() echo.HandlerFunc
 	DeleteSystemRecursive() echo.HandlerFunc
 	GetSystemsWithSearchAndPagination() echo.HandlerFunc
 	GetSystemsHierarchy() echo.HandlerFunc
@@ -38,7 +37,6 @@ type ISystemsHandlers interface {
 	GetSystemsForRelationship() echo.HandlerFunc
 	GetSystemGraphByUid() echo.HandlerFunc
 	GetSystemRelationships() echo.HandlerFunc
-	DeleteSystemRelationship() echo.HandlerFunc
 	CreateNewSystemRelationship() echo.HandlerFunc
 	GetSystemCode() echo.HandlerFunc
 	GetPhysicalItemProperties() echo.HandlerFunc
@@ -71,6 +69,15 @@ type ISystemsHandlers interface {
 	GetSystemSparePartsDetail() echo.HandlerFunc
 	CreateBatchRelationships() echo.HandlerFunc
 	CanEditSystem() echo.HandlerFunc
+	PatchSystem() echo.HandlerFunc
+	PatchSystemPhysicalItem() echo.HandlerFunc
+	CreateSystem() echo.HandlerFunc
+	CreateSubsystem() echo.HandlerFunc
+	GenerateSystemCode() echo.HandlerFunc
+	DeleteRelationship() echo.HandlerFunc
+	GetSystemSpareParts() echo.HandlerFunc
+	GetPhysicalItemCatalogueProperties() echo.HandlerFunc
+	GetPhysicalItemOrders() echo.HandlerFunc
 }
 
 // NewCommentsHandlers Comments handlers constructor
@@ -100,10 +107,6 @@ func (h *SystemsHandlers) AssignSpareItem() echo.HandlerFunc {
 		if err == nil {
 
 			userUID := c.Get("userUID").(string)
-
-			if guardErr := h.guardSystemEdit(c, assignSpareRequest.SystemUid, assignSpareRequest.NewParentSystemUid); guardErr != nil {
-				return guardErr
-			}
 
 			response, err := h.systemsService.AssignSpareItem(*assignSpareRequest, userUID)
 
@@ -178,36 +181,10 @@ func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 	}
 }
 
-// GetSystemDetail godoc
-// @Summary Get system detail
-// @Description Returns system detail by UID.
-// @Tags Systems
-// @Produce json
-// @Security BearerAuth
-// @Param uid path string true "System UID"
-// @Success 200 {object} models.System
-// @Failure 500 "Internal server error"
-// @Router /v1/system/{uid} [get]
-func (h *SystemsHandlers) GetSystemDetail() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		uid := c.Param("uid")
-		facilityCode := c.Get("facilityCode").(string)
-		systemDetail, err := h.systemsService.GetSystemDetail(uid, facilityCode)
-
-		if err == nil {
-			return c.JSON(http.StatusOK, systemDetail)
-		} else {
-			log.Error().Msg(err.Error())
-		}
-
-		return echo.ErrInternalServerError
-
-	}
-}
-
 // Swagger documentation for CreateNewSystem
+// Deprecated: use POST /v1/systems (CreateSystem) — this legacy endpoint has no change audit and
+// matches location by code.
+// @Deprecated
 // @Summary Create new system
 // @Description Creates a new system with the given details
 // @Tags Systems
@@ -230,13 +207,6 @@ func (h *SystemsHandlers) CreateNewSystem() echo.HandlerFunc {
 
 			facilityCode := c.Get("facilityCode").(string)
 			userUID := c.Get("userUID").(string)
-
-			// creating a subsystem requires edit rights on the parent (can't add under a locked system)
-			if system.ParentUID != nil {
-				if guardErr := h.guardSystemEdit(c, *system.ParentUID); guardErr != nil {
-					return guardErr
-				}
-			}
 
 			uid, err := h.systemsService.CreateNewSystem(system, facilityCode, userUID)
 
@@ -283,11 +253,6 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 			return helpers.BadRequest(err.Error())
 		}
 
-		// importing under a parent requires edit rights on that parent
-		if guardErr := h.guardSystemEdit(c, request.ParentSystemUID); guardErr != nil {
-			return guardErr
-		}
-
 		result, err := h.systemsService.CreateNewSystemFromJira(facilityCode, userUID, userRoles, request)
 
 		if err == nil {
@@ -300,48 +265,6 @@ func (h *SystemsHandlers) CreateNewSystemFromJira() echo.HandlerFunc {
 
 		log.Error().Msg(err.Error())
 		return echo.ErrInternalServerError
-	}
-}
-
-// UpdateSystem godoc
-// @Summary Update system
-// @Description Updates an existing system.
-// @Tags Systems
-// @Accept json
-// @Security BearerAuth
-// @Param uid path string true "System UID"
-// @Param body body models.System true "System"
-// @Success 204 "No content"
-// @Failure 400 "Bad request"
-// @Failure 500 "Internal server error"
-// @Router /v1/system/{uid} [put]
-func (h *SystemsHandlers) UpdateSystem() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		// lets bind catalogue category data from request body
-		system := new(models.System)
-		err := c.Bind(system)
-		if err == nil {
-
-			facilityCode := c.Get("facilityCode").(string)
-			userUID := c.Get("userUID").(string)
-			system.UID = c.Param("uid")
-
-			if guardErr := h.guardSystemEdit(c, system.UID); guardErr != nil {
-				return guardErr
-			}
-
-			err := h.systemsService.UpdateSystem(system, facilityCode, userUID)
-
-			if err == nil {
-				return c.NoContent(http.StatusNoContent)
-			}
-
-			return echo.ErrInternalServerError
-
-		}
-		return helpers.BadRequest(err.Error())
 	}
 }
 
@@ -362,10 +285,6 @@ func (h *SystemsHandlers) DeleteSystemRecursive() echo.HandlerFunc {
 		//get uid path param
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
-
-		if guardErr := h.guardSystemEdit(c, uid); guardErr != nil {
-			return guardErr
-		}
 
 		// first check if there are systems with physical items
 		itemsInfo, err := h.systemsService.GetPhysicalItemsBySystemUidRecursive(uid)
@@ -1005,41 +924,6 @@ func (h *SystemsHandlers) GetSystemRelationships() echo.HandlerFunc {
 	}
 }
 
-// DeleteSystemRelationship godoc
-// @Summary Delete system relationship
-// @Description Deletes a system relationship by relationship UID.
-// @Tags Systems
-// @Security BearerAuth
-// @Param uid path string true "Relationship UID"
-// @Success 204 "No content"
-// @Failure 500 "Internal server error"
-// @Router /v1/system/relationship/{uid} [delete]
-func (h *SystemsHandlers) DeleteSystemRelationship() echo.HandlerFunc {
-
-	return func(c echo.Context) error {
-
-		//get userUID
-		userUID := c.Get("userUID").(string)
-		//get uid path param
-		uid := c.Param("uid")
-		//convert uid to int64
-		uidInt64, err := strconv.ParseInt(uid, 10, 64)
-
-		if err != nil {
-			log.Error().Msg(err.Error())
-			return echo.ErrInternalServerError
-		}
-
-		err = h.systemsService.DeleteSystemRelationship(uidInt64, userUID)
-
-		if err == nil {
-			return c.NoContent(http.StatusNoContent)
-		}
-
-		return echo.ErrInternalServerError
-	}
-}
-
 // CreateNewSystemRelationship godoc
 // @Summary Create new system relationship
 // @Description Creates a new relationship between systems.
@@ -1067,14 +951,6 @@ func (h *SystemsHandlers) CreateNewSystemRelationship() echo.HandlerFunc {
 
 		userUID := c.Get("userUID").(string)
 		facilityCode := c.Get("facilityCode").(string)
-
-		// only structural HAS_SUBSYSTEM edges are guarded (functional relationships are exempt);
-		// guard the parent (SystemFromUID) - can't attach a subsystem under a locked system
-		if systemRelationshipRequest.RelationTypeCode == "HAS_SUBSYSTEM" {
-			if guardErr := h.guardSystemEdit(c, systemRelationshipRequest.SystemFromUID); guardErr != nil {
-				return guardErr
-			}
-		}
 
 		newId, err := h.systemsService.CreateNewSystemRelationship(systemRelationshipRequest, facilityCode, userUID)
 		if err == nil {
@@ -1214,10 +1090,6 @@ func (h *SystemsHandlers) UpdatePhysicalItemProperties() echo.HandlerFunc {
 
 		uid := c.Param("uid")
 		userUid := c.Get("userUID").(string)
-
-		if guardErr := h.guardSystemEditByItem(c, uid); guardErr != nil {
-			return guardErr
-		}
 
 		properties := new([]models.PhysicalItemDetail)
 		err := c.Bind(properties)
@@ -2058,10 +1930,6 @@ func (h *SystemsHandlers) MovePhysicalItem() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
 
-			if guardErr := h.guardSystemEdit(c, movePhysicalItemRequest.SourceSystemUID, movePhysicalItemRequest.DestinationSystemUID, movePhysicalItemRequest.ParentSystemUID); guardErr != nil {
-				return guardErr
-			}
-
 			destinationSystemUID, err := h.systemsService.MovePhysicalItem(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
@@ -2107,10 +1975,6 @@ func (h *SystemsHandlers) ReplacePhysicalItems() echo.HandlerFunc {
 			userUID := c.Get("userUID").(string)
 			facilityCode := c.Get("facilityCode").(string)
 
-			if guardErr := h.guardSystemEdit(c, movePhysicalItemRequest.SourceSystemUID, movePhysicalItemRequest.DestinationSystemUID, movePhysicalItemRequest.ParentSystemUID); guardErr != nil {
-				return guardErr
-			}
-
 			destinationSystemUID, err := h.systemsService.ReplacePhysicalItems(movePhysicalItemRequest, userUID, facilityCode)
 
 			if err == nil {
@@ -2154,13 +2018,6 @@ func (h *SystemsHandlers) MoveSystems() echo.HandlerFunc {
 			log.Info().Msgf("Move systems request: %+v", moveSystemsRequest)
 
 			userUID := c.Get("userUID").(string)
-
-			// require edit rights on every moved system AND the destination parent (can't move under a locked system)
-			guardTargets := append([]string{}, moveSystemsRequest.SystemsToMoveUids...)
-			guardTargets = append(guardTargets, moveSystemsRequest.TargetParentSystemUid)
-			if guardErr := h.guardSystemEdit(c, guardTargets...); guardErr != nil {
-				return guardErr
-			}
 
 			destinationSystemUID, err := h.systemsService.MoveSystems(moveSystemsRequest, userUID)
 

@@ -199,6 +199,8 @@ type SystemHistory struct {
 	Action      string               `json:"action"`
 	Changes     *string              `json:"changes,omitempty"`
 	Detail      *SystemHistoryDetail `json:"detail"`
+	// OutsideResponsibility marks a change made by a user not responsible for the system (soft lock).
+	OutsideResponsibility bool `json:"outsideResponsibility"`
 }
 
 type SystemHistoryDetail struct {

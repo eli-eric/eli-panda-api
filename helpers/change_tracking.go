@@ -3,6 +3,7 @@ package helpers
 import (
 	"encoding/json"
 	"reflect"
+	"sort"
 )
 
 type ChangeType string
@@ -13,6 +14,10 @@ const (
 	ChangeTypeBoolean  ChangeType = "boolean"
 	ChangeTypeDate     ChangeType = "date"
 	ChangeTypeCodebook ChangeType = "codebook"
+	// ChangeTypeCodebookList values are slices of codebook-like structs; compared by UID set.
+	ChangeTypeCodebookList ChangeType = "codebookList"
+	// ChangeTypeRelationship values describe the other end of an added/removed relationship.
+	ChangeTypeRelationship ChangeType = "relationship"
 )
 
 // ChangeEntity identifies the entity whose attribute changed. Optional — top-level
@@ -83,6 +88,9 @@ func valuesEqual(t ChangeType, a, b interface{}) bool {
 	if t == ChangeTypeCodebook {
 		return codebookUID(a) == codebookUID(b)
 	}
+	if t == ChangeTypeCodebookList {
+		return reflect.DeepEqual(codebookUIDSet(a), codebookUIDSet(b))
+	}
 	return reflect.DeepEqual(a, b)
 }
 
@@ -115,4 +123,18 @@ func codebookUID(v interface{}) string {
 		return ""
 	}
 	return f.String()
+}
+
+// codebookUIDSet returns the sorted UIDs of a slice of codebook-like structs.
+func codebookUIDSet(v interface{}) []string {
+	rv := reflect.Indirect(reflect.ValueOf(v))
+	if !rv.IsValid() || rv.Kind() != reflect.Slice {
+		return []string{}
+	}
+	uids := make([]string, 0, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		uids = append(uids, codebookUID(rv.Index(i).Interface()))
+	}
+	sort.Strings(uids)
+	return uids
 }

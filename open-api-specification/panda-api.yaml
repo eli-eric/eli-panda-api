@@ -332,6 +332,17 @@ definitions:
       uid:
         type: string
     type: object
+  models.CataloguePropertyGroup:
+    properties:
+      key:
+        type: string
+      name:
+        type: string
+      properties:
+        items:
+          $ref: '#/definitions/models.ResolvedCatalogueProperty'
+        type: array
+    type: object
   models.CatalogueServiceType:
     properties:
       category:
@@ -386,6 +397,15 @@ definitions:
       uid:
         type: string
     type: object
+  models.CodebookRef:
+    properties:
+      code:
+        type: string
+      name:
+        type: string
+      uid:
+        type: string
+    type: object
   models.CodebookResponse:
     properties:
       data:
@@ -413,6 +433,20 @@ definitions:
       roleEdit:
         type: string
       type:
+        type: string
+    type: object
+  models.ConflictResponse:
+    properties:
+      code:
+        type: string
+      message:
+        type: string
+    type: object
+  models.CreateSubsystemRequest:
+    properties:
+      name:
+        type: string
+      systemLevel:
         type: string
     type: object
   models.CronJobHistory:
@@ -450,6 +484,13 @@ definitions:
       lastName:
         type: string
       phone:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.EmployeeRef:
+    properties:
+      name:
         type: string
       uid:
         type: string
@@ -752,6 +793,15 @@ definitions:
       uid:
         type: string
     type: object
+  models.PhysicalItemCatalogueProperties:
+    properties:
+      groups:
+        items:
+          $ref: '#/definitions/models.CataloguePropertyGroup'
+        type: array
+      hasOverriddenProperties:
+        type: boolean
+    type: object
   models.PhysicalItemDetail:
     properties:
       property:
@@ -804,6 +854,39 @@ definitions:
       sourceSystemUid:
         type: string
       systemName:
+        type: string
+    type: object
+  models.PhysicalItemOrder:
+    properties:
+      isDelivered:
+        type: boolean
+      name:
+        type: string
+      orderDate:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.PhysicalItemOrders:
+    properties:
+      order:
+        $ref: '#/definitions/models.PhysicalItemOrder'
+      serviceItems:
+        items:
+          $ref: '#/definitions/models.PhysicalItemServiceRef'
+        type: array
+    type: object
+  models.PhysicalItemServiceRef:
+    properties:
+      created:
+        type: string
+      isDelivered:
+        type: boolean
+      name:
+        type: string
+      order:
+        $ref: '#/definitions/models.PhysicalItemOrder'
+      uid:
         type: string
     type: object
   models.Publication:
@@ -1051,6 +1134,23 @@ definitions:
       uid:
         type: string
     type: object
+  models.ResolvedCatalogueProperty:
+    properties:
+      isOverridden:
+        type: boolean
+      name:
+        type: string
+      serviceValue:
+        type: string
+      type:
+        type: string
+      uid:
+        type: string
+      unit:
+        type: string
+      value:
+        type: string
+    type: object
   models.ResponsiblePersonsInfo:
     properties:
       maintainer:
@@ -1147,6 +1247,20 @@ definitions:
       uid:
         type: string
     type: object
+  models.SpareRelationRef:
+    properties:
+      coverage:
+        type: number
+      system:
+        $ref: '#/definitions/models.SpareSystemRef'
+    type: object
+  models.SpareSystemCatalogRef:
+    properties:
+      catalogueNumber:
+        type: string
+      uid:
+        type: string
+    type: object
   models.SpareSystemInfo:
     properties:
       description:
@@ -1160,6 +1274,36 @@ definitions:
       status:
         type: string
       systemCode:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SpareSystemPhysicalItem:
+    properties:
+      catalogueItem:
+        $ref: '#/definitions/models.SpareSystemCatalogRef'
+      eun:
+        type: string
+      itemUsage:
+        $ref: '#/definitions/models.CodebookRef'
+      uid:
+        type: string
+    type: object
+  models.SpareSystemRef:
+    properties:
+      location:
+        $ref: '#/definitions/models.CodebookRef'
+      name:
+        type: string
+      parentPath:
+        items:
+          $ref: '#/definitions/models.SystemSimpleResponse'
+        type: array
+      physicalItem:
+        $ref: '#/definitions/models.SpareSystemPhysicalItem'
+      systemCode:
+        type: string
+      systemLevel:
         type: string
       uid:
         type: string
@@ -1226,6 +1370,11 @@ definitions:
       zone:
         $ref: '#/definitions/models.Codebook'
     type: object
+  models.SystemCodeGenerateRequest:
+    properties:
+      lastUpdateTime:
+        type: string
+    type: object
   models.SystemCodeRequest:
     properties:
       parentUid:
@@ -1278,6 +1427,80 @@ definitions:
       sourceSystemUid:
         type: string
     type: object
+  models.SystemDetail:
+    properties:
+      attribute:
+        $ref: '#/definitions/models.CodebookRef'
+      description:
+        type: string
+      importance:
+        $ref: '#/definitions/models.CodebookRef'
+      lastUpdateTime:
+        type: string
+      location:
+        $ref: '#/definitions/models.CodebookRef'
+      maintainedBy:
+        items:
+          $ref: '#/definitions/models.EmployeeRef'
+        type: array
+      miniImageUrl:
+        items:
+          type: string
+        type: array
+      minimalSpareParstCount:
+        type: number
+      name:
+        type: string
+      operators:
+        items:
+          $ref: '#/definitions/models.EmployeeRef'
+        type: array
+      owner:
+        $ref: '#/definitions/models.EmployeeRef'
+      parentPath:
+        items:
+          $ref: '#/definitions/models.SystemPathItem'
+        type: array
+      parentUid:
+        type: string
+      physicalItem:
+        $ref: '#/definitions/models.SystemDetailPhysicalItem'
+      responsible:
+        $ref: '#/definitions/models.EmployeeRef'
+      responsibleTeam:
+        $ref: '#/definitions/models.CodebookRef'
+      sp_coverage:
+        type: number
+      sparePartsCoverageSum:
+        type: number
+      statistics:
+        $ref: '#/definitions/models.SystemDetailStatistics'
+      systemAlias:
+        type: string
+      systemCode:
+        type: string
+      systemLevel:
+        type: string
+      systemType:
+        $ref: '#/definitions/models.CodebookRef'
+      uid:
+        type: string
+      zone:
+        $ref: '#/definitions/models.CodebookRef'
+    type: object
+  models.SystemDetailCatalogueItem:
+    properties:
+      catalogueNumber:
+        type: string
+      category:
+        $ref: '#/definitions/models.CodebookRef'
+      name:
+        type: string
+      supplier:
+        $ref: '#/definitions/models.CodebookRef'
+      uid:
+        type: string
+    type: object
   models.SystemDetailInfo:
     properties:
       description:
@@ -1310,6 +1533,48 @@ definitions:
         type: string
       uid:
         type: string
+    type: object
+  models.SystemDetailPhysicalItem:
+    properties:
+      catalogueItem:
+        $ref: '#/definitions/models.SystemDetailCatalogueItem'
+      conditionStatus:
+        $ref: '#/definitions/models.CodebookRef'
+      currency:
+        type: string
+      eun:
+        type: string
+      itemUsage:
+        $ref: '#/definitions/models.CodebookRef'
+      name:
+        type: string
+      notes:
+        type: string
+      price:
+        type: number
+      printEUN:
+        type: boolean
+      serialNumber:
+        type: string
+      uid:
+        type: string
+    type: object
+  models.SystemDetailStatistics:
+    properties:
+      directSubsystemsCount:
+        type: integer
+      minimalSpareParstCount:
+        type: number
+      sp_coverage:
+        type: number
+      sparePartsCount:
+        type: integer
+      sparePartsCoverageSum:
+        type: number
+      sparesForCount:
+        type: integer
+      subsystemsCount:
+        type: integer
     type: object
   models.SystemGraphLink:
     properties:
@@ -1420,6 +1685,10 @@ definitions:
         $ref: '#/definitions/models.SystemHistoryDetail'
       historyType:
         type: string
+      outsideResponsibility:
+        description: OutsideResponsibility marks a change made by a user not responsible
+          for the system (soft lock).
+        type: boolean
       uid:
         type: string
     type: object
@@ -1430,6 +1699,15 @@ definitions:
       systemName:
         type: string
       systemUid:
+        type: string
+    type: object
+  models.SystemPathItem:
+    properties:
+      name:
+        type: string
+      systemLevel:
+        type: string
+      uid:
         type: string
     type: object
   models.SystemPhysicalItemInfo:
@@ -1520,6 +1798,23 @@ definitions:
         $ref: '#/definitions/models.CodebookInfo'
       zone:
         $ref: '#/definitions/models.CodebookInfo'
+    type: object
+  models.SystemSparePartsResponse:
+    properties:
+      minimalSpareParstCount:
+        type: number
+      sp_coverage:
+        type: number
+      spareFor:
+        items:
+          $ref: '#/definitions/models.SpareRelationRef'
+        type: array
+      spareParts:
+        items:
+          $ref: '#/definitions/models.SpareRelationRef'
+        type: array
+      sparePartsCoverageSum:
+        type: number
     type: object
   models.SystemStatistics:
     properties:
@@ -4086,6 +4381,58 @@ paths:
       summary: Get order statuses
       tags:
       - Orders
+  /v1/physical-item/{uid}/catalogue-properties:
+    get:
+      description: Catalogue properties grouped by property group with the latest
+        service-item overrides applied.
+      parameters:
+      - description: Physical item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PhysicalItemCatalogueProperties'
+        "404":
+          description: Item not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get resolved catalogue properties of a physical item
+      tags:
+      - Systems
+  /v1/physical-item/{uid}/orders:
+    get:
+      description: The order the item was delivered by and its service items (newest
+        first).
+      parameters:
+      - description: Physical item UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PhysicalItemOrders'
+        "404":
+          description: Item not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get orders of a physical item
+      tags:
+      - Systems
   /v1/physical-item/{uid}/properties:
     get:
       description: Returns physical item properties by physical item UID.
@@ -4677,6 +5024,7 @@ paths:
     post:
       consumes:
       - application/json
+      deprecated: true
       description: Creates a new system with the given details
       parameters:
       - description: System details
@@ -4790,7 +5138,8 @@ paths:
       tags:
       - Systems
     get:
-      description: Returns system detail by UID.
+      description: Returns the full system detail (codebooks, people, physical item,
+        statistics, concurrency token).
       parameters:
       - description: System UID
         in: path
@@ -4803,7 +5152,9 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.System'
+            $ref: '#/definitions/models.SystemDetail'
+        "404":
+          description: System not found
         "500":
           description: Internal server error
       security:
@@ -4811,32 +5162,44 @@ paths:
       summary: Get system detail
       tags:
       - Systems
-    put:
+    patch:
       consumes:
       - application/json
-      description: Updates an existing system.
+      description: Partial update (absent key = unchanged, null = clear). Optional
+        lastUpdateTime token; codebooks as {uid}; operators/maintainedBy replace the
+        whole list. Writes the WAS_UPDATED_BY audit edge with the change delta.
       parameters:
       - description: System UID
         in: path
         name: uid
         required: true
         type: string
-      - description: System
+      - description: Partial system fields
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/models.System'
+          type: object
+      produces:
+      - application/json
       responses:
-        "204":
-          description: No content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SystemDetail'
         "400":
           description: Bad request
+        "404":
+          description: System not found
+        "409":
+          description: STALE or DUPLICATE_SYSTEM_CODE
+          schema:
+            $ref: '#/definitions/models.ConflictResponse'
         "500":
           description: Internal server error
       security:
       - BearerAuth: []
-      summary: Update system
+      summary: Patch system
       tags:
       - Systems
   /v1/system/{uid}/can-edit:
@@ -5070,6 +5433,47 @@ paths:
       summary: Get recursive leaf systems count for a parent
       tags:
       - Systems
+  /v1/system/{uid}/physical-item:
+    patch:
+      consumes:
+      - application/json
+      description: Partial update of the contained item (serialNumber, notes, itemUsage,
+        conditionStatus). Uses the system lastUpdateTime token; audit is recorded
+        on the system.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Partial physical item fields
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SystemDetail'
+        "400":
+          description: Bad request
+        "404":
+          description: System or physical item not found
+        "409":
+          description: STALE
+          schema:
+            $ref: '#/definitions/models.ConflictResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Patch the physical item of a system
+      tags:
+      - Systems
   /v1/system/{uid}/relationships:
     get:
       description: Returns relationships for a given system UID.
@@ -5093,6 +5497,67 @@ paths:
       security:
       - BearerAuth: []
       summary: Get system relationships
+      tags:
+      - Systems
+  /v1/system/{uid}/relationships/{type}/{otherUid}:
+    delete:
+      description: Removes (uid)-[type]->(otherUid). Only functional relationship
+        types; IS_SPARE_FOR also recalculates affected coverages. Audited on both
+        systems.
+      parameters:
+      - description: Start system UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Relationship type
+        in: path
+        name: type
+        required: true
+        type: string
+      - description: End system UID
+        in: path
+        name: otherUid
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No content
+        "400":
+          description: Relationship type not removable
+        "404":
+          description: Relationship not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Delete system relationship
+      tags:
+      - Systems
+  /v1/system/{uid}/spare-parts:
+    get:
+      description: Spare parts for the system (inbound IS_SPARE_FOR) and systems it
+        is a spare for, with coverage.
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SystemSparePartsResponse'
+        "404":
+          description: System not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Get system spare parts
       tags:
       - Systems
   /v1/system/{uid}/spare-parts-detail:
@@ -5129,6 +5594,81 @@ paths:
       security:
       - BearerAuth: []
       summary: Get system spare parts detail
+      tags:
+      - Systems
+  /v1/system/{uid}/subsystems:
+    post:
+      consumes:
+      - application/json
+      description: Creates a child system; responsible, location and zone are inherited
+        from the parent and the parent→child level rules are validated.
+      parameters:
+      - description: Parent system UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Subsystem
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateSubsystemRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SystemDetail'
+        "400":
+          description: Bad request
+        "404":
+          description: Parent not found
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create subsystem
+      tags:
+      - Systems
+  /v1/system/{uid}/system-code:
+    post:
+      consumes:
+      - application/json
+      description: Generates a code from the system's type/zone/location/parent and
+        saves it atomically (token check, uniqueness, audit).
+      parameters:
+      - description: System UID
+        in: path
+        name: uid
+        required: true
+        type: string
+      - description: Optional token
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/models.SystemCodeGenerateRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.SystemDetail'
+        "400":
+          description: System has no system type
+        "404":
+          description: System not found
+        "409":
+          description: STALE or DUPLICATE_SYSTEM_CODE
+          schema:
+            $ref: '#/definitions/models.ConflictResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Generate and save system code
       tags:
       - Systems
   /v1/system/by-eun/{eun}:
@@ -5187,24 +5727,6 @@ paths:
       tags:
       - Systems
   /v1/system/relationship/{uid}:
-    delete:
-      description: Deletes a system relationship by relationship UID.
-      parameters:
-      - description: Relationship UID
-        in: path
-        name: uid
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No content
-        "500":
-          description: Internal server error
-      security:
-      - BearerAuth: []
-      summary: Delete system relationship
-      tags:
-      - Systems
     post:
       consumes:
       - application/json
@@ -5610,6 +6132,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Get systems
+      tags:
+      - Systems
+    post:
+      consumes:
+      - application/json
+      description: Creates a root system, or a child of parentUid (absent responsible/location/zone
+        are inherited, parent→child level rules validated). Body uses the PATCH field
+        shapes; name and systemLevel are required. Writes the INSERT audit edge.
+      parameters:
+      - description: System fields (+ optional parentUid)
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SystemDetail'
+        "400":
+          description: Bad request
+        "404":
+          description: Parent not found
+        "409":
+          description: DUPLICATE_SYSTEM_CODE
+          schema:
+            $ref: '#/definitions/models.ConflictResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create system
       tags:
       - Systems
   /v1/systems/copy:
