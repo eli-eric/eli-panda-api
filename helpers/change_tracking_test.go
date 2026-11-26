@@ -159,3 +159,22 @@ func TestMarshalChanges_ProducesExpectedShape(t *testing.T) {
 	assert.Equal(t, "new", parsed[0]["newValue"])
 	assert.Nil(t, parsed[1]["oldValue"])
 }
+
+func TestAppendIfChanged_CodebookListComparesUIDSet(t *testing.T) {
+	type ref struct {
+		UID  string
+		Name string
+	}
+	before := []ref{{UID: "a", Name: "Ann"}, {UID: "b", Name: "Bob"}}
+
+	// same members in another order (and a renamed one) is not a change
+	same := AppendIfChanged(nil, "operators", ChangeTypeCodebookList, before, []ref{{UID: "b", Name: "Bobby"}, {UID: "a", Name: "Ann"}})
+	assert.Len(t, same, 0)
+
+	changed := AppendIfChanged(nil, "operators", ChangeTypeCodebookList, before, []ref{{UID: "a", Name: "Ann"}})
+	assert.Len(t, changed, 1)
+	assert.Equal(t, "codebookList", changed[0].Type)
+
+	cleared := AppendIfChanged(nil, "operators", ChangeTypeCodebookList, before, []ref{})
+	assert.Len(t, cleared, 1)
+}
