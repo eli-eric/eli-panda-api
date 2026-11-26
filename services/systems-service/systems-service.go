@@ -39,8 +39,8 @@ type ISystemsService interface {
 	GenerateSystemCode(uid, facilityCode, userUID string, token models.PatchToken) (models.SystemDetail, error)
 	DeleteRelationship(fromUID, relType, toUID, facilityCode, userUID string) error
 	GetSystemSpareParts(uid, facilityCode string) (models.SystemSparePartsResponse, error)
-	GetPhysicalItemCatalogueProperties(itemUID string) (models.PhysicalItemCatalogueProperties, error)
-	GetPhysicalItemOrders(itemUID string) (models.PhysicalItemOrders, error)
+	GetPhysicalItemCatalogueProperties(itemUID, facilityCode string) (models.PhysicalItemCatalogueProperties, error)
+	GetPhysicalItemOrders(itemUID, facilityCode string) (models.PhysicalItemOrders, error)
 	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
 	CreateNewSystemFromJira(facilityCode string, userUID string, userRoles []string, request *models.JiraSystemImportRequest) (result string, err error)
 	DeleteSystemRecursive(uid, userUid string) (err error)

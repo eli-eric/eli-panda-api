@@ -27,6 +27,15 @@ type ValidationError struct{ Msg string }
 
 func (e *ValidationError) Error() string { return e.Msg }
 
+// mapWriteError turns the in-transaction duplicate-code guard (apoc.util.validate) into
+// ERR_DUPLICATE_SYSTEM_CODE; the pre-check only gives the common case a cheap early 409.
+func mapWriteError(err error) error {
+	if err != nil && strings.Contains(err.Error(), duplicateSystemCodeMarker) {
+		return helpers.ERR_DUPLICATE_SYSTEM_CODE
+	}
+	return err
+}
+
 func validationErr(format string, args ...interface{}) error {
 	return &ValidationError{Msg: fmt.Sprintf(format, args...)}
 }
@@ -51,25 +60,26 @@ var EditableRelationshipTypes = map[string]struct{}{
 }
 
 type codebookRelSpec struct {
-	field    string
-	label    string
-	relType  string
-	employee bool
+	field          string
+	label          string
+	relType        string
+	employee       bool
+	facilityScoped bool // label has BELONGS_TO_FACILITY; refs must belong to the caller's facility
 }
 
 var (
-	specSystemType      = codebookRelSpec{"systemType", "SystemType", "HAS_SYSTEM_TYPE", false}
-	specLocation        = codebookRelSpec{"location", "Location", "HAS_LOCATION", false}
-	specZone            = codebookRelSpec{"zone", "Zone", "HAS_ZONE", false}
-	specImportance      = codebookRelSpec{"importance", "SystemImportance", "HAS_IMPORTANCE", false}
-	specAttribute       = codebookRelSpec{"attribute", "SystemAttribute", "HAS_SYSTEM_ATTRIBUTE", false}
-	specResponsible     = codebookRelSpec{"responsible", "Employee", "HAS_RESPONSIBLE", true}
-	specResponsibleTeam = codebookRelSpec{"responsibleTeam", "Team", "HAS_RESPONSIBLE_TEAM", false}
-	specOwner           = codebookRelSpec{"owner", "Employee", "HAS_OWNER", true}
-	specOperators       = codebookRelSpec{"operators", "Employee", "HAS_OPERATOR", true}
-	specMaintainedBy    = codebookRelSpec{"maintainedBy", "Employee", "IS_MAINTAINED_BY", true}
-	specItemUsage       = codebookRelSpec{"itemUsage", "ItemUsage", "HAS_ITEM_USAGE", false}
-	specConditionStatus = codebookRelSpec{"conditionStatus", "ItemCondition", "HAS_CONDITION_STATUS", false}
+	specSystemType      = codebookRelSpec{"systemType", "SystemType", "HAS_SYSTEM_TYPE", false, false}
+	specLocation        = codebookRelSpec{"location", "Location", "HAS_LOCATION", false, true}
+	specZone            = codebookRelSpec{"zone", "Zone", "HAS_ZONE", false, true}
+	specImportance      = codebookRelSpec{"importance", "SystemImportance", "HAS_IMPORTANCE", false, false}
+	specAttribute       = codebookRelSpec{"attribute", "SystemAttribute", "HAS_SYSTEM_ATTRIBUTE", false, true}
+	specResponsible     = codebookRelSpec{"responsible", "Employee", "HAS_RESPONSIBLE", true, false}
+	specResponsibleTeam = codebookRelSpec{"responsibleTeam", "Team", "HAS_RESPONSIBLE_TEAM", false, true}
+	specOwner           = codebookRelSpec{"owner", "Employee", "HAS_OWNER", true, false}
+	specOperators       = codebookRelSpec{"operators", "Employee", "HAS_OPERATOR", true, false}
+	specMaintainedBy    = codebookRelSpec{"maintainedBy", "Employee", "IS_MAINTAINED_BY", true, false}
+	specItemUsage       = codebookRelSpec{"itemUsage", "ItemUsage", "HAS_ITEM_USAGE", false, false}
+	specConditionStatus = codebookRelSpec{"conditionStatus", "ItemCondition", "HAS_CONDITION_STATUS", false, false}
 )
 
 // normalizeOptString trims and maps "" to nil so clearing and emptying are the same change.
@@ -143,11 +153,11 @@ func (svc *SystemsService) outsideResponsibilityByUID(userUID string, uids ...st
 	return result, nil
 }
 
-func (svc *SystemsService) resolveRefs(session neo4j.Session, spec codebookRelSpec, uids []string) ([]models.CodebookRef, error) {
+func (svc *SystemsService) resolveRefs(session neo4j.Session, spec codebookRelSpec, uids []string, facilityCode string) ([]models.CodebookRef, error) {
 	if len(uids) == 0 {
 		return []models.CodebookRef{}, nil
 	}
-	refs, err := helpers.GetNeo4jArrayOfNodes[models.CodebookRef](session, ResolveRefsQuery(spec.label, uids, spec.employee))
+	refs, err := helpers.GetNeo4jArrayOfNodes[models.CodebookRef](session, ResolveRefsQuery(spec, uids, facilityCode))
 	if err != nil {
 		return nil, err
 	}
@@ -167,14 +177,14 @@ func (svc *SystemsService) resolveRefs(session neo4j.Session, spec codebookRelSp
 }
 
 // planSingleRef diffs one {uid}|null codebook field and adds the relation + change to the plan.
-func (svc *SystemsService) planSingleRef(session neo4j.Session, plan *patchPlan, spec codebookRelSpec, patch *models.Optional[models.UIDRef], current *models.CodebookRef) error {
+func (svc *SystemsService) planSingleRef(session neo4j.Session, facilityCode string, plan *patchPlan, spec codebookRelSpec, patch *models.Optional[models.UIDRef], current *models.CodebookRef) error {
 	if patch == nil {
 		return nil
 	}
 	var next *models.CodebookRef
 	uids := []string{}
 	if patch.Value != nil {
-		refs, err := svc.resolveRefs(session, spec, []string{patch.Value.UID})
+		refs, err := svc.resolveRefs(session, spec, []string{patch.Value.UID}, facilityCode)
 		if err != nil {
 			return err
 		}
@@ -203,7 +213,7 @@ func employeesToRefs(list []models.EmployeeRef) []models.EmployeeRef {
 	return list
 }
 
-func (svc *SystemsService) planRefList(session neo4j.Session, plan *patchPlan, spec codebookRelSpec, patch *[]models.UIDRef, current []models.EmployeeRef) error {
+func (svc *SystemsService) planRefList(session neo4j.Session, facilityCode string, plan *patchPlan, spec codebookRelSpec, patch *[]models.UIDRef, current []models.EmployeeRef) error {
 	if patch == nil {
 		return nil
 	}
@@ -211,7 +221,7 @@ func (svc *SystemsService) planRefList(session neo4j.Session, plan *patchPlan, s
 	for _, r := range *patch {
 		uids = append(uids, r.UID)
 	}
-	refs, err := svc.resolveRefs(session, spec, uids)
+	refs, err := svc.resolveRefs(session, spec, uids, facilityCode)
 	if err != nil {
 		return err
 	}
@@ -262,7 +272,10 @@ func (svc *SystemsService) buildSystemPlan(session neo4j.Session, current *model
 	planOptString(plan, "description", f.Description, current.Description)
 	planOptString(plan, "systemAlias", f.SystemAlias, current.SystemAlias)
 
-	if f.SystemLevel != nil && f.SystemLevel.Value != nil {
+	if f.SystemLevel != nil && f.SystemLevel.Value == nil {
+		return nil, validationErr("systemLevel cannot be cleared")
+	}
+	if f.SystemLevel != nil {
 		if _, ok := systemLevels[*f.SystemLevel.Value]; !ok {
 			return nil, validationErr("invalid systemLevel: %s", *f.SystemLevel.Value)
 		}
@@ -297,14 +310,14 @@ func (svc *SystemsService) buildSystemPlan(session neo4j.Session, current *model
 		{specOwner, f.Owner, employeeToCodebook(current.Owner)},
 	}
 	for _, s := range singles {
-		if err := svc.planSingleRef(session, plan, s.spec, s.patch, s.current); err != nil {
+		if err := svc.planSingleRef(session, facilityCode, plan, s.spec, s.patch, s.current); err != nil {
 			return nil, err
 		}
 	}
-	if err := svc.planRefList(session, plan, specOperators, f.Operators, current.Operators); err != nil {
+	if err := svc.planRefList(session, facilityCode, plan, specOperators, f.Operators, current.Operators); err != nil {
 		return nil, err
 	}
-	if err := svc.planRefList(session, plan, specMaintainedBy, f.MaintainedBy, current.MaintainedBy); err != nil {
+	if err := svc.planRefList(session, facilityCode, plan, specMaintainedBy, f.MaintainedBy, current.MaintainedBy); err != nil {
 		return nil, err
 	}
 
@@ -331,14 +344,14 @@ func (svc *SystemsService) buildSystemPlan(session neo4j.Session, current *model
 	return plan, nil
 }
 
-func (svc *SystemsService) buildItemPlan(session neo4j.Session, item *models.SystemDetailPhysicalItem, f *models.PatchPhysicalItemFields) (*patchPlan, error) {
+func (svc *SystemsService) buildItemPlan(session neo4j.Session, facilityCode string, item *models.SystemDetailPhysicalItem, f *models.PatchPhysicalItemFields) (*patchPlan, error) {
 	plan := newPatchPlan()
 	planOptString(plan, "serialNumber", f.SerialNumber, item.SerialNumber)
 	planOptString(plan, "notes", f.Notes, item.Notes)
-	if err := svc.planSingleRef(session, plan, specItemUsage, f.ItemUsage, item.ItemUsage); err != nil {
+	if err := svc.planSingleRef(session, facilityCode, plan, specItemUsage, f.ItemUsage, item.ItemUsage); err != nil {
 		return nil, err
 	}
-	if err := svc.planSingleRef(session, plan, specConditionStatus, f.ConditionStatus, item.ConditionStatus); err != nil {
+	if err := svc.planSingleRef(session, facilityCode, plan, specConditionStatus, f.ConditionStatus, item.ConditionStatus); err != nil {
 		return nil, err
 	}
 	return plan, nil
@@ -356,7 +369,7 @@ func (svc *SystemsService) writePatch(session neo4j.Session, current *models.Sys
 		if errors.Is(err, helpers.ERR_NO_ROWS) {
 			return models.SystemDetail{}, ErrStaleSystem
 		}
-		return models.SystemDetail{}, err
+		return models.SystemDetail{}, mapWriteError(err)
 	}
 	return svc.getSystemDetail(session, current.UID, facilityCode)
 }
@@ -402,7 +415,7 @@ func (svc *SystemsService) PatchSystemPhysicalItem(uid, facilityCode, userUID st
 	if current.PhysicalItem == nil {
 		return current, ErrNoPhysicalItem
 	}
-	plan, err := svc.buildItemPlan(session, current.PhysicalItem, f)
+	plan, err := svc.buildItemPlan(session, facilityCode, current.PhysicalItem, f)
 	if err != nil {
 		return current, err
 	}
@@ -485,7 +498,7 @@ func (svc *SystemsService) CreateSystem(facilityCode, userUID string, f *models.
 		if errors.Is(err, helpers.ERR_NO_ROWS) {
 			return models.SystemDetail{}, helpers.ERR_NOT_FOUND
 		}
-		return models.SystemDetail{}, err
+		return models.SystemDetail{}, mapWriteError(err)
 	}
 	return svc.getSystemDetail(session, newUID, facilityCode)
 }
@@ -635,10 +648,10 @@ func (svc *SystemsService) GetSystemSpareParts(uid, facilityCode string) (models
 	return result, err
 }
 
-func (svc *SystemsService) GetPhysicalItemCatalogueProperties(itemUID string) (models.PhysicalItemCatalogueProperties, error) {
+func (svc *SystemsService) GetPhysicalItemCatalogueProperties(itemUID, facilityCode string) (models.PhysicalItemCatalogueProperties, error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
-	raw, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.RawPhysicalItemProperties](session, GetPhysicalItemRawPropertiesQuery(itemUID))
+	raw, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.RawPhysicalItemProperties](session, GetPhysicalItemRawPropertiesQuery(itemUID, facilityCode))
 	if errors.Is(err, helpers.ERR_NO_ROWS) {
 		return models.PhysicalItemCatalogueProperties{}, helpers.ERR_NOT_FOUND
 	}
@@ -648,10 +661,10 @@ func (svc *SystemsService) GetPhysicalItemCatalogueProperties(itemUID string) (m
 	return resolveCatalogueProperties(raw), nil
 }
 
-func (svc *SystemsService) GetPhysicalItemOrders(itemUID string) (models.PhysicalItemOrders, error) {
+func (svc *SystemsService) GetPhysicalItemOrders(itemUID, facilityCode string) (models.PhysicalItemOrders, error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
-	result, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.PhysicalItemOrders](session, GetPhysicalItemOrdersQuery(itemUID))
+	result, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.PhysicalItemOrders](session, GetPhysicalItemOrdersQuery(itemUID, facilityCode))
 	if errors.Is(err, helpers.ERR_NO_ROWS) {
 		return result, helpers.ERR_NOT_FOUND
 	}

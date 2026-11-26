@@ -11,7 +11,9 @@ package systemsService
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -33,14 +35,14 @@ CREATE (owner)-[:HAS_ROLE]->(editR)
 CREATE (eOwner:Employee{uid: 'e-owner', fullName: 'Olga Owner', firstName: 'Olga', lastName: 'Owner'})-[:HAS_USER]->(owner)
 CREATE (eAnn:Employee{uid: 'e-ann', firstName: 'Ann', lastName: 'Bell'})
 CREATE (eBob:Employee{uid: 'e-bob', fullName: 'Bob Carr'})
-CREATE (team:Team{uid: 't-1', name: 'Vacuum', code: 'VAC'})
-CREATE (zone:Zone{uid: 'z-1', name: 'Zone 1', code: 'Z1'})
+CREATE (team:Team{uid: 't-1', name: 'Vacuum', code: 'VAC'})-[:BELONGS_TO_FACILITY]->(f)
+CREATE (zone:Zone{uid: 'z-1', name: 'Zone 1', code: 'Z1'})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (loc:Location{uid: 'l-1', name: 'Hall', code: 'H1'})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (st:SystemType{uid: 'st-1', name: 'Pump', code: 'PMP'})
 CREATE (usage:ItemUsage{uid: 'iu-1', name: 'In use'})
 CREATE (usage2:ItemUsage{uid: 'iu-2', name: 'Spare'})
 CREATE (cond:ItemCondition{uid: 'ic-1', name: 'OK'})
-CREATE (:SystemAttribute{uid: 'sa-1', name: 'Critical'})
+CREATE (:SystemAttribute{uid: 'sa-1', name: 'Critical'})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (root:System{uid: 's-root', name: 'Root', systemLevel: 'SYSTEM_DOMAIN', deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (tu:System{uid: 's-tu', name: 'TU', systemLevel: 'TECHNOLOGY_UNIT', deleted: false, lastUpdateTime: datetime('2026-01-01T10:00:00.123456789Z')})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (ks:System{uid: 's-ks', name: 'Key', systemLevel: 'KEY_SYSTEMS', deleted: false, minimalSpareParstCount: 2})-[:BELONGS_TO_FACILITY]->(f)
@@ -90,6 +92,18 @@ func integrationService(t *testing.T) (*SystemsService, neo4j.Driver) {
 	require.NoError(t, err)
 	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
 	defer session.Close()
+	// The fixture wipes the database — refuse anything that looks like a real (migrated or
+	// populated) instance, so a mistyped URI can never destroy shared data.
+	guard, err := session.Run(`OPTIONAL MATCH (m:SchemaMigration) WITH count(m) AS migrations
+		OPTIONAL MATCH (n) RETURN migrations, count(n) AS nodes`, nil)
+	require.NoError(t, err)
+	rec, err := guard.Single()
+	require.NoError(t, err)
+	migrations, _ := rec.Get("migrations")
+	nodes, _ := rec.Get("nodes")
+	if migrations.(int64) > 0 || nodes.(int64) > 500 {
+		t.Fatalf("refusing to wipe %s: looks like a real database (%d migrations, %d nodes)", uri, migrations, nodes)
+	}
 	_, err = session.Run(`MATCH (n) DETACH DELETE n`, nil)
 	require.NoError(t, err)
 	_, err = session.Run(integrationFixture, nil)
@@ -347,7 +361,7 @@ func TestIntegration_SpareParts(t *testing.T) {
 func TestIntegration_CatalogueProperties(t *testing.T) {
 	svc, _ := integrationService(t)
 
-	res, err := svc.GetPhysicalItemCatalogueProperties("i-1")
+	res, err := svc.GetPhysicalItemCatalogueProperties("i-1", "B")
 	require.NoError(t, err)
 	assert.True(t, res.HasOverriddenProperties)
 	byName := map[string]models.ResolvedCatalogueProperty{}
@@ -370,7 +384,7 @@ func TestIntegration_CatalogueProperties(t *testing.T) {
 func TestIntegration_Orders(t *testing.T) {
 	svc, _ := integrationService(t)
 
-	res, err := svc.GetPhysicalItemOrders("i-1")
+	res, err := svc.GetPhysicalItemOrders("i-1", "B")
 	require.NoError(t, err)
 	require.NotNil(t, res.Order)
 	assert.Equal(t, "PO-1", res.Order.Name)
@@ -487,4 +501,79 @@ func TestIntegration_CreateSystem(t *testing.T) {
 		Name: &name, SystemLevel: &models.Optional[string]{Value: &level},
 	}})
 	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}
+
+func TestIntegration_ConcurrentPatchesWithSameTokenOnlyOneWins(t *testing.T) {
+	svc, _ := integrationService(t)
+
+	tu, err := svc.GetSystemDetail("s-tu", "B")
+	require.NoError(t, err)
+	var wg sync.WaitGroup
+	errs := make([]error, 2)
+	for i := range errs {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			name := "writer " + string(rune('A'+i))
+			_, errs[i] = svc.PatchSystem("s-tu", "B", "u-owner", &models.PatchSystemFields{
+				Token: models.PatchToken{Present: true, Value: tu.LastUpdateTime},
+				Name:  &name,
+			})
+		}(i)
+	}
+	wg.Wait()
+	stale := 0
+	for _, e := range errs {
+		if errors.Is(e, ErrStaleSystem) {
+			stale++
+		} else {
+			require.NoError(t, e)
+		}
+	}
+	assert.Equal(t, 1, stale, "exactly one of two writers with the same token must get 409")
+}
+
+func TestIntegration_ConcurrentSameSystemCodeOnlyOneWins(t *testing.T) {
+	svc, _ := integrationService(t)
+
+	var wg sync.WaitGroup
+	uids := []string{"s-ks", "s-spare"}
+	errs := make([]error, len(uids))
+	for i, uid := range uids {
+		wg.Add(1)
+		go func(i int, uid string) {
+			defer wg.Done()
+			_, errs[i] = svc.PatchSystem(uid, "B", "u-owner", &models.PatchSystemFields{
+				SystemCode: &models.Optional[string]{Value: strPtr("RACE-1")},
+			})
+		}(i, uid)
+	}
+	wg.Wait()
+	dup := 0
+	for _, e := range errs {
+		if errors.Is(e, helpers.ERR_DUPLICATE_SYSTEM_CODE) {
+			dup++
+		} else {
+			require.NoError(t, e)
+		}
+	}
+	assert.Equal(t, 1, dup)
+}
+
+func TestIntegration_RefsMustBeLiveAndInFacility(t *testing.T) {
+	svc, driver := integrationService(t)
+
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+	_, err := session.Run(`CREATE (:Zone{uid: 'z-deleted', name: 'Gone', deleted: true})
+		CREATE (:Location{uid: 'l-other', name: 'Elsewhere'})-[:BELONGS_TO_FACILITY]->(:Facility{code: 'X'})`, nil)
+	require.NoError(t, err)
+
+	var ve *ValidationError
+	_, err = svc.PatchSystem("s-ks", "B", "u-owner", &models.PatchSystemFields{Zone: &models.Optional[models.UIDRef]{Value: &models.UIDRef{UID: "z-deleted"}}})
+	assert.ErrorAs(t, err, &ve)
+	_, err = svc.PatchSystem("s-ks", "B", "u-owner", &models.PatchSystemFields{Location: &models.Optional[models.UIDRef]{Value: &models.UIDRef{UID: "l-other"}}})
+	assert.ErrorAs(t, err, &ve)
+	_, err = svc.PatchSystem("s-ks", "B", "u-owner", &models.PatchSystemFields{SystemLevel: &models.Optional[string]{}})
+	assert.ErrorAs(t, err, &ve)
 }

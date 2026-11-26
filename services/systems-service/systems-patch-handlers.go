@@ -284,7 +284,7 @@ func (h *SystemsHandlers) GetSystemSpareParts() echo.HandlerFunc {
 // @Router /v1/physical-item/{uid}/catalogue-properties [get]
 func (h *SystemsHandlers) GetPhysicalItemCatalogueProperties() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		result, err := h.systemsService.GetPhysicalItemCatalogueProperties(c.Param("uid"))
+		result, err := h.systemsService.GetPhysicalItemCatalogueProperties(c.Param("uid"), c.Get("facilityCode").(string))
 		if err != nil {
 			return patchErrorResponse(c, err, "GetPhysicalItemCatalogueProperties")
 		}
@@ -305,7 +305,7 @@ func (h *SystemsHandlers) GetPhysicalItemCatalogueProperties() echo.HandlerFunc 
 // @Router /v1/physical-item/{uid}/orders [get]
 func (h *SystemsHandlers) GetPhysicalItemOrders() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		result, err := h.systemsService.GetPhysicalItemOrders(c.Param("uid"))
+		result, err := h.systemsService.GetPhysicalItemOrders(c.Param("uid"), c.Get("facilityCode").(string))
 		if err != nil {
 			return patchErrorResponse(c, err, "GetPhysicalItemOrders")
 		}

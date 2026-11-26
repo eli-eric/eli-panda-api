@@ -33,6 +33,31 @@ func (p *patchPlan) isEmpty() bool {
 	return len(p.changes) == 0
 }
 
+// duplicateSystemCodeMarker is the apoc.util.validate message raised inside the write tx.
+const duplicateSystemCodeMarker = "DUPLICATE_SYSTEM_CODE"
+
+// duplicateCodeGuardCypher re-checks code uniqueness inside the write transaction while holding
+// the facility lock, so two concurrent writes of the same code cannot both pass the pre-check.
+// Empty when the plan does not set a code.
+func duplicateCodeGuardCypher(params map[string]interface{}, plan *patchPlan, carry string) string {
+	if plan == nil {
+		return ""
+	}
+	code, ok := plan.scalars["systemCode"].(string)
+	if !ok {
+		return ""
+	}
+	params["guardSystemCode"] = code
+	return fmt.Sprintf(`WITH %[1]s
+		SET f._systemCodeLock = true
+		REMOVE f._systemCodeLock
+		WITH %[1]s
+		CALL apoc.util.validate(
+			size([(o:System{systemCode: $guardSystemCode, deleted: false})-[:BELONGS_TO_FACILITY]->(f) WHERE o.uid <> s.uid | o]) > 0,
+			'%[2]s', [])
+		`, carry, duplicateSystemCodeMarker)
+}
+
 // tokenCondition renders the optimistic-concurrency WHERE clause for alias s against the
 // token read before the write. A legacy system without lastUpdateTime matches IS NULL.
 func tokenCondition(params map[string]interface{}, token *time.Time) string {
@@ -85,7 +110,7 @@ func applyPlanCypher(params map[string]interface{}, target, prefix string, plan 
 			WITH %[2]s
 			OPTIONAL MATCH (:System)-[sp:IS_SPARE_FOR]->(%[2]s)
 			WITH %[2]s, coalesce(sum(sp.coverage), 0) AS coverage
-			SET %[2]s.sparePartsCoverageSum = coverage,
+			SET %[2]s.sparePartsCoverageSum = CASE WHEN coalesce(%[2]s.minimalSpareParstCount, 0) > 0 THEN coverage ELSE %[2]s.sparePartsCoverageSum END,
 				%[2]s.sp_coverage = CASE WHEN coalesce(%[2]s.minimalSpareParstCount, 0) > 0
 					THEN toFloat(coverage) / %[2]s.minimalSpareParstCount ELSE null END
 		}
@@ -107,9 +132,18 @@ func PatchSystemQuery(uid, facilityCode, userUID string, token *time.Time, syste
 		"outsideResponsibility": outsideResponsibility,
 	}
 
+	// The write lock is taken BEFORE the token is compared: Neo4j reads without locks, so two
+	// writers could both pass an unlocked check and the second would silently overwrite. The
+	// lock is a write (SET/REMOVE) rather than apoc.lock.nodes because the planner may push a
+	// filter in front of a procedure call, but never across an updating clause.
 	query := `MATCH (u:User{uid: $userUID})
-	MATCH (s:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
-	WHERE ` + tokenCondition(params, token) + ` `
+	MATCH (s:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
+	SET s._patchLock = true
+	REMOVE s._patchLock
+	WITH s, u, f
+	WHERE ` + tokenCondition(params, token) + `
+	` + duplicateCodeGuardCypher(params, systemPlan, "s, u, f") + `WITH s, u
+	`
 
 	if itemPlan != nil {
 		query += `MATCH (s)-[:CONTAINS_ITEM]->(itm:Item) `
@@ -129,17 +163,22 @@ func PatchSystemQuery(uid, facilityCode, userUID string, token *time.Time, syste
 	return helpers.DatabaseQuery{Query: query, ReturnAlias: "uid", Parameters: params}
 }
 
-// ResolveRefsQuery looks up nodes of a fixed label by uid for validation and audit snapshots.
-func ResolveRefsQuery(label string, uids []string, employee bool) helpers.DatabaseQuery {
+// ResolveRefsQuery looks up non-deleted nodes of a spec's fixed label by uid (for validation and
+// audit snapshots); facility-scoped labels must belong to the caller's facility.
+func ResolveRefsQuery(spec codebookRelSpec, uids []string, facilityCode string) helpers.DatabaseQuery {
 	name := "n.name"
-	if employee {
+	if spec.employee {
 		name = employeeNameCypher("n")
 	}
+	where := `n.uid IN $uids AND coalesce(n.deleted, false) = false`
+	if spec.facilityScoped {
+		where += ` AND (n)-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})`
+	}
 	return helpers.DatabaseQuery{
-		Query: fmt.Sprintf(`MATCH (n:%s) WHERE n.uid IN $uids
-			RETURN {uid: n.uid, name: coalesce(%s, ""), code: n.code} AS ref`, label, name),
+		Query: fmt.Sprintf(`MATCH (n:%s) WHERE %s
+			RETURN {uid: n.uid, name: coalesce(%s, ""), code: n.code} AS ref`, spec.label, where, name),
 		ReturnAlias: "ref",
-		Parameters:  map[string]interface{}{"uids": uids},
+		Parameters:  map[string]interface{}{"uids": uids, "facilityCode": facilityCode},
 	}
 }
 
@@ -168,7 +207,7 @@ func CreateSystemQuery(newUID string, parentUID *string, facilityCode, userUID s
 		MATCH (f:Facility{code: $facilityCode})
 		CREATE (s:System{uid: $newUID, deleted: false,
 			lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
-		WITH s, u, f
+		` + duplicateCodeGuardCypher(params, plan, "s, u, f") + `WITH s, u, f
 		`
 	if parentUID != nil {
 		params["parentUID"] = *parentUID
@@ -239,23 +278,15 @@ func DeleteRelationshipQuery(fromUID, relType, toUID, facilityCode, userUID stri
 	query := fmt.Sprintf(`MATCH (u:User{uid: $userUID})
 		MATCH (a:System{uid: $fromUID})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 		MATCH (a)-[r:%s]->(b:System{uid: $toUID})
-		DELETE r
+		// legacy data may hold duplicate edges: remove them all, audit once
+		WITH a, b, u, collect(r) AS edges
+		FOREACH (e IN edges | DELETE e)
 		WITH a, b, u
 		`, relType) + relationshipAuditCypher(params, from, to)
 	if relType == "IS_SPARE_FOR" {
 		query += `WITH a, b ` + sparesRecalcCypher
 	}
 	query += `RETURN true AS result`
-	return helpers.DatabaseQuery{Query: query, ReturnAlias: "result", Parameters: params}
-}
-
-// RelationshipAuditQuery writes the add-relationship audit on both systems (used after create).
-func RelationshipAuditQuery(fromUID, toUID, userUID string, from, to relationshipSideAudit) helpers.DatabaseQuery {
-	params := map[string]interface{}{"fromUID": fromUID, "toUID": toUID, "userUID": userUID}
-	query := `MATCH (u:User{uid: $userUID})
-		MATCH (a:System{uid: $fromUID})
-		MATCH (b:System{uid: $toUID})
-		` + relationshipAuditCypher(params, from, to) + `RETURN true AS result`
 	return helpers.DatabaseQuery{Query: query, ReturnAlias: "result", Parameters: params}
 }
 

@@ -142,9 +142,9 @@ const rawPropertyCypher = `{
 // GetPhysicalItemRawPropertiesQuery reads the catalogue property values of the item's catalogue
 // item plus the property values of every service item applied to it. Override resolution
 // happens in Go (resolveCatalogueProperties).
-func GetPhysicalItemRawPropertiesQuery(itemUID string) (result helpers.DatabaseQuery) {
+func GetPhysicalItemRawPropertiesQuery(itemUID, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH (itm:Item{uid: $itemUID})
+	MATCH (itm:Item{uid: $itemUID})<-[:CONTAINS_ITEM]-(:System)-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	OPTIONAL MATCH (itm)-[:IS_BASED_ON]->(ci:CatalogueItem)
 	RETURN {
 		catalogue: CASE WHEN ci IS NULL THEN [] ELSE [(ci)-[rel:HAS_CATALOGUE_PROPERTY]->(prop) | ` + rawPropertyCypher + `] END,
@@ -155,13 +155,13 @@ func GetPhysicalItemRawPropertiesQuery(itemUID string) (result helpers.DatabaseQ
 	} AS result`
 
 	result.ReturnAlias = "result"
-	result.Parameters = map[string]interface{}{"itemUID": itemUID}
+	result.Parameters = map[string]interface{}{"itemUID": itemUID, "facilityCode": facilityCode}
 	return result
 }
 
-func GetPhysicalItemOrdersQuery(itemUID string) (result helpers.DatabaseQuery) {
+func GetPhysicalItemOrdersQuery(itemUID, facilityCode string) (result helpers.DatabaseQuery) {
 	result.Query = `
-	MATCH (itm:Item{uid: $itemUID})
+	MATCH (itm:Item{uid: $itemUID})<-[:CONTAINS_ITEM]-(:System)-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
 	RETURN {
 		order: head([(o:Order)-[ol:HAS_ORDER_LINE]->(itm) | {uid: o.uid, name: o.name, orderDate: o.orderDate, isDelivered: ol.isDelivered}]),
 		serviceItems: apoc.coll.sortMaps([(itm)-[sb:IS_SERVICED_BY]->(si:ServiceItem) | {
@@ -175,6 +175,6 @@ func GetPhysicalItemOrdersQuery(itemUID string) (result helpers.DatabaseQuery) {
 	} AS result`
 
 	result.ReturnAlias = "result"
-	result.Parameters = map[string]interface{}{"itemUID": itemUID}
+	result.Parameters = map[string]interface{}{"itemUID": itemUID, "facilityCode": facilityCode}
 	return result
 }
