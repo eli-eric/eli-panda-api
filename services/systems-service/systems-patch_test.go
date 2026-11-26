@@ -225,3 +225,18 @@ func TestPatchSystemHandler_ErrorMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestParseCreateSystemPayload(t *testing.T) {
+	f, err := parseCreateSystemPayload(rawBody(t, `{"parentUid": "p", "name": "N", "systemLevel": "TRASH", "zone": null}`))
+	require.NoError(t, err)
+	assert.Equal(t, "p", *f.ParentUID)
+	assert.Equal(t, "N", *f.Fields.Name)
+	assert.Nil(t, f.Fields.Zone.Value)
+
+	f, err = parseCreateSystemPayload(rawBody(t, `{"name": "N", "parentUid": null}`))
+	require.NoError(t, err)
+	assert.Nil(t, f.ParentUID)
+
+	_, err = parseCreateSystemPayload(rawBody(t, `{"lastUpdateTime": null}`))
+	assert.Error(t, err, "token is meaningless on create")
+}

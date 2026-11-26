@@ -34,6 +34,7 @@ type ISystemsService interface {
 	GetSystemDetail(uid string, facilityCode string) (models.SystemDetail, error)
 	PatchSystem(uid, facilityCode, userUID string, fields *models.PatchSystemFields) (models.SystemDetail, error)
 	PatchSystemPhysicalItem(uid, facilityCode, userUID string, fields *models.PatchPhysicalItemFields) (models.SystemDetail, error)
+	CreateSystem(facilityCode, userUID string, fields *models.CreateSystemFields) (models.SystemDetail, error)
 	CreateSubsystem(parentUID, facilityCode, userUID string, req *models.CreateSubsystemRequest) (models.SystemDetail, error)
 	GenerateSystemCode(uid, facilityCode, userUID string, token models.PatchToken) (models.SystemDetail, error)
 	DeleteRelationship(fromUID, relType, toUID, facilityCode, userUID string) error

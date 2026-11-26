@@ -186,3 +186,31 @@ func parsePatchPhysicalItemPayload(raw map[string]json.RawMessage) (*models.Patc
 	}
 	return f, nil
 }
+
+var createSystemAllowedKeys = map[string]struct{}{
+	"parentUid": {}, "name": {}, "description": {}, "systemCode": {}, "systemAlias": {},
+	"systemLevel": {}, "systemType": {}, "location": {}, "zone": {}, "importance": {},
+	"responsible": {}, "responsibleTeam": {}, "owner": {}, "operators": {}, "maintainedBy": {},
+	"minimalSpareParstCount": {},
+}
+
+func parseCreateSystemPayload(raw map[string]json.RawMessage) (*models.CreateSystemFields, error) {
+	if err := rejectUnknownKeys(raw, createSystemAllowedKeys); err != nil {
+		return nil, err
+	}
+	result := &models.CreateSystemFields{}
+	if r, ok := raw["parentUid"]; ok && !rawIsNull(r) {
+		var parentUID string
+		if err := json.Unmarshal(r, &parentUID); err != nil || parentUID == "" {
+			return nil, fmt.Errorf("invalid parentUid")
+		}
+		result.ParentUID = &parentUID
+	}
+	delete(raw, "parentUid")
+	fields, err := parsePatchSystemPayload(raw)
+	if err != nil {
+		return nil, err
+	}
+	result.Fields = *fields
+	return result, nil
+}

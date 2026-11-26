@@ -154,33 +154,33 @@ func SystemCodeExistsQuery(code, excludeUID, facilityCode string) helpers.Databa
 	}
 }
 
-// CreateSubsystemQuery creates a child of parentUID inheriting responsible, location and zone,
-// and writes the INSERT audit edge on the new system.
-func CreateSubsystemQuery(parentUID, newUID, name, systemLevel, facilityCode, userUID, changesJSON string, outsideResponsibility bool) helpers.DatabaseQuery {
-	return helpers.DatabaseQuery{
-		Query: `MATCH (u:User{uid: $userUID})
-		MATCH (parent:System{uid: $parentUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code: $facilityCode})
-		CREATE (s:System{uid: $newUID, name: $name, systemLevel: $systemLevel, deleted: false,
-			lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
-		CREATE (parent)-[:HAS_SUBSYSTEM]->(s)
-		WITH s, u, parent
-		CALL { WITH s, parent MATCH (parent)-[:HAS_RESPONSIBLE]->(x) MERGE (s)-[:HAS_RESPONSIBLE]->(x) }
-		CALL { WITH s, parent MATCH (parent)-[:HAS_LOCATION]->(x) MERGE (s)-[:HAS_LOCATION]->(x) }
-		CALL { WITH s, parent MATCH (parent)-[:HAS_ZONE]->(x) MERGE (s)-[:HAS_ZONE]->(x) }
-		` + auditCypher("s", "INSERT") + `
-		RETURN s.uid AS uid`,
-		ReturnAlias: "uid",
-		Parameters: map[string]interface{}{
-			"parentUID":             parentUID,
-			"newUID":                newUID,
-			"name":                  name,
-			"systemLevel":           systemLevel,
-			"facilityCode":          facilityCode,
-			"userUID":               userUID,
-			"changes":               changesJSON,
-			"outsideResponsibility": outsideResponsibility,
-		},
+// CreateSystemQuery creates a system (optionally under parentUID) and applies the create plan
+// in one transaction, writing the INSERT audit edge on the new system.
+func CreateSystemQuery(newUID string, parentUID *string, facilityCode, userUID string, plan *patchPlan, changesJSON string, outsideResponsibility bool) helpers.DatabaseQuery {
+	params := map[string]interface{}{
+		"newUID":                newUID,
+		"facilityCode":          facilityCode,
+		"userUID":               userUID,
+		"changes":               changesJSON,
+		"outsideResponsibility": outsideResponsibility,
 	}
+	query := `MATCH (u:User{uid: $userUID})
+		MATCH (f:Facility{code: $facilityCode})
+		CREATE (s:System{uid: $newUID, deleted: false,
+			lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
+		WITH s, u, f
+		`
+	if parentUID != nil {
+		params["parentUID"] = *parentUID
+		query += `MATCH (parent:System{uid: $parentUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
+		CREATE (parent)-[:HAS_SUBSYSTEM]->(s)
+		WITH s, u
+		`
+	}
+	query += applyPlanCypher(params, "s", "sys", plan, "s, u") + `WITH s, u
+		` + auditCypher("s", "INSERT") + `
+		RETURN s.uid AS uid`
+	return helpers.DatabaseQuery{Query: query, ReturnAlias: "uid", Parameters: params}
 }
 
 // relationshipSideAudit is one audit edge of a relationship add/remove.

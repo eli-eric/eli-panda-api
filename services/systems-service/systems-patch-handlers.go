@@ -134,6 +134,38 @@ func (h *SystemsHandlers) PatchSystemPhysicalItem() echo.HandlerFunc {
 	}
 }
 
+// CreateSystem godoc
+// @Summary Create system
+// @Description Creates a root system, or a child of parentUid (absent responsible/location/zone are inherited, parent→child level rules validated). Body uses the PATCH field shapes; name and systemLevel are required. Writes the INSERT audit edge.
+// @Tags Systems
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body object true "System fields (+ optional parentUid)"
+// @Success 201 {object} models.SystemDetail
+// @Failure 400 "Bad request"
+// @Failure 404 "Parent not found"
+// @Failure 409 {object} models.ConflictResponse "DUPLICATE_SYSTEM_CODE"
+// @Failure 500 "Internal server error"
+// @Router /v1/systems [post]
+func (h *SystemsHandlers) CreateSystem() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		raw, err := readRawJSONBody(c)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		fields, err := parseCreateSystemPayload(raw)
+		if err != nil {
+			return helpers.BadRequest(err.Error())
+		}
+		detail, err := h.systemsService.CreateSystem(c.Get("facilityCode").(string), c.Get("userUID").(string), fields)
+		if err != nil {
+			return patchErrorResponse(c, err, "CreateSystem")
+		}
+		return c.JSON(http.StatusCreated, detail)
+	}
+}
+
 // CreateSubsystem godoc
 // @Summary Create subsystem
 // @Description Creates a child system; responsible, location and zone are inherited from the parent and the parent→child level rules are validated.

@@ -30,6 +30,9 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	//get system image - base64string
 	e.GET("/v1/system/:uid/image", m.Authorization(h.GetSystemImageByUid(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 
+	// create system (root, or child via parentUid) - audited
+	e.POST("/v1/systems", m.Authorization(h.CreateSystem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
+	// Deprecated: legacy create, use POST /v1/systems
 	e.POST("/v1/system", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	e.POST("/v1/system/jira-import", m.Authorization(h.CreateNewSystemFromJira(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 	// get system detail by uid
@@ -48,7 +51,7 @@ func MapSystemsRoutes(e *echo.Echo, h ISystemsHandlers, jwtMiddleware echo.Middl
 	// spare parts of a system (both directions, with coverage)
 	e.GET("/v1/system/:uid/spare-parts", m.Authorization(h.GetSystemSpareParts(), shared.ROLE_SYSTEMS_VIEW), jwtMiddleware)
 	e.DELETE("/v1/system/:uid", m.Authorization(h.DeleteSystemRecursive(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
-	// this one is only becasue of bad request from ui for now
+	// Deprecated: legacy create alias (old UI bug), use POST /v1/systems
 	e.POST("/v1/system/:xxx", m.Authorization(h.CreateNewSystem(), shared.ROLE_SYSTEMS_EDIT, shared.ROLE_ADMIN), jwtMiddleware)
 
 	// get systems for relationship

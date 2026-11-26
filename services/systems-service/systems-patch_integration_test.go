@@ -438,3 +438,50 @@ func TestIntegration_HistoryExposesOutsideResponsibility(t *testing.T) {
 	}
 	assert.True(t, found)
 }
+
+func TestIntegration_CreateSystem(t *testing.T) {
+	svc, driver := integrationService(t)
+
+	name, level := "Root 2", "SYSTEM_DOMAIN"
+	root, err := svc.CreateSystem("B", "u-editor", &models.CreateSystemFields{Fields: models.PatchSystemFields{
+		Name:        &name,
+		SystemLevel: &models.Optional[string]{Value: &level},
+		SystemType:  &models.Optional[models.UIDRef]{Value: &models.UIDRef{UID: "st-1"}},
+		SystemCode:  &models.Optional[string]{Value: strPtr("NEW-1")},
+		Description: &models.Optional[string]{Value: strPtr("d")},
+	}})
+	require.NoError(t, err)
+	assert.Nil(t, root.ParentUID)
+	assert.Equal(t, "st-1", root.SystemType.UID)
+	assert.Equal(t, "NEW-1", *root.SystemCode)
+	audit := lastAudit(t, driver, root.UID)
+	assert.Equal(t, "INSERT", audit["action"])
+	assert.Nil(t, audit["outside"])
+	assert.Len(t, decodeChanges(t, audit), 5)
+
+	// child: explicit null zone is not inherited, absent location is
+	childName, childLevel := "Child", "KEY_SYSTEMS"
+	parent := "s-tu"
+	child, err := svc.CreateSystem("B", "u-editor", &models.CreateSystemFields{ParentUID: &parent, Fields: models.PatchSystemFields{
+		Name:        &childName,
+		SystemLevel: &models.Optional[string]{Value: &childLevel},
+		Zone:        &models.Optional[models.UIDRef]{},
+	}})
+	require.NoError(t, err)
+	assert.Equal(t, "s-tu", *child.ParentUID)
+	assert.Nil(t, child.Zone)
+	assert.Equal(t, "l-1", child.Location.UID)
+	assert.Equal(t, true, lastAudit(t, driver, child.UID)["outside"])
+
+	_, err = svc.CreateSystem("B", "u-editor", &models.CreateSystemFields{Fields: models.PatchSystemFields{
+		Name: &name, SystemLevel: &models.Optional[string]{Value: &level},
+		SystemCode: &models.Optional[string]{Value: strPtr("TAKEN-1")},
+	}})
+	assert.ErrorIs(t, err, helpers.ERR_DUPLICATE_SYSTEM_CODE)
+
+	missing := "nope"
+	_, err = svc.CreateSystem("B", "u-editor", &models.CreateSystemFields{ParentUID: &missing, Fields: models.PatchSystemFields{
+		Name: &name, SystemLevel: &models.Optional[string]{Value: &level},
+	}})
+	assert.ErrorIs(t, err, helpers.ERR_NOT_FOUND)
+}

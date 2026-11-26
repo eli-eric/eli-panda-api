@@ -71,6 +71,7 @@ type ISystemsHandlers interface {
 	CanEditSystem() echo.HandlerFunc
 	PatchSystem() echo.HandlerFunc
 	PatchSystemPhysicalItem() echo.HandlerFunc
+	CreateSystem() echo.HandlerFunc
 	CreateSubsystem() echo.HandlerFunc
 	GenerateSystemCode() echo.HandlerFunc
 	DeleteRelationship() echo.HandlerFunc
@@ -181,6 +182,9 @@ func (h *SystemsHandlers) GetSystemImageByUid() echo.HandlerFunc {
 }
 
 // Swagger documentation for CreateNewSystem
+// Deprecated: use POST /v1/systems (CreateSystem) — this legacy endpoint has no change audit and
+// matches location by code.
+// @Deprecated
 // @Summary Create new system
 // @Description Creates a new system with the given details
 // @Tags Systems

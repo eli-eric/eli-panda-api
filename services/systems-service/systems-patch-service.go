@@ -426,37 +426,75 @@ func isAllowedChildLevel(parentLevel *string, childLevel string) bool {
 	return false
 }
 
-func (svc *SystemsService) CreateSubsystem(parentUID, facilityCode, userUID string, req *models.CreateSubsystemRequest) (models.SystemDetail, error) {
+// inheritFromParent fills absent responsible/location/zone keys with the parent's values.
+// An explicit null in the request is kept (no inheritance).
+func inheritFromParent(f *models.PatchSystemFields, parent *models.SystemDetail) {
+	ref := func(uid string) *models.Optional[models.UIDRef] {
+		return &models.Optional[models.UIDRef]{Value: &models.UIDRef{UID: uid}}
+	}
+	if f.Responsible == nil && parent.Responsible != nil {
+		f.Responsible = ref(parent.Responsible.UID)
+	}
+	if f.Location == nil && parent.Location != nil {
+		f.Location = ref(parent.Location.UID)
+	}
+	if f.Zone == nil && parent.Zone != nil {
+		f.Zone = ref(parent.Zone.UID)
+	}
+}
+
+// CreateSystem creates a root system or a child of f.ParentUID with the given fields.
+func (svc *SystemsService) CreateSystem(facilityCode, userUID string, f *models.CreateSystemFields) (models.SystemDetail, error) {
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
 	defer session.Close()
 
-	name := strings.TrimSpace(req.Name)
-	if name == "" {
+	fields := &f.Fields
+	if fields.Name == nil || strings.TrimSpace(*fields.Name) == "" {
 		return models.SystemDetail{}, validationErr("name must not be empty")
 	}
-	if _, ok := systemLevels[req.SystemLevel]; !ok {
-		return models.SystemDetail{}, validationErr("invalid systemLevel: %s", req.SystemLevel)
+	if fields.SystemLevel == nil || fields.SystemLevel.Value == nil {
+		return models.SystemDetail{}, validationErr("systemLevel is required")
 	}
-	parent, err := svc.getSystemDetail(session, parentUID, facilityCode)
-	if err != nil {
-		return parent, err
-	}
-	if !isAllowedChildLevel(parent.SystemLevel, req.SystemLevel) {
-		return models.SystemDetail{}, validationErr("systemLevel %s is not allowed under %s", req.SystemLevel, *parent.SystemLevel)
-	}
-	outside, err := svc.isOutsideResponsibility(parentUID, userUID)
-	if err != nil {
-		return models.SystemDetail{}, err
+	level := *fields.SystemLevel.Value
+
+	outside := false
+	if f.ParentUID != nil {
+		parent, err := svc.getSystemDetail(session, *f.ParentUID, facilityCode)
+		if err != nil {
+			return parent, err
+		}
+		if !isAllowedChildLevel(parent.SystemLevel, level) {
+			return models.SystemDetail{}, validationErr("systemLevel %s is not allowed under %s", level, *parent.SystemLevel)
+		}
+		inheritFromParent(fields, &parent)
+		if outside, err = svc.isOutsideResponsibility(parent.UID, userUID); err != nil {
+			return models.SystemDetail{}, err
+		}
 	}
 
 	newUID := uuid.NewString()
-	changes := helpers.AppendIfChanged(nil, "name", helpers.ChangeTypeString, nil, name)
-	changes = helpers.AppendIfChanged(changes, "systemLevel", helpers.ChangeTypeString, nil, req.SystemLevel)
-	query := CreateSubsystemQuery(parentUID, newUID, name, req.SystemLevel, facilityCode, userUID, helpers.MarshalChanges(changes), outside)
+	empty := models.SystemDetail{UID: newUID, Operators: []models.EmployeeRef{}, MaintainedBy: []models.EmployeeRef{}}
+	plan, err := svc.buildSystemPlan(session, &empty, fields, facilityCode)
+	if err != nil {
+		return models.SystemDetail{}, err
+	}
+	query := CreateSystemQuery(newUID, f.ParentUID, facilityCode, userUID, plan, helpers.MarshalChanges(plan.changes), outside)
 	if _, err := helpers.WriteNeo4jAndReturnSingleValue[string](session, query); err != nil {
+		if errors.Is(err, helpers.ERR_NO_ROWS) {
+			return models.SystemDetail{}, helpers.ERR_NOT_FOUND
+		}
 		return models.SystemDetail{}, err
 	}
 	return svc.getSystemDetail(session, newUID, facilityCode)
+}
+
+// CreateSubsystem creates a child of parentUID; responsible/location/zone are inherited.
+func (svc *SystemsService) CreateSubsystem(parentUID, facilityCode, userUID string, req *models.CreateSubsystemRequest) (models.SystemDetail, error) {
+	name, level := req.Name, req.SystemLevel
+	return svc.CreateSystem(facilityCode, userUID, &models.CreateSystemFields{
+		ParentUID: &parentUID,
+		Fields:    models.PatchSystemFields{Name: &name, SystemLevel: &models.Optional[string]{Value: &level}},
+	})
 }
 
 // GenerateSystemCode generates a code from the system's current type/zone/location/parent and

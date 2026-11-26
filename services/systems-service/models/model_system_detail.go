@@ -130,6 +130,12 @@ type PatchPhysicalItemFields struct {
 	ConditionStatus *Optional[UIDRef]
 }
 
+// CreateSystemFields is the parsed POST /v1/systems body: the PATCH fields plus an optional parent.
+type CreateSystemFields struct {
+	ParentUID *string
+	Fields    PatchSystemFields
+}
+
 type CreateSubsystemRequest struct {
 	Name        string `json:"name"`
 	SystemLevel string `json:"systemLevel"`
