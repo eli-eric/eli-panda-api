@@ -113,6 +113,7 @@ type PatchSystemFields struct {
 	Location               *Optional[UIDRef]
 	Zone                   *Optional[UIDRef]
 	Importance             *Optional[UIDRef]
+	Attribute              *Optional[UIDRef]
 	Responsible            *Optional[UIDRef]
 	ResponsibleTeam        *Optional[UIDRef]
 	Owner                  *Optional[UIDRef]

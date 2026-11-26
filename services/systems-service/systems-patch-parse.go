@@ -12,7 +12,7 @@ import (
 
 var patchSystemAllowedKeys = map[string]struct{}{
 	"lastUpdateTime": {}, "name": {}, "description": {}, "systemCode": {}, "systemAlias": {},
-	"systemLevel": {}, "systemType": {}, "location": {}, "zone": {}, "importance": {},
+	"systemLevel": {}, "systemType": {}, "location": {}, "zone": {}, "importance": {}, "attribute": {},
 	"responsible": {}, "responsibleTeam": {}, "owner": {}, "operators": {}, "maintainedBy": {},
 	"minimalSpareParstCount": {},
 }
@@ -143,7 +143,7 @@ func parsePatchSystemPayload(raw map[string]json.RawMessage) (*models.PatchSyste
 		dst **models.Optional[models.UIDRef]
 	}{
 		{"systemType", &f.SystemType}, {"location", &f.Location}, {"zone", &f.Zone},
-		{"importance", &f.Importance}, {"responsible", &f.Responsible},
+		{"importance", &f.Importance}, {"attribute", &f.Attribute}, {"responsible", &f.Responsible},
 		{"responsibleTeam", &f.ResponsibleTeam}, {"owner", &f.Owner},
 	}
 	for _, rf := range refFields {
@@ -189,7 +189,7 @@ func parsePatchPhysicalItemPayload(raw map[string]json.RawMessage) (*models.Patc
 
 var createSystemAllowedKeys = map[string]struct{}{
 	"parentUid": {}, "name": {}, "description": {}, "systemCode": {}, "systemAlias": {},
-	"systemLevel": {}, "systemType": {}, "location": {}, "zone": {}, "importance": {},
+	"systemLevel": {}, "systemType": {}, "location": {}, "zone": {}, "importance": {}, "attribute": {},
 	"responsible": {}, "responsibleTeam": {}, "owner": {}, "operators": {}, "maintainedBy": {},
 	"minimalSpareParstCount": {},
 }

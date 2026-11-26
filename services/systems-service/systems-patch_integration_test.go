@@ -40,6 +40,7 @@ CREATE (st:SystemType{uid: 'st-1', name: 'Pump', code: 'PMP'})
 CREATE (usage:ItemUsage{uid: 'iu-1', name: 'In use'})
 CREATE (usage2:ItemUsage{uid: 'iu-2', name: 'Spare'})
 CREATE (cond:ItemCondition{uid: 'ic-1', name: 'OK'})
+CREATE (:SystemAttribute{uid: 'sa-1', name: 'Critical'})
 CREATE (root:System{uid: 's-root', name: 'Root', systemLevel: 'SYSTEM_DOMAIN', deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (tu:System{uid: 's-tu', name: 'TU', systemLevel: 'TECHNOLOGY_UNIT', deleted: false, lastUpdateTime: datetime('2026-01-01T10:00:00.123456789Z')})-[:BELONGS_TO_FACILITY]->(f)
 CREATE (ks:System{uid: 's-ks', name: 'Key', systemLevel: 'KEY_SYSTEMS', deleted: false, minimalSpareParstCount: 2})-[:BELONGS_TO_FACILITY]->(f)
@@ -449,15 +450,17 @@ func TestIntegration_CreateSystem(t *testing.T) {
 		SystemType:  &models.Optional[models.UIDRef]{Value: &models.UIDRef{UID: "st-1"}},
 		SystemCode:  &models.Optional[string]{Value: strPtr("NEW-1")},
 		Description: &models.Optional[string]{Value: strPtr("d")},
+		Attribute:   &models.Optional[models.UIDRef]{Value: &models.UIDRef{UID: "sa-1"}},
 	}})
 	require.NoError(t, err)
 	assert.Nil(t, root.ParentUID)
+	assert.Equal(t, "Critical", root.Attribute.Name)
 	assert.Equal(t, "st-1", root.SystemType.UID)
 	assert.Equal(t, "NEW-1", *root.SystemCode)
 	audit := lastAudit(t, driver, root.UID)
 	assert.Equal(t, "INSERT", audit["action"])
 	assert.Nil(t, audit["outside"])
-	assert.Len(t, decodeChanges(t, audit), 5)
+	assert.Len(t, decodeChanges(t, audit), 6)
 
 	// child: explicit null zone is not inherited, absent location is
 	childName, childLevel := "Child", "KEY_SYSTEMS"

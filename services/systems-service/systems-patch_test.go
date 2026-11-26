@@ -61,7 +61,7 @@ func TestParsePatchSystemPayload_NullToken(t *testing.T) {
 
 func TestParsePatchSystemPayload_Rejects(t *testing.T) {
 	cases := map[string]string{
-		"unknown key":      `{"attribute": {"uid": "x"}}`,
+		"unknown key":      `{"foo": {"uid": "x"}}`,
 		"null name":        `{"name": null}`,
 		"ref without uid":  `{"zone": {}}`,
 		"null list":        `{"operators": null}`,

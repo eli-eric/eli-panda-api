@@ -62,6 +62,7 @@ var (
 	specLocation        = codebookRelSpec{"location", "Location", "HAS_LOCATION", false}
 	specZone            = codebookRelSpec{"zone", "Zone", "HAS_ZONE", false}
 	specImportance      = codebookRelSpec{"importance", "SystemImportance", "HAS_IMPORTANCE", false}
+	specAttribute       = codebookRelSpec{"attribute", "SystemAttribute", "HAS_SYSTEM_ATTRIBUTE", false}
 	specResponsible     = codebookRelSpec{"responsible", "Employee", "HAS_RESPONSIBLE", true}
 	specResponsibleTeam = codebookRelSpec{"responsibleTeam", "Team", "HAS_RESPONSIBLE_TEAM", false}
 	specOwner           = codebookRelSpec{"owner", "Employee", "HAS_OWNER", true}
@@ -290,6 +291,7 @@ func (svc *SystemsService) buildSystemPlan(session neo4j.Session, current *model
 		{specLocation, f.Location, current.Location},
 		{specZone, f.Zone, current.Zone},
 		{specImportance, f.Importance, current.Importance},
+		{specAttribute, f.Attribute, current.Attribute},
 		{specResponsible, f.Responsible, employeeToCodebook(current.Responsible)},
 		{specResponsibleTeam, f.ResponsibleTeam, current.ResponsibleTeam},
 		{specOwner, f.Owner, employeeToCodebook(current.Owner)},
