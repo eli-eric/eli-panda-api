@@ -4392,6 +4392,7 @@ const docTemplate = `{
                     "Systems"
                 ],
                 "summary": "Create new system",
+                "deprecated": true,
                 "parameters": [
                     {
                         "description": "System details",
@@ -6087,6 +6088,58 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a root system, or a child of parentUid (absent responsible/location/zone are inherited, parent→child level rules validated). Body uses the PATCH field shapes; name and systemLevel are required. Writes the INSERT audit edge.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create system",
+                "parameters": [
+                    {
+                        "description": "System fields (+ optional parentUid)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "Parent not found"
+                    },
+                    "409": {
+                        "description": "DUPLICATE_SYSTEM_CODE",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictResponse"
                         }
                     },
                     "500": {

@@ -5024,6 +5024,7 @@ paths:
     post:
       consumes:
       - application/json
+      deprecated: true
       description: Creates a new system with the given details
       parameters:
       - description: System details
@@ -6131,6 +6132,41 @@ paths:
       security:
       - BearerAuth: []
       summary: Get systems
+      tags:
+      - Systems
+    post:
+      consumes:
+      - application/json
+      description: Creates a root system, or a child of parentUid (absent responsible/location/zone
+        are inherited, parent→child level rules validated). Body uses the PATCH field
+        shapes; name and systemLevel are required. Writes the INSERT audit edge.
+      parameters:
+      - description: System fields (+ optional parentUid)
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.SystemDetail'
+        "400":
+          description: Bad request
+        "404":
+          description: Parent not found
+        "409":
+          description: DUPLICATE_SYSTEM_CODE
+          schema:
+            $ref: '#/definitions/models.ConflictResponse'
+        "500":
+          description: Internal server error
+      security:
+      - BearerAuth: []
+      summary: Create system
       tags:
       - Systems
   /v1/systems/copy:
