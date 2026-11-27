@@ -293,6 +293,12 @@ func TestIntegration_CreateSubsystem(t *testing.T) {
 	audit := lastAudit(t, driver, d.UID)
 	assert.Equal(t, "INSERT", audit["action"])
 	assert.Equal(t, true, audit["outside"])
+	for _, c := range decodeChanges(t, audit) {
+		if c["field"] == "name" {
+			assert.Nil(t, c["oldValue"], "a new system has no previous name")
+			assert.Equal(t, "New", c["newValue"])
+		}
+	}
 
 	_, err = svc.CreateSubsystem("s-root", "B", "u-editor", &models.CreateSubsystemRequest{Name: "x", SystemLevel: "KEY_SYSTEMS"})
 	var ve *ValidationError
