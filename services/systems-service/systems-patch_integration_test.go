@@ -583,3 +583,96 @@ func TestIntegration_RefsMustBeLiveAndInFacility(t *testing.T) {
 	_, err = svc.PatchSystem("s-ks", "B", "u-owner", &models.PatchSystemFields{SystemLevel: &models.Optional[string]{}})
 	assert.ErrorAs(t, err, &ve)
 }
+
+// assertInsertAudit checks the INSERT audit on uid lists the initial values as set
+// (oldValue nil): strings by value, codebooks by uid.
+func assertInsertAudit(t *testing.T, driver neo4j.Driver, uid string, want map[string]string) {
+	t.Helper()
+	audit := lastAudit(t, driver, uid)
+	require.Equal(t, "INSERT", audit["action"])
+	got := map[string]string{}
+	for _, c := range decodeChanges(t, audit) {
+		assert.Nil(t, c["oldValue"], "field %v", c["field"])
+		switch v := c["newValue"].(type) {
+		case string:
+			got[c["field"].(string)] = v
+		case map[string]interface{}:
+			got[c["field"].(string)] = v["uid"].(string)
+		}
+	}
+	for field, value := range want {
+		assert.Equal(t, value, got[field], "field %s", field)
+	}
+}
+
+func writeQuery[T any](t *testing.T, driver neo4j.Driver, q helpers.DatabaseQuery) T {
+	t.Helper()
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	defer session.Close()
+	v, err := helpers.WriteNeo4jAndReturnSingleValue[T](session, q)
+	require.NoError(t, err)
+	return v
+}
+
+func TestIntegration_InsertAuditOnEveryCreatePath(t *testing.T) {
+	_, driver := integrationService(t)
+	session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+	_, err := session.Run(`MATCH (z:Zone{uid: 'z-1'}), (p:System{uid: 's-tu'}) CREATE (z)-[:HAS_DEFAULT_PARENT_SYSTEM]->(p)
+		WITH p MATCH (ks:System{uid: 's-ks'}), (sp:System{uid: 's-spare'})
+		CREATE (sp)-[:CONTAINS_ITEM]->(:Item{uid: 'i-2', name: 'Pump X #2'})`, nil)
+	require.NoError(t, err)
+	session.Close()
+
+	t.Run("control systems batch", func(t *testing.T) {
+		session := driver.NewSession(neo4j.SessionConfig{AccessMode: neo4j.AccessModeWrite})
+		defer session.Close()
+		created, err := helpers.WriteNeo4jAndReturnArrayOfNodes[models.SystemCodesResult](session,
+			SaveNewSystemCodesQuery("st-1", "z-1", "PMP-", 3, 2, "B", "u-editor"))
+		require.NoError(t, err)
+		require.Len(t, created, 2)
+		assertInsertAudit(t, driver, created[0].UID, map[string]string{
+			"name": "PMP-001", "systemCode": "PMP-001", "systemLevel": "SUBSYSTEMS_AND_PARTS",
+			"systemType": "st-1", "zone": "z-1",
+		})
+	})
+
+	t.Run("system-code endpoint", func(t *testing.T) {
+		uid := writeQuery[string](t, driver, CreateNewSystemForNewSystemCodeQuery("s-tu", "PMP-900", "st-1", "z-1", "B", "u-editor"))
+		assertInsertAudit(t, driver, uid, map[string]string{
+			"name": "Pump PMP-900", "systemCode": "PMP-900", "systemType": "st-1", "zone": "z-1",
+		})
+	})
+
+	t.Run("jira import audits only a newly created system", func(t *testing.T) {
+		req := &models.JiraSystemImportRequest{Name: "From Jira", Code: "JIRA-1", ParentSystemUID: "s-tu", ZoneUID: "z-1", SystemTypeUID: "st-1"}
+		uid := writeQuery[string](t, driver, CreateNewSystemFromJiraQuery(req, "B", "u-editor"))
+		assertInsertAudit(t, driver, uid, map[string]string{"name": "From Jira", "systemCode": "JIRA-1", "zone": "z-1"})
+
+		again := writeQuery[string](t, driver, CreateNewSystemFromJiraQuery(req, "B", "u-editor"))
+		assert.Equal(t, uid, again)
+		session := driver.NewSession(neo4j.SessionConfig{})
+		defer session.Close()
+		rec, err := session.Run(`MATCH (s:System{uid: $uid})-[r:WAS_UPDATED_BY]->() RETURN count(r) AS n, s._created AS flag`, map[string]interface{}{"uid": uid})
+		require.NoError(t, err)
+		single, err := rec.Single()
+		require.NoError(t, err)
+		n, _ := single.Get("n")
+		flag, _ := single.Get("flag")
+		assert.Equal(t, int64(1), n)
+		assert.Nil(t, flag)
+	})
+
+	t.Run("copy", func(t *testing.T) {
+		req := &models.SystemCopyRequest{SourceSystemUID: "s-ks", DestinationSystemUID: "s-root"}
+		res := writeQuery[map[string]interface{}](t, driver, CopySystemsQuery(req, "B", "u-editor"))
+		uids := res["uids"].([]interface{})
+		require.Len(t, uids, 1)
+		assertInsertAudit(t, driver, uids[0].(string), map[string]string{"name": "Key", "systemLevel": "KEY_SYSTEMS"})
+	})
+
+	t.Run("replace physical item", func(t *testing.T) {
+		move := &models.PhysicalItemMovement{SourceSystemUID: "s-ks", DestinationSystemUID: "s-spare", ParentSystemUID: "s-tu"}
+		uid := writeQuery[string](t, driver, ReplacePhysicalItemsQuery(move, "u-editor", "B"))
+		assertInsertAudit(t, driver, uid, map[string]string{"name": "Spare pump", "systemLevel": "KEY_SYSTEMS"})
+	})
+}

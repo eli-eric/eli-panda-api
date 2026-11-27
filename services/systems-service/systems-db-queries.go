@@ -901,7 +901,7 @@ func SaveNewSystemCodesQuery(systemTypeUID string, zoneUID string, systemCodePre
 	CREATE(parent)-[:HAS_SUBSYSTEM]->(sys)
 	CREATE(sys)-[:HAS_SYSTEM_TYPE]->(st)
 	CREATE(sys)-[:HAS_ZONE]->(z)
-	CREATE(sys)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	` + insertAuditCypher("sys", "u", "") + `
 	RETURN {
 		uid: sys.uid,
 		name: sys.name,
@@ -3044,7 +3044,7 @@ func CreateNewSystemForNewSystemCodeQuery(parentUID, systemCode, systemTypeUID, 
 	CREATE(s)-[:HAS_SYSTEM_TYPE]->(st)
 	CREATE(s)-[:HAS_ZONE]->(z)
 	CREATE(parent)-[:HAS_SUBSYSTEM]->(s)
-	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "CREATE" }]->(u)
+	` + insertAuditCypher("s", "u", "") + `
 	RETURN s.uid as result`
 
 	result.ReturnAlias = "result"
@@ -3295,6 +3295,7 @@ func ReplacePhysicalItemsQuery(movementInfo *models.PhysicalItemMovement, userUI
 	lastUpdateBy: u.username, 
 	deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	CREATE(parentSystem)-[:HAS_SUBSYSTEM]->(oldSystem)
+	` + insertAuditCypher("oldSystem", "u", "") + `
 	CREATE(oldSystem)-[:CONTAINS_ITEM]->(destinationItem)
 	CREATE(destinationSystem)-[:CONTAINS_ITEM]->(sourceItem)
 	DELETE rDest, rSource
@@ -3382,12 +3383,12 @@ func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, us
 		CREATE (c:System{uid:newUid, deleted:false, lastUpdateTime: datetime(), lastUpdatedBy: u.lastName + " " + u.firstName})-[:BELONGS_TO_FACILITY]->(f)
 		SET c.name = n.name,
 			c.systemLevel = n.systemLevel
-		WITH root, destination, collect({old: n.uid, new: c.uid}) AS pairs
-		WITH root.uid AS rootOldUid, destination, pairs
-		WITH rootOldUid, destination, pairs, [x IN pairs WHERE x.old = rootOldUid][0].new AS rootNewUid
+		WITH root, destination, u, collect({old: n.uid, new: c.uid}) AS pairs
+		WITH root.uid AS rootOldUid, destination, u, pairs
+		WITH rootOldUid, destination, u, pairs, [x IN pairs WHERE x.old = rootOldUid][0].new AS rootNewUid
 		MATCH (rootCopy:System{uid: rootNewUid})
 		MERGE (destination)-[:HAS_SUBSYSTEM]->(rootCopy)
-		WITH rootNewUid, pairs
+		WITH rootNewUid, pairs, u
 		CALL {
 			WITH pairs
 			UNWIND pairs AS p
@@ -3396,7 +3397,7 @@ func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, us
 			MERGE (copy)-[:HAS_SYSTEM_TYPE]->(st)
 			RETURN count(*) AS typesLinked
 		}
-		WITH rootNewUid, pairs
+		WITH rootNewUid, pairs, u
 		CALL {
 			WITH pairs
 			UNWIND pairs AS parentPair
@@ -3408,6 +3409,13 @@ func CopySystemsQuery(request *models.SystemCopyRequest, facilityCode string, us
 			MATCH (childCopy:System{uid:childPair.new})
 			MERGE (parentCopy)-[:HAS_SUBSYSTEM]->(childCopy)
 			RETURN count(*) AS linksCreated
+		}
+		WITH rootNewUid, pairs, u
+		CALL {
+			WITH pairs, u
+			UNWIND pairs AS p
+			MATCH (c:System{uid: p.new})
+			` + insertAuditCypher("c", "u", "") + `
 		}
 		RETURN rootNewUid AS createdRootUid
 	}
@@ -3440,6 +3448,7 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	
 	MERGE(s:System{systemCode: $systemCode})
 	ON CREATE SET 
+		s._created = true,
 		s.uid = apoc.create.uuid(),
 		s.name = $name,
     s.description = $description,
@@ -3455,7 +3464,8 @@ func CreateNewSystemFromJiraQuery(request *models.JiraSystemImportRequest, facil
 	MERGE(parent)-[:HAS_SUBSYSTEM]->(s)
 	
 	WITH DISTINCT s, u
-	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "INSERT" }]->(u)
+	` + insertAuditCypher("s", "u", "s._created") + `
+	REMOVE s._created
 	
 	// Create file link for JIRA if URL is provided
 	WITH DISTINCT s
