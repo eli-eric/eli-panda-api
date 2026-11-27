@@ -264,7 +264,12 @@ func (svc *SystemsService) buildSystemPlan(session neo4j.Session, current *model
 			return nil, validationErr("name must not be empty")
 		}
 		before := len(plan.changes)
-		plan.changes = helpers.AppendIfChanged(plan.changes, "name", helpers.ChangeTypeString, current.Name, name)
+		// a new system has no name yet: audit nil, not "", as the before value
+		var oldName interface{}
+		if current.Name != "" {
+			oldName = current.Name
+		}
+		plan.changes = helpers.AppendIfChanged(plan.changes, "name", helpers.ChangeTypeString, oldName, name)
 		if len(plan.changes) > before {
 			plan.scalars["name"] = name
 		}
