@@ -51,16 +51,3 @@ func CanEditSystemQuery(systemUID, userUID string) helpers.DatabaseQuery {
 		},
 	}
 }
-
-// GetSystemUIDByItemUIDQuery resolves the System that contains a given physical item, so the
-// edit-guard can be applied to physical-item endpoints that identify the item, not the system.
-func GetSystemUIDByItemUIDQuery(itemUID string) helpers.DatabaseQuery {
-	return helpers.DatabaseQuery{
-		Query: `MATCH (sys:System{deleted:false})-[:CONTAINS_ITEM]->(item:Item{uid:$itemUID})
-				RETURN sys.uid AS systemUID`,
-		ReturnAlias: "systemUID",
-		Parameters: map[string]interface{}{
-			"itemUID": itemUID,
-		},
-	}
-}

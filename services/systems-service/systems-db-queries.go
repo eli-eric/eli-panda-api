@@ -187,88 +187,23 @@ func CreateNewSystemQuery(newSystem *models.System, facilityCode string, userUID
 	return result
 }
 
-func UpdateSystemQuery(newSystem *models.System, oldSystem *models.System, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["facilityCode"] = facilityCode
-	result.Parameters["uid"] = oldSystem.UID
+func DeleteSystemByUidQuery(uid, userUid string, outsideResponsibility bool) (result helpers.DatabaseQuery) {
 
-	result.Query = `MATCH(s:System{uid:$uid, deleted: false})-[:BELONGS_TO_FACILITY]->(f:Facility{code:$facilityCode}) `
-
-	if newSystem.ParentUID != nil && *newSystem.ParentUID != "" {
-		result.Query += `WITH s OPTIONAL MATCH(parent)-[oldParent:HAS_SUBSYSTEM]->(s) DELETE oldParent `
-		result.Query += `WITH s MATCH(parent:System{uid:$parentUID}) MERGE(parent)-[:HAS_SUBSYSTEM]->(s) `
-		result.Parameters["parentUID"] = *newSystem.ParentUID
-	}
-
-	if newSystem.Location != nil && newSystem.Location.UID != "" {
-		result.Query += `WITH s OPTIONAL MATCH(s)-[rl:HAS_LOCATION]->() DELETE rl `
-		result.Query += `WITH s MATCH(l:Location{code:$locationUID})-[:BELONGS_TO_FACILITY]->(f{code:$facilityCode}) MERGE(s)-[:HAS_LOCATION]->(l) `
-		result.Parameters["locationUID"] = newSystem.Location.UID
-	} else {
-		result.Query += `WITH s OPTIONAL MATCH(s)-[rl:HAS_LOCATION]->() DELETE rl `
-	}
-
-	helpers.AutoResolveObjectToUpdateQuery(&result, *newSystem, *oldSystem, "s")
-
-	if newSystem.PhysicalItem != nil && newSystem.PhysicalItem.UID != "" {
-		//unassign from previous system if its another system
-		if oldSystem.PhysicalItem != nil && oldSystem.PhysicalItem.UID != newSystem.PhysicalItem.UID {
-			result.Query += `WITH s MATCH(prevSystem)-[rpiold:CONTAINS_ITEM]->(pi:Item{uid:$physicalItemUID})-[:IS_BASED_ON]->(ci) DELETE rpiold `
-			result.Query += `WITH s, pi, ci MERGE(s)-[:CONTAINS_ITEM]->(pi) `
-		} else if oldSystem.PhysicalItem != nil && oldSystem.PhysicalItem.UID == newSystem.PhysicalItem.UID {
-			result.Query += `WITH s MATCH(s)-[:CONTAINS_ITEM]->(pi:Item{uid:$physicalItemUID})-[:IS_BASED_ON]->(ci) `
-		}
-
-		result.Query += `
-		WITH s, pi, ci
-		SET pi.lastUpdateTime = datetime(), 
-		pi.lastUpdatedBy = s.lastUpdatedBy,
-		pi.serialNUmber = $serialNumber,
-		pi.price = $price,
-		pi.currency = $currency,
-		ci.name = $catalogueName,
-		ci.description = $catalogueDescription,
-		ci.catalogueNumber = $catalogueNumber `
-
-		result.Parameters["physicalItemUID"] = newSystem.PhysicalItem.UID
-		result.Parameters["serialNumber"] = newSystem.PhysicalItem.SerialNumber
-		result.Parameters["price"] = newSystem.PhysicalItem.Price
-		result.Parameters["currency"] = newSystem.PhysicalItem.Currency
-		result.Parameters["catalogueDescription"] = newSystem.PhysicalItem.CatalogueItem.Description
-		result.Parameters["catalogueName"] = newSystem.PhysicalItem.CatalogueItem.Name
-		result.Parameters["catalogueNumber"] = newSystem.PhysicalItem.CatalogueItem.CatalogueNumber
-
-		if newSystem.PhysicalItem.ItemUsage != nil && newSystem.PhysicalItem.ItemUsage.UID != "" {
-			result.Query += `WITH s, pi, ci OPTIONAL MATCH(pi)-[rpiUsage:HAS_ITEM_USAGE]->() DELETE rpiUsage `
-			result.Query += `WITH s, pi, ci MATCH(piUsage:ItemUsage{uid:$itemUsageUID}) MERGE(pi)-[:HAS_ITEM_USAGE]->(piUsage) `
-			result.Parameters["itemUsageUID"] = newSystem.PhysicalItem.ItemUsage.UID
-		} else {
-			result.Query += `WITH s, pi, ci OPTIONAL MATCH(pi)-[rpiUsage:HAS_ITEM_USAGE]->() DELETE rpiUsage `
-		}
-
-	}
-
-	result.Query += `RETURN s.uid as result`
-
-	result.ReturnAlias = "result"
-
-	return result
-}
-
-func DeleteSystemByUidQuery(uid, userUid string) (result helpers.DatabaseQuery) {
-
-	result.Query = `MATCH(r:System) WHERE r.uid = $uid WITH r
-	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child)
-	WITH r, child, r.uid as uid
-	SET r.deleted=true, child.deleted=true
-	WITH r, child
-	MATCH(u:User{uid: $userUID})
-	CREATE(r)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)
-	CREATE(child)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)`
+	// soft-deletes the system and its whole subtree; one DELETE audit edge per affected system
+	result.Query = `MATCH(u:User{uid: $userUID})
+	MATCH(r:System{uid: $uid})
+	OPTIONAL MATCH (r)-[:HAS_SUBSYSTEM*1..50]->(child:System{deleted: false})
+	WITH u, r, collect(DISTINCT child) AS children
+	UNWIND [r] + children AS s
+	WITH DISTINCT u, s
+	SET s.deleted = true, s.lastUpdateTime = datetime()
+	CREATE(s)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE",
+		outsideResponsibility: CASE WHEN $outsideResponsibility THEN true ELSE null END }]->(u)`
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["uid"] = uid
 	result.Parameters["userUID"] = userUid
+	result.Parameters["outsideResponsibility"] = outsideResponsibility
 
 	return result
 }
@@ -1239,18 +1174,18 @@ func GetSystemLeavesOrderByClauses(sorting *[]helpers.Sorting) string {
 	}
 
 	allowed := map[string]string{
-		"name":             "toLower(systems.name)",
-		"systemCode":       "toLower(systems.systemCode)",
-		"code":             "toLower(systems.systemCode)",
-		"systemType":       "toLower(systems.systemType.name)",
-		"zone":             "toLower(systems.zone.code)",
-		"location":         "toLower(systems.location.name)",
-		"eun":              "toLower(systems.physicalItem.eun)",
-		"serialNumber":     "toLower(systems.physicalItem.serialNumber)",
-		"catalogueName":    "toLower(systems.physicalItem.catalogueItem.name)",
-		"catalogueNumber":  "toLower(systems.physicalItem.catalogueItem.catalogueNumber)",
-		"importance":       "toLower(systems.importance.name)",
-		"responsible":      "toLower(systems.responsible.name)",
+		"name":            "toLower(systems.name)",
+		"systemCode":      "toLower(systems.systemCode)",
+		"code":            "toLower(systems.systemCode)",
+		"systemType":      "toLower(systems.systemType.name)",
+		"zone":            "toLower(systems.zone.code)",
+		"location":        "toLower(systems.location.name)",
+		"eun":             "toLower(systems.physicalItem.eun)",
+		"serialNumber":    "toLower(systems.physicalItem.serialNumber)",
+		"catalogueName":   "toLower(systems.physicalItem.catalogueItem.name)",
+		"catalogueNumber": "toLower(systems.physicalItem.catalogueItem.catalogueNumber)",
+		"importance":      "toLower(systems.importance.name)",
+		"responsible":     "toLower(systems.responsible.name)",
 	}
 
 	clauses := make([]string, 0, len(*sorting))
@@ -2095,6 +2030,19 @@ func buildSystemGraphRelationshipPattern(relationTypes []string) string {
 	return strings.Join(cleaned, "|")
 }
 
+// systemGraphNodePropertiesCypher projects a System node's scalar properties for the graph
+// endpoints, plus itemUsageUid of its contained physical item (when it has one).
+func systemGraphNodePropertiesCypher(alias string) string {
+	return fmt.Sprintf(`apoc.map.merge(
+			apoc.map.fromPairs([
+				k IN keys(properties(%[1]s))
+				WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
+				| [k, coalesce(toString(properties(%[1]s)[k]), "")]
+			]),
+			coalesce(head([(%[1]s)-[:CONTAINS_ITEM]->(:Item)-[:HAS_ITEM_USAGE]->(iu) | {itemUsageUid: iu.uid}]), {})
+		)`, alias)
+}
+
 func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationTypes []string) (result helpers.DatabaseQuery) {
 	relationshipPattern := buildSystemGraphRelationshipPattern(relationTypes)
 
@@ -2104,11 +2052,7 @@ func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationType
 		uid: center.uid,
 		name: center.name,
 		label: "System",
-		properties: apoc.map.fromPairs([
-			k IN keys(properties(center))
-			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
-			| [k, coalesce(toString(properties(center)[k]), "")]
-		])
+		properties: `+systemGraphNodePropertiesCypher("center")+`
 	} as nodes
 	UNION
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
@@ -2117,11 +2061,7 @@ func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationType
 		uid: other.uid,
 		name: other.name,
 		label: "System",
-		properties: apoc.map.fromPairs([
-			k IN keys(properties(other))
-			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
-			| [k, coalesce(toString(properties(other)[k]), "")]
-		])
+		properties: `+systemGraphNodePropertiesCypher("other")+`
 	} as nodes
 	UNION
 	MATCH (center:System{uid: $uid, deleted: false})-[:BELONGS_TO_FACILITY]->(:Facility{code: $facilityCode})
@@ -2130,11 +2070,7 @@ func GetSystemGraphNodesByUidQuery(uid string, facilityCode string, relationType
 		uid: other.uid,
 		name: other.name,
 		label: "System",
-		properties: apoc.map.fromPairs([
-			k IN keys(properties(other))
-			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
-			| [k, coalesce(toString(properties(other)[k]), "")]
-		])
+		properties: `+systemGraphNodePropertiesCypher("other")+`
 	} as nodes`, relationshipPattern, relationshipPattern)
 
 	result.ReturnAlias = "nodes"
@@ -2181,11 +2117,7 @@ func GetSystemGraphNodesByUidsQuery(uids []string, facilityCode string) (result 
 		uid: sys.uid,
 		name: sys.name,
 		label: "System",
-		properties: apoc.map.fromPairs([
-			k IN keys(properties(sys))
-			WHERE NOT k IN ['passwordHash','passwordToChange','isEnabled','deleted','username','printEUN','image']
-			| [k, coalesce(toString(properties(sys)[k]), "")]
-		])
+		properties: ` + systemGraphNodePropertiesCypher("sys") + `
 	} as nodes
 	ORDER BY nodes.uid ASC`
 
@@ -2454,13 +2386,14 @@ func GetSystemRelationshipsQuery(uid string) (result helpers.DatabaseQuery) {
 }
 
 // create new system relationship query
-func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (result helpers.DatabaseQuery) {
+func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string, outsideResponsibility map[string]bool) (result helpers.DatabaseQuery) {
 
 	result.Parameters = make(map[string]interface{})
 	result.Parameters["facilityCode"] = facilityCode
 	result.Parameters["fromSystemUID"] = newRelationship.SystemFromUID
 	result.Parameters["toSystemUID"] = newRelationship.SystemToUID
 	result.Parameters["lastUpdateBy"] = userUID
+	result.Parameters["outsideResponsibility"] = outsideResponsibility
 
 	// Single endpoint only supports IS_SPARE_FOR; service layer enforces.
 	result.Query = `
@@ -2470,27 +2403,8 @@ func CreateNewSystemRelationshipQuery(newRelationship *models.SystemRelationship
 	MATCH(toSystem:System{uid: $toSystemUID, deleted: false})-[:BELONGS_TO_FACILITY]->(f)
 	CREATE(fromSystem)-[newRel:IS_SPARE_FOR]->(toSystem)
 	WITH fromSystem, toSystem, u, newRel
-	CREATE(fromSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-	WITH fromSystem, toSystem, u, newRel
-	CREATE(toSystem)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+	` + relationshipAddedAuditCypher("fromSystem", "toSystem", "IS_SPARE_FOR") + `
 	RETURN id(newRel) as result`
-
-	result.ReturnAlias = "result"
-
-	return result
-}
-
-func DeleteSystemRelationshipQuery(uid int64, userUID string) (result helpers.DatabaseQuery) {
-	result.Parameters = make(map[string]interface{})
-	result.Parameters["uid"] = uid
-	result.Parameters["lastUpdateBy"] = userUID
-
-	result.Query = `
-	MATCH (u:User{uid: $lastUpdateBy}) WITH u
-	MATCH ()-[r]-() WHERE id(r) = $uid DELETE r
-	WITH u
-	CREATE(u)-[:WAS_UPDATED_BY{ at: datetime(), action: "DELETE" }]->(u)	
-	return true as result`
 
 	result.ReturnAlias = "result"
 
@@ -2511,7 +2425,21 @@ func ValidateSystemUidsExistQuery(uids []string, facilityCode string) helpers.Da
 	}
 }
 
-func CreateBatchRelationshipsQuery(pairs []map[string]interface{}, relationshipType, facilityCode, userUID string) helpers.DatabaseQuery {
+// relationshipAddedAuditCypher writes the add-relationship WAS_UPDATED_BY edge on both systems
+// (u in scope). $outsideResponsibility maps system uid -> bool for the soft-lock audit flag.
+func relationshipAddedAuditCypher(source, target, relType string) string {
+	change := func(other, direction string) string {
+		return `apoc.convert.toJson([{field: "` + relType + `", type: "relationship", oldValue: null,
+			newValue: {uid: ` + other + `.uid, name: ` + other + `.name, direction: "` + direction + `"}}])`
+	}
+	audit := func(self, other, direction string) string {
+		return `CREATE (` + self + `)-[:WAS_UPDATED_BY{at: datetime(), action: "UPDATE", changes: ` + change(other, direction) + `,
+			outsideResponsibility: CASE WHEN coalesce($outsideResponsibility[` + self + `.uid], false) THEN true ELSE null END}]->(u)`
+	}
+	return audit(source, target, "outbound") + "\n\t\t" + audit(target, source, "inbound")
+}
+
+func CreateBatchRelationshipsQuery(pairs []map[string]interface{}, relationshipType, facilityCode, userUID string, outsideResponsibility map[string]bool) helpers.DatabaseQuery {
 	query := `
 	MATCH (f:Facility{code: $facilityCode})
 	MATCH (u:User{uid: $userUID})
@@ -2525,17 +2453,17 @@ func CreateBatchRelationshipsQuery(pairs []map[string]interface{}, relationshipT
 		CASE WHEN existFwd IS NULL AND existRev IS NULL THEN true ELSE false END AS shouldCreate
 	FOREACH (_ IN CASE WHEN shouldCreate THEN [1] ELSE [] END |
 		CREATE (source)-[:` + relationshipType + `]->(target)
-		CREATE (source)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
-		CREATE (target)-[:WAS_UPDATED_BY{ at: datetime(), action: "UPDATE" }]->(u)
+		` + relationshipAddedAuditCypher("source", "target", relationshipType) + `
 	)
 	RETURN {sourceUid: pair.sourceUid, targetUid: pair.targetUid, created: shouldCreate} as result`
 
 	return helpers.DatabaseQuery{
 		Query: query,
 		Parameters: map[string]interface{}{
-			"facilityCode": facilityCode,
-			"userUID":      userUID,
-			"pairs":        pairs,
+			"facilityCode":          facilityCode,
+			"userUID":               userUID,
+			"pairs":                 pairs,
+			"outsideResponsibility": outsideResponsibility,
 		},
 		ReturnAlias: "result",
 	}
@@ -2737,7 +2665,7 @@ func GetSystemHistoryQuery(systemUID string) (result helpers.DatabaseQuery) {
 		MATCH(s:System{uid: $systemUID})
 		WITH s
 		MATCH(s)-[upd:WAS_UPDATED_BY]->(usr)
-		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL", action: upd.action, changes: upd.changes} as history
+		RETURN {uid: apoc.create.uuid(), changedAt: upd.at, changedBy: usr.lastName + " " + usr.firstName , historyType: "GENERAL", action: upd.action, changes: upd.changes, outsideResponsibility: coalesce(upd.outsideResponsibility, false)} as history
 		UNION		
 		MATCH(s:System{uid: $systemUID})
 		WITH s

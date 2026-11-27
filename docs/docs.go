@@ -2196,6 +2196,37 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/cron/sync-employees": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Runs the ELI Beamlines employees sync immediately (normally scheduled daily at 02:00). The run is recorded in the cron job history.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Run employees sync from HR (OKBase) manually",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SyncEmployeesResult"
+                        }
+                    },
+                    "409": {
+                        "description": "Sync is already running"
+                    },
+                    "502": {
+                        "description": "Employees could not be fetched from HR (OKBase)"
+                    }
+                }
+            }
+        },
         "/v1/files/link/{parentUid}": {
             "post": {
                 "security": [
@@ -3458,6 +3489,86 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/physical-item/{uid}/catalogue-properties": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Catalogue properties grouped by property group with the latest service-item overrides applied.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get resolved catalogue properties of a physical item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Physical item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.PhysicalItemCatalogueProperties"
+                        }
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/physical-item/{uid}/orders": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "The order the item was delivered by and its service items (newest first).",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get orders of a physical item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Physical item UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.PhysicalItemOrders"
+                        }
+                    },
+                    "404": {
+                        "description": "Item not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/physical-item/{uid}/properties": {
             "get": {
                 "security": [
@@ -4281,6 +4392,7 @@ const docTemplate = `{
                     "Systems"
                 ],
                 "summary": "Create new system",
+                "deprecated": true,
                 "parameters": [
                     {
                         "description": "System details",
@@ -4492,35 +4604,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad request"
-                    },
-                    "500": {
-                        "description": "Internal server error"
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes a system relationship by relationship UID.",
-                "tags": [
-                    "Systems"
-                ],
-                "summary": "Delete system relationship",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Relationship UID",
-                        "name": "uid",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No content"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5120,7 +5203,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns system detail by UID.",
+                "description": "Returns the full system detail (codebooks, people, physical item, statistics, concurrency token).",
                 "produces": [
                     "application/json"
                 ],
@@ -5141,52 +5224,11 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.System"
+                            "$ref": "#/definitions/models.SystemDetail"
                         }
                     },
-                    "500": {
-                        "description": "Internal server error"
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Updates an existing system.",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Systems"
-                ],
-                "summary": "Update system",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "System UID",
-                        "name": "uid",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "System",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/models.System"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No content"
-                    },
-                    "400": {
-                        "description": "Bad request"
+                    "404": {
+                        "description": "System not found"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5224,6 +5266,65 @@ const docTemplate = `{
                             "items": {
                                 "$ref": "#/definitions/models.SystemPhysicalItemInfo"
                             }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update (absent key = unchanged, null = clear). Optional lastUpdateTime token; codebooks as {uid}; operators/maintainedBy replace the whole list. Writes the WAS_UPDATED_BY audit edge with the change delta.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Patch system",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial system fields",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "System not found"
+                    },
+                    "409": {
+                        "description": "STALE or DUPLICATE_SYSTEM_CODE",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictResponse"
                         }
                     },
                     "500": {
@@ -5578,6 +5679,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/physical-item": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Partial update of the contained item (serialNumber, notes, itemUsage, conditionStatus). Uses the system lastUpdateTime token; audit is recorded on the system.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Patch the physical item of a system",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial physical item fields",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "System or physical item not found"
+                    },
+                    "409": {
+                        "description": "STALE",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/system/{uid}/relationships": {
             "get": {
                 "security": [
@@ -5611,6 +5773,97 @@ const docTemplate = `{
                                 "$ref": "#/definitions/models.SystemRelationship"
                             }
                         }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/relationships/{type}/{otherUid}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Removes (uid)-[type]-\u003e(otherUid). Only functional relationship types; IS_SPARE_FOR also recalculates affected coverages. Audited on both systems.",
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Delete system relationship",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Start system UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relationship type",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "End system UID",
+                        "name": "otherUid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "400": {
+                        "description": "Relationship type not removable"
+                    },
+                    "404": {
+                        "description": "Relationship not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/spare-parts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Spare parts for the system (inbound IS_SPARE_FOR) and systems it is a spare for, with coverage.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Get system spare parts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemSparePartsResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "System not found"
                     },
                     "500": {
                         "description": "Internal server error"
@@ -5673,6 +5926,121 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/system/{uid}/subsystems": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a child system; responsible, location and zone are inherited from the parent and the parent→child level rules are validated.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create subsystem",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Parent system UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Subsystem",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.CreateSubsystemRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "Parent not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
+        "/v1/system/{uid}/system-code": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Generates a code from the system's type/zone/location/parent and saves it atomically (token check, uniqueness, audit).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Generate and save system code",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "System UID",
+                        "name": "uid",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional token",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemCodeGenerateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "System has no system type"
+                    },
+                    "404": {
+                        "description": "System not found"
+                    },
+                    "409": {
+                        "description": "STALE or DUPLICATE_SYSTEM_CODE",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            }
+        },
         "/v1/systems": {
             "get": {
                 "security": [
@@ -5720,6 +6088,58 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/helpers.PaginationResult-models_System"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a root system, or a child of parentUid (absent responsible/location/zone are inherited, parent→child level rules validated). Body uses the PATCH field shapes; name and systemLevel are required. Writes the INSERT audit edge.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Systems"
+                ],
+                "summary": "Create system",
+                "parameters": [
+                    {
+                        "description": "System fields (+ optional parentUid)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/models.SystemDetail"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad request"
+                    },
+                    "404": {
+                        "description": "Parent not found"
+                    },
+                    "409": {
+                        "description": "DUPLICATE_SYSTEM_CODE",
+                        "schema": {
+                            "$ref": "#/definitions/models.ConflictResponse"
                         }
                     },
                     "500": {
@@ -7616,6 +8036,23 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CataloguePropertyGroup": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "properties": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.ResolvedCatalogueProperty"
+                    }
+                }
+            }
+        },
         "models.CatalogueServiceType": {
             "type": "object",
             "properties": {
@@ -7699,6 +8136,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.CodebookRef": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.CodebookResponse": {
             "type": "object",
             "properties": {
@@ -7740,6 +8191,28 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ConflictResponse": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CreateSubsystemRequest": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "systemLevel": {
                     "type": "string"
                 }
             }
@@ -7797,6 +8270,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "phone": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.EmployeeRef": {
+            "type": "object",
+            "properties": {
+                "name": {
                     "type": "string"
                 },
                 "uid": {
@@ -8259,6 +8743,20 @@ const docTemplate = `{
                 }
             }
         },
+        "models.PhysicalItemCatalogueProperties": {
+            "type": "object",
+            "properties": {
+                "groups": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.CataloguePropertyGroup"
+                    }
+                },
+                "hasOverriddenProperties": {
+                    "type": "boolean"
+                }
+            }
+        },
         "models.PhysicalItemDetail": {
             "type": "object",
             "properties": {
@@ -8337,6 +8835,57 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "systemName": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PhysicalItemOrder": {
+            "type": "object",
+            "properties": {
+                "isDelivered": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "orderDate": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.PhysicalItemOrders": {
+            "type": "object",
+            "properties": {
+                "order": {
+                    "$ref": "#/definitions/models.PhysicalItemOrder"
+                },
+                "serviceItems": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PhysicalItemServiceRef"
+                    }
+                }
+            }
+        },
+        "models.PhysicalItemServiceRef": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "string"
+                },
+                "isDelivered": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "order": {
+                    "$ref": "#/definitions/models.PhysicalItemOrder"
+                },
+                "uid": {
                     "type": "string"
                 }
             }
@@ -8689,6 +9238,32 @@ const docTemplate = `{
                 }
             }
         },
+        "models.ResolvedCatalogueProperty": {
+            "type": "object",
+            "properties": {
+                "isOverridden": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "serviceValue": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "unit": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
         "models.ResponsiblePersonsInfo": {
             "type": "object",
             "properties": {
@@ -8837,6 +9412,28 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SpareRelationRef": {
+            "type": "object",
+            "properties": {
+                "coverage": {
+                    "type": "number"
+                },
+                "system": {
+                    "$ref": "#/definitions/models.SpareSystemRef"
+                }
+            }
+        },
+        "models.SpareSystemCatalogRef": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SpareSystemInfo": {
             "type": "object",
             "properties": {
@@ -8860,6 +9457,63 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SpareSystemPhysicalItem": {
+            "type": "object",
+            "properties": {
+                "catalogueItem": {
+                    "$ref": "#/definitions/models.SpareSystemCatalogRef"
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "itemUsage": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SpareSystemRef": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parentPath": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemSimpleResponse"
+                    }
+                },
+                "physicalItem": {
+                    "$ref": "#/definitions/models.SpareSystemPhysicalItem"
+                },
+                "systemCode": {
+                    "type": "string"
+                },
+                "systemLevel": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SyncEmployeesResult": {
+            "type": "object",
+            "properties": {
+                "errorCount": {
+                    "type": "integer"
+                },
+                "savedCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -8946,6 +9600,14 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemCodeGenerateRequest": {
+            "type": "object",
+            "properties": {
+                "lastUpdateTime": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemCodeRequest": {
             "type": "object",
             "properties": {
@@ -9026,6 +9688,118 @@ const docTemplate = `{
                 }
             }
         },
+        "models.SystemDetail": {
+            "type": "object",
+            "properties": {
+                "attribute": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "importance": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "lastUpdateTime": {
+                    "type": "string"
+                },
+                "location": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "maintainedBy": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EmployeeRef"
+                    }
+                },
+                "miniImageUrl": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "minimalSpareParstCount": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "operators": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.EmployeeRef"
+                    }
+                },
+                "owner": {
+                    "$ref": "#/definitions/models.EmployeeRef"
+                },
+                "parentPath": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SystemPathItem"
+                    }
+                },
+                "parentUid": {
+                    "type": "string"
+                },
+                "physicalItem": {
+                    "$ref": "#/definitions/models.SystemDetailPhysicalItem"
+                },
+                "responsible": {
+                    "$ref": "#/definitions/models.EmployeeRef"
+                },
+                "responsibleTeam": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "sp_coverage": {
+                    "type": "number"
+                },
+                "sparePartsCoverageSum": {
+                    "type": "number"
+                },
+                "statistics": {
+                    "$ref": "#/definitions/models.SystemDetailStatistics"
+                },
+                "systemAlias": {
+                    "type": "string"
+                },
+                "systemCode": {
+                    "type": "string"
+                },
+                "systemLevel": {
+                    "type": "string"
+                },
+                "systemType": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "uid": {
+                    "type": "string"
+                },
+                "zone": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                }
+            }
+        },
+        "models.SystemDetailCatalogueItem": {
+            "type": "object",
+            "properties": {
+                "catalogueNumber": {
+                    "type": "string"
+                },
+                "category": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "supplier": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
         "models.SystemDetailInfo": {
             "type": "object",
             "properties": {
@@ -9073,6 +9847,70 @@ const docTemplate = `{
                 },
                 "uid": {
                     "type": "string"
+                }
+            }
+        },
+        "models.SystemDetailPhysicalItem": {
+            "type": "object",
+            "properties": {
+                "catalogueItem": {
+                    "$ref": "#/definitions/models.SystemDetailCatalogueItem"
+                },
+                "conditionStatus": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "eun": {
+                    "type": "string"
+                },
+                "itemUsage": {
+                    "$ref": "#/definitions/models.CodebookRef"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "printEUN": {
+                    "type": "boolean"
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "uid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemDetailStatistics": {
+            "type": "object",
+            "properties": {
+                "directSubsystemsCount": {
+                    "type": "integer"
+                },
+                "minimalSpareParstCount": {
+                    "type": "number"
+                },
+                "sp_coverage": {
+                    "type": "number"
+                },
+                "sparePartsCount": {
+                    "type": "integer"
+                },
+                "sparePartsCoverageSum": {
+                    "type": "number"
+                },
+                "sparesForCount": {
+                    "type": "integer"
+                },
+                "subsystemsCount": {
+                    "type": "integer"
                 }
             }
         },
@@ -9243,6 +10081,10 @@ const docTemplate = `{
                 "historyType": {
                     "type": "string"
                 },
+                "outsideResponsibility": {
+                    "description": "OutsideResponsibility marks a change made by a user not responsible for the system (soft lock).",
+                    "type": "boolean"
+                },
                 "uid": {
                     "type": "string"
                 }
@@ -9258,6 +10100,20 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "systemUid": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.SystemPathItem": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "systemLevel": {
+                    "type": "string"
+                },
+                "uid": {
                     "type": "string"
                 }
             }
@@ -9396,6 +10252,32 @@ const docTemplate = `{
                 },
                 "zone": {
                     "$ref": "#/definitions/models.CodebookInfo"
+                }
+            }
+        },
+        "models.SystemSparePartsResponse": {
+            "type": "object",
+            "properties": {
+                "minimalSpareParstCount": {
+                    "type": "number"
+                },
+                "sp_coverage": {
+                    "type": "number"
+                },
+                "spareFor": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SpareRelationRef"
+                    }
+                },
+                "spareParts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.SpareRelationRef"
+                    }
+                },
+                "sparePartsCoverageSum": {
+                    "type": "number"
                 }
             }
         },

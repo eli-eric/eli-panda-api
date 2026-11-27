@@ -31,10 +31,18 @@ type ISystemsService interface {
 	GetZonesCodebook(facilityCode string, searchString string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSubSystemsByParentUID(parentUID string, facilityCode string) (result []models.System, err error)
 	GetSystemImageByUid(uid string) (imageBase64 string, err error)
-	GetSystemDetail(uid string, facilityCode string) (result models.System, err error)
+	GetSystemDetail(uid string, facilityCode string) (models.SystemDetail, error)
+	PatchSystem(uid, facilityCode, userUID string, fields *models.PatchSystemFields) (models.SystemDetail, error)
+	PatchSystemPhysicalItem(uid, facilityCode, userUID string, fields *models.PatchPhysicalItemFields) (models.SystemDetail, error)
+	CreateSystem(facilityCode, userUID string, fields *models.CreateSystemFields) (models.SystemDetail, error)
+	CreateSubsystem(parentUID, facilityCode, userUID string, req *models.CreateSubsystemRequest) (models.SystemDetail, error)
+	GenerateSystemCode(uid, facilityCode, userUID string, token models.PatchToken) (models.SystemDetail, error)
+	DeleteRelationship(fromUID, relType, toUID, facilityCode, userUID string) error
+	GetSystemSpareParts(uid, facilityCode string) (models.SystemSparePartsResponse, error)
+	GetPhysicalItemCatalogueProperties(itemUID, facilityCode string) (models.PhysicalItemCatalogueProperties, error)
+	GetPhysicalItemOrders(itemUID, facilityCode string) (models.PhysicalItemOrders, error)
 	CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error)
 	CreateNewSystemFromJira(facilityCode string, userUID string, userRoles []string, request *models.JiraSystemImportRequest) (result string, err error)
-	UpdateSystem(newSystem *models.System, facilityCode string, userUID string) (err error)
 	DeleteSystemRecursive(uid, userUid string) (err error)
 	GetSystemsAutocompleteCodebook(searchText string, limit int, facilityCode string, filter *[]helpers.Filter) (result []codebookModels.Codebook, err error)
 	GetSystemsWithSearchAndPagination(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter) (result helpers.PaginationResult[models.System], err error)
@@ -44,7 +52,6 @@ type ISystemsService interface {
 	GetSystemGraphByUid(uid string, facilityCode string, options models.SystemGraphQueryOptions) (result models.SystemGraphResponse, err error)
 	GetSystemsForRelationship(search string, facilityCode string, pagination *helpers.Pagination, sorting *[]helpers.Sorting, filering *[]helpers.ColumnFilter, systemFromUid string, relationTypeCode string) (result helpers.PaginationResult[models.System], err error)
 	GetSystemRelationships(uid string) (result []models.SystemRelationship, err error)
-	DeleteSystemRelationship(uid int64, userUID string) (err error)
 	CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error)
 	GetSystemCode(systemTypeUid, zoneUID, locationUID, parentUID, facilityCode string) (result string, err error)
 	GetPhysicalItemProperties(physicalItemUid string) (result []models.PhysicalItemDetail, err error)
@@ -83,7 +90,6 @@ type ISystemsService interface {
 	AssignSpareItem(request models.AssignSpareRequest, userUID string) (models.AssignSpareResponse, error)
 	CreateBatchRelationships(request *models.BatchRelationshipRequest, facilityCode, userUID string) (models.BatchRelationshipResponse, error)
 	CanEditSystem(systemUID, userUID string) (models.CanEditSystemResult, error)
-	GetSystemUIDByItemUID(itemUID string) (string, error)
 }
 
 var (
@@ -259,14 +265,6 @@ func (svc *SystemsService) GetSystemImageByUid(uid string) (result string, err e
 	return result, err
 }
 
-func (svc *SystemsService) GetSystemDetail(uid string, facilityCode string) (result models.System, err error) {
-
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	result, err = helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(uid, facilityCode))
-
-	return result, err
-}
-
 func (svc *SystemsService) CreateNewSystem(system *models.System, facilityCode string, userUID string) (uid string, err error) {
 
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
@@ -306,38 +304,17 @@ func (svc *SystemsService) CreateNewSystemFromJira(facilityCode string, userUID 
 	return result, err
 }
 
-func (svc *SystemsService) UpdateSystem(system *models.System, facilityCode string, userUID string) (err error) {
-
-	if system != nil {
-		session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-		oldSystem, err := helpers.GetNeo4jSingleRecordAndMapToStruct[models.System](session, SystemDetailQuery(system.UID, facilityCode))
-
-		if err == nil {
-			_, err = helpers.WriteNeo4jAndReturnSingleValue[string](session, UpdateSystemQuery(system, &oldSystem, facilityCode, userUID))
-		}
-
-		if err != nil {
-			log.Info().Msg(err.Error())
-		}
-		// we will do that later, more precise
-		// else {
-		// 	go func() {
-		// 		helpers.LogDBHistory(session, oldSystem.UID, oldSystem, system, userUID, helpers.DB_LOG_UPDATE)
-		// 	}()
-		// }
-
-	} else {
-		err = helpers.ERR_INVALID_INPUT
-	}
-	return err
-}
-
 func (svc *SystemsService) DeleteSystemRecursive(uid, userUid string) (err error) {
 
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	outside, err := svc.isOutsideResponsibility(uid, userUid)
+	if err != nil {
+		return err
+	}
 
-	query := DeleteSystemByUidQuery(uid, userUid)
+	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
+	defer session.Close()
+
+	query := DeleteSystemByUidQuery(uid, userUid, outside)
 	err = helpers.WriteNeo4jAndReturnNothing(session, query)
 
 	return err
@@ -1020,28 +997,20 @@ func (svc *SystemsService) GetSystemRelationships(uid string) (result []models.S
 	return result, err
 }
 
-func (svc *SystemsService) DeleteSystemRelationship(uid int64, userUID string) (err error) {
-
-	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-
-	query := DeleteSystemRelationshipQuery(uid, userUID)
-	err = helpers.WriteNeo4jAndReturnNothing(session, query)
-
-	if err != nil {
-		log.Info().Msg(err.Error())
-	}
-
-	return err
-}
-
 func (svc *SystemsService) CreateNewSystemRelationship(newRelationship *models.SystemRelationshipRequest, facilityCode string, userUID string) (relId int64, err error) {
 
 	if newRelationship.RelationTypeCode != "IS_SPARE_FOR" {
 		return 0, fmt.Errorf("only IS_SPARE_FOR is supported on this endpoint; use /v1/system/relationships/batch for other types: %w", helpers.ERR_INVALID_INPUT)
 	}
 
+	outside, err := svc.outsideResponsibilityByUID(userUID, newRelationship.SystemFromUID, newRelationship.SystemToUID)
+	if err != nil {
+		return 0, err
+	}
+
 	session, _ := helpers.NewNeo4jSession(*svc.neo4jDriver)
-	relId, err = helpers.WriteNeo4jAndReturnSingleValue[int64](session, CreateNewSystemRelationshipQuery(newRelationship, facilityCode, userUID))
+	defer session.Close()
+	relId, err = helpers.WriteNeo4jAndReturnSingleValue[int64](session, CreateNewSystemRelationshipQuery(newRelationship, facilityCode, userUID, outside))
 
 	if err != nil {
 		log.Info().Msg(err.Error())
@@ -1695,10 +1664,15 @@ func (svc *SystemsService) CreateBatchRelationships(request *models.BatchRelatio
 		}
 	}
 
+	outside, err := svc.outsideResponsibilityByUID(userUID, allUids...)
+	if err != nil {
+		return response, err
+	}
+
 	// execute batch query
 	results, err := helpers.WriteNeo4jAndReturnArrayOfNodes[models.BatchRelPairResult](
 		session,
-		CreateBatchRelationshipsQuery(pairs, request.RelationshipType, facilityCode, userUID),
+		CreateBatchRelationshipsQuery(pairs, request.RelationshipType, facilityCode, userUID, outside),
 	)
 	if err != nil {
 		log.Error().Msg(err.Error())
